@@ -91,6 +91,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 | `lens-critic` review gate on every phase | User wants a reviewer that always pushes for better results | — Pending |
 | Publish via GitHub Pages (Actions-based deploy) from phase 1 | User wants to use the website on GitHub Pages; early deploy gives real-phone testing each phase. User pre-authorized (2026-11-06) enabling Pages (Source: GitHub Actions) once phase 1 is ready | — Pending |
 | German (de-AT) as the only v1 UI language | User requirement: website must be in German; audience is Austrian/DACH lay users | — Pending |
+| UI style: usability-first best practice, decided in the UI phase | User: "use best practices - it must be as easy as possible to use". Local reference images in `references/` (git-ignored, not published): 000.png (dark slider + value-box mockup), 00_brillengroesse.png (frame-size guide incl. temple stamp), 01-brille.png (frame photos). ADD stays out of v1 (explained only) | — Pending |
 | Coarse granularity, YOLO/auto, research + plan-check + verifier on, quality model profile | Chosen by user at init | — Pending |
 
 ## Evolution

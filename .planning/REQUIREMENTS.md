@@ -137,12 +137,65 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| DEPL-01 | Phase 1 | Pending |
+| DEPL-02 | Phase 1 | Pending |
+| DEPL-03 | Phase 1 | Pending |
+| DEPL-04 | Phase 1 | Pending |
+| RX-01 | Phase 2 | Pending |
+| RX-02 | Phase 1 | Pending |
+| RX-03 | Phase 1 | Pending |
+| RX-04 | Phase 2 | Pending |
+| RX-05 | Phase 2 | Pending |
+| RX-06 | Phase 2 | Pending |
+| RX-07 | Phase 2 | Pending |
+| RX-08 | Phase 2 | Pending |
+| FRAME-01 | Phase 1 | Pending |
+| FRAME-02 | Phase 2 | Pending |
+| FRAME-03 | Phase 2 | Pending |
+| MAT-01 | Phase 1 | Pending |
+| MAT-02 | Phase 1 | Pending |
+| MAT-03 | Phase 2 | Pending |
+| MAT-04 | Phase 2 | Pending |
+| MAT-05 | Phase 2 | Pending |
+| ENG-01 | Phase 1 | Pending |
+| ENG-02 | Phase 1 | Pending |
+| ENG-03 | Phase 1 | Pending |
+| ENG-04 | Phase 1 | Pending |
+| ENG-05 | Phase 1 | Pending |
+| ENG-06 | Phase 1 | Pending |
+| ENG-07 | Phase 1 | Pending |
+| ENG-08 | Phase 1 | Pending |
+| ENG-09 | Phase 1 | Pending |
+| RES-01 | Phase 2 | Pending |
+| RES-02 | Phase 2 | Pending |
+| RES-03 | Phase 2 | Pending |
+| RES-04 | Phase 2 | Pending |
+| RES-05 | Phase 2 | Pending |
+| RES-06 | Phase 1 | Pending |
+| UX-01 | Phase 2 | Pending |
+| UX-02 | Phase 2 | Pending |
+| UX-03 | Phase 2 | Pending |
+| UX-04 | Phase 2 | Pending |
+| UX-05 | Phase 2 | Pending |
+| L10N-01 | Phase 1 | Pending |
+| L10N-02 | Phase 1 | Pending |
+| ANA-01 | Phase 2 | Pending |
+| ANA-02 | Phase 2 | Pending |
+| VIZ-01 | Phase 3 | Pending |
+| VIZ-02 | Phase 3 | Pending |
+| VIZ-03 | Phase 3 | Pending |
+| VIZ-04 | Phase 3 | Pending |
+| VIZ-05 | Phase 3 | Pending |
+| VIZ-06 | Phase 3 | Pending |
+| REF-01 | Phase 4 | Pending |
+| REF-02 | Phase 4 | Pending |
+| OFF-01 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 53 total
-- Mapped to phases: 0
-- Unmapped: 53 ⚠️
+- Mapped to phases: 53
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-06*
-*Last updated: 2026-11-06 after initialization*
+*Last updated: 2026-11-06 after roadmap creation*
