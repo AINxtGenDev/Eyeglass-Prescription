@@ -5,7 +5,7 @@ A browser-based 3D simulator that turns an eyeglass prescription (Brillenrezept)
 It is built for people holding a paper prescription who want to know: *"How thick and heavy will my lenses be, and does a higher index or a smaller frame help?"* It also gives opticians and students exact numbers and cross-sections.
 
 - **Website (German):** https://ainxtgendev.github.io/Eyeglass-Prescription/ (goes live with phase 1)
-- **Status:** planning complete, implementation not started
+- **Status:** phase 1 in progress: toolchain and German input parsing done; optics engine next
 
 ## Planned features (v1)
 

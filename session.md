@@ -48,3 +48,17 @@
 
 ### Next step
 Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-plan-phase 1`).
+
+## 2026-11-06 — Phase 1 execution (`/gsd-execute-phase 1`)
+
+### Done
+- Plans are executed one per wave (11 waves), each by a `gsd-executor` on `main`. Nothing is pushed before the approval gate in 01-05.
+- **01-01 done.** The user approved the 9 dev packages (checked with `npm view <pkg> version repository.url`); they are installed with exact pins. Vite, ESLint and Playwright are configured, and ESLint enforces the engine/UI boundary. The browser smoke test is written and fails on purpose until 01-03. Also built: `parseDiopter`, the de-AT formatters (`−2,25 dpt` with U+2212 and NBSP), and the `de-AT.js` dictionary plus `t()`. Lint passes and 70/70 unit tests pass.
+- Executor deviation: only L10N-02 is marked complete. RX-02, L10N-01, DEPL-01, DEPL-03 and DEPL-04 stay pending until the page, CI and deploy exist.
+
+### Open items
+- Smoke test 3 expects "Vogel" in `#result-od-basecurve`, but the disclaimer avoids saying "Vogel-Regel" (D-01). Check the wording in 01-03 and with lens-critic.
+- 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
+
+### Next step
+Plan 01-02: engine core (sag, base curve, CR-39, thick-lens design, CT fixed point, `evaluateLens`/`evaluatePair`).
