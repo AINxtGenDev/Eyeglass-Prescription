@@ -101,7 +101,7 @@ Plans:
 
 **Wave 15** *(gap closure; blocked on Wave 14 completion)*
 
-- [ ] 01-15-PLAN.md — ENG-09 follow-up (user decision "Worker + RAIL target"): engine in a module Web Worker with latest-wins and per-eye memo, "rechnet …" state with aria-busy after 50 ms, synchronous fallback, ENG-09 restated to RAIL/INP (cited), main-thread timing including paint, worker bench one run per job (compute first) incl. the rescan pair, watchdog, throttled proxy 2×/4×/6× (a,b measured; c,d estimated) plus a decision gate on 4× FAIL
+- [ ] 01-15-PLAN.md — ENG-09 follow-up (user decision "Worker + RAIL target"): engine in a module Web Worker with latest-wins and per-eye memo, "rechnet …" state with aria-busy after 50 ms, synchronous fallback, ENG-09 restated to RAIL/INP (cited), settled signal (#result[data-pending]) for every test, discriminating etmax values (CT is 1,8 mm for all minus lenses), no layout shift at 360 px, main-thread timing including paint, worker bench one run per job (compute first) incl. the rescan pair, busy counter, suspension-aware watchdog, throttled proxy 2×/4×/6× (a,b measured; c,d estimated) plus a decision gate on 4× FAIL
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
