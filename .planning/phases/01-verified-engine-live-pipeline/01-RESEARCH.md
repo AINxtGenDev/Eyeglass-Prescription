@@ -335,8 +335,9 @@ Then **clamp to [+0.50, +10.00] D**:
 - The floor is a project design choice, not a manufacturing limit. It was informed by Zeiss 1.74 −12.00 front 0.43 D @1.530 ≈ 0.60 D true and Zeiss CR-39 −8.00 front 1.50 D @1.530 [VERIFIED: Zeiss PDFs]. **Correction (2026-11-06, lens-critic iteration 2 m2):** the earlier wording "consistent with the flattest manufacturer fronts seen" is contradicted by ZEISS Finished SV SPH 1.53 (Trivex, doc Z00981.FS1, fsv2023.pdf p.79), whose −7.00 and −8.00 rows use a 0.15 D front @1.530 [VERIFIED: `pdftotext -f 79 -l 79` by the planner]. Flatter real fronts exist; the model simply does not go below +0.50, and user-facing texts say "in diesem Modell".
 - Emit `BASE_CURVE_CLAMPED` (info) with `{vogel, used}`.
 - **Superseded by D-01 (final, 2026-11-06, see 01-02-PLAN context):** the automatic base curve is always the computable D1 in [+0.50, +10.00] with the smallest max(CT, etMax); Vogel (clamped) is kept as the sourced reference value and search seed only; `BASE_CURVE_CLAMPED` is dropped; errors only if no D1 computes.
-- Label it in Expert view (phase 2) as "Näherung (Vogel-Regel)".
-- Vogel ignores the index; real high-index aspherics are far flatter (PITFALLS Pitfall 1). That belongs in the disclaimer's simplifications.
+- **Superseded label (lens-critic iteration-3 MAJOR-1, 2026-11-06):** the former "Näherung (Vogel-Regel)" label is wrong under D-01 final. Expert view (phase 2) labels the automatic curve "möglichst dünn (in diesem Modell)" and shows Vogel only as a reference ("übliche Faustregel nach Vogel").
+- Vogel ignores the index; real high-index aspherics are far flatter (PITFALLS Pitfall 1). The disclaimer now states the thinnest-model choice and the +0,50 floor instead (see "Disclaimer (RES-06)"): real lenses, especially minus lenses, can be somewhat thicker because opticians also choose the curve for optical quality and appearance (or thinner with aspherics).
+- User decision 2026-11-06: minus lenses keep the thinnest-model result (front at the +0,50 floor) with that honest disclaimer; revisit in phase 2 together with MAT-03 (manual base curve).
 
 ### ENG-05 decentration
 `dec = (A + DBL)/2 − monoPD`, positive = nasal. The OC is always inside the outline horizontally within the input ranges: worst case A = 40, DBL = 24, PD = 25 gives dec = 7 mm < 20 mm. Still keep `OC_OUTSIDE_OUTLINE` for fitting-height inputs.
@@ -587,9 +588,9 @@ It must be persistent, sit next to the result (not only in the footer), and be G
 - This is an educational visualisation, not a substitute for the optician's measurement or advice.
 - The main simplifications:
   - Spherical front surface; no manufacturer aspheric designs.
-  - Base curve by Vogel's rule (manufacturers, especially for high-index, often use flatter curves, so real lenses can be thinner).
+  - Base curve chosen so the lens is as thin as possible in this model (front at least +0,50 D); opticians and manufacturers also choose the curve for optical quality and appearance, so real lenses, especially minus lenses, can be somewhat thicker (or thinner with aspherics). Page wording (01-01): "Die Basiskurve wird so gewählt, dass das Glas in diesem Modell möglichst dünn wird (Vorderfläche mindestens +0,50 dpt). Optiker und Hersteller wählen die Kurve auch nach Abbildungsqualität und Aussehen; echte Gläser, besonders Minusgläser, können deshalb etwas dicker sein (oder mit Asphären dünner)." Superseded 2026-11-06 (lens-critic iteration-3 MAJOR-1): the earlier "Vogel's rule … real lenses can be thinner" point, which no longer describes the model.
   - Minimum thicknesses are typical manufacturer values.
-  - Lab tolerance about ±0,2 mm.
+  - Manufacturing CT tolerance up to ±0,3 mm (Zeiss CR-39 sheets; corrected from "about ±0,2 mm", lens-critic m3).
   - No prism, addition or progressive lenses.
   - Uncut blank and bevel position not modelled.
 - Numbers are model values.

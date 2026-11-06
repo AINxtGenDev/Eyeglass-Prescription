@@ -38,7 +38,7 @@
 - Implement Vogel exactly as above, but **clamp D1 to a documented range**, for example [+0.50, +10.00] D to match the manual range in idea.md. The clamp floor is a design choice, not a sourced constant.
 - Work with **curvature c = D/(1000(n−1))** everywhere, never with radius, so D = 0 is just c = 0.
 - Detect and explain the "front sphere smaller than the lens" case: "Bei dieser Stärke und Fassungsgröße ist ein Glas mit dieser Basiskurve nicht herstellbar."
-- Label the auto base curve in Expert view as "Näherung (Vogel-Regel)". Do not claim it matches any manufacturer.
+- Label the auto base curve in Expert view as "möglichst dünn (in diesem Modell)" and show Vogel only as a reference ("übliche Faustregel nach Vogel"). Do not claim it matches any manufacturer. (Superseded 2026-11-06, lens-critic iteration-3 MAJOR-1: the former label "Näherung (Vogel-Regel)" is wrong since phase-1 D-01 final picks the thinnest feasible front, not Vogel's; the disclaimer says real lenses, especially minus lenses, can be somewhat thicker.)
 - Optionally offer a "flat aspheric (manufacturer-like)" base-curve table derived from the Zeiss sheets, with the source cited.
 
 **Warning signs:** NaN or Infinity in R1. CT for +10 D or more exceeding 12 mm in CR-39. 1.74 plus lenses looking thicker than manufacturer charts by 1 mm or more.
