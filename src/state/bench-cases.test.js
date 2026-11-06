@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { NORMAL_PAIR, GRENZFALL_PAIR, frameMissPair, specFor, BENCH_RUNS } from './bench-cases.js';
+import { NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR, frameMissPair, benchPair, specFor, BENCH_RUNS } from './bench-cases.js';
 import { evaluatePair } from '../engine/evaluate.js';
 
 const withoutEye = (spec) => ({ ...spec, eye: undefined });
@@ -57,5 +57,29 @@ describe('shared ENG-09 bench cases (01-14)', () => {
       expect(r.OD.ok).toBe(true);
       expect(r.OS.ok).toBe(true);
     }
+  });
+
+  test('RESCAN_PAIR = 01-12 rescan-path pair (+11,75 −5,25 × 5, CR-39, rund 43×55/20, PD 27, FH 0)', () => {
+    for (const eye of ['OD', 'OS']) {
+      expect(RESCAN_PAIR[eye]).toEqual(
+        specFor(eye, { sph: 11.75, cyl: -5.25, axisDeg: 5 }, 27, 'cr39', { shape: 'rund', A: 43, B: 55, DBL: 20 }, 0),
+      );
+    }
+  });
+
+  test('RESCAN_PAIR computes on both eyes through the rescan path (≥ 163 evaluations per eye)', () => {
+    const r = evaluatePair(RESCAN_PAIR);
+    for (const eye of ['OD', 'OS']) {
+      expect(r[eye].ok).toBe(true);
+      expect(r[eye].intermediates.baseCurveSearch.evaluations).toBeGreaterThanOrEqual(163);
+    }
+  });
+
+  test('benchPair maps the four case ids and throws on an unknown id', () => {
+    expect(benchPair('normal', 0)).toBe(NORMAL_PAIR);
+    expect(benchPair('grenzfall', 0)).toBe(GRENZFALL_PAIR);
+    expect(benchPair('rescan', 0)).toBe(RESCAN_PAIR);
+    expect(benchPair('frameMiss', 3)).toEqual(frameMissPair(3));
+    expect(() => benchPair('nope', 0)).toThrow(/nope/);
   });
 });
