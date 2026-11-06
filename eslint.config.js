@@ -83,6 +83,19 @@ export default [
           ],
         },
       ],
+      // 01-15: state/i18n stay DOM-free so they run in Node, the worker and the page alike.
+      'no-restricted-globals': [
+        'error',
+        'window',
+        'document',
+        'navigator',
+        'self',
+        'localStorage',
+        'sessionStorage',
+        'requestAnimationFrame',
+        'fetch',
+        'XMLHttpRequest',
+      ],
     },
   },
 ];

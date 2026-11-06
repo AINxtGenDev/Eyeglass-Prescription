@@ -344,7 +344,7 @@ describe('compute client (01-15, ENG-09 main side)', () => {
     expect(r.median).toBe(25.5);
     expect(r.tail).toBe(48);
     expect(client.isBenchRunning()).toBe(false);
-    expect(sent).toHaveLength(2 + BENCH_RUNS);
+    expect(sent).toHaveLength(1 + BENCH_RUNS);
   });
 
   test('bench frameMiss: the client supplies a new k for every run', () => {

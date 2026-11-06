@@ -53,3 +53,39 @@ export function frameMissPair(k) {
   const frame = Object.freeze({ ...NORMAL_FRAME, A: 52 + 0.001 * (k + 1) });
   return pair(NORMAL_RX, 32, 'cr39', frame);
 }
+
+// Rescan-path pair (01-12-SUMMARY finding for ENG-09): about 0,07 % of eyes in the fuzz domain
+// compute only through the 136-point rescan, with 163–179 evaluations per eye. The slowest timed
+// one: +11,75 −5,25 × 5, CR-39, rund 43 × 55, DBL 20, PD 27, FH 0. The page cannot enter it
+// (no fitting-height field, D-04), so it is a worker bench readout only.
+const RESCAN_RX = Object.freeze({ sph: 11.75, cyl: -5.25, axisDeg: 5 });
+const RESCAN_FRAME = Object.freeze({ shape: 'rund', A: 43, B: 55, DBL: 20 });
+export const RESCAN_PAIR = pair(RESCAN_RX, 27, 'cr39', RESCAN_FRAME, 0);
+
+/**
+ * Bench pair by case id (worker bench jobs, 01-15). k is the frame-miss counter.
+ * @param {'normal'|'frameMiss'|'grenzfall'|'rescan'} caseId @param {number} k
+ */
+export function benchPair(caseId, k) {
+  switch (caseId) {
+    case 'normal':
+      return NORMAL_PAIR;
+    case 'frameMiss':
+      return frameMissPair(k);
+    case 'grenzfall':
+      return GRENZFALL_PAIR;
+    case 'rescan':
+      return RESCAN_PAIR;
+    default:
+      throw new Error(`unknown bench case: ${caseId}`);
+  }
+}
+
+/** Median of an ascending array. */
+export const medianOf = (sorted) => {
+  const n = sorted.length;
+  return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+};
+
+/** Nearest-rank percentile of an ascending array (p95 of 50 runs = the 48th value). */
+export const tailOf = (sorted, pct) => sorted[Math.ceil((pct / 100) * sorted.length) - 1];
