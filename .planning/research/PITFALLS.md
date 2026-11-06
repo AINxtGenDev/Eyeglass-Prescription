@@ -146,6 +146,8 @@ At the 45° diagonal they disagree [CALC; n 1.50, Vogel base, r = 30 mm]:
 | −6.00 / −6.00 | **0.39 mm** |
 | −6.00 / −6.00 at r = 35 mm (near R) | **1.12 mm** |
 
+> Annotated 2026-11-06 (01-08 SUMMARY, lens-critic MINOR-3): these values are the barrel torus minus the meridional model (01-08 reproduced 0.027/0.152/0.094/0.378 mm). The tyre torus the engine uses differs from the meridional model by ≤ 0.086 mm (0.014/0.013/0.021/0.086 mm); tyre vs barrel at −6/−6, r 30 is 0.464 mm.
+
 - The model choice therefore matters at the 0.1–0.4 mm level for CYL −6, the specified maximum. Close to the sag singularity it can reach 1 mm or more.
 - Also, the "torus" orientation (which principal radius is the sweep and which is the rotation) changes the result. Don't hard-code one without saying which.
 
