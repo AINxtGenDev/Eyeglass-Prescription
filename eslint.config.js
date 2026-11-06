@@ -37,6 +37,22 @@ export default [
       ],
     },
   },
+  // Worker glue (01-15): worker globals only, no Three.js, no UI.
+  {
+    files: ['src/worker/**/*.js'],
+    languageOptions: { globals: { ...globals.worker } },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['three', 'three/*'], message: 'The worker must not import Three.js.' },
+            { group: ['**/ui/**'], message: 'The worker must not depend on the UI layer.' },
+          ],
+        },
+      ],
+    },
+  },
   // Engine boundary (DEPL-03): pure JS, no Three.js, no DOM, bottom layer.
   {
     files: ['src/engine/**/*.js'],

@@ -3,7 +3,8 @@
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-/* global document, window, requestAnimationFrame, MutationObserver -- page.evaluate bodies run in the browser */
+import { settled, etmaxOf } from './helpers.js';
+/* global document, window, MutationObserver -- page.evaluate bodies run in the browser */
 
 /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
 let seen;
@@ -48,6 +49,7 @@ test('paper-style Sph is echoed in de-AT format', async ({ page }) => {
 test('both eyes show thickness, weight and base curve', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-2,25');
   await page.locator('#rx-os-sph').fill('+1 dpt');
+  await settled(page);
   for (const id of ['#result-od-ct', '#result-od-etmax', '#result-od-weight', '#result-os-ct']) {
     await expect(page.locator(id)).toHaveText(/^\d+,\d\s(mm|g)/);
   }
@@ -65,50 +67,67 @@ test('malformed input shows an error, never NaN', async ({ page }) => {
 test('material choice changes thickness', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-4,00');
   await page.locator('#rx-os-sph').fill('-4,00');
+  await settled(page);
   const select = page.locator('#material');
   await expect(select.locator('option')).toHaveCount(6);
   await expect(select.locator('option', { hasText: 'Trivex 1,53' })).toHaveCount(1);
   await expect(select).toHaveValue('cr39');
-  const etmax = page.locator('#result-od-etmax');
-  await expect(etmax).toHaveText(/^\d+,\d/);
-  const num = async () => Number((await etmax.textContent()).match(/^(\d+,\d)/)[1].replace(',', '.'));
-  const cr39 = await num();
+  await expect(page.locator('#result-od-etmax')).toHaveText(/^\d+,\d/);
+  const cr39 = await etmaxOf(page, 'od');
   await select.selectOption('idx167');
+  await settled(page);
   await expect(page.locator('#result-od-material')).toContainText('1,67');
-  await expect.poll(num).toBeLessThan(cr39);
+  expect(await etmaxOf(page, 'od')).toBeLessThan(cr39);
 });
 
 test('frame shape and PD change the edge', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-6,00');
   await page.locator('#rx-os-sph').fill('-6,00');
+  await settled(page);
   await expect(page.locator('#frame-shape')).toHaveValue('rechteckig');
   await expect(page.locator('#frame-a')).toHaveValue('52');
   await expect(page.locator('#rx-od-pd')).toHaveValue('32');
-  const etmax = page.locator('#result-od-etmax');
-  await expect(etmax).toContainText('schläfenseitig');
-  const num = async () => Number((await etmax.textContent()).match(/^(\d+,\d)/)[1].replace(',', '.'));
-  const before = await num();
+  await expect(page.locator('#result-od-etmax')).toContainText('schläfenseitig');
+  const before = await etmaxOf(page, 'od');
   await expect(page.locator('#result-od-dec')).toHaveText(/^3,0\smm$/);
   await page.locator('#rx-od-pd').fill('28');
+  await settled(page);
   await expect(page.locator('#result-od-dec')).toHaveText(/^7,0\smm$/);
-  await expect.poll(num).toBeGreaterThan(before);
+  expect(await etmaxOf(page, 'od')).toBeGreaterThan(before);
   await page.locator('#frame-shape').selectOption('pilot');
+  await settled(page);
   await expect(page.locator('#frame-a')).toHaveValue('58');
   await expect(page.locator('#frame-b')).toHaveValue('50');
   await expect(page.locator('#frame-dbl')).toHaveValue('14');
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 
+// evaluateLens of +3,00 −2,00 × 180 (OD, Rechteckig 52×38/18, PD 32, CR-39), formatted with
+// fmtMm/fmtGram; the −2,00 default shows 1,8 / 3,7 / 2,5 mm and 6,1 g.
+const PLUS_CYL_VALUES = [
+  ['#result-od-ct', /^3,6\smm$/],
+  ['#result-od-etmax', /^3,2\smm – /],
+  ['#result-od-etmin', /^1,0\smm – /],
+  ['#result-od-weight', /^7,0\sg$/],
+];
+
 test('plus cylinder shows both forms', async ({ page }) => {
+  await settled(page);
+  const CELLS = ['#result-od-ct', '#result-od-etmax', '#result-od-etmin', '#result-od-weight'];
+  const before = await Promise.all(CELLS.map((id) => page.locator(id).textContent()));
   await page.locator('#rx-od-sph').fill('+1,00');
   await page.locator('#rx-od-cyl').fill('+2,00');
   await page.locator('#rx-od-axis').fill('90');
+  await settled(page);
   const forms = page.locator('#rx-od-forms');
   await expect(forms).toBeVisible();
   for (const s of ['+3,00', '−2,00', '180°', '+2,00', '90°', 'umgerechnet']) await expect(forms).toContainText(s);
-  for (const id of ['#result-od-ct', '#result-od-etmax', '#result-od-etmin', '#result-od-weight']) {
-    await expect(page.locator(id)).toHaveText(/^\d+,\d\s(mm|g)/);
+  // Pinned values of +3,00 −2,00 × 180 (Rechteckig 52×38/18, PD 32, CR-39); none equals the −2,00 default.
+  for (const [i, [id, re]] of PLUS_CYL_VALUES.entries()) {
+    expect(re.test(before[i]), `${id} default must not match`).toBe(false);
+    await expect(page.locator(id)).toHaveText(re);
   }
+  expect(PLUS_CYL_VALUES.map(([id]) => id)).toEqual(CELLS);
   await expect(page.locator('#result-od-status')).toBeEmpty();
   await expect(page.locator('body')).not.toContainText('NaN');
 });
@@ -116,6 +135,7 @@ test('plus cylinder shows both forms', async ({ page }) => {
 test('cylinder without axis', async ({ page }) => {
   await page.locator('#rx-od-cyl').fill('-1,00');
   await page.locator('#rx-od-axis').fill('');
+  await settled(page);
   const err = page.locator('#rx-od-axis-err');
   await expect(err).toBeVisible();
   await expect(err).not.toBeEmpty();
@@ -137,6 +157,7 @@ test('SC-4 impossible lens is explained', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-12');
   await page.locator('#rx-od-cyl').fill('-6');
   await page.locator('#rx-od-axis').fill('10');
+  await settled(page);
   const box = page.locator('#diag-od');
   await expect(box).toContainText('nicht herstellbar');
   await expect(box).toContainText('kleinere');
@@ -147,6 +168,7 @@ test('SC-4 impossible lens is explained', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('NaN');
   await expect(page.locator('body')).not.toContainText('Code ');
   await page.locator('#material').selectOption('idx174');
+  await settled(page);
   await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
   // 1,74 makes it computable; the 62×55 frame still needs a large blank (warning, numbers stay)
   await expect(box).not.toContainText('nicht herstellbar');
@@ -160,6 +182,7 @@ test('oversized lens warns', async ({ page }) => {
   await page.locator('#rx-od-pd').fill('25');
   await page.locator('#rx-od-sph').fill('+12');
   await page.locator('#rx-od-cyl').fill('');
+  await settled(page);
   await expect(page.locator('#material')).toHaveValue('cr39');
   await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
   await expect(page.locator('#result-od-weight')).toHaveText(/^\d+,\d\sg$/);
@@ -176,6 +199,7 @@ test('very strong plus beyond the model range is explained (01-12)', async ({ pa
   await page.locator('#rx-od-pd').fill('32');
   await page.locator('#rx-od-sph').fill('+16');
   await page.locator('#rx-od-cyl').fill('');
+  await settled(page);
   await expect(page.locator('#material')).toHaveValue('cr39');
   await expect(page.locator('#result-od-status')).toHaveText('Nicht berechenbar');
   const box = page.locator('#diag-od');
@@ -188,6 +212,7 @@ test('very strong plus beyond the model range is explained (01-12)', async ({ pa
 
 test('normal lens shows Vogel reference', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-2');
+  await settled(page);
   const bc = page.locator('#result-od-basecurve');
   await expect(bc).toContainText('nahezu so dünn wie möglich');
   await expect(bc).toContainText('Faustregel nach Vogel');
@@ -207,9 +232,11 @@ test('axis message is specific (MINOR-5)', async ({ page }) => {
 
 test('material line shows the Abbe number (MAT-01)', async ({ page }) => {
   const line = page.locator('#result-od-material');
+  await settled(page);
   await expect(page.locator('#material')).toHaveValue('cr39');
   await expect(line).toContainText('Abbe-Zahl 56');
   await page.locator('#material').selectOption('pc');
+  await settled(page);
   await expect(line).toContainText('Abbe-Zahl 29');
 });
 
@@ -219,6 +246,7 @@ test('Vogel raw value with clamp note (MINOR-1)', async ({ page }) => {
   await page.locator('#rx-od-pd').fill('25');
   await page.locator('#rx-od-sph').fill('+12');
   await page.locator('#rx-od-cyl').fill('');
+  await settled(page);
   const bc = page.locator('#result-od-basecurve');
   await expect(bc).toContainText('Faustregel nach Vogel +18,00');
   await expect(bc).toContainText('begrenzt auf +14,00\u00A0dpt');
@@ -226,6 +254,7 @@ test('Vogel raw value with clamp note (MINOR-1)', async ({ page }) => {
   await expect(bc).not.toContainText('dpt dpt');
   await expect(bc).not.toContainText('dpt\u00A0dpt');
   await page.locator('#rx-od-sph').fill('-2');
+  await settled(page);
   await expect(bc).toContainText('Faustregel nach Vogel');
   await expect(bc).not.toContainText('begrenzt');
 });
@@ -235,19 +264,18 @@ test('footer shows the build commit', async ({ page }) => {
 });
 
 test('technical details show the timing readout', async ({ page }) => {
+  await settled(page);
   await page.locator('details#tech > summary').click();
   await expect(page.locator('#timing')).toHaveText(/Median\s[\d,]+\sms/, { timeout: 5000 });
 });
 
-// 01-14: the page has rendered its first frame (results are written from a rAF callback).
-const firstFrame = (page) => expect(page.locator('#result-od-ct')).toHaveText(/mm$/);
-
 test('timing shows work and latency medians (ENG-09)', async ({ page }) => {
-  await firstFrame(page);
+  await settled(page);
   const sph = page.locator('#rx-od-sph');
   const echo = page.locator('#rx-od-sph-echo');
   for (let i = 1; i <= 10; i++) {
     await sph.fill(String(-i));
+    await settled(page);
     await expect(echo).toContainText(`−${i},00`);
   }
   const timing = page.locator('#timing-input');
@@ -261,6 +289,7 @@ test('timing shows work and latency medians (ENG-09)', async ({ page }) => {
 });
 
 test('technical details show three readouts', async ({ page }) => {
+  await settled(page);
   await page.locator('details#tech > summary').click();
   for (const id of ['#timing', '#timing-frame', '#timing-worst']) {
     await expect(page.locator(id)).toHaveText(/Median\s[\d,]+\sms/, { timeout: 10_000 });
@@ -270,33 +299,38 @@ test('technical details show three readouts', async ({ page }) => {
 });
 
 test('one recompute per frame (01-14)', async ({ page }) => {
-  await firstFrame(page);
-  const ct = page.locator('#result-od-ct');
+  await settled(page);
+  // etmax, not CT: CT is 1,8 mm for every minus lens here (discrimination rule, lens-critic MAJOR-1).
+  const etmax = page.locator('#result-od-etmax');
   const echo = page.locator('#rx-od-sph-echo');
   await page.locator('#rx-od-sph').fill('-3');
-  await expect(echo).toContainText('−3,00');
-  const ct3 = await ct.textContent();
+  await settled(page);
+  const et3 = await etmax.textContent();
   await page.locator('#rx-od-sph').fill('-2,5');
-  await expect(echo).toContainText('−2,50');
-  const r = await page.evaluate(async () => {
-    const el = document.getElementById('result-od-ct');
-    let n = 0;
-    const mo = new MutationObserver((recs) => {
-      n += recs.length;
-    });
-    mo.observe(el, { childList: true, characterData: true, subtree: true });
+  await settled(page);
+  const et25 = await etmax.textContent();
+  expect(et3).not.toBe(et25);
+  await page.evaluate(() => {
+    window.__mut = { etmax: 0, echo: 0 };
+    const count = (id, k) =>
+      new MutationObserver((recs) => {
+        window.__mut[k] += recs.length;
+      }).observe(document.getElementById(id), { childList: true, characterData: true, subtree: true });
+    count('result-od-etmax', 'etmax');
+    count('rx-od-sph-echo', 'echo');
     const input = /** @type {HTMLInputElement} */ (document.getElementById('rx-od-sph'));
     for (const v of ['-1', '-2', '-3']) {
       input.value = v;
       input.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
-    mo.disconnect();
-    return { n, text: el.textContent };
   });
-  // Without coalescing every input would rewrite the cell: 3 mutations.
-  expect(r.n).toBe(1);
-  expect(r.text).toBe(ct3);
+  await settled(page);
+  const r = await page.evaluate(() => ({ ...window.__mut, text: document.getElementById('result-od-etmax').textContent }));
+  // update() writes the echo once per run: without coalescing it would be 3 (lens-critic r3 M1).
+  // The etmax count alone cannot fail: latest-wins drops −1 and −2 even without coalescing.
+  expect(r.echo).toBe(1);
+  expect(r.etmax).toBe(1);
+  expect(r.text).toBe(et3);
   await expect(echo).toContainText('−3,00');
 });
 
@@ -306,6 +340,7 @@ test('unchanged diagnostics are not re-announced (MINOR-11)', async ({ page }) =
   await page.locator('#rx-od-pd').fill('25');
   await page.locator('#rx-od-sph').fill('+12');
   await page.locator('#rx-od-cyl').fill('');
+  await settled(page);
   const diag = page.locator('#diag-od');
   const ct = page.locator('#result-od-ct');
   await expect(ct).toHaveText(/^38,3\smm$/);
@@ -321,8 +356,8 @@ test('unchanged diagnostics are not re-announced (MINOR-11)', async ({ page }) =
   });
   // −0,25 dpt: OD recomputes (memo miss); the warning text depends on frame and PD only (mbsMm).
   await page.locator('#rx-od-sph').fill('+11,75');
+  await settled(page);
   await expect(ct).not.toHaveText(ctBefore);
-  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
   expect(await diag.textContent()).toBe(before);
   expect(await page.evaluate(() => window.__diagMutations)).toBe(0);
 });

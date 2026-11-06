@@ -1,12 +1,11 @@
-// The only DOM tier: raw field text → parse → transpose (minus cyl) → evaluatePair → German render.
-// Every visible string comes from t(); everything is written with textContent.
+// The only DOM tier: raw field text → parse → transpose (minus cyl) → compute in a Web Worker
+// (01-15) → German render. Every visible string comes from t(); everything is written with textContent.
 import './style.css';
 import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
 import { transpose, RX_CODES } from '../state/transpose.js';
-import { memoLast } from '../state/memo.js';
 import { createFrameScheduler } from '../state/frame-scheduler.js';
-import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, frameMissPair, BENCH_RUNS } from '../state/bench-cases.js';
-import { evaluatePair, evaluateLens } from '../engine/evaluate.js';
+import { createComputeClient, TAIL_PCT } from '../state/compute-client.js';
+import { specFor, NORMAL_PAIR, GRENZFALL_PAIR } from '../state/bench-cases.js';
 import { MATERIALS } from '../engine/materials.js';
 import { SHAPES } from '../engine/frame/shapes.js';
 import { nasalSign } from '../engine/conventions.js';
@@ -27,8 +26,6 @@ const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
 // Zeiss rows in materials.js, which list νe next to ne.
 const abbeNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1 });
 
-// Percentile reported next to the median in the bench readouts (p95 = the 48th of 50 sorted runs).
-const TAIL_PCT = 95;
 // Ring-buffer length for the input timing medians (ENG-09, lens-critic MAJOR-2).
 const TIMING_WINDOW = 10;
 
@@ -280,8 +277,18 @@ function baseCurveText(m, im) {
   return bc + ' ' + t('basecurve.vogelRef', { vogel });
 }
 
+/** Dotted underline on an eye's value cells while its values belong to the previous input. */
+function setStale(eye, on) {
+  for (const c of CELLS) {
+    const el = $(`result-${eye.toLowerCase()}-${c}`);
+    if (on) el.dataset.stale = 'true';
+    else delete el.dataset.stale;
+  }
+}
+
 function renderResult(eye, res) {
   const p = `result-${eye.toLowerCase()}`;
+  setStale(eye, false);
   if (!res.ok) {
     renderEmpty(eye, statusLabel(res.diagnostics));
     renderDiagnostics(eye, res.diagnostics);
@@ -300,92 +307,89 @@ function renderResult(eye, res) {
   renderDiagnostics(eye, res.diagnostics);
 }
 
-// Per-eye reuse (01-14): an eye whose spec is unchanged keeps its LensResult object and is not
-// re-rendered. lastRendered is reset when the eye renders empty for an input reason.
-const evalEye = {
-  OD: memoLast(evaluateLens),
-  OS: memoLast(evaluateLens),
-};
-/** @type {{ OD: object | null, OS: object | null }} */
-const lastRendered = { OD: null, OS: null };
+// Settled signal (01-15): #result[data-pending] is a space-separated token set, '' when nothing
+// is pending. 'input' = an input frame is scheduled; OD/OS = the eye is open in the client or
+// delivered but not yet painted. e2e/helpers.js settled() waits for ''.
+const pending = { input: false, open: new Set(), delivered: new Set() };
 
-function showResult(eye, res) {
-  if (res === lastRendered[eye]) return;
-  lastRendered[eye] = res;
-  renderResult(eye, res);
+function writePending() {
+  const tokens = pending.input ? ['input'] : [];
+  for (const eye of EYES) if (pending.open.has(eye) || pending.delivered.has(eye)) tokens.push(eye);
+  const value = tokens.join(' ');
+  const el = $('result');
+  if (el.dataset.pending !== value) el.dataset.pending = value;
 }
 
-function update() {
-  const read = { OD: readRx('OD'), OS: readRx('OS') };
-  const pd = { OD: readMm('rx-od-pd'), OS: readMm('rx-os-pd') };
-  const dims = { A: readMm('frame-a'), B: readMm('frame-b'), DBL: readMm('frame-dbl') };
-  const frameOk = dims.A !== null && dims.B !== null && dims.DBL !== null;
-  const frame = frameOk ? { shape: currentShape(), A: dims.A, B: dims.B, DBL: dims.DBL } : null;
-  const materialId = currentMaterialId();
-  for (const eye of EYES) renderMaterialLine(eye, materialId);
-  const ready = (eye) => frameOk && read[eye].rx !== null && pd[eye] !== null;
-  for (const eye of EYES) {
-    if (ready(eye)) {
-      showResult(eye, evalEye[eye](specFor(eye, read[eye].rx, pd[eye], materialId, frame)));
-      continue;
+/** @type {'worker' | 'sync'} */
+let computeMode = 'worker';
+/** @type {Worker | null} */
+let worker = null;
+const busyEyes = new Set();
+
+function onBusy(eye, on) {
+  if (on) {
+    busyEyes.add(eye);
+    setText(`result-${eye.toLowerCase()}-status`, t('result.computing'));
+    setStale(eye, true);
+    $('result').setAttribute('aria-busy', 'true');
+    setText('calc-status', t('result.computingNote'));
+    return;
+  }
+  // Marks only; renderResult / renderEmpty / onFailed own the status cell (MINOR-2).
+  busyEyes.delete(eye);
+  setStale(eye, false);
+  // The note explains the dotted cells, so it stays while the other eye is still busy.
+  if (busyEyes.size === 0) {
+    $('result').removeAttribute('aria-busy');
+    setText('calc-status', '');
+  }
+}
+
+function onFailed(eyes) {
+  for (const eye of eyes) {
+    const e = eye.toLowerCase();
+    for (const c of CELLS) setText(`result-${e}-${c}`, DASH);
+    setStale(eye, false);
+    setText(`result-${e}-status`, t('compute.failed.title'));
+    const box = $(`diag-${e}`);
+    const text = t('compute.failed.explain');
+    if (box.dataset.sig !== text) {
+      box.replaceChildren(para(text));
+      box.dataset.sig = text;
     }
-    lastRendered[eye] = null;
-    renderEmpty(eye, t(read[eye].sph === null ? 'result.inputMissing' : 'result.inputInvalid'));
   }
 }
 
-const median = (sorted) => {
-  const n = sorted.length;
-  return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
-};
+// Deliveries are painted in the next frame; an eye is painted only if its seq is still current
+// there (an input may arrive between the message and the frame, MINOR-1).
+/** @type {Record<string, { seq: number, result: object }>} */
+const deliveries = {};
+let deliveryFrame = null;
 
-// Input timing (ENG-09, lens-critic MAJOR-2). Method (Nolan Lawson, "Accurately measuring layout
-// on the web", 2018-09-25, https://nolanlawson.com/2018/09/25/accurately-measuring-layout-on-the-web/):
-// rAF callbacks run just before the browser's rendering step, so a setTimeout queued from inside
-// one runs after style, layout and paint.
-// - work = recompute plus render: from the start of the rAF callback to that task;
-// - latency = work plus the wait for the next frame that coalescing introduces (up to about one
-//   frame): from the input event's timeStamp to the same task.
-// event.timeStamp and performance.now() share the same time origin.
-const timings = { work: [], latency: [] };
-let skipTiming = true; // the init() frame is not an input
-
-const pushTiming = (buf, v) => {
-  buf.push(v);
-  if (buf.length > TIMING_WINDOW) buf.shift();
-};
-
-function runFrame({ inputTs, frameStart }) {
-  const timed = !skipTiming;
-  skipTiming = false;
-  update();
-  if (!timed) return;
-  setTimeout(() => {
-    const end = performance.now();
-    pushTiming(timings.work, end - frameStart);
-    pushTiming(timings.latency, end - inputTs);
-    const med = (buf) => fmtMs(median([...buf].sort((a, b) => a - b)));
-    setText(
-      'timing-input',
-      t('tech.inputRender', { work: med(timings.work), latency: med(timings.latency), n: timings.work.length }),
-    );
-  }, 0);
-}
-
-const schedule = createFrameScheduler((cb) => requestAnimationFrame(cb), runFrame, () => performance.now());
-
-/** BENCH_RUNS timed raw evaluatePair runs (no memo: ENG-09 is about recomputing both lenses). */
-function measure(pairFor) {
-  const times = [];
-  for (let i = 0; i < BENCH_RUNS; i++) {
-    const pair = pairFor();
-    const t0 = performance.now();
-    evaluatePair(pair);
-    times.push(performance.now() - t0);
+function paintDeliveries() {
+  deliveryFrame = null;
+  for (const eye of EYES) {
+    const d = deliveries[eye];
+    if (!d) continue;
+    delete deliveries[eye];
+    // Skipped eyes leave the delivered set too: they are open again (or cancelled), so the
+    // settled signal cannot hang on them.
+    pending.delivered.delete(eye);
+    if (client.isCurrent(eye, d.seq)) renderResult(eye, d.result);
   }
-  times.sort((a, b) => a - b);
-  return { median: median(times), tail: times[Math.ceil((TAIL_PCT / 100) * times.length) - 1] };
+  writePending();
 }
+
+function onResults({ results }) {
+  for (const [eye, d] of Object.entries(results)) {
+    deliveries[eye] = d;
+    pending.delivered.add(eye);
+  }
+  writePending();
+  if (deliveryFrame === null) deliveryFrame = requestAnimationFrame(paintDeliveries);
+}
+
+const where = () => t(computeMode === 'sync' ? 'tech.where.sync' : 'tech.where.worker');
 
 /** Readout label from the case's OD spec values (the case definition is in bench-cases.js). */
 function caseLabel(pair) {
@@ -402,18 +406,153 @@ function caseLabel(pair) {
   return s.fittingHeight === null ? label : label + t('tech.caseFh', { fh: fmtMm(s.fittingHeight) });
 }
 
-// Never reused, so every frame-miss run builds a new outline.
-let frameMissK = 0;
+const READOUTS = {
+  normal: { id: 'timing', key: 'tech.timing', pair: NORMAL_PAIR },
+  frameMiss: { id: 'timing-frame', key: 'tech.timingFrame', pair: null },
+  grenzfall: { id: 'timing-worst', key: 'tech.timingWorst', pair: GRENZFALL_PAIR },
+};
+
+function onBench(caseId, r) {
+  const ro = READOUTS[caseId];
+  if (!ro || 'error' in r) return;
+  const params = { where: where(), median: fmtMs(r.median), tail: fmtMs(r.tail), pct: TAIL_PCT, runs: r.runs };
+  if (ro.pair) params.case = caseLabel(ro.pair);
+  setText(ro.id, t(ro.key, params));
+}
 
 function runBench() {
-  const fmt = (r) => ({ median: fmtMs(r.median), tail: fmtMs(r.tail), pct: TAIL_PCT, runs: BENCH_RUNS });
-  setText('timing', t('tech.timing', { case: caseLabel(NORMAL_PAIR), ...fmt(measure(() => NORMAL_PAIR)) }));
-  setText('timing-frame', t('tech.timingFrame', fmt(measure(() => frameMissPair(frameMissK++)))));
-  setText('timing-worst', t('tech.timingWorst', { case: caseLabel(GRENZFALL_PAIR), ...fmt(measure(() => GRENZFALL_PAIR)) }));
+  client.bench(['normal', 'frameMiss', 'grenzfall']);
+}
+
+function setComputeMode(mode, key) {
+  computeMode = mode;
+  const el = $('compute-mode');
+  el.dataset.mode = mode;
+  setText('compute-mode', t(key));
+}
+
+/** The worker cannot start or does not answer: terminate it and compute on the page. */
+function onFallback(reason) {
+  worker?.terminate();
+  worker = null;
+  setComputeMode('sync', reason === 'timeout' ? 'tech.mode.syncTimeout' : 'tech.mode.sync');
+  import('../state/compute-protocol.js').then(
+    ({ createHandler }) => {
+      const handle = createHandler();
+      // One job per macrotask, so input events can run between jobs.
+      client.useTransport((msg) => setTimeout(() => client.receive(handle(msg)), 0));
+    },
+    (err) => console.warn('compute fallback could not load', err),
+  );
+}
+
+const client = createComputeClient({
+  send: (msg) => /** @type {Worker} */ (worker).postMessage(msg),
+  onResults,
+  onBusy,
+  onBench,
+  onFailed,
+  onFallback,
+  onOpenChange: (eyes) => {
+    pending.open = new Set(eyes);
+    writePending();
+  },
+  isHidden: () => document.hidden,
+});
+
+function startWorker() {
+  try {
+    worker = new Worker(new URL('../worker/engine.worker.js', import.meta.url), { type: 'module' });
+  } catch {
+    client.workerError();
+    return;
+  }
+  worker.onmessage = (e) => {
+    // Engine error text is English and for developers only (T-01-41).
+    if (e.data?.type === 'error') console.warn('compute worker:', e.data.message);
+    client.receive(e.data);
+  };
+  worker.addEventListener('error', () => client.workerError());
+  worker.addEventListener('messageerror', () => client.workerError());
+}
+
+function update(inputTs) {
+  const read = { OD: readRx('OD'), OS: readRx('OS') };
+  const pd = { OD: readMm('rx-od-pd'), OS: readMm('rx-os-pd') };
+  const dims = { A: readMm('frame-a'), B: readMm('frame-b'), DBL: readMm('frame-dbl') };
+  const frameOk = dims.A !== null && dims.B !== null && dims.DBL !== null;
+  const frame = frameOk ? { shape: currentShape(), A: dims.A, B: dims.B, DBL: dims.DBL } : null;
+  const materialId = currentMaterialId();
+  for (const eye of EYES) renderMaterialLine(eye, materialId);
+  const ready = (eye) => frameOk && read[eye].rx !== null && pd[eye] !== null;
+  const specs = { OD: null, OS: null };
+  for (const eye of EYES) {
+    if (ready(eye)) {
+      specs[eye] = specFor(eye, read[eye].rx, pd[eye], materialId, frame);
+      continue;
+    }
+    renderEmpty(eye, t(read[eye].sph === null ? 'result.inputMissing' : 'result.inputInvalid'));
+  }
+  client.request(specs, inputTs);
+}
+
+const median = (sorted) => {
+  const n = sorted.length;
+  return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+};
+
+// Input timing (ENG-09, lens-critic MAJOR-2). Method (Nolan Lawson, "Accurately measuring layout
+// on the web", 2018-09-25, https://nolanlawson.com/2018/09/25/accurately-measuring-layout-on-the-web/):
+// rAF callbacks run just before the browser's rendering step, so a setTimeout queued from inside
+// one runs after style, layout and paint.
+// - work = reading the inputs and sending the job, plus render: from the start of the rAF callback to that task;
+// - latency = work plus the wait for the next frame that coalescing introduces (up to about one
+//   frame): from the input event's timeStamp to the same task.
+// event.timeStamp and performance.now() share the same time origin.
+const timings = { work: [], latency: [] };
+let skipTiming = true; // the init() frame is not an input
+
+const pushTiming = (buf, v) => {
+  buf.push(v);
+  if (buf.length > TIMING_WINDOW) buf.shift();
+};
+
+function runFrame({ inputTs, frameStart }) {
+  const timed = !skipTiming;
+  skipTiming = false;
+  try {
+    update(inputTs);
+  } finally {
+    pending.input = false;
+    writePending();
+  }
+  if (!timed) return;
+  setTimeout(() => {
+    const end = performance.now();
+    pushTiming(timings.work, end - frameStart);
+    pushTiming(timings.latency, end - inputTs);
+    const med = (buf) => fmtMs(median([...buf].sort((a, b) => a - b)));
+    setText(
+      'timing-input',
+      t('tech.inputRender', { work: med(timings.work), latency: med(timings.latency), n: timings.work.length }),
+    );
+  }, 0);
+}
+
+const scheduleFrame = createFrameScheduler((cb) => requestAnimationFrame(cb), runFrame, () => performance.now());
+
+/** Schedule one input frame; 'input' is pending from now until that frame has run. */
+function schedule(timeStamp) {
+  if (!pending.input) {
+    pending.input = true;
+    writePending();
+  }
+  scheduleFrame(timeStamp);
 }
 
 function init() {
   applyDictionary();
+  setComputeMode('worker', 'tech.mode.worker');
   buildMaterialOptions();
   materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));
   buildShapeOptions();
@@ -436,13 +575,18 @@ function init() {
     pdInput.addEventListener('input', onInput);
   }
   const tech = /** @type {HTMLDetailsElement} */ ($('tech'));
+  // Sync fallback: the bench would block the page, so only the button starts it (MINOR-6).
   tech.addEventListener('toggle', () => {
-    if (tech.open) runBench();
+    if (tech.open && computeMode === 'worker') runBench();
   });
   $('timing-rerun').addEventListener('click', runBench);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) client.resume();
+  });
   setText('ua', t('tech.ua', { ua: navigator.userAgent }));
   const meta = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="app-commit"]'));
   setText('app-commit', meta?.content ?? 'dev');
+  startWorker();
   schedule(performance.now());
 }
 

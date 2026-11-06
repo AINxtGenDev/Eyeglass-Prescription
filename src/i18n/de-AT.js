@@ -83,6 +83,12 @@ export default Object.freeze({
   'result.diagLabel.impossible': 'Nicht herstellbar',
   'result.diagLabel.failed': 'Nicht berechenbar',
   'result.diagLabel.warn': 'Hinweis',
+  // 01-15: a result not painted 50 ms after the input (RAIL feedback rule, ENG-09 (d)).
+  'result.computing': 'rechnet …',
+  'result.computingNote': 'rechnet … Die Werte gehören noch zur vorigen Eingabe.',
+  'compute.failed.title': 'Berechnung abgebrochen',
+  'compute.failed.explain':
+    'Die Berechnung im Hintergrund ist fehlgeschlagen. Bitte einen Wert erneut ändern; hilft das nicht, die Seite neu laden.',
 
   'loc.nasal': 'nasal (zur Nase)',
   'loc.temporal': 'schläfenseitig (außen)',
@@ -163,11 +169,19 @@ export default Object.freeze({
 
   'tech.summary': 'Technische Angaben',
   // Bench readouts (01-14): numbers and the case come in as parameters, never as text (MINOR-5).
-  'tech.timing': 'Rechenzeit Normalfall ({case}): Median {median}, p{pct} {tail} ({runs} Läufe)',
+  // {where} = tech.where.* (01-15: the bench runs in the worker, or on the page in the fallback).
+  'tech.timing': 'Rechenzeit {where}, Normalfall ({case}): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.timingFrame':
-    'Rechenzeit Normalfall mit geänderter Fassungsbreite (Form neu berechnet): Median {median}, p{pct} {tail} ({runs} Läufe)',
+    'Rechenzeit {where}, Normalfall mit geänderter Fassungsbreite (Form neu berechnet): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.timingWorst':
-    'Rechenzeit Grenzfall ({case}; langsamster gemessener Fall): Median {median}, p{pct} {tail} ({runs} Läufe)',
+    'Rechenzeit {where}, Grenzfall ({case}; langsamster Fall unter den geprüften Zufallsfällen): Median {median}, p{pct} {tail} ({runs} Läufe)',
+  'tech.where.worker': 'im Hintergrund',
+  'tech.where.sync': 'direkt auf der Seite',
+  'tech.mode.worker': 'Rechenweg: im Hintergrund (Web Worker); Eingaben bleiben flüssig.',
+  'tech.mode.sync':
+    'Rechenweg: direkt auf der Seite, weil der Hintergrund-Rechner (Web Worker) nicht startet. Ein schwerer Fall kann die Eingabe dabei einmal kurz stocken lassen.',
+  'tech.mode.syncTimeout':
+    'Rechenweg: direkt auf der Seite, weil der Hintergrund-Rechner (Web Worker) nicht geantwortet hat. Ein schwerer Fall kann die Eingabe dabei einmal kurz stocken lassen.',
   'tech.case': '{rx}, {material}, {shape} {A} × {B}, DBL {dbl}, PD {pd}',
   'tech.caseFh': ', Einschleifhöhe {fh}',
   'tech.inputRender':

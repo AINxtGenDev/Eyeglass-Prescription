@@ -217,3 +217,18 @@ legend {
 .diag p {
   margin-block: 0.25rem;
 }
+
+/* 01-15 "rechnet …" state (MAJOR-2): three lines are always reserved, so the note never moves
+   the page. 3lh: Chrome 109, Safari 16.4, Firefox 120 (MDN browser-compat-data 8.1.8);
+   4.5em = 3 × line-height 1.5 is the fallback for older engines. */
+.calc-status {
+  min-height: 4.5em;
+  min-height: 3lh;
+  font-weight: 600;
+}
+
+/* Values that still belong to the previous input: text decoration only. No slanted font style, which
+   changes glyph widths and re-wrapped the base-curve cell at 360 px. */
+td[data-stale] {
+  text-decoration: underline dotted;
+}

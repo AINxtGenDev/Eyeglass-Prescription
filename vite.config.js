@@ -13,6 +13,9 @@ const appMeta = {
 };
 
 // CSP on build output only, so the Vite dev client (inline/HMR) keeps working.
+// 01-15: no worker-src directive. MDN worker-src: when it is absent the fallback is child-src,
+// then script-src, then default-src, so script-src 'self' allows the same-origin worker file
+// and blocks blob:/data: workers. Keep this string unchanged (worker.spec.js checks it exactly).
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
   "object-src 'none'; base-uri 'self'; form-action 'none'";
@@ -30,6 +33,9 @@ const cspMeta = {
 export default defineConfig({
   base: '/Eyeglass-Prescription/',
   plugins: [appMeta, cspMeta],
+  // 01-15: the engine worker is a module worker ({ type: 'module' }); worker.format defaults
+  // to 'iife', so it is set to 'es' to match (https://vite.dev/config/worker-options).
+  worker: { format: 'es' },
   test: {
     coverage: {
       provider: 'v8',
