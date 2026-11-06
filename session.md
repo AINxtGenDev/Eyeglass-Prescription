@@ -73,6 +73,11 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **chrome-devtools (local, 390 px):** for R −2,00/−1,50×45 the max edge is 5,1 mm at the upper temple side. For L −0,50/+1,50×135, displayed as "+1,00/−1,50×45°", the thickest edge is at the lower temple side and the thinnest at the upper temple side. Checked against TABO: both are physically correct. A missing or invalid axis shows a German error and blocks only that eye. No NaN, no horizontal scroll, no console error.
 - **01-10 done.** Impossible and borderline lenses are now explained in German, with a title, an explanation and a tip; no raw codes remain. `BLANK_EXCEEDS_STOCK` and `OC_OUTSIDE_OUTLINE` are now raised and tested. Property and fuzz tests pass: the automatic base curve never fails on a buildable lens (0 cases out of 2,000 fuzz eyes), it is never thicker than Vogel, and the worst gap to brute force is 1,2e-6 mm. ENG-07, ENG-08 and L10N-01 are complete. 820 unit tests and 28 e2e tests pass.
 - **chrome-devtools (local):** R −12/−6×10 in a 62×55 frame shows "Dieses Glas ist so nicht herstellbar", with a cause and the tip "smaller frame or 1,74". L +12 shows "Großes Rohglas nötig (≥ 87,5 mm, stock ≤ 75 mm)", 23,0 mm CT and 69,1 g. No raw code, no NaN, no console error.
+- **01-11 Task 1 (gate + review):** the gate is green (820 unit, 28 e2e, coverage 97,4 %). The requirement trace has 21/21 rows with tests that really ran. **lens-critic: NEEDS WORK** (3 MAJOR, 0 BLOCKER), so the final push is held.
+  - MAJOR-1: the automatic base curve makes plus lenses biconvex. Reproduced: +4 → D1 +2,75 / D2 **+1,23**. Plus CT comes out 0,09–0,48 mm too thin compared with Zeiss.
+  - MAJOR-2: the ENG-09 measurement leaves out paint and the cache miss; the Grenzfall takes 6,5–11 ms on desktop against a 16,7 ms phone budget.
+  - MAJOR-3: ENG-06 (sags), MAT-01 (Abbe) and MAT-02 (Expert view) have no plan that closes them.
+  - User decision: **gap plan, then push**. Gaps are in `01-VERIFICATION.md`.
 
 ### Open items
 - ENG-09 worst case: the spec with the most iterations (+0,50/−0,50×81, 1,60, Panto 58×54/15) is not the slowest on desktop; +7,50/−5,75×148 takes 8,0 ms against 7,4 ms. Time both on the phone.
@@ -91,4 +96,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-11: full gate, requirement trace and lens-critic review; then the final push if PASS; then the real-phone measurement (ENG-09).
+`/gsd-plan-phase 1 --gaps` (from 01-VERIFICATION.md) → lens-critic plan review → execute → lens-critic result review → push if PASS → 01-11 Task 3 (live + phone).
