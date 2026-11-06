@@ -377,6 +377,10 @@ describe('MAT-02 flat-front tie-break (D-C)', () => {
     const j = Jof(r);
     console.log('[01-12] D-C worked example: D1', im.D1, 'J', j, 'J_min', im.baseCurveSearch.minMaxThickness, 'evaluations', im.baseCurveSearch.evaluations);
     expect(im.D1).toBeLessThanOrEqual(2.25);
+    // re-derived from the GREEN engine (01-12): without D-C this lens got D1 14,00, J 1,174 mm
+    expect(im.D1).toBe(0.5);
+    expect(j).toBeCloseTo(1.22993, 4);
+    expect(im.baseCurveSearch.minMaxThickness).toBeCloseTo(1.17368, 4);
     expect(j).toBeLessThanOrEqual(im.baseCurveSearch.minMaxThickness + FLAT_FRONT_TOLERANCE_MM + 1e-9);
     expect(D2max(r)).toBeLessThanOrEqual(0);
     // lens-critic MINOR (amendment 4): the tie-break solve runs on the full 720-point outline
@@ -478,13 +482,16 @@ describe('MAT-02 impossibility covers the whole automatic range (lens-critic MIN
   // These PDs are outside the RX-04 range (phase 2), but the engine's impossibility claim must
   // still hold for them: feasibility can be a narrow window the 0,10 dpt rescan steps over.
   it('+12 rund 62×62/14 PD 10 CR-39 and +20 1,74 rund 52×52/24 PD 5 compute', () => {
-    for (const s of [
-      lensSpec({ sph: 12, frame: { shape: 'rund', A: 62, B: 62, DBL: 14 }, monoPD: 10 }),
-      lensSpec({ sph: 20, materialId: 'idx174', frame: { shape: 'rund', A: 52, B: 52, DBL: 24 }, monoPD: 5 }),
+    // pins re-derived from the GREEN engine (01-12): [D1, CT]
+    for (const [s, pin] of [
+      [lensSpec({ sph: 12, frame: { shape: 'rund', A: 62, B: 62, DBL: 14 }, monoPD: 10 }), [8.41374, 53.309]],
+      [lensSpec({ sph: 20, materialId: 'idx174', frame: { shape: 'rund', A: 52, B: 52, DBL: 24 }, monoPD: 5 }), [12.41641, 53.182]],
     ]) {
       const r = evaluateLens(s);
       expect(r.ok, `${s.sph} ${s.frame.A}`).toBe(true);
       expect(D2max(r)).toBeLessThanOrEqual(0);
+      expect(r.intermediates.D1).toBeCloseTo(pin[0], 3);
+      expect(r.metrics.ct).toBeCloseTo(pin[1], 2);
       console.log(`[01-12] window ${s.sph} ${s.frame.A}: D1 ${r.intermediates.D1} CT ${r.metrics.ct} evaluations ${r.intermediates.baseCurveSearch.evaluations}`);
     }
   });
@@ -509,6 +516,7 @@ describe('ENG-07 BACK_SURFACE_CONVEX', () => {
     }
     console.log('[01-12] +16 rund 40: manual fronts > 14 with D2a ≤ 0:', okFronts.join(', '));
     expect(okFronts.length).toBeGreaterThanOrEqual(1);
+    expect(okFronts[0]).toBe(14.5);
   });
 });
 

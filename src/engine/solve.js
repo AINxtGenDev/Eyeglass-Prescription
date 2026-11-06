@@ -114,6 +114,15 @@ const D1_MAX = BASE_CURVE_LIMITS.max;
 // boundary of "not convex" (a plano back gives the plano-convex form); a margin would be an
 // unsourced design constant (D-01 final). Applied to the designed principal powers D2a, D2b.
 export const BACK_CONVEX_MAX_DPT = 0;
+
+// D-C flat-front tie-break (D-01 amendment, 2026-11-06). DESIGN CONSTANT, not a measured value.
+// Anchor: the manufacturer centre-thickness tolerance ±0.30 mm (Zeiss Finished SV sheets,
+// fixture provenance ctTolerance; the disclaimer's ±0,3 mm is the same number); τ is one third of
+// it, a thickness difference the user cannot act on. Choosing the FLATTEST front within τ is an
+// unsourced cosmetic design choice (no deep-bowl fronts), not an optical one. Evidence
+// (lens-critic critic2/q8, 52 962 lenses): without it, 100 weak-plus lenses got fronts > m + 2
+// and > +8 (68 at exactly +14) to save a median 0.008 mm, at most 0.049 mm.
+export const FLAT_FRONT_TOLERANCE_MM = 0.10;
 const BRACKET_DPT = 0.05;
 const GOLDEN = (Math.sqrt(5) - 1) / 2;
 
@@ -125,7 +134,8 @@ const GOLDEN = (Math.sqrt(5) - 1) / 2;
  * max(sph, sph + cyl) ≤ 0 are never affected: D2max = m − D1v < 0 for every D1 > 0.
  * Deterministic and bounded:
  *   (0) seed: full-outline solve at seedD1 (Vogel-clamped), always; a candidate when it computes,
- *       so the result is never thicker than the Vogel lens;
+ *       so the result is never thicker than the Vogel lens by more than τ (the D-C tie-break
+ *       below may trade up to τ for a flatter front);
  *   (1) coarse scan 0.50, 1.00, … < hi plus hi (hi = maxD1) on a decimated outline (every 4th
  *       point; a subset can only under-report violations), warm-started;
  *   (2) nothing computes → rescan [0.50, 14.00] in 0.10 steps on the decimated outline, ignoring
@@ -134,9 +144,17 @@ const GOLDEN = (Math.sqrt(5) - 1) / 2;
  *       on the full outline in [cb − 0.5, cb + 0.5] ∩ [0.5, bound] to a bracket ≤ 0.05 dpt,
  *       infeasible points = +∞, shrinking toward cb when both interior points are infeasible;
  *       if nothing there computes (decimation hid a violation), repeat the scan on the full
- *       outline and refine again.
- * Cost per eye: 1 seed + ≤ 21 coarse + ≤ 96 rescan (failing lenses only) + ≤ 10 refinement
- * solves, each capped by maxIter. It runs on every automatic recompute (ENG-09 cost).
+ *       outline and refine again;
+ *   (4) still nothing and m = max(sph, sph + cyl) > 0 → boundary bisection on the full outline
+ *       over [0.50, 14.00] (≤ 30 solves); the first computable point is refined (≤ 10 solves);
+ *   (5) D-C flat-front tie-break: among fronts with a non-convex back, the flattest whose
+ *       J ≤ J_min + τ (FLAT_FRONT_TOLERANCE_MM); in practice the front lo = max(0.50, m, 0),
+ *       one full-outline solve, only when the thinnest front is steeper than lo + 0.05.
+ * Cost per eye: 1 seed + ≤ 28 coarse + 1 re-evaluation + ≤ 10 refinement = 40 for lenses that
+ * compute in the coarse pass, + ≤ 1 tie-break solve (D-C lenses only). Failing lenses add
+ * ≤ 136 rescan + ≤ 30 bisection (+ ≤ 10 refinement when it finds a window) + 1 error solve.
+ * Each solve is capped by maxIter. It runs on every automatic recompute (ENG-09 cost).
+ * Returns minMaxThickness = J_min (the thinnest found) next to maxThickness = J of the chosen D1.
  */
 export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, outline, oc, maxD1, seedD1 }) {
   const np = outline.length / 2;
@@ -305,6 +323,18 @@ export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, 
       };
     }
   }
+  // (5) D-C flat-front tie-break: lo = max(D1_MIN, m⁺) is the flattest front with a non-convex
+  // back (D1v > D1 ≥ m). When the thinnest front is steeper than lo by more than the refinement
+  // bracket, take lo if its full-outline J ≤ J_min + τ, otherwise keep best (one extra solve).
+  // Strong plus lenses (thinnest at D2 ≈ 0, D1 < m) and minus lenses at the floor never run it.
+  // No bisection between lo and best: across 650 tie-breaks (lens-critic critic3) lo was always
+  // within the threshold, so a bisection branch would be dead code.
+  const minMaxThickness = best.r.maxThickness;
+  const lo = Math.max(D1_MIN, m, 0);
+  if (best.D1 > lo + BRACKET_DPT) {
+    const rf = solve(lo, outline);
+    if (rf.ok && rf.maxThickness <= minMaxThickness + FLAT_FRONT_TOLERANCE_MM) best = { D1: lo, r: rf };
+  }
   const r = best.r;
   return {
     ok: true,
@@ -314,6 +344,7 @@ export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, 
     binding: r.binding,
     iterations: r.iterations,
     maxThickness: r.maxThickness,
+    minMaxThickness,
     evaluations,
     searchIterations,
     seedMaxThickness,

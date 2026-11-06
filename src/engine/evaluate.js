@@ -31,7 +31,8 @@
  *   R1: number|null, Ra: number|null, Rb: number|null, rhoMax: number,
  *   vogelD1: number, vogelClampedD1: number, vogelMaxThickness: number|null,
  *   baseCurveRule: 'thinnest'|'manual',
- *   baseCurveSearch: null|{ evaluations: number, iterations: number, maxThickness: number },
+ *   baseCurveSearch: null|{ evaluations: number, iterations: number, maxThickness: number,
+ *     minMaxThickness: number },
  *   bindingConstraint: 'minCT'|'minET', iterations: number }} intermediates
  *   Radii in mm, null for a plano surface (never Infinity). vogel* are reference values only
  *   ("übliche Faustregel nach Vogel"), not the chosen curve.
@@ -142,6 +143,7 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
         evaluations: r.evaluations,
         iterations: r.searchIterations,
         maxThickness: r.maxThickness,
+        minMaxThickness: r.minMaxThickness,
       };
       vogelMaxThickness = r.seedMaxThickness;
     }
