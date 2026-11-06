@@ -1,0 +1,151 @@
+/* Readable, contrast-safe, touch-sized layout. Text #1a1a1a on #fff ≈ 17:1; muted #4a4a4a ≈ 8.9:1. */
+:root {
+  --fg: #1a1a1a;
+  --muted: #4a4a4a;
+  --bg: #ffffff;
+  --line: #6b6b6b;
+  --focus: #0b57d0;
+  --error: #a50e0e;
+  color: var(--fg);
+  background: var(--bg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+body {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-block: 0.5rem 1rem;
+}
+
+caption {
+  text-align: start;
+  font-weight: 600;
+  padding-block-end: 0.5rem;
+}
+
+th,
+td {
+  text-align: start;
+  vertical-align: top;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+abbr[title] {
+  text-decoration: underline dotted;
+}
+
+input[type='text'] {
+  font: inherit;
+  min-height: 44px;
+  width: 100%;
+  max-width: 10rem;
+  box-sizing: border-box;
+  padding: 0.25rem 0.5rem;
+  border: 2px solid var(--line);
+  border-radius: 4px;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--error);
+  border-width: 3px;
+}
+
+output {
+  display: block;
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+  font-weight: 600;
+  margin: 0.25rem 0 0;
+}
+
+.error::before {
+  content: '⚠ ';
+}
+
+button,
+summary {
+  font: inherit;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--fg);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+summary {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Distinct by border and heading, not by colour alone. */
+#disclaimer {
+  border: 3px solid var(--fg);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-block: 1rem;
+}
+
+#disclaimer h3 {
+  margin-block: 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+#frame-note,
+#tech p,
+footer {
+  color: var(--muted);
+}
+
+footer {
+  margin-block-start: 2rem;
+  font-size: 0.875rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -13,6 +13,53 @@ export default Object.freeze({
     'Zu viele Nachkommastellen: Dioptrien haben höchstens zwei (z. B. −2,25), Millimeter höchstens eine (z. B. 32,5).',
   'parse.PARSE_AXIS_OUT_OF_RANGE': 'Die Achse muss eine ganze Zahl zwischen 0° und 180° sein.',
 
+  'rx.caption': 'Ihre Brillenwerte (vom Brillenpass)',
+  'rx.eye': 'Auge',
+  'rx.od': 'R – rechtes Auge',
+  'rx.os': 'L – linkes Auge',
+  'rx.sph.abbr': 'Sph',
+  'rx.sph.title': 'Sphäre: der Kugelwert auf dem Brillenpass',
+  'rx.sph.unit': '(dpt)',
+  'rx.sph.label': 'Tippen Sie den Sph-Wert so ein, wie er auf dem Brillenpass steht, z. B. −2,25 oder +1.',
+  'rx.od.sph.label': 'Sph rechtes Auge in Dioptrien',
+  'rx.os.sph.label': 'Sph linkes Auge in Dioptrien',
+
+  'frame.note': 'Vorschau: Fassung rund, 50 mm, Steg 18 mm; PD je Auge 32 mm; Material CR-39 1,50',
+
+  'result.title': 'Ergebnis je Glas',
+  'result.ct': 'Mittendicke',
+  'result.etmax': 'Dickste Randdicke',
+  'result.etmin': 'Dünnste Randdicke',
+  'result.weight': 'Gewicht (pro Glas)',
+  'result.basecurve': 'Basiskurve (Vorderfläche)',
+  'result.status': 'Hinweis',
+  'result.inputMissing': 'Bitte zuerst einen gültigen Sph-Wert eingeben.',
+  'result.notComputable': 'Dieses Glas lässt sich so nicht berechnen (Code {code}).',
+
+  'loc.nasal': 'nasal (zur Nase)',
+  'loc.temporal': 'schläfenseitig (außen)',
+  'loc.superior': 'oben',
+  'loc.inferior': 'unten',
+  'loc.nasal-superior': 'oben, zur Nase',
+  'loc.nasal-inferior': 'unten, zur Nase',
+  'loc.temporal-superior': 'oben, schläfenseitig',
+  'loc.temporal-inferior': 'unten, schläfenseitig',
+
+  // D-01 final: the automatic curve is the thinnest computable front; Vogel is a reference only.
+  'basecurve.rule.thinnest': 'so gewählt, dass das Glas möglichst dünn wird',
+  'basecurve.rule.manual': 'von Ihnen vorgegeben',
+  'basecurve.vogelRef': '(zum Vergleich: übliche Faustregel nach Vogel {vogel})',
+
+  'tech.summary': 'Technische Angaben',
+  'tech.timing': 'Rechenzeit beide Gläser: Median {median}, p95 {p95} (50 Läufe)',
+  'tech.timingWorst':
+    'Rechenzeit Grenzfall (+12,00 dpt, PD 10 mm, viele Rechenschritte): Median {median}, p95 {p95} (50 Läufe)',
+  'tech.inputRender': 'Letzte Eingabe bis Anzeige: {ms}',
+  'tech.rerun': 'Erneut messen',
+  'tech.ua': 'Browser: {ua}',
+
+  'footer.version': 'Version',
+
   'disclaimer.title': 'Wichtiger Hinweis',
   'disclaimer.body': 'Diese Seite ist eine Lernhilfe: eine vereinfachte Veranschaulichung, kein Ersatz für die Messung und Beratung beim Optiker. Alle Zahlen sind Modellwerte. Das Modell rechnet mit einer sphärischen Vorderfläche, nicht mit asphärischen Herstellerdesigns. Die Basiskurve wird so gewählt, dass das Glas in diesem Modell möglichst dünn wird (Vorderfläche mindestens +0,50 dpt). Optiker und Hersteller wählen die Kurve auch nach Abbildungsqualität und Aussehen; echte Gläser können deshalb dicker sein – bei starken Minusgläsern in großen Fassungen um einige Millimeter (oder mit asphärischen Gläsern dünner). Die Mindestdicken sind typische Herstellerwerte; die Fertigungstoleranz der Mittendicke beträgt laut Hersteller bis zu ±0,3 mm. Prismen, Addition und Gleitsichtgläser werden nicht berücksichtigt; Rohglasdurchmesser und Facettenlage sind nicht modelliert.',
 });
