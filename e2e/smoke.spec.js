@@ -152,6 +152,8 @@ test('SC-4 impossible lens is explained', async ({ page }) => {
   await expect(box).toContainText('Großes Rohglas nötig');
 });
 
+// Re-derived from the 01-12 GREEN engine (E2E reference case in 01-12-SUMMARY): computes with
+// BLANK_EXCEEDS_STOCK, D1 9,19, CT 38,3 mm, Vogel 18 → clamped 14, Vogel lens not computable.
 test('oversized lens warns', async ({ page }) => {
   await setFrame(page, 'rechteckig', 62, 55, 24);
   await page.locator('#rx-od-pd').fill('25');
@@ -163,14 +165,30 @@ test('oversized lens warns', async ({ page }) => {
   await expect(page.locator('#diag-od')).toContainText('Großes Rohglas nötig');
   await expect(page.locator('#result-od-status')).toHaveText('Hinweis');
   const bc = page.locator('#result-od-basecurve');
-  for (const s of ['möglichst dünn', 'Faustregel nach Vogel', 'nicht herstellbar']) await expect(bc).toContainText(s);
+  for (const s of ['nahezu so dünn wie möglich', 'Faustregel nach Vogel', 'nicht berechnen']) await expect(bc).toContainText(s);
+  await expect(page.locator('#result-od-ct')).toHaveText(/^38,3\smm$/);
+  await expect(page.locator('body')).not.toContainText('NaN');
+});
+
+test('very strong plus beyond the model range is explained (01-12)', async ({ page }) => {
+  await setFrame(page, 'rund', 40, 40, 18);
+  await page.locator('#rx-od-pd').fill('32');
+  await page.locator('#rx-od-sph').fill('+16');
+  await page.locator('#rx-od-cyl').fill('');
+  await expect(page.locator('#material')).toHaveValue('cr39');
+  await expect(page.locator('#result-od-status')).toHaveText('Nicht berechenbar');
+  const box = page.locator('#diag-od');
+  await expect(box).toContainText('+14,00 dpt');
+  await expect(box).toContainText('Optiker');
+  await expect(box).not.toContainText('BACK_SURFACE');
+  await expect(page.locator('#result-od-ct')).toHaveText('–');
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 
 test('normal lens shows Vogel reference', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-2');
   const bc = page.locator('#result-od-basecurve');
-  await expect(bc).toContainText('möglichst dünn');
+  await expect(bc).toContainText('nahezu so dünn wie möglich');
   await expect(bc).toContainText('Faustregel nach Vogel');
   await expect(page.locator('#diag-od')).toBeEmpty();
 });

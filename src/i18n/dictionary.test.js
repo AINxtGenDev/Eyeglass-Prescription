@@ -42,7 +42,16 @@ describe('disclaimer (RES-06, lens-critic iteration-3 MAJOR-1)', () => {
   const body = () => dict['disclaimer.body'];
   test('has a title', () => expect(dict['disclaimer.title']).toBe('Wichtiger Hinweis'));
   test('does not mention Vogel-Regel', () => expect(body()).not.toContain('Vogel-Regel'));
-  test('says möglichst dünn', () => expect(body()).toContain('möglichst dünn'));
+  // 01-12 D-C: no longer literally "möglichst dünn"; τ = 0,1 mm and the flattest front are named
+  test('says nahezu so dünn wie möglich, at most 0,1 mm thicker, flattest front', () => {
+    expect(body()).toContain('nahezu so dünn wie möglich');
+    expect(body()).toContain('0,1 mm');
+    expect(body()).toContain('flachsten Vorderfläche');
+    expect(body()).not.toContain('möglichst dünn wird');
+  });
+  test('says the back surface is never curved outwards (01-12)', () => expect(body()).toContain('nach außen gewölbt'));
+  // measured max Zeiss − automatic CT over the 51 plus rows = 0,449 mm (tier 2 (d)), rounded to 0,1 mm
+  test('names the measured plus-lens CT difference (tier 2 (d))', () => expect(body()).toContain('0,4 mm'));
   test('names the +0,50 floor', () => expect(body()).toContain('+0,50'));
   test('says real lenses can be dicker', () => expect(body()).toContain('dicker'));
   test('is a Lernhilfe', () => expect(body()).toContain('Lernhilfe'));
@@ -135,8 +144,10 @@ describe('diagnostic texts are geometrically true (lens-critic M1/m6, iteration-
   test('BASE_CURVE_CLAMPED keys are removed (D-01 final)', () => {
     expect(Object.keys(dict).filter((k) => k.startsWith('diag.BASE_CURVE_CLAMPED'))).toEqual([]);
   });
-  test('the thinnest rule says möglichst dünn and never dicker', () => {
-    expect(dict['basecurve.rule.thinnest']).toContain('möglichst dünn');
+  test('the thinnest rule names τ = 0,1 mm and the flattest front, and never dicker', () => {
+    expect(dict['basecurve.rule.thinnest']).toContain('nahezu so dünn wie möglich');
+    expect(dict['basecurve.rule.thinnest']).toContain('0,1 mm');
+    expect(dict['basecurve.rule.thinnest']).toContain('flachsten Vorderfläche');
     expect(dict['basecurve.rule.thinnest']).not.toContain('dicker');
   });
   test.each(['basecurve.vogelRef', 'basecurve.vogelRefThicker', 'basecurve.vogelRefImpossible'])(
