@@ -6,6 +6,9 @@ import {
   baseCurveAuto,
   BASE_CURVE_LIMITS,
   FRONT_RADIUS_MARGIN_MM,
+  meridianPower,
+  rxToMatrix,
+  matrixToRx,
 } from './power.js';
 import { K } from './conventions.js';
 
@@ -93,5 +96,60 @@ describe('MAT-02 base curve', () => {
       ),
       { numRuns: 500, seed: 3 },
     );
+  });
+});
+
+describe('ENG-01 meridian power and power matrix', () => {
+  const rxs = [
+    { sph: -2, cyl: -1.5, axisDeg: 30 },
+    { sph: 4, cyl: -2, axisDeg: 180 },
+    { sph: 0, cyl: -0.25, axisDeg: 90 },
+    { sph: -6, cyl: -6, axisDeg: 135 },
+    { sph: 1, cyl: 0, axisDeg: 0 },
+  ];
+  it('D(α) = S, D(α + 90) = S + C, period 180°', () => {
+    for (const { sph, cyl, axisDeg } of rxs) {
+      expect(meridianPower(sph, cyl, axisDeg, axisDeg)).toBeCloseTo(sph, 12);
+      expect(meridianPower(sph, cyl, axisDeg, axisDeg + 90)).toBeCloseTo(sph + cyl, 12);
+      for (const t of [0, 17, 63, 101, 150]) {
+        expect(meridianPower(sph, cyl, axisDeg, t + 180)).toBeCloseTo(meridianPower(sph, cyl, axisDeg, t), 12);
+      }
+    }
+  });
+  it('D(θ) = eᵀ·F·e for 36 sampled θ', () => {
+    for (const rx of rxs) {
+      const F = rxToMatrix(rx);
+      for (let k = 0; k < 36; k++) {
+        const th = (k * 10 * Math.PI) / 180;
+        const e = [Math.cos(th), Math.sin(th)];
+        const q = e[0] * (F[0][0] * e[0] + F[0][1] * e[1]) + e[1] * (F[1][0] * e[0] + F[1][1] * e[1]);
+        expect(Math.abs(q - meridianPower(rx.sph, rx.cyl, rx.axisDeg, k * 10))).toBeLessThanOrEqual(1e-12);
+      }
+    }
+  });
+  it('F is symmetric', () => {
+    const F = rxToMatrix({ sph: -2, cyl: -1, axisDeg: 70 });
+    expect(F[0][1]).toBe(F[1][0]);
+  });
+  it('matrixToRx(rxToMatrix(rx)) round-trips (axis mod 180, skipped for cyl 0)', () => {
+    const q = (lo, hi) => fc.integer({ min: lo * 4, max: hi * 4 }).map((k) => k / 4);
+    fc.assert(
+      fc.property(q(-12, 12), q(-6, 0), fc.integer({ min: 0, max: 179 }), (sph, cyl, axisDeg) => {
+        const r = matrixToRx(rxToMatrix({ sph, cyl, axisDeg }));
+        expect(Math.abs(r.sph - sph)).toBeLessThan(1e-9);
+        expect(Math.abs(r.cyl - cyl)).toBeLessThan(1e-9);
+        expect(r.cyl).toBeLessThanOrEqual(0);
+        expect(r.axisDeg).toBeGreaterThanOrEqual(0);
+        expect(r.axisDeg).toBeLessThan(180);
+        if (cyl !== 0) {
+          const d = Math.abs(r.axisDeg - axisDeg) % 180;
+          expect(Math.min(d, 180 - d)).toBeLessThan(1e-7);
+        }
+      }),
+      { numRuns: 500, seed: 7 },
+    );
+  });
+  it('cyl 0 gives cyl exactly 0 (no −0)', () => {
+    expect(Object.is(matrixToRx(rxToMatrix({ sph: -3, cyl: 0, axisDeg: 0 })).cyl, 0)).toBe(true);
   });
 });
