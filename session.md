@@ -88,6 +88,14 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **chrome-devtools (local):** +4 in 1,74 gives D1 +3,97 with the honest τ wording; the material line shows "Abbe-Zahl 32"; the axis error for "90,5" is the new message; the disclaimer says "0,4 mm". No NaN, no console error. Oddity: for +0,25 the Vogel comparison has no "damit wäre … dick" clause, so the result review should check it.
 - **01-14 done.** Work and latency are now timed separately (median of 10 edits), with per-eye memo, at most one recompute per frame, three readouts and quiet diagnostics. 1022 unit tests and 44 e2e tests pass. **Phone proxy:** Lighthouse benchmarkIndex for this host is 2221 (high-end desktop), so 4× is the right proxy. At 4× the normal case takes 15,25 ms of work (passes; 6× fails), the Grenzfall 64,35 ms and the rescan pair 178,05 ms (both FAIL).
 - **User decision: "Worker + RAIL target".** The next gap plan, 01-15, adds a Web Worker and restates ENG-09. I checked https://web.dev/articles/rail: process input in < 50 ms, visible response in < 100 ms, and feedback for actions > 50 ms. The page itself recommends Core Web Vitals (INP) over RAIL, so the INP threshold must be checked against its source.
+- **01-15 planned** (`f8b01dd`), with 5 tasks:
+  - a module Web Worker, latest-wins with a sequence id, one job at a time;
+  - "rechnet …" after 50 ms with `aria-busy` and stale values marked in text;
+  - a German error path and a sync fallback;
+  - re-instrumentation and the 2×/4×/6× proxy on the worker path;
+  - a decision gate.
+
+  Restated ENG-09: main thread < 16,7 ms per task (the user's words: "under one frame"; RAIL's 50 ms only as the outer bound), a normal result within 100 ms, INP ≤ 200 ms ("good", checked on web.dev/articles/inp, applied strictly per edit), and in extreme cases "rechnet …" while the UI stays responsive. Plan checker and lens-critic are reviewing it.
 
 ### Open items
 - **Changed requirement texts for the 01-11 manifest:** MAT-01 ("uses ne and density, exposes νe") and MAT-02 (+14, D-C, Expert view → UX-02).
