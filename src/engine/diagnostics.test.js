@@ -312,10 +312,14 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     expect(im.D1).toBeLessThanOrEqual(maxD1);
     expect(im.R1).toBeGreaterThanOrEqual(im.rhoMax + FRONT_RADIUS_MARGIN_MM - 1e-9);
     expect(im.vogelMaxThickness).toBe(null);
+    // 01-12 re-derived (non-convex back, ceiling 14): D1 6,687 → 9,189, CT 33,34 → 38,31 mm
+    expect(im.D1).toBeCloseTo(9.1891, 3);
+    expect(r.metrics.ct).toBeCloseTo(38.31, 2);
+    expect(im.vogelClampedD1).toBe(14);
     console.log('[01-10] pin (a): D1', im.D1, 'CT', r.metrics.ct, 'MBS', r.metrics.mbsMm, 'rhoMax', im.rhoMax, 'evaluations', im.baseCurveSearch.evaluations);
   });
 
-  it('pin: +12,00 rechteckig 62×55/18, PD 32: Vogel only as reference, thicker than the chosen lens', () => {
+  it('pin: +12,00 rechteckig 62×55/18, PD 32: Vogel only as reference; at +14 the Vogel lens does not compute (01-12)', () => {
     const r = evaluateLens(lens({ sph: 12, frame: frame('rechteckig', 62, 55, 18), monoPD: 32 }));
     expect(r.ok).toBe(true);
     checkRule(r);
@@ -323,9 +327,12 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     expect(codes(r)).toContain('BLANK_EXCEEDS_STOCK');
     const im = r.intermediates;
     expect(im.vogelD1).toBe(18);
-    expect(im.vogelClampedD1).toBe(10);
-    expect(typeof im.vogelMaxThickness).toBe('number');
-    expect(im.vogelMaxThickness).toBeGreaterThan(maxThickness(r));
+    expect(im.vogelClampedD1).toBe(14);
+    // 01-12: Vogel clamped to 14 > maxD1, no computable Vogel lens (was 25,04 mm at 10)
+    expect(im.vogelMaxThickness).toBe(null);
+    // 01-12 re-derived: D1 7,015 → 10,000 (maxD1 cap), J 23,04 → 25,04 mm
+    expect(im.D1).toBeCloseTo(10.0, 3);
+    expect(maxThickness(r)).toBeCloseTo(25.038, 2);
     console.log('[01-10] +12 62×55/18/32: D1', im.D1, 'J', maxThickness(r), 'Vogel J', im.vogelMaxThickness);
   });
 

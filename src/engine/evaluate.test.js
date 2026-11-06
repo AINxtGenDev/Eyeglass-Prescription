@@ -179,8 +179,12 @@ describe('MAT-02 automatic base curve on frame outlines', () => {
     const maxD1 = 500 / (im.rhoMax + 2);
     expect(im.D1).toBeLessThanOrEqual(maxD1);
     expect(im.R1).toBeGreaterThanOrEqual(im.rhoMax + 2 - 1e-9);
-    expect(im.vogelClampedD1).toBe(10);
+    expect(im.vogelClampedD1).toBe(14); // 01-12: ceiling +14 (D-A); was 10
     expect(im.vogelMaxThickness).toBe(null);
+    // 01-12 re-derived (non-convex back): D1 6,687 → 9,189, CT 33,34 → 38,31 mm
+    expect(im.D1).toBeCloseTo(9.1891, 3);
+    expect(r.metrics.ct).toBeCloseTo(38.31, 2);
+    expect(Math.max(im.D2a, im.D2b)).toBeLessThanOrEqual(0);
     console.log('[01-07] +12 rechteckig 62×55/24 PD 25: rhoMax', im.rhoMax, 'maxD1', maxD1, 'D1', im.D1, 'CT', r.metrics.ct);
   });
 });
@@ -255,17 +259,21 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     }
   });
 
-  it('Vogel reference outside the range: +12.00 round 50/18/32', () => {
+  it('Vogel reference outside the range: +12.00 round 50/18/32 (clamped to 14, 01-12)', () => {
     const r = evaluateLens(spec({ sph: 12 }));
     expect(r.ok).toBe(true);
     expect(r.intermediates.vogelD1).toBe(18);
-    expect(r.intermediates.vogelClampedD1).toBe(10);
+    expect(r.intermediates.vogelClampedD1).toBe(14);
+    // 01-12 re-derived: D1 7,597 → 11,112 (D2 ≈ 0), J 9,750 → 10,000 mm; Vogel J 10,720
+    expect(r.intermediates.D1).toBeCloseTo(11.1115, 3);
+    expect(J(r)).toBeCloseTo(10.0, 2);
+    expect(r.intermediates.vogelMaxThickness).toBeGreaterThan(J(r));
     expect(r.intermediates.baseCurveRule).toBe('thinnest');
     expect(r.intermediates.bindingConstraint).toBe('minET');
     console.log('[01-02] +12 PD32: D1', r.intermediates.D1, 'J', J(r), 'Vogel J', r.intermediates.vogelMaxThickness, r.intermediates.baseCurveSearch);
   });
 
-  it('frame-limited plus lens +12.00 round 50/18/PD 10', () => {
+  it('frame-limited plus lens +12.00 round 50/18/PD 10 (Vogel lens at 14 not computable, 01-12)', () => {
     const r = evaluateLens(spec({ sph: 12, monoPD: 10 }));
     expect(r.ok).toBe(true);
     const im = r.intermediates;
@@ -274,8 +282,11 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     expect(Math.abs(maxD1 - 9.8039215686)).toBeLessThan(1e-9);
     expect(im.D1).toBeLessThanOrEqual(maxD1);
     expect(im.R1).toBeGreaterThanOrEqual(im.rhoMax + 2 - 1e-9);
-    expect(typeof im.vogelMaxThickness).toBe('number');
-    expect(im.vogelMaxThickness).toBeGreaterThan(J(r));
+    // 01-12: the Vogel seed is 14 > maxD1 9,80, so it does not compute (was 37,76 mm at 10)
+    expect(im.vogelMaxThickness).toBe(null);
+    // 01-12 re-derived: D1 6,784 → 9,452, CT 30,06 → 33,92 mm
+    expect(im.D1).toBeCloseTo(9.452, 3);
+    expect(r.metrics.ct).toBeCloseTo(33.916, 2);
     console.log('[01-02] +12 PD10: D1', im.D1, 'CT', r.metrics.ct, 'Vogel J', im.vogelMaxThickness, im.baseCurveSearch);
   });
 
