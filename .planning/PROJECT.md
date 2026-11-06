@@ -54,6 +54,9 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 - [ ] Thickness heatmap with legend, numeric callouts, 2D cross-section of a selectable meridian
 - [ ] Re-mesh on input change without visible lag on a mid-range phone
 
+**Deployment**
+- [ ] Live public website on GitHub Pages at https://ainxtgendev.github.io/Eyeglass-Prescription/, deployed automatically by a GitHub Actions workflow on every push to `main` (build → test → deploy; failing tests block the deploy). Asset paths must work under the `/Eyeglass-Prescription/` sub-path. Live from the first phase onward so every phase is usable in the browser.
+
 ### Out of Scope
 
 - Progressive / bifocal lenses, prism, coatings, tints — v1 focuses on single-vision geometry correctness
@@ -86,6 +89,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 | Simple vs Expert progressive disclosure | Lay users first without losing expert depth | — Pending |
 | Minus-cylinder, TABO axis conventions | Standard in DACH prescriptions | — Pending |
 | `lens-critic` review gate on every phase | User wants a reviewer that always pushes for better results | — Pending |
+| Publish via GitHub Pages (Actions-based deploy) from phase 1 | User wants to use the website on GitHub Pages; early deploy gives real-phone testing each phase | — Pending |
 | Coarse granularity, YOLO/auto, research + plan-check + verifier on, quality model profile | Chosen by user at init | — Pending |
 
 ## Evolution

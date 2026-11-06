@@ -128,7 +128,7 @@ Unit tests compare engine output against worked textbook examples and published 
 - Static site: HTML, CSS, JavaScript (ES modules), Three.js. No backend; runs offline once loaded.
 - Minimal build tooling (Vite acceptable); pinned dependency versions.
 - Engine has no DOM/Three.js dependency → testable with a standard JS test runner.
-- Deployable to GitHub Pages from repo `AINxtGenDev/Eyeglass-Prescription`.
+- **Published on GitHub Pages** (required, v1): https://ainxtgendev.github.io/Eyeglass-Prescription/ — deployed by a GitHub Actions workflow on every push to `main`; build and tests must pass before deploy; assets must resolve under the `/Eyeglass-Prescription/` sub-path. Live from the first phase on.
 
 ## 8. Development Process & Agents
 
