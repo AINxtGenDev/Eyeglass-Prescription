@@ -83,7 +83,7 @@ Plans:
 
 **Wave 12** *(gap closure; blocked on Wave 10 completion)*
 
-- [ ] 01-12-PLAN.md — GAP-1 + D-A: automatic front ceiling +14 dpt (US4185897), never a convex back, boundary bisection, flat-front tie-break (D-C, τ 0,10 mm), BACK_SURFACE_CONVEX, re-derived pins, Zeiss tier 2 (d) regression pins, Grenzfall by measured time, pass count (MINOR-12)
+- [x] 01-12-PLAN.md — GAP-1 + D-A: automatic front ceiling +14 dpt (US4185897), never a convex back, boundary bisection, flat-front tie-break (D-C, τ 0,10 mm), BACK_SURFACE_CONVEX, re-derived pins, Zeiss tier 2 (d) regression pins, Grenzfall by measured time, pass count (MINOR-12)
 
 **Wave 13** *(gap closure; blocked on Wave 12 completion)*
 
@@ -157,7 +157,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 10/11 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 11/14 | In Progress|  |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

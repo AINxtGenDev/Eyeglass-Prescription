@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-10-PLAN.md
-last_updated: "2026-11-06T12:30:34.755Z"
+stopped_at: Completed 01-12-PLAN.md
+last_updated: "2026-11-06T16:14:03.449Z"
 last_activity: 2026-11-06
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 11
-  completed_plans: 10
-  percent: 91
+  total_plans: 14
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 01 (verified-engine-live-pipeline) — EXECUTING
-Plan: 11 of 11
+Plan: 12 of 14 (gap closure; 01-11, 01-13, 01-14 remain)
 Status: Ready to execute
 Last activity: 2026-11-06
 
-Progress: [█████████░] 91%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 91%
 | Phase 01 P08 | 8min | 2 tasks | 12 files |
 | Phase 01 P09 | 4min | 2 tasks | 8 files |
 | Phase 01 P10 | 14min | 3 tasks | 10 files |
+| Phase 01 P12 | 45min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-10]: Status cell label: 'Nicht herstellbar' only for FRONT/BACK_SAG_UNDEFINED, 'Nicht berechenbar' for internal-limit errors, 'Hinweis' for warnings; info diagnostics not shown in phase 1
 - [Phase 01]: [01-10]: Grenzfall = fuzz argmax by pair CT iterations (+0,50 −0,50 × 81, 1.60, panto 58×54/15, PD 26, FH 0, 283 it.); the +7,50 −5,75 × 148 candidate is slightly slower on desktop, ENG-09 phone check should time both
 - [Phase 01]: [01-10]: ENG-07, ENG-08, L10N-01 marked complete; MAT-02 (Expert view) and ENG-06 (sags) stay pending
+- [Phase 01]: [01-12]: Automatic back never convex (max(D2a, D2b) <= 0), automatic range +0,50 ... +14,00 dpt (D-A, US4185897), boundary bisection for failing plus lenses
+- [Phase 01]: [01-12]: D-C tie-break: flattest front lo = max(0,5, m, 0) if J(lo) <= J_min + 0,10 mm; trigger widened to best.D1 > lo + 0,05 so the flattest-within-tau truth holds
+- [Phase 01]: [01-12]: Grenzfall = +10,75 -1,00 x 89, 1,67, rechteckig 43x43/21, PD 36, FH 0 (slowest of fuzz top 5, 12,5 ms node desktop); rescan-path lenses (~0,07 % of eyes, ~20,6 ms/pair, ~170 evaluations/eye) raised as ENG-09 finding
 
 ### Pending Todos
 
@@ -118,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06T12:30:34.750Z
-Stopped at: Completed 01-10-PLAN.md
+Last session: 2026-11-06T16:13:55.176Z
+Stopped at: Completed 01-12-PLAN.md
 Resume file: None
