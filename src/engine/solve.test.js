@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { solveCT } from './solve.js';
-import { design } from './design.js';
+import { design, backSagAt } from './design.js';
 import { thicknessAt } from './metrics.js';
 import { circleOutline, mirrorOutlineX } from './frame/outline.js';
 
@@ -26,6 +26,10 @@ describe('ENG-02 thick-lens design', () => {
     expect(s.ca).toBeGreaterThan(0);
     expect(s.axisRad).toBeCloseTo(Math.PI / 6, 15);
     expect(s.k1).toBe(0);
+  });
+  it('backSagAt rejects a toric back until 01-08', () => {
+    const s = design({ sph: -3, cyl: -1, axisDeg: 30, n: 1.5, D1: 5, ct: 2, oc: C });
+    expect(() => backSagAt(s, 1, 1)).toThrow();
   });
 });
 
