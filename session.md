@@ -64,8 +64,12 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-04 done.** `.github/workflows/deploy.yml` runs build → deploy → verify-live. All 7 action references are SHA-pinned, and pages/id-token permissions are granted only in deploy. Gate tests check the pins, the workflow structure and the engine boundary, and 5 mutation checks confirmed they catch violations. `actionlint` 1.7.12 (Docker) reports no findings.
 - **01-05 done: the site is live** at https://ainxtgendev.github.io/Eyeglass-Prescription/ (commit `364dd91`). Pages was enabled with `build_type=workflow`, and 36 commits were pushed as a fast-forward (the user approved the push). CI run 42211366016 passed build, deploy and verify-live. Checked from this machine: the curl commit grep found the hash, and the live Playwright run passed 14/14. In chrome-devtools on the live site (390 px mobile), −3,75 gives CT 1,8 mm, max edge 4,6 mm and 7,8 g; the timing median was 0,90 ms.
 - DEPL-03 is complete (lint ran in CI). DEPL-01 stays open because of the favicon 404 below. DEPL-02: CI runs the full chain, but there was no demo branch showing that a failure blocks the deploy; the evidence is structural only.
+- **01-06 done.** A material selection now offers 6 materials: CR-39, Trivex, PC, 1,60, 1,67 and 1,74, with cited Zeiss constants. The engine is checked against the Zeiss CR-39 thickness chart (143 rows, 0 transcription errors). The worst edge-thickness error is 0,069 mm and the worst centre-thickness error 0,072 mm, against a 0,20 mm limit. The thin-lens formula misses by 0,375 mm, which proves it would fail this check. 639 unit tests and 16 e2e tests pass. Favicon fix `39882ef`.
+- **chrome-devtools (local):** at −6,00 the max edge goes from 6,3 mm with CR-39 to 4,1 mm with 1,74, and the weight from 9,7 g to 6,9 g. At +4,00, 1,74 (6,1 g) is heavier than 1,67 (5,9 g) because of its higher density. That is plausible. No console errors.
 
 ### Open items
+- MAT-01 is not marked complete: the Abbe number is stored but not yet used. Decide in 01-11 / lens-critic.
+- Cosmetic: the material labels are inconsistent ("(1,50)" vs "1,53" without brackets). Phase 2 (UI) will tidy them.
 - `https://ainxtgendev.github.io/favicon.ico` returns 404, the only console error on the live site; Playwright headless doesn't see it. 01-06 adds an inline icon link.
 - **Your action:** open the live URL on a real phone and note the model, the browser and the "Technische Angaben" median (an early ENG-09 data point).
 - Errors still show a raw code (e.g. `Code BACK_SAG_UNDEFINED`); 01-10 adds German texts.
@@ -75,4 +79,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-06: material selection (5 materials) and the Zeiss reference check, plus the favicon fix.
+Plan 01-07: frame shape, size and PD per eye on the real outline with decentration.
