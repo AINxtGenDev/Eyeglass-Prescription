@@ -45,7 +45,8 @@ import { diag } from './diagnostics.js';
 import { sphericalEquivalent, baseCurveAuto } from './power.js';
 import { solveCT, optimiseBaseCurve } from './solve.js';
 import { computeMetrics, maxRadiusFromOC } from './metrics.js';
-import { circleOutline, mirrorOutlineX } from './frame/outline.js';
+import { frameOutline } from './frame/outline.js';
+import { SHAPES } from './frame/shapes.js';
 
 const fin = Number.isFinite;
 const optPositive = (v) => v == null || (fin(v) && v > 0);
@@ -63,13 +64,13 @@ function invalidReason(spec) {
     if (!fin(v)) return 'non-finite';
   }
   if (!(f.A > 0 && f.B > 0)) return 'frame-size';
+  if (!Object.hasOwn(SHAPES, f.shape)) return 'unknown-shape';
   if (!Object.hasOwn(MATERIALS, spec.materialId)) return 'material';
   if (!(spec.fittingHeight == null || fin(spec.fittingHeight))) return 'fitting-height';
   if (!optPositive(spec.baseCurve)) return 'base-curve';
   if (!optPositive(spec.minCT) || !optPositive(spec.minET)) return 'min-thickness';
-  // Skeleton limits (lifted in 01-07 / 01-08)
+  // Skeleton limit (lifted in 01-08)
   if (spec.cyl !== 0) return 'cyl-not-supported';
-  if (f.shape !== 'rund' || f.A !== f.B) return 'shape-not-supported';
   return null;
 }
 
@@ -81,8 +82,13 @@ function allFinite(value) {
 
 const radius = (c) => (c === 0 ? null : 1 / c);
 
-/** @param {LensSpec} spec @returns {LensResult} */
-export function evaluateLens(spec) {
+/**
+ * @param {LensSpec} spec
+ * @param {{ outlinePoints?: number }} [options] outlinePoints (multiple of 4, default 720) exists
+ *   for the ENG-04 sampling-convergence test only; not part of the LensSpec contract.
+ * @returns {LensResult}
+ */
+export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
   const eye = spec?.eye;
   const reason = invalidReason(spec);
   if (reason) return fail(eye, [diag('INVALID_SPEC', { reason })]);
@@ -98,9 +104,8 @@ export function evaluateLens(spec) {
     x: nasalSign(eye) * ((frame.A + frame.DBL) / 2 - monoPD),
     y: fittingHeight == null ? 0 : fittingHeight - frame.B / 2,
   };
-  // Only the frame shape is mirrored for OS, never the Rx (bitwise eye symmetry).
-  const odOutline = circleOutline(frame.A);
-  const outline = eye === 'OD' ? odOutline : mirrorOutlineX(odOutline);
+  // Only the frame shape is mirrored for OS (inside frameOutline), never the Rx.
+  const outline = frameOutline(frame.shape, frame.A, frame.B, eye, outlinePoints);
   const rhoMax = maxRadiusFromOC(outline, oc);
 
   const bc = baseCurveAuto(sphericalEquivalent(sph, cyl), { n, rhoMax, k1: 0 });

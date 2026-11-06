@@ -139,6 +139,17 @@ describe('FRAME-01 frame outlines', () => {
     expect(temporal).toBeGreaterThan(nasal);
   });
 
+  it('memoised outlines are returned as independent copies (also after eviction)', () => {
+    const a = frameOutline('panto', 49, 42, 'OD');
+    const ref = a.slice();
+    a.fill(0);
+    const b = frameOutline('panto', 49, 42, 'OD');
+    for (let i = 0; i < ref.length; i++) expect(b[i]).toBe(ref[i]);
+    for (let A = 30; A < 50; A++) frameOutline('rund', A, 30, 'OD');
+    const c = frameOutline('panto', 49, 42, 'OD');
+    for (let i = 0; i < ref.length; i++) expect(c[i]).toBe(ref[i]);
+  });
+
   it('rund with A = B is a circle', () => {
     const o = frameOutline('rund', 50, 50, 'OD');
     for (let i = 0; i < o.length; i += 2) {

@@ -76,6 +76,23 @@ function resample(d, count, closed) {
 export function frameOutline(shape, A, B, eye, n = 720) {
   assertN('frameOutline', n);
   if (!Object.hasOwn(SHAPES, shape)) throw new Error(`frameOutline: unknown shape ${shape}`);
+  const key = `${shape}|${A}|${B}|${n}`;
+  let od = CACHE.get(key);
+  if (od === undefined) {
+    od = buildOD(shape, A, B, n);
+    if (CACHE.size >= CACHE_SIZE) CACHE.delete(CACHE.keys().next().value);
+    CACHE.set(key, od);
+  }
+  // copies, so a caller can never alter the cached samples
+  return eye === 'OS' ? mirrorOutlineX(od) : od.slice();
+}
+
+// Small memo of OD outlines: re-evaluating on every keystroke mostly keeps the frame unchanged,
+// and building an outline costs more than the lens solve (desktop ≈ 1.6 ms vs ≈ 0.2 ms).
+const CACHE_SIZE = 16;
+const CACHE = new Map();
+
+function buildOD(shape, A, B, n) {
   const { radius, xSymmetric } = SHAPES[shape];
   const M = 8 * n;
   let od;
@@ -127,7 +144,7 @@ export function frameOutline(shape, A, B, eye, n = 720) {
     od = resample(d, n, true);
     normaliseBox(od, A, B);
   }
-  return eye === 'OS' ? mirrorOutlineX(od) : od;
+  return od;
 }
 
 /**

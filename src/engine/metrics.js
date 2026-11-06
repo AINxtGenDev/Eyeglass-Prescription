@@ -92,8 +92,10 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
     const y = outline[2 * i + 1];
     const sF = frontSagAt(s, x, y);
     const t = s.ct - sF + backSagAt(s, x, y);
-    if (t > tMax) (tMax = t), (iMax = i);
-    if (t < tMin) (tMin = t), (iMin = i);
+    // Exact ties (mirrored points (x, ±y)) go to the larger y, so OD and OS pick the same
+    // location label although the OS outline runs through the points in mirrored order.
+    if (t > tMax || (t === tMax && y > outline[2 * iMax + 1])) (tMax = t), (iMax = i);
+    if (t < tMin || (t === tMin && y > outline[2 * iMin + 1])) (tMin = t), (iMin = i);
     if (sF > fMax) fMax = sF;
     if (sF < fMin) fMin = sF;
     if (sign * x > sign * outline[2 * iN]) iN = i;
