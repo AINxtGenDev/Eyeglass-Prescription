@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. Explicit phase step: GitHub Pages is enabled on `AINxtGenDev/Eyeglass-Prescription` with Source "GitHub Actions" once the pipeline is ready (pre-authorized by the user 2026-11-06), and the first deploy is verified by loading the live URL.
   7. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
-**Plans**: 11 plans (11 sequential waves; walking skeleton = 01-01..01-05, see `01-SKELETON.md`; revised 2026-11-06 per plan-checker + lens-critic; under final D-01 (thinnest feasible base curve) the SC-4 acceptance demo is −12/−6×10 in 62×55, CR-39; SC-4 text updated to match)
+**Plans**: 14 plans (14 sequential waves; gap-closure plans 01-12..01-14 added 2026-11-06 after the lens-critic NEEDS WORK result review and run before 01-11; walking skeleton = 01-01..01-05, see `01-SKELETON.md`; revised 2026-11-06 per plan-checker + lens-critic; under final D-01 (thinnest feasible base curve) the SC-4 acceptance demo is −12/−6×10 in 62×55, CR-39; SC-4 text updated to match)
 
 Plans:
 **Wave 1**
@@ -81,9 +81,21 @@ Plans:
 
 - [x] 01-10-PLAN.md — Impossible-lens diagnostics in German (D-01 amended pins), dictionary completeness, never-NaN fuzz, tier-4 properties
 
-**Wave 11** *(blocked on Wave 10 completion)*
+**Wave 12** *(gap closure; blocked on Wave 10 completion)*
 
-- [ ] 01-11-PLAN.md — Phase gate + lens-critic result review, D-02 checkpoint 2 final push, live + real-phone timing (ENG-09)
+- [ ] 01-12-PLAN.md — GAP-1: never a convex back surface in the automatic base curve, BACK_SURFACE_CONVEX, re-derived pins, Zeiss automatic-path comparison (≤ 0,50 mm), new Grenzfall, pass count (MINOR-12)
+
+**Wave 13** *(gap closure; blocked on Wave 12 completion)*
+
+- [ ] 01-13-PLAN.md — GAP-3: ENG-06 sags, MAT-01 Abbe number used and shown, MAT-02 Expert clause to UX-02; raw Vogel value, PITFALLS note, axis message (MINOR-1/3/5)
+
+**Wave 14** *(gap closure; blocked on Wave 13 completion)*
+
+- [ ] 01-14-PLAN.md — GAP-2: input-to-paint timing, per-eye memo, one recompute per frame, canonical and outline-miss bench cases; quiet diagnostics (MINOR-11)
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [ ] 01-11-PLAN.md — Phase gate + lens-critic result review (Task 1 re-run after the gap plans), D-02 checkpoint 2 final push, live + real-phone timing (ENG-09)
 
 **UI hint**: yes
 
