@@ -157,7 +157,7 @@ describe('ENG-07 diagnostics', () => {
     const r = evaluateLens(lens({ sph: -2, frame: frame('rechteckig', 52, 30, 18), monoPD: 32, fittingHeight: 40 }));
     expect(r.ok).toBe(true);
     const w = r.diagnostics.find((d) => d.code === 'OC_OUTSIDE_OUTLINE');
-    expect(w).toEqual({ code: 'OC_OUTSIDE_OUTLINE', severity: 'warn', data: { x: 1, y: 25 } });
+    expect(w).toEqual({ code: 'OC_OUTSIDE_OUTLINE', severity: 'warn', data: { x: 3, y: 25 } });
     const inside = evaluateLens(lens({ sph: -2, frame: frame('rechteckig', 52, 30, 18), monoPD: 32, fittingHeight: 20 }));
     expect(codes(inside)).not.toContain('OC_OUTSIDE_OUTLINE');
   });

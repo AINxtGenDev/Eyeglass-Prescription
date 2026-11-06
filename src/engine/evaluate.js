@@ -41,7 +41,7 @@
 
 import { nasalSign } from './conventions.js';
 import { MATERIALS } from './materials.js';
-import { diag } from './diagnostics.js';
+import { diag, STOCK_BLANK_MAX_MM } from './diagnostics.js';
 import { sphericalEquivalent, baseCurveAuto } from './power.js';
 import { solveCT, optimiseBaseCurve } from './solve.js';
 import { computeMetrics, maxRadiusFromOC } from './metrics.js';
@@ -81,6 +81,20 @@ function allFinite(value) {
 }
 
 const radius = (c) => (c === 0 ? null : 1 / c);
+
+/** Even-odd ray test: is (px, py) inside the closed outline polygon? */
+function insideOutline(outline, px, py) {
+  let inside = false;
+  const n = outline.length / 2;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = outline[2 * i];
+    const yi = outline[2 * i + 1];
+    const xj = outline[2 * j];
+    const yj = outline[2 * j + 1];
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
 
 /**
  * @param {LensSpec} spec
@@ -158,6 +172,11 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
     return fail(eye, [diag('NON_FINITE_RESULT', {})]);
   }
   const diagnostics = [diag(r.binding === 'minCT' ? 'CT_SET_BY_MIN_CT' : 'CT_SET_BY_MIN_ET', {})];
+  // Warnings keep the numbers (D-01: computable but oversized is never an error).
+  if (!insideOutline(outline, oc.x, oc.y)) diagnostics.push(diag('OC_OUTSIDE_OUTLINE', { x: oc.x, y: oc.y }));
+  if (metrics.mbsMm > STOCK_BLANK_MAX_MM) {
+    diagnostics.push(diag('BLANK_EXCEEDS_STOCK', { mbsMm: metrics.mbsMm, stockMm: STOCK_BLANK_MAX_MM }));
+  }
   return {
     ok: true,
     eye,
