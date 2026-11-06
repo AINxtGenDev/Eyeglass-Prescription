@@ -78,8 +78,12 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - MAJOR-2: the ENG-09 measurement leaves out paint and the cache miss; the Grenzfall takes 6,5–11 ms on desktop against a 16,7 ms phone budget.
   - MAJOR-3: ENG-06 (sags), MAT-01 (Abbe) and MAT-02 (Expert view) have no plan that closes them.
   - User decision: **gap plan, then push**. Gaps are in `01-VERIFICATION.md`.
+- **Gap planning (01-12 to 01-14, 01-11 now last).** User decisions: **D-A**, the automatic front curve may go up to +14 dpt (US4185897: high-plus series 12–16 D; the manual range stays 0…+10). **D-B**, a phone proxy with CPU throttling at 4×/6× before the push, which stops and asks if the Grenzfall fails.
+- The plan checker passed on the second round. lens-critic said NEEDS WORK on both rounds. Round 2: with thinnest-only, 100 weak plus lenses got fronts up to +14 for at most 0,05 mm of gain, and the rescue bisection missed windows.
+- **D-C (orchestrator, per the user's instruction "always use best practices"):** τ = 0,10 mm tie-break, meaning the flattest front within 0,10 mm of the thinnest (best form). This refines D-01. The bisection fix is also adopted. The planner is revising for the second time.
 
 ### Open items
+- ENG-09: the planner projects the slowest case at about 57 ms with 4× throttling, against a 16,7 ms budget, so 01-14 will probably stop at its checkpoint. Then the choice is a Web Worker or restating ENG-09.
 - ENG-09 worst case: the spec with the most iterations (+0,50/−0,50×81, 1,60, Panto 58×54/15) is not the slowest on desktop; +7,50/−5,75×148 takes 8,0 ms against 7,4 ms. Time both on the phone.
 - Still pending: MAT-02 (needs the Expert view, phase 2) and ENG-06 (no sags in the result yet).
 - After conversion there is no range check yet: +11 +3 becomes Sph +14 and is accepted. That is RX-04 in phase 2.
