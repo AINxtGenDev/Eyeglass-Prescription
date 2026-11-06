@@ -58,11 +58,16 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 
 - **01-02 done.** The engine core (`src/engine/`) has sag, an automatic base curve (a thinnest-lens search with Vogel as the starting value), CR-39, the thick-lens design with a centre-thickness fixed point, metrics, and `evaluateLens`/`evaluatePair`. Lint passes and 154/154 tests pass. Engine coverage is 97.8 % of lines and 96.8 % of branches. Example: −2,00 in a round 50/18 frame at PD 32 gives a maximum thickness of 3,27 mm (3,41 mm with Vogel). The base-curve search is within 2.5e-6 mm of a brute-force sweep. One lens takes 0.35–0.93 ms on desktop.
 - Plan 01-02 deviations: the speed-up in `metrics.js` gives identical results; a volume bug at outline vertices was fixed; the Task 3 tests were not written first.
+- **01-03 done.** The minimal German page is wired to the engine, and all 14 smoke tests pass (desktop + 360 px mobile, no axe violations). Example: −2,00 per eye gives a centre thickness of 1,8 mm, a maximum edge of 3,3 mm (temple side), a minimum edge of 2,9 mm (nasal) and 6,3 g. The base-curve cell shows the chosen curve with Vogel only as a comparison value, so the open "Vogel" item is resolved without contradicting D-01.
+- **chrome-devtools test (local `vite preview`):** `lang=de-AT`, CSP meta present, no console errors, only 3 same-origin requests. Input `-2,25` is echoed as `−2,25 dpt` and `+1 dpt` as `+1,00 dpt`. `1.000,25` gives a German error and the other eye is still computed. −20 dpt is correctly rejected: the back radius of about 24 mm is smaller than the 27 mm decentred semi-diameter. The timing readout says "Median 0,90 ms". No `NaN` appears anywhere.
+- **Fix from that test (3193223):** on the 360 px view the result-table row labels broke into single letters ("Mit/ten/di/cke"), caused by `overflow-wrap: anywhere`. They now hyphenate normally, and the e2e tests pass again.
 
 ### Open items
+- Errors still show a raw code (e.g. `Code BACK_SAG_UNDEFINED`); 01-10 adds German texts.
+- The node bench (median 2,3 ms per pair) is slower than the browser measurement (0,8 ms). The phone measurement for ENG-09 comes in 01-11.
 - The warnings `BLANK_EXCEEDS_STOCK` and `OC_OUTSIDE_OUTLINE` are not raised yet. Plans 01-07 and 01-10 add them.
 - Smoke test 3 expects "Vogel" in `#result-od-basecurve`, but the disclaimer avoids saying "Vogel-Regel" (D-01). Check the wording in 01-03 and with lens-critic.
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-03: the minimal German page wired to the engine (the smoke test should pass), followed by a local browser test with chrome-devtools.
+Plan 01-04: the GitHub Actions pipeline with test gate and pin tests. Then 01-05: push, enable Pages, and test the live site (the user approved the push on 2026-11-06).
