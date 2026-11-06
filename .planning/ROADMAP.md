@@ -83,7 +83,7 @@ Plans:
 
 **Wave 12** *(gap closure; blocked on Wave 10 completion)*
 
-- [ ] 01-12-PLAN.md — GAP-1: never a convex back surface in the automatic base curve, BACK_SURFACE_CONVEX, re-derived pins, Zeiss automatic-path comparison (≤ 0,50 mm), new Grenzfall, pass count (MINOR-12)
+- [ ] 01-12-PLAN.md — GAP-1 + D-A: automatic front ceiling +14 dpt (US4185897), never a convex back, boundary bisection, BACK_SURFACE_CONVEX, re-derived pins, Zeiss tier 2 (d) regression pins, Grenzfall by measured time, pass count (MINOR-12)
 
 **Wave 13** *(gap closure; blocked on Wave 12 completion)*
 
@@ -91,7 +91,7 @@ Plans:
 
 **Wave 14** *(gap closure; blocked on Wave 13 completion)*
 
-- [ ] 01-14-PLAN.md — GAP-2: input-to-paint timing, per-eye memo, one recompute per frame, canonical and outline-miss bench cases; quiet diagnostics (MINOR-11)
+- [ ] 01-14-PLAN.md — GAP-2 + D-B: work/latency timing medians, per-eye memo, one recompute per frame, canonical and outline-miss bench cases, quiet diagnostics (MINOR-11), CPU-throttled phone proxy 4×/6× before the push (stop for a user decision if 4× fails)
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
