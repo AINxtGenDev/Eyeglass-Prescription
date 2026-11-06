@@ -23,24 +23,44 @@ export function maxRadiusFromOC(outline, oc) {
   return Math.sqrt(m2);
 }
 
-// Distance from the origin to the outline polygon along direction (c, s).
-function rayToOutline(outline, c, s) {
+// Distance t > 0 from the origin along (c, s) to edge i of the outline, or −1 if the ray misses it.
+// Small tolerance on u: a ray through a vertex must hit one of its two edges despite rounding.
+function hitEdge(outline, n, i, c, s) {
+  const k = i + 1 === n ? 0 : i + 1;
+  const px = outline[2 * i];
+  const py = outline[2 * i + 1];
+  const ex = outline[2 * k] - px;
+  const ey = outline[2 * k + 1] - py;
+  const den = c * ey - s * ex;
+  if (den === 0) return -1;
+  const t = (px * ey - py * ex) / den;
+  const u = (px * s - py * c) / den;
+  return t > 0 && u >= -1e-9 && u <= 1 + 1e-9 ? t : -1;
+}
+
+// Radii R_j of the outline along increasing ray angles. The outline is CCW and star-shaped about
+// the boxing centre (required by the polar quadrature), so the hit edge advances monotonically:
+// march the edge pointer instead of testing every edge for every ray (O(n + angles)).
+function outlineRadii(outline, cosA, sinA) {
   const n = outline.length / 2;
-  let best = 0;
-  for (let i = 0; i < n; i++) {
-    const k = (i + 1) % n;
-    const px = outline[2 * i];
-    const py = outline[2 * i + 1];
-    const ex = outline[2 * k] - px;
-    const ey = outline[2 * k + 1] - py;
-    const den = c * ey - s * ex;
-    if (den === 0) continue;
-    const t = (px * ey - py * ex) / den;
-    const u = (px * s - py * c) / den;
-    // Small tolerance: a ray through a vertex must hit one of its two edges despite rounding.
-    if (t > best && u >= -1e-9 && u <= 1 + 1e-9) best = t;
+  const R = new Float64Array(cosA.length);
+  let i = 0;
+  for (let j = 0; j < cosA.length; j++) {
+    let t = -1;
+    for (let step = 0; step < n && t < 0; step++) {
+      t = hitEdge(outline, n, i, cosA[j], sinA[j]);
+      if (t < 0) i = i + 1 === n ? 0 : i + 1;
+    }
+    R[j] = Math.max(t, 0);
   }
-  return best;
+  return R;
+}
+
+const COS = new Float64Array(N_ANGLES);
+const SIN = new Float64Array(N_ANGLES);
+for (let j = 0; j < N_ANGLES; j++) {
+  COS[j] = Math.cos((2 * Math.PI * j) / N_ANGLES);
+  SIN[j] = Math.sin((2 * Math.PI * j) / N_ANGLES);
 }
 
 function point(outline, i, value, eye) {
@@ -85,12 +105,12 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
 
   // Polar quadrature about the boxing centre: 128 uniform angles × GL24 radial nodes.
   const dPhi = (2 * Math.PI) / N_ANGLES;
+  const radii = outlineRadii(outline, COS, SIN);
   let volume = 0;
   for (let j = 0; j < N_ANGLES; j++) {
-    const phi = j * dPhi;
-    const c = Math.cos(phi);
-    const sn = Math.sin(phi);
-    const R = rayToOutline(outline, c, sn);
+    const c = COS[j];
+    const sn = SIN[j];
+    const R = radii[j];
     let acc = 0;
     for (let k = 0; k < GL24.x.length; k++) {
       const r = (R * (GL24.x[k] + 1)) / 2;
