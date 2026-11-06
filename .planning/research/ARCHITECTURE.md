@@ -370,7 +370,7 @@ Derived data (`LensResult`) is **never** stored. It is recomputed and kept in a 
 
 ## Where heavy computation runs
 
-**Evidence (measured 2026-11-06, Node 22.17, Intel i7-8809G, prototype in scratchpad, not shipped code):**
+**Evidence (measured 2026-11-06, Node 22.17, Intel i7-8809G, prototype in .planning/research/scripts/, not shipped code):**
 
 | Approach | Grid (rings × outline pts) | Time per lens |
 |---|---|---|
@@ -527,7 +527,7 @@ Ordering rationale:
 - three.js `ShapeUtils.triangulateShape` uses Earcut: `src/extras/ShapeUtils.js` (HIGH)
 - Vite Web Workers: `new Worker(new URL(..., import.meta.url), { type: 'module' })` recommended; detection requires a literal `new URL()` inside `new Worker()`. https://vite.dev/guide/features.html#web-workers (HIGH)
 - npm registry versions via `npm view` on 2026-11-06: three 0.187.0, vite 8.3.6, vitest 5.1.0, earcut 3.2.4, comlink 4.4.2 (HIGH for "current at that date")
-- Engine cost benchmark: own prototype (scratchpad `bench.mjs`, `bench2.mjs`), desktop numbers measured. Phone figures extrapolated (LOW until measured on device)
+- Engine cost benchmark: own prototype (`.planning/research/scripts/bench.mjs`, `bench2.mjs`), desktop numbers measured. Phone figures extrapolated (LOW until measured on device)
 - TABO axis convention (examiner's view, CCW from examiner's right, both eyes alike): from training knowledge, standard in DACH optometry. **MEDIUM: verify with a cited optometry source in phase-1 research**
 - Back-surface sign convention (`D2 = (1−n)/R2`, Cartesian) and the thick-lens back-vertex power relation: standard ophthalmic optics, from training knowledge. **MEDIUM: optics researcher must cite** (e.g. Jalie, *Principles of Ophthalmic Lenses*)
 
