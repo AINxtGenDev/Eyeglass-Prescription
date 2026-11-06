@@ -2,7 +2,7 @@
 
 **Phase:** 1
 **Generated:** 2026-11-06
-**Plans that build it:** 01-01 (scaffold, parser, i18n), 01-02 (engine core + German page), 01-03 (CI gates + workflow), 01-04 (first approved push, Pages enable, live check)
+**Plans that build it:** 01-01 (scaffold, parser, i18n), 01-02 (engine core), 01-03 (German page, smoke GREEN), 01-04 (CI gates + workflow), 01-05 (first approved push, Pages enable, live check). Revised 2026-11-06: the former 01-02 was split into engine core (01-02) and page (01-03) per plan-checker; all later plans shifted by one, and the former 01-07 was split into engine (01-08) and Zyl/Achse page (01-09). Plans run in 11 sequential waves (shared working tree and shared UI files).
 
 ## Capability Proven End-to-End
 
@@ -20,7 +20,7 @@ There is no database in this project. The skeleton's "one real read/write" maps 
 | Engine | `src/engine/` pure JS, no Three.js, no DOM, no `performance`/`fetch` (ESLint-enforced, DEPL-03). Public API `evaluateLens(spec)` / `evaluatePair({OD, OS})` → plain-data `LensResult` | CLAUDE.md "Engine first": single source of truth for every number; plain data keeps a later Web Worker move mechanical |
 | Layering | `src/engine` (bottom) ← `src/state` (pure parsing/transposition, codes not text) ← `src/i18n` (`de-AT.js`, `t()`, `format.js`) ← `src/ui` (only tier with browser globals) | RESEARCH Architectural Responsibility Map; flat-config globals scoped to `src/ui/**` only (Pitfall B) |
 | Sign conventions | One module `src/engine/conventions.js`: Cartesian, examiner-facing lens-local frame, TABO axis identical for OD/OS, `nasalSign = OD ? +1 : −1`, back curvature `c = −D2/K` | RESEARCH Pattern 1; the back-sign is the #1 bug class (Pitfall A) |
-| Optics model | Thick-lens back-vertex design with CT fixed point; stable rationalised sag; true "tyre" torus back surface (added in 01-07, MEDIUM confidence per D-03) | RESEARCH Patterns 2–3; verified against Snell trace and 143 Zeiss rows |
+| Optics model | Thick-lens back-vertex design with CT fixed point; stable rationalised sag; true "tyre" torus back surface (added in 01-08, MEDIUM confidence per D-03); automatic base curve = Vogel, clamped to [+0.50, +10.00] and capped by the frame so R1 ≥ ρmax + 2 mm (D-01 amended 2026-11-06) | RESEARCH Patterns 2–3; verified against Snell trace and 143 Zeiss rows |
 | i18n | German only (`de-AT`). Flat frozen dictionary `src/i18n/de-AT.js` keyed by message codes; `t(key, params)` throws on a missing key outside production; numbers formatted with `Intl.NumberFormat('de-AT')`, never inside strings | CLAUDE.md project rule; L10N-01/02 |
 | Auth | None | Static public site, no accounts |
 | Deployment target | GitHub Pages, Source "GitHub Actions", base path `/Eyeglass-Prescription/`; one workflow `.github/workflows/deploy.yml` with jobs `build` (all gates) → `deploy` → `verify-live` | DEPL-01..04; pushes to `main` only after explicit user approval (D-02) |
@@ -31,27 +31,30 @@ There is no database in this project. The skeleton's "one real read/write" maps 
 
 ## Frozen Contract (later plans extend values, never rename fields)
 
-`LensSpec` → `evaluateLens` → `LensResult`, defined by JSDoc in `src/engine/evaluate.js` (plan 01-02):
+`LensSpec` → `evaluateLens` → `LensResult`, defined by JSDoc in `src/engine/evaluate.js` (plan 01-02; consumed by the page from 01-03):
 
 - `LensSpec`: `{ eye: 'OD'|'OS', sph, cyl, axisDeg, materialId, frame: { shape, A, B, DBL }, monoPD, fittingHeight: number|null, baseCurve: number|null, minCT: number|null, minET: number|null }`
-- `LensResult`: `{ ok, eye, diagnostics: [{ code, severity: 'error'|'warn'|'info', data }], metrics: null | { ct, etMax: { value, index, location, x, y }, etMin: {…}, etAt: { nasal, temporal, superior, inferior }, volumeMm3, weightG, frontProtrusion: { max, min }, mbsMm, decentration: { x, y } }, intermediates: null | { n, D1, D1v, D2a, D2b, R1, Ra, Rb (radii in mm, null for a plano surface), vogelD1, baseCurveRule: 'vogel'|'vogel-clamped'|'manual', bindingConstraint: 'minCT'|'minET', iterations }, surfaces: null | { n, ct, c1, k1, ca, cb, axisRad, oc: { x, y } } }`
+- `LensResult`: `{ ok, eye, diagnostics: [{ code, severity: 'error'|'warn'|'info', data }], metrics: null | { ct, etMax: { value, index, location, x, y }, etMin: {…}, etAt: { nasal, temporal, superior, inferior }, volumeMm3, weightG, frontProtrusion: { max, min }, mbsMm, decentration: { x, y } }, intermediates: null | { n, D1, D1v, D2a, D2b, R1, Ra, Rb (radii in mm, null for a plano surface), rhoMax, vogelD1, baseCurveRule: 'vogel'|'vogel-clamped'|'vogel-frame-limited'|'manual', bindingConstraint: 'minCT'|'minET', iterations }, surfaces: null | { n, ct, c1, k1, ca, cb, axisRad, oc: { x, y } } }`
 - Diagnostic codes are the frozen object `DIAGNOSTICS` in `src/engine/diagnostics.js`; German text lives only in `src/i18n/de-AT.js` under `diag.<CODE>.title|explain|suggest`.
+- `BASE_CURVE_CLAMPED` data: `{ vogelD1, used, reason: 'range'|'frame-size', rhoMax, maxD1 }` (D-01 amended). With `baseCurve: null` the engine never returns `FRONT_SAG_UNDEFINED`; that code is reachable only with a manual base curve.
 
 ## Stack Touched in Phase 1
 
 - [ ] Project scaffold (Vite, ESLint flat config with engine boundary, Vitest projects + coverage gate, Playwright) — 01-01
-- [ ] Routing — single page at `/Eyeglass-Prescription/` (no client routes by design; future shareable state goes in `#hash`, v2) — 01-02
-- [ ] Data — no database; one real engine compute per input event — 01-02
-- [ ] UI — Sph text inputs per eye wired to parser → engine → German result table — 01-02
-- [ ] Deployment — gated Actions workflow, Pages enabled (Source: GitHub Actions), live URL verified by `verify-live` — 01-03, 01-04
+- [ ] Routing — single page at `/Eyeglass-Prescription/` (no client routes by design; future shareable state goes in `#hash`, v2) — 01-03
+- [ ] Data — no database; one real engine compute per input event — engine 01-02, wiring 01-03
+- [ ] UI — Sph text inputs per eye wired to parser → engine → German result table — 01-03
+- [ ] Deployment — gated Actions workflow, Pages enabled (Source: GitHub Actions), live URL verified by `verify-live` — 01-04, 01-05
 
 ## Out of Scope (Deferred to Later Slices)
 
-Within phase 1 (added by plans 01-05 … 01-09 on top of the skeleton, no architectural change):
-- Material choice beyond CR-39 and the Zeiss manufacturer-chart proof (01-05)
-- Frame shapes Rund/Rechteckig/Panto/Pilot, editable A/B/DBL/PD, per-eye decentration (01-06)
-- Cylinder/axis input, plus-cylinder transposition, true torus, ray-trace oracle (01-07)
-- Impossible-lens diagnostics with German explanation and suggestion, property tests (01-08)
+Within phase 1 (added by plans 01-06 … 01-11 on top of the skeleton, no architectural change):
+- Material choice beyond CR-39 (Trivex 1,53, PC 1,59, 1,60, 1,67, 1,74) and the Zeiss manufacturer-chart proof (01-06)
+- Frame shapes Rund/Rechteckig/Panto/Pilot, editable A/B/DBL/PD, per-eye decentration (01-07)
+- True torus, ray-trace oracle (01-08)
+- Zyl/Achse input, plus-cylinder transposition, both forms shown (01-09)
+- Impossible-lens diagnostics with German explanation and suggestion, property tests (01-10)
+- Phase gate, lens-critic result review, final approved push, real-phone timing (01-11)
 
 Later phases (not in phase 1 at all):
 - Range/plausibility validation with "Meinten Sie …?" (RX-04/05), PD forms `32/33` and binocular (RX-06), "gleich für beide Augen" (RX-07), Add/Prisma explanation (RX-08) — phase 2

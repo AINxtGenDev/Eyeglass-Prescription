@@ -34,18 +34,20 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Recompute time for both lenses is measured on a real mid-range phone via the live site and recorded, within one animation frame.
   6. Explicit phase step: GitHub Pages is enabled on `AINxtGenDev/Eyeglass-Prescription` with Source "GitHub Actions" once the pipeline is ready (pre-authorized by the user 2026-11-06), and the first deploy is verified by loading the live URL.
   7. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
-**Plans**: 9 plans (9 sequential waves; walking skeleton = 01-01..01-04, see `01-SKELETON.md`)
+**Plans**: 11 plans (11 sequential waves; walking skeleton = 01-01..01-05, see `01-SKELETON.md`; revised 2026-11-06 per plan-checker + lens-critic; under amended D-01 the SC-4 acceptance demo is −12/−6×10 in 62×55, CR-39, and "+12 in 62×55" is computable with warnings — SC text left unchanged)
 
 Plans:
 - [ ] 01-01-PLAN.md — Package legitimacy gate, exact-pinned scaffold, RED smoke test, paper-style parser + de-AT formatter + dictionary
-- [ ] 01-02-PLAN.md — Engine core (conventions, sag, Vogel, thick-lens CT solve, metrics, frozen LensResult) + German page; smoke GREEN
-- [ ] 01-03-PLAN.md — CI gate tests (engine boundary, pins, workflow structure) + SHA-pinned build → deploy → verify-live workflow
-- [ ] 01-04-PLAN.md — D-02 checkpoint 1: approved first push, Pages enable (Source: GitHub Actions), live verification
-- [ ] 01-05-PLAN.md — Five cited materials, Zeiss CR-39 143-row tier-2 validation, material select
-- [ ] 01-06-PLAN.md — Frame shapes Rund/Rechteckig/Panto/Pilot, per-eye decentration + fitting height, frame/PD inputs
-- [ ] 01-07-PLAN.md — True-torus back surface (D-03), Snell ray-trace oracle, Zyl/Achse input with plus-cyl transposition
-- [ ] 01-08-PLAN.md — Impossible-lens diagnostics in German (D-01 pins), dictionary completeness, never-NaN fuzz, tier-4 properties
-- [ ] 01-09-PLAN.md — Phase gate + lens-critic result review, D-02 checkpoint 2 final push, live + real-phone timing (ENG-09)
+- [ ] 01-02-PLAN.md — Engine core: conventions, sag, feasibility-aware Vogel base curve (D-01), CR-39, diagnostics catalogue, thick-lens CT solve, metrics, frozen LensResult
+- [ ] 01-03-PLAN.md — Minimal German page wired to the engine, disclaimer, timing readouts; smoke GREEN
+- [ ] 01-04-PLAN.md — CI gate tests (engine boundary, pins, workflow structure) + SHA-pinned build → deploy → verify-live workflow
+- [ ] 01-05-PLAN.md — D-02 checkpoint 1: approved first push, Pages enable (Source: GitHub Actions), live verification
+- [ ] 01-06-PLAN.md — Six cited materials (incl. Trivex 1,53), Zeiss CR-39 143-row tier-2 validation, material select
+- [ ] 01-07-PLAN.md — Frame shapes Rund/Rechteckig/Panto/Pilot, per-eye decentration + fitting height, frame/PD inputs
+- [ ] 01-08-PLAN.md — True-torus back surface (D-03, tyre golden), Snell ray-trace oracle incl. evaluateLens pipeline property, PITFALLS Pitfall 5 correction
+- [ ] 01-09-PLAN.md — Zyl/Achse input with plus-cylinder transposition, both forms shown
+- [ ] 01-10-PLAN.md — Impossible-lens diagnostics in German (D-01 amended pins), dictionary completeness, never-NaN fuzz, tier-4 properties
+- [ ] 01-11-PLAN.md — Phase gate + lens-critic result review, D-02 checkpoint 2 final push, live + real-phone timing (ENG-09)
 **UI hint**: yes
 
 ### Phase 2: Lay-First German Input, Results & Comparison
