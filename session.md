@@ -71,8 +71,12 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-08 done.** Cylinder support in the engine (minus-cylinder form) through a true torus back surface along the TABO axis. A ray-trace oracle traces through the finished lens and recovers Sph/Zyl/Achse within 0,001 dpt (300 + 100 random cases). A deliberately wrong thin-lens design is caught at 0,56 dpt. ENG-05 with an oblique cylinder on both eyes passes: the left lens is the right lens rotated 180° (not mirrored), within 1e-9 mm. ENG-01 to ENG-04 are complete, and 751 tests pass. No UI change, so no browser test.
 - **01-09 done.** The page now takes Sph/Zyl/Achse per eye in both cylinder forms. A plus cylinder is converted automatically and both forms are shown in German. RX-02 and RX-03 are complete; 760 unit tests and 22 e2e tests pass.
 - **chrome-devtools (local, 390 px):** for R −2,00/−1,50×45 the max edge is 5,1 mm at the upper temple side. For L −0,50/+1,50×135, displayed as "+1,00/−1,50×45°", the thickest edge is at the lower temple side and the thinnest at the upper temple side. Checked against TABO: both are physically correct. A missing or invalid axis shows a German error and blocks only that eye. No NaN, no horizontal scroll, no console error.
+- **01-10 done.** Impossible and borderline lenses are now explained in German, with a title, an explanation and a tip; no raw codes remain. `BLANK_EXCEEDS_STOCK` and `OC_OUTSIDE_OUTLINE` are now raised and tested. Property and fuzz tests pass: the automatic base curve never fails on a buildable lens (0 cases out of 2,000 fuzz eyes), it is never thicker than Vogel, and the worst gap to brute force is 1,2e-6 mm. ENG-07, ENG-08 and L10N-01 are complete. 820 unit tests and 28 e2e tests pass.
+- **chrome-devtools (local):** R −12/−6×10 in a 62×55 frame shows "Dieses Glas ist so nicht herstellbar", with a cause and the tip "smaller frame or 1,74". L +12 shows "Großes Rohglas nötig (≥ 87,5 mm, stock ≤ 75 mm)", 23,0 mm CT and 69,1 g. No raw code, no NaN, no console error.
 
 ### Open items
+- ENG-09 worst case: the spec with the most iterations (+0,50/−0,50×81, 1,60, Panto 58×54/15) is not the slowest on desktop; +7,50/−5,75×148 takes 8,0 ms against 7,4 ms. Time both on the phone.
+- Still pending: MAT-02 (needs the Expert view, phase 2) and ENG-06 (no sags in the result yet).
 - After conversion there is no range check yet: +11 +3 becomes Sph +14 and is accepted. That is RX-04 in phase 2.
 - The difference table in PITFALLS.md (Pitfall 5) was computed with the barrel instead of the tyre torus. With the tyre the real differences are at most 0,086 mm, not 0,39 mm. Only the orientation sentence was corrected; lens-critic should check it in 01-11.
 - Pilot orientation (deepest on the temple side vs the nose side) is unverified, with no reference image. Decide in lens-critic 01-11.
@@ -87,4 +91,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-10: German explanations for impossible and borderline lenses (BLANK_EXCEEDS_STOCK, OC_OUTSIDE_OUTLINE, …), plus NaN and base-curve property tests.
+Plan 01-11: full gate, requirement trace and lens-critic review; then the final push if PASS; then the real-phone measurement (ENG-09).
