@@ -34,11 +34,12 @@
 
 ### Materials & Lens Design (MAT)
 
-- [ ] **MAT-01**: User chooses a material — CR-39 1,50, Polycarbonat 1,59, 1,60, 1,67, 1,74 — and the engine uses the sourced true refractive index (ne), density and Abbe number for each, with sources recorded in code.
+- [ ] **MAT-01**: User chooses a material — CR-39 1,50, Trivex 1,53, Polycarbonat 1,59, 1,60, 1,67, 1,74 — and the engine uses the sourced true refractive index (ne), density and Abbe number for each, with sources recorded in code.
 - [ ] **MAT-02**: Base curve (front surface power) is chosen automatically by a documented, sourced rule that is clamped so it never produces a flat/concave front or an impossible lens; the auto value and the rule used are shown in Expert view.
 - [ ] **MAT-03**: Expert user can override base curve manually (0,00…+10,00 dpt).
 - [ ] **MAT-04**: Minimum centre and edge thickness default to sourced per-material values and are adjustable in Expert view; the result shows which constraint is binding.
 - [ ] **MAT-05**: Expert user can switch the front surface between spherical and aspheric (conic constant k, with a documented default); aspheric is labelled as a generic model, not a specific manufacturer design.
+- [ ] **MAT-06**: Expert user can enter a custom material (refractive index plus density, optionally Abbe number) instead of a listed one; the result is labelled as based on user-supplied values, not a sourced material.
 
 ### Optics Engine (ENG)
 
@@ -157,6 +158,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MAT-03 | Phase 2 | Pending |
 | MAT-04 | Phase 2 | Pending |
 | MAT-05 | Phase 2 | Pending |
+| MAT-06 | Phase 2 | Pending |
 | ENG-01 | Phase 1 | Pending |
 | ENG-02 | Phase 1 | Pending |
 | ENG-03 | Phase 1 | Pending |
@@ -192,8 +194,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OFF-01 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 53 total
-- Mapped to phases: 53
+- v1 requirements: 54 total
+- Mapped to phases: 54
 - Unmapped: 0 ✓
 
 ---

@@ -52,7 +52,7 @@ Plans:
 **Goal**: A non-expert can type in their paper prescription in German, choose frame and material, and within minutes understand how thick and heavy their lenses will be and how material or frame choice changes it; experts can open the Expert view for base curve, thickness constraints, asphericity, decentration and a 2D cross-section.
 **Mode:** mvp
 **Depends on**: Phase 1
-**Requirements**: RX-01, RX-04, RX-05, RX-06, RX-07, RX-08, FRAME-02, FRAME-03, MAT-03, MAT-04, MAT-05, RES-01, RES-02, RES-03, RES-04, RES-05, UX-01, UX-02, UX-03, UX-04, UX-05, ANA-01, ANA-02
+**Requirements**: RX-01, RX-04, RX-05, RX-06, RX-07, RX-08, FRAME-02, FRAME-03, MAT-03, MAT-04, MAT-05, MAT-06, RES-01, RES-02, RES-03, RES-04, RES-05, UX-01, UX-02, UX-03, UX-04, UX-05, ANA-01, ANA-02
 **Success Criteria** (what must be TRUE):
   1. A lay user can copy their paper Rx into an R/L × Sph/Zyl/Achse/PD table (with "gleich für beide Augen", mono or binocular PD, missing-PD default clearly stated, frame stamp like `52□18 140`), and gets plain-German, field-linked messages for invalid, unusual ("Meinten Sie …?") and out-of-model values — never a silent clamp. Values on the paper that are not modelled (Add, Prisma, HSA) are explained, not ignored.
   2. Simple view shows per eye the thickest and thinnest point (with location), centre thickness and weight, rounded to 0,1 mm / 1 g, starting from a labelled "Beispiel" with Rx and frame presets; a large left/right difference is called out in words.
