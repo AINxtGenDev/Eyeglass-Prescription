@@ -1,62 +1,40 @@
 // ENG-09 informational desktop bench. ENG-09 is defined on a real phone, so CI timing
 // never gates: the tests assert correctness only and print the timings.
+// The cases come from src/state/bench-cases.js, the same definitions the page readouts use.
 import { describe, test, expect } from 'vitest';
 import { performance } from 'node:perf_hooks';
 import { evaluatePair } from '../../src/engine/evaluate.js';
+import { NORMAL_PAIR, GRENZFALL_PAIR, frameMissPair, BENCH_RUNS } from '../../src/state/bench-cases.js';
 
-const FRAME = { shape: 'rund', A: 50, B: 50, DBL: 18 };
-const spec = (eye, sph, monoPD, o = {}) => ({
-  eye,
-  sph,
-  cyl: 0,
-  axisDeg: 0,
-  materialId: 'cr39',
-  frame: FRAME,
-  monoPD,
-  fittingHeight: null,
-  baseCurve: null,
-  minCT: null,
-  minET: null,
-  ...o,
-});
+// Never reused, so every frame-miss run builds a new outline (outline cache key shape|A|B|n).
+let frameMissK = 0;
 
-// Copy of WORST_CASE_BENCH_SPECS in src/ui/main.js: the Grenzfall from 01-12 group G (slowest
-// measured pair among the fuzz top 5 by pair CT iterations). Change both together with
-// tech.timingWorst.
-const GRENZFALL = {
-  cyl: -1,
-  axisDeg: 89,
-  materialId: 'idx167',
-  frame: { shape: 'rechteckig', A: 43, B: 43, DBL: 21 },
-  fittingHeight: 0,
-};
-const PAIRS = {
-  'normal pair (−2,00 rund 50/18/32)': { OD: spec('OD', -2, 32), OS: spec('OS', -2, 32) },
-  'Grenzfall pair (+10,75 −1,00 × 89, 1.67, rechteckig 43×43/21, PD 36, FH 0)': {
-    OD: spec('OD', 10.75, 36, GRENZFALL),
-    OS: spec('OS', 10.75, 36, GRENZFALL),
-  },
+const CASES = {
+  'normal pair (−4,00 −2,00 × 30, CR-39, rechteckig 52×38/18, PD 32)': () => NORMAL_PAIR,
+  'normal pair, frame width changed every run (outline-cache miss)': () => frameMissPair(frameMissK++),
+  'Grenzfall pair (+10,75 −1,00 × 89, 1,67, rechteckig 43×43/21, PD 36, FH 0)': () => GRENZFALL_PAIR,
 };
 
-function bench(pair) {
-  for (let i = 0; i < 10; i++) evaluatePair(pair);
+function bench(pairFor) {
+  for (let i = 0; i < 10; i++) evaluatePair(pairFor());
   const times = [];
   let last;
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < BENCH_RUNS; i++) {
+    const pair = pairFor();
     const t0 = performance.now();
     last = evaluatePair(pair);
     times.push(performance.now() - t0);
   }
   times.sort((a, b) => a - b);
-  const median = (times[24] + times[25]) / 2;
+  const median = (times[BENCH_RUNS / 2 - 1] + times[BENCH_RUNS / 2]) / 2;
   const p95 = times[Math.ceil(0.95 * times.length) - 1];
   return { median, p95, last };
 }
 
 describe('ENG-09 informational desktop bench', () => {
-  test.each(Object.entries(PAIRS))('%s', (name, pair) => {
-    const { median, p95, last } = bench(pair);
-    console.info(`${name}: median ${median.toFixed(3)} ms, p95 ${p95.toFixed(3)} ms (50 runs)`);
+  test.each(Object.entries(CASES))('%s', (name, pairFor) => {
+    const { median, p95, last } = bench(pairFor);
+    console.info(`${name}: median ${median.toFixed(3)} ms, p95 ${p95.toFixed(3)} ms (${BENCH_RUNS} runs)`);
     for (const eye of ['OD', 'OS']) {
       const r = last[eye];
       expect(r.ok, eye).toBe(true);

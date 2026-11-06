@@ -3,6 +3,9 @@
 import './style.css';
 import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
 import { transpose, RX_CODES } from '../state/transpose.js';
+import { memoLast } from '../state/memo.js';
+import { createFrameScheduler } from '../state/frame-scheduler.js';
+import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, frameMissPair, BENCH_RUNS } from '../state/bench-cases.js';
 import { evaluatePair, evaluateLens } from '../engine/evaluate.js';
 import { MATERIALS } from '../engine/materials.js';
 import { SHAPES } from '../engine/frame/shapes.js';
@@ -12,14 +15,11 @@ import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtMs } from '../i18n/format.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
-const BENCH_RUNS = 50;
 
 // Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material select since
 // 01-06; frame shape/size and PD per eye since 01-07. Fitting height is supported by the engine but omitted here (D-04).
 const DEFAULT_SHAPE = 'rechteckig';
 const DEFAULT_PD = '32';
-// Fallback frame for the current-input bench when a field is invalid.
-const BENCH_FRAME = Object.freeze({ shape: 'rund', A: 50, B: 50, DBL: 18 });
 const DEFAULT_MATERIAL = 'cr39';
 const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
 // Abbe number νe = (ne − 1)/(nF′ − nC′): higher means less dispersion, hence fewer colour fringes.
@@ -27,50 +27,15 @@ const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
 // Zeiss rows in materials.js, which list νe next to ne.
 const abbeNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1 });
 
-/** @param {number} sph sphere-only Rx */
-const sphOnly = (sph) => ({ sph, cyl: 0, axisDeg: 0 });
-
-/**
- * @param {'OD'|'OS'} eye
- * @param {{ sph: number, cyl: number, axisDeg: number }} rx minus-cylinder form only (cyl ≤ 0)
- * @param {number} monoPD @param {string} materialId
- * @param {{ shape: string, A: number, B: number, DBL: number }} frame
- * @param {number|null} [fittingHeight] mm from the bottom of the box; the page sends null (D-04)
- */
-function specFor(eye, rx, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BENCH_FRAME, fittingHeight = null) {
-  return {
-    eye,
-    sph: rx.sph,
-    cyl: rx.cyl,
-    axisDeg: rx.axisDeg,
-    materialId,
-    frame,
-    monoPD,
-    fittingHeight,
-    baseCurve: null,
-    minCT: null,
-    minET: null,
-  };
-}
-
-// Grenzfall (01-12 group G, ENG-09 worst case): the slowest pair by measured desktop median
-// among the fuzz top 5 by pair CT iterations (plus the known candidate). Copy in
-// test/bench/recompute.test.js; the tech.timingWorst label names these values. Change all three
-// together.
-const GRENZFALL_FRAME = Object.freeze({ shape: 'rechteckig', A: 43, B: 43, DBL: 21 });
-const GRENZFALL_RX = Object.freeze({ sph: 10.75, cyl: -1, axisDeg: 89 });
-const WORST_CASE_BENCH_SPECS = Object.freeze({
-  OD: specFor('OD', GRENZFALL_RX, 36, 'idx167', GRENZFALL_FRAME, 0),
-  OS: specFor('OS', GRENZFALL_RX, 36, 'idx167', GRENZFALL_FRAME, 0),
-});
+// Percentile reported next to the median in the bench readouts (p95 = the 48th of 50 sorted runs).
+const TAIL_PCT = 95;
+// Ring-buffer length for the input timing medians (ENG-09, lens-critic MAJOR-2).
+const TIMING_WINDOW = 10;
 
 const $ = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const setText = (id, text) => {
   $(id).textContent = text;
 };
-
-/** @type {{ OD: object, OS: object } | null} */
-let currentSpecs = null;
 
 const materialSelect = () => /** @type {HTMLSelectElement} */ ($('material'));
 
@@ -240,7 +205,12 @@ function renderEmpty(eye, statusText) {
   const p = `result-${eye.toLowerCase()}`;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
   setText(`${p}-status`, statusText);
-  $(`diag-${eye.toLowerCase()}`).replaceChildren();
+  // Clear only when not already empty, so the role=status box is not touched (MINOR-11).
+  const box = $(`diag-${eye.toLowerCase()}`);
+  if (box.childElementCount > 0 || box.dataset.sig) {
+    box.replaceChildren();
+    box.dataset.sig = '';
+  }
 }
 
 // Diagnostic data fields that are lengths in mm; every other field is never shown.
@@ -278,7 +248,12 @@ function renderDiagnostics(eye, diagnostics) {
     if (d.severity === 'error') block.append(para(t(`diag.${d.code}.suggest`, params)));
     items.push(block);
   }
+  // Rewrite the role=status box only when its content changes, so an eye that recomputes with
+  // the same diagnostic text is not announced again (MINOR-11).
+  const sig = items.map((el) => el.className + '|' + el.textContent).join('\n');
+  if (sig === (box.dataset.sig ?? '')) return;
   box.replaceChildren(...items);
+  box.dataset.sig = sig;
 }
 
 /** Text label for the status cell (never colour alone). */
@@ -325,8 +300,22 @@ function renderResult(eye, res) {
   renderDiagnostics(eye, res.diagnostics);
 }
 
+// Per-eye reuse (01-14): an eye whose spec is unchanged keeps its LensResult object and is not
+// re-rendered. lastRendered is reset when the eye renders empty for an input reason.
+const evalEye = {
+  OD: memoLast(evaluateLens),
+  OS: memoLast(evaluateLens),
+};
+/** @type {{ OD: object | null, OS: object | null }} */
+const lastRendered = { OD: null, OS: null };
+
+function showResult(eye, res) {
+  if (res === lastRendered[eye]) return;
+  lastRendered[eye] = res;
+  renderResult(eye, res);
+}
+
 function update() {
-  const start = performance.now();
   const read = { OD: readRx('OD'), OS: readRx('OS') };
   const pd = { OD: readMm('rx-od-pd'), OS: readMm('rx-os-pd') };
   const dims = { A: readMm('frame-a'), B: readMm('frame-b'), DBL: readMm('frame-dbl') };
@@ -334,69 +323,117 @@ function update() {
   const frame = frameOk ? { shape: currentShape(), A: dims.A, B: dims.B, DBL: dims.DBL } : null;
   const materialId = currentMaterialId();
   for (const eye of EYES) renderMaterialLine(eye, materialId);
-  const spec = (eye) => specFor(eye, read[eye].rx, pd[eye], materialId, frame);
   const ready = (eye) => frameOk && read[eye].rx !== null && pd[eye] !== null;
-  if (ready('OD') && ready('OS')) {
-    currentSpecs = { OD: spec('OD'), OS: spec('OS') };
-    const pair = evaluatePair(currentSpecs);
-    for (const eye of EYES) renderResult(eye, pair[eye]);
-  } else {
-    // A field is invalid: compute only the eye that is complete; the bench falls back to −2,00.
-    currentSpecs = null;
-    for (const eye of EYES) {
-      if (ready(eye)) renderResult(eye, evaluateLens(spec(eye)));
-      else if (read[eye].sph === null) renderEmpty(eye, t('result.inputMissing'));
-      else renderEmpty(eye, t('result.inputInvalid'));
+  for (const eye of EYES) {
+    if (ready(eye)) {
+      showResult(eye, evalEye[eye](specFor(eye, read[eye].rx, pd[eye], materialId, frame)));
+      continue;
     }
+    lastRendered[eye] = null;
+    renderEmpty(eye, t(read[eye].sph === null ? 'result.inputMissing' : 'result.inputInvalid'));
   }
-  const ms = performance.now() - start;
-  setText('timing-input', t('tech.inputRender', { ms: fmtMs(ms) }));
 }
 
-/** 50 timed evaluatePair runs → { median, p95 } in ms. */
-function measure(specs) {
+const median = (sorted) => {
+  const n = sorted.length;
+  return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+};
+
+// Input timing (ENG-09, lens-critic MAJOR-2). Method (Nolan Lawson, "Accurately measuring layout
+// on the web", 2018-09-25, https://nolanlawson.com/2018/09/25/accurately-measuring-layout-on-the-web/):
+// rAF callbacks run just before the browser's rendering step, so a setTimeout queued from inside
+// one runs after style, layout and paint.
+// - work = recompute plus render: from the start of the rAF callback to that task;
+// - latency = work plus the wait for the next frame that coalescing introduces (up to about one
+//   frame): from the input event's timeStamp to the same task.
+// event.timeStamp and performance.now() share the same time origin.
+const timings = { work: [], latency: [] };
+let skipTiming = true; // the init() frame is not an input
+
+const pushTiming = (buf, v) => {
+  buf.push(v);
+  if (buf.length > TIMING_WINDOW) buf.shift();
+};
+
+function runFrame({ inputTs, frameStart }) {
+  const timed = !skipTiming;
+  skipTiming = false;
+  update();
+  if (!timed) return;
+  setTimeout(() => {
+    const end = performance.now();
+    pushTiming(timings.work, end - frameStart);
+    pushTiming(timings.latency, end - inputTs);
+    const med = (buf) => fmtMs(median([...buf].sort((a, b) => a - b)));
+    setText(
+      'timing-input',
+      t('tech.inputRender', { work: med(timings.work), latency: med(timings.latency), n: timings.work.length }),
+    );
+  }, 0);
+}
+
+const schedule = createFrameScheduler((cb) => requestAnimationFrame(cb), runFrame, () => performance.now());
+
+/** BENCH_RUNS timed raw evaluatePair runs (no memo: ENG-09 is about recomputing both lenses). */
+function measure(pairFor) {
   const times = [];
   for (let i = 0; i < BENCH_RUNS; i++) {
+    const pair = pairFor();
     const t0 = performance.now();
-    evaluatePair(specs);
+    evaluatePair(pair);
     times.push(performance.now() - t0);
   }
   times.sort((a, b) => a - b);
-  const n = times.length;
-  const median = n % 2 ? times[(n - 1) / 2] : (times[n / 2 - 1] + times[n / 2]) / 2;
-  const p95 = times[Math.ceil(0.95 * n) - 1];
-  return { median, p95 };
+  return { median: median(times), tail: times[Math.ceil((TAIL_PCT / 100) * times.length) - 1] };
 }
 
+/** Readout label from the case's OD spec values (the case definition is in bench-cases.js). */
+function caseLabel(pair) {
+  const s = pair.OD;
+  const label = t('tech.case', {
+    rx: fmtForm(s),
+    material: t('material.' + s.materialId),
+    shape: t('frame.shape.' + s.frame.shape),
+    A: fmtMm(s.frame.A),
+    B: fmtMm(s.frame.B),
+    dbl: fmtMm(s.frame.DBL),
+    pd: fmtMm(s.monoPD),
+  });
+  return s.fittingHeight === null ? label : label + t('tech.caseFh', { fh: fmtMm(s.fittingHeight) });
+}
+
+// Never reused, so every frame-miss run builds a new outline.
+let frameMissK = 0;
+
 function runBench() {
-  const specs = currentSpecs ?? { OD: specFor('OD', sphOnly(-2)), OS: specFor('OS', sphOnly(-2)) };
-  const cur = measure(specs);
-  setText('timing', t('tech.timing', { median: fmtMs(cur.median), p95: fmtMs(cur.p95) }));
-  const worst = measure(WORST_CASE_BENCH_SPECS);
-  setText('timing-worst', t('tech.timingWorst', { median: fmtMs(worst.median), p95: fmtMs(worst.p95) }));
+  const fmt = (r) => ({ median: fmtMs(r.median), tail: fmtMs(r.tail), pct: TAIL_PCT, runs: BENCH_RUNS });
+  setText('timing', t('tech.timing', { case: caseLabel(NORMAL_PAIR), ...fmt(measure(() => NORMAL_PAIR)) }));
+  setText('timing-frame', t('tech.timingFrame', fmt(measure(() => frameMissPair(frameMissK++)))));
+  setText('timing-worst', t('tech.timingWorst', { case: caseLabel(GRENZFALL_PAIR), ...fmt(measure(() => GRENZFALL_PAIR)) }));
 }
 
 function init() {
   applyDictionary();
   buildMaterialOptions();
-  materialSelect().addEventListener('change', update);
+  materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));
   buildShapeOptions();
   prefillFrame(DEFAULT_SHAPE);
-  shapeSelect().addEventListener('change', () => {
+  shapeSelect().addEventListener('change', (e) => {
     prefillFrame(currentShape());
-    update();
+    schedule(e.timeStamp);
   });
-  for (const k of ['a', 'b', 'dbl']) $(`frame-${k}`).addEventListener('input', update);
+  const onInput = (e) => schedule(e.timeStamp);
+  for (const k of ['a', 'b', 'dbl']) $(`frame-${k}`).addEventListener('input', onInput);
   for (const eye of EYES) {
     const e = eye.toLowerCase();
     const input = /** @type {HTMLInputElement} */ ($(`rx-${e}-sph`));
     input.value = '-2,00';
-    input.addEventListener('input', update);
+    input.addEventListener('input', onInput);
     // Zyl and Achse start empty (sphere-only until the user types a cylinder).
-    for (const f of ['cyl', 'axis']) $(`rx-${e}-${f}`).addEventListener('input', update);
+    for (const f of ['cyl', 'axis']) $(`rx-${e}-${f}`).addEventListener('input', onInput);
     const pdInput = /** @type {HTMLInputElement} */ ($(`rx-${e}-pd`));
     pdInput.value = DEFAULT_PD;
-    pdInput.addEventListener('input', update);
+    pdInput.addEventListener('input', onInput);
   }
   const tech = /** @type {HTMLDetailsElement} */ ($('tech'));
   tech.addEventListener('toggle', () => {
@@ -406,7 +443,7 @@ function init() {
   setText('ua', t('tech.ua', { ua: navigator.userAgent }));
   const meta = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="app-commit"]'));
   setText('app-commit', meta?.content ?? 'dev');
-  update();
+  schedule(performance.now());
 }
 
 init();

@@ -162,10 +162,16 @@ export default Object.freeze({
   'diag.CT_SET_BY_MIN_ET.suggest': 'Keine Eingabe nötig; das ist ein Hinweis zur Berechnung.',
 
   'tech.summary': 'Technische Angaben',
-  'tech.timing': 'Rechenzeit beide Gläser: Median {median}, p95 {p95} (50 Läufe)',
+  // Bench readouts (01-14): numbers and the case come in as parameters, never as text (MINOR-5).
+  'tech.timing': 'Rechenzeit Normalfall ({case}): Median {median}, p{pct} {tail} ({runs} Läufe)',
+  'tech.timingFrame':
+    'Rechenzeit Normalfall mit geänderter Fassungsbreite (Form neu berechnet): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.timingWorst':
-    'Rechenzeit Grenzfall (+10,75 −1,00 × 89°, Kunststoff 1,67, Rechteckig 43 × 43, DBL 21, PD 36, Einschleifhöhe 0 mm; der langsamste gemessene Fall): Median {median}, p95 {p95} (50 Läufe)',
-  'tech.inputRender': 'Letzte Eingabe bis Anzeige: {ms}',
+    'Rechenzeit Grenzfall ({case}; langsamster gemessener Fall): Median {median}, p{pct} {tail} ({runs} Läufe)',
+  'tech.case': '{rx}, {material}, {shape} {A} × {B}, DBL {dbl}, PD {pd}',
+  'tech.caseFh': ', Einschleifhöhe {fh}',
+  'tech.inputRender':
+    'Eingabe bis Anzeige (Median der letzten {n} Eingaben): Rechenarbeit {work}, Wartezeit inklusive {latency}',
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',
 
