@@ -42,6 +42,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
+          // 01-12: the +14 search costs more per lens; several CPU-bound property tests and the
+          // Grenzfall bench exceed the 5 s default under v8 coverage (CI runs test:coverage).
+          testTimeout: 30_000,
           include: ['src/**/*.test.js', 'test/**/*.test.js'],
         },
       },
