@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateLens, evaluatePair } from './evaluate.js';
-import { optimiseBaseCurve } from './solve.js';
+import { optimiseBaseCurve, FLAT_FRONT_TOLERANCE_MM as TAU } from './solve.js';
 import { baseCurveAuto, sphericalEquivalent } from './power.js';
 import { frameOutline } from './frame/outline.js';
 import { maxRadiusFromOC, thicknessAt } from './metrics.js';
@@ -22,12 +22,19 @@ const spec = (o = {}) => ({
 });
 const J = (r) => Math.max(r.metrics.ct, r.metrics.etMax.value);
 const SWEEP = [];
-for (let k = 10; k <= 200; k++) SWEEP.push(k / 20); // 0.50, 0.55, …, 10.00
+for (let k = 10; k <= 280; k++) SWEEP.push(k / 20); // 0.50, 0.55, …, 14.00 (01-12: whole automatic range)
+/** A manual result counts only with a non-convex back (01-12, GAP-1). */
+const okNonConvex = (r) => r.ok && Math.max(r.intermediates.D2a, r.intermediates.D2b) <= 0;
+/** D1 inside the search domain [0.50, maxD1] (FRONT_RADIUS_MARGIN_MM cap; maxD1 does not depend on SE). */
+const inSearchDomain = (r) =>
+  r.intermediates.D1 <= baseCurveAuto(0, { n: r.intermediates.n, rhoMax: r.intermediates.rhoMax }).maxD1 + 1e-12;
+// Optimality oracle: the search minimises over [0.50, maxD1] (FRONT_RADIUS_MARGIN_MM); the
+// margin-free rescan and bisection only decide feasibility when nothing in that domain computes.
 const manualMin = (s) => {
   let m = Infinity;
   for (const baseCurve of SWEEP) {
     const r = evaluateLens({ ...s, baseCurve });
-    if (r.ok && J(r) < m) m = J(r);
+    if (okNonConvex(r) && inSearchDomain(r) && J(r) < m) m = J(r);
   }
   return m;
 };
@@ -315,8 +322,9 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     }
     console.log('[01-02] optimality: ok specs', okCount, 'worst gap (mm)', worst, worstSpec);
     expect(okCount).toBeGreaterThan(0);
-    expect(worst).toBeLessThanOrEqual(0.01);
-  }, 30_000);
+    // D-C: the tie-break may trade up to τ for a flatter front
+    expect(worst).toBeLessThanOrEqual(TAU + 0.01);
+  }, 60_000);
 
   it('rescue property: no failing automatic lens is computable with any manual D1', () => {
     let failing = 0;
@@ -333,7 +341,8 @@ describe('MAT-02 automatic base curve (D-01)', () => {
               expect(r.diagnostics[0].code).not.toBe('FRONT_SAG_UNDEFINED');
               expect(r.diagnostics[0].data.searched).toBe(true);
               failing++;
-              if (SWEEP.some((baseCurve) => evaluateLens({ ...s, baseCurve }).ok)) rescueCount++;
+              // rescue oracle: whole range, not capped at maxD1 (lens-critic MINOR-1)
+              if (SWEEP.some((baseCurve) => okNonConvex(evaluateLens({ ...s, baseCurve })))) rescueCount++;
             }
           }
         }
@@ -341,7 +350,7 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     }
     console.log('[01-02] rescue: specs', total, 'failing', failing, 'rescuable', rescueCount);
     expect(rescueCount).toBe(0);
-  }, 30_000);
+  }, 60_000);
 
   it('impossible for every D1: −20.00 62/18/PD 40 and +20.00 50/18/PD 5', () => {
     for (const s of [

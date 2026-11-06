@@ -38,7 +38,7 @@ describe('ENG-07 catalogue', () => {
 // ---------------------------------------------------------------------------------------------
 import fc from 'fast-check';
 import { evaluateLens, evaluatePair } from './evaluate.js';
-import { optimiseBaseCurve } from './solve.js';
+import { optimiseBaseCurve, FLAT_FRONT_TOLERANCE_MM as TAU } from './solve.js';
 import { baseCurveAuto, sphericalEquivalent, FRONT_RADIUS_MARGIN_MM } from './power.js';
 import { frameOutline } from './frame/outline.js';
 import { maxRadiusFromOC } from './metrics.js';
@@ -64,20 +64,33 @@ const frame = (shape, A, B, DBL) => ({ shape, A, B, DBL });
 const maxThickness = (r) => Math.max(r.metrics.ct, r.metrics.etMax.value);
 
 const SWEEP = [];
-for (let k = 10; k <= 200; k++) SWEEP.push(k / 20); // 0.50, 0.55, …, 10.00 (191 values)
-expect(SWEEP).toHaveLength(191);
+for (let k = 10; k <= 280; k++) SWEEP.push(k / 20); // 0.50, 0.55, …, 14.00 (271 values, 01-12)
+expect(SWEEP).toHaveLength(271);
 
-/** First manual D1 of the 191-value sweep that computes, or null. */
+/** A manual result counts only with a non-convex back (01-12, GAP-1). */
+const okNonConvex = (r) => r.ok && Math.max(r.intermediates.D2a, r.intermediates.D2b) <= 0;
+
+/**
+ * Rescue oracle: first manual D1 of the 271-value sweep that computes with a non-convex back, or
+ * null. Not capped at maxD1 (lens-critic MINOR-1): the impossibility claim covers the whole
+ * automatic range. A rescue is a search bug to fix in solve.js, not a test to relax.
+ */
 const manualSweepRescues = (spec) => {
-  for (const baseCurve of SWEEP) if (evaluateLens({ ...spec, baseCurve }).ok) return baseCurve;
+  for (const baseCurve of SWEEP) if (okNonConvex(evaluateLens({ ...spec, baseCurve }))) return baseCurve;
   return null;
 };
-/** Minimum J over the ok results of the manual sweep (Infinity if none computes). */
+/**
+ * Optimality oracle: minimum J over the non-convex ok results with D1 ≤ the spec's maxD1
+ * (Infinity if none). The search minimises over [0.50, maxD1] (FRONT_RADIUS_MARGIN_MM); the
+ * margin-free rescan and bisection only decide feasibility when nothing in that domain computes.
+ */
 const manualSweepMin = (spec) => {
   let m = Infinity;
   for (const baseCurve of SWEEP) {
     const r = evaluateLens({ ...spec, baseCurve });
-    if (r.ok && maxThickness(r) < m) m = maxThickness(r);
+    if (!okNonConvex(r)) continue;
+    const { maxD1 } = baseCurveAuto(0, { n: r.intermediates.n, rhoMax: r.intermediates.rhoMax });
+    if (baseCurve <= maxD1 + 1e-12 && maxThickness(r) < m) m = maxThickness(r);
   }
   return m;
 };
@@ -98,6 +111,8 @@ function checkRule(r) {
       else if (typeof v === 'object') for (const [k, w] of Object.entries(v)) walk(w, `${path}.${k}`);
     };
     walk(r.metrics, 'metrics');
+    // GAP-1 (01-12): every back principal power ≤ 0 (plano allowed)
+    expect(Math.max(r.intermediates.D2a, r.intermediates.D2b)).toBeLessThanOrEqual(0);
   } else {
     expect(r.diagnostics).toHaveLength(1);
     expect(errors(r)).toHaveLength(1);
@@ -194,7 +209,7 @@ describe('ENG-07 diagnostics', () => {
                         if (manualSweepRescues(s) !== null) rescueCount++;
                       }
                     }
-    console.log('[01-10] extremes grid: specs', total, 'failing', failing, byCode, 'rescuable', rescueCount);
+    console.log('[01-12] extremes grid: specs', total, 'failing', failing, byCode, 'rescuable', rescueCount);
     expect(total).toBe(2304);
     expect(rescueCount).toBe(0);
   }, 120_000);
@@ -238,6 +253,7 @@ describe('ENG-07 fuzz (never NaN)', () => {
   it('ENG-07 fuzz numRuns 1000: rule holds for both eyes, rescue count 0; ENG-09 worst case search cost', () => {
     let failing = 0;
     let rescueCount = 0;
+    const byCode = {};
     const cost = [];
     const pairCost = (s) => {
       const p = evaluatePair({ OD: s, OS: { ...s, eye: 'OS' } });
@@ -254,6 +270,7 @@ describe('ENG-07 fuzz (never NaN)', () => {
           checkRule(r);
           if (!r.ok) {
             failing++;
+            byCode[r.diagnostics[0].code] = (byCode[r.diagnostics[0].code] ?? 0) + 1;
             if (manualSweepRescues({ ...s, eye }) !== null) rescueCount++;
           }
         }
@@ -265,7 +282,7 @@ describe('ENG-07 fuzz (never NaN)', () => {
     expect(cand.iterations).not.toBe(null);
     cost.push({ s: GRENZFALL_CANDIDATE, iterations: cand.iterations, evaluations: cand.evaluations, candidate: true });
     cost.sort((a, b) => b.iterations - a.iterations);
-    console.log('[01-10] fuzz: failing eyes', failing, 'of 2000, rescuable', rescueCount);
+    console.log('[01-12] fuzz: failing eyes', failing, 'of 2000', byCode, 'rescuable', rescueCount);
     console.log('[01-10] ENG-09 worst case top 5 (pair iterations / evaluations):');
     for (const c of cost.slice(0, 5)) console.log('  ', c.iterations, c.evaluations, describeSpec(c.s), c.candidate ? '(candidate)' : '');
     console.log('[01-10] candidate:', cand.iterations, cand.evaluations);
@@ -338,9 +355,10 @@ describe('MAT-02 automatic base curve (D-01)', () => {
       expect(r.ok, name).toBe(true);
       const j = maxThickness(r);
       const brute = manualSweepMin(s);
-      expect(j, name).toBeLessThanOrEqual(brute + 0.01);
+      // D-C: the tie-break may trade up to τ for a flatter front
+      expect(j, name).toBeLessThanOrEqual(brute + TAU + 0.01);
       const v = r.intermediates.vogelMaxThickness;
-      if (typeof v === 'number') expect(j, name).toBeLessThanOrEqual(v + 1e-9);
+      if (typeof v === 'number') expect(j, name).toBeLessThanOrEqual(v + TAU + 1e-9);
       console.log(`[01-10] optimality ${name}: D1 ${r.intermediates.D1.toFixed(4)} CT ${r.metrics.ct.toFixed(3)} J ${j.toFixed(4)} brute ${brute.toFixed(4)} gap ${(j - brute).toExponential(2)} Vogel J ${v}`);
     }
   }, 60_000);
@@ -367,9 +385,10 @@ describe('MAT-02 automatic base curve (D-01)', () => {
         const j = maxThickness(r);
         const gap = j - manualSweepMin(s);
         if (gap > worst) (worst = gap), (worstSpec = s);
-        expect(gap).toBeLessThanOrEqual(0.01);
+        // D-C: the tie-break may trade up to τ for a flatter front
+        expect(gap).toBeLessThanOrEqual(TAU + 0.01);
         const v = r.intermediates.vogelMaxThickness;
-        if (typeof v === 'number') expect(j).toBeLessThanOrEqual(v + 1e-9);
+        if (typeof v === 'number') expect(j).toBeLessThanOrEqual(v + TAU + 1e-9);
       }),
       { numRuns: 60, seed: 19 },
     );
@@ -391,7 +410,7 @@ describe('MAT-02 automatic base curve (D-01)', () => {
         const im = r.intermediates;
         expect(im.baseCurveRule).toBe('thinnest');
         const j = maxThickness(r);
-        if (typeof im.vogelMaxThickness === 'number') expect(j).toBeLessThanOrEqual(im.vogelMaxThickness + 1e-9);
+        if (typeof im.vogelMaxThickness === 'number') expect(j).toBeLessThanOrEqual(im.vogelMaxThickness + TAU + 1e-9);
         rows.push(`| ${fname} | ${sph} | ${im.D1.toFixed(2)} | ${j.toFixed(2)} | ${im.vogelClampedD1.toFixed(2)} | ${im.vogelMaxThickness === null ? 'null' : im.vogelMaxThickness.toFixed(2)} |`);
       }
     }

@@ -186,7 +186,8 @@ describe('MAT-02 optimiseBaseCurve', () => {
       const r = optimiseBaseCurve({ ...base, sph, outline, maxD1: 10, seedD1 });
       expect(r.ok).toBe(true);
       expect(typeof r.seedMaxThickness).toBe('number');
-      expect(r.maxThickness).toBeLessThanOrEqual(r.seedMaxThickness + 1e-9);
+      // D-C: the tie-break may trade up to τ for a flatter front
+      expect(r.maxThickness).toBeLessThanOrEqual(r.seedMaxThickness + FLAT_FRONT_TOLERANCE_MM + 1e-9);
     }
   });
 
