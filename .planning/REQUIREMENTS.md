@@ -51,7 +51,13 @@
 - [x] **ENG-06**: Engine outputs centre thickness, max/min edge thickness with location, thickness at any point, volume (numerical integration over the outline), weight (g), front-surface protrusion, decentration, and intermediate values (radii, sags, binding constraint).
 - [x] **ENG-07**: A lens that cannot be made (sag beyond radius, negative edge) is detected and returned as a coded diagnostic with a plain-German explanation and a suggestion (smaller frame, higher index).
 - [x] **ENG-08**: Engine results are validated by tiered tests: analytic cases; spherical manufacturer-chart rows within ±0,20 mm (after tool-index conversion); a ray-trace oracle confirming the generated lens reproduces the entered Sph/Zyl/Achse; property tests for symmetry and monotonicity.
-- [ ] **ENG-09**: Recomputing both lenses after an input change completes within one animation frame on a mid-range phone (target measured on a real device and recorded).
+- [ ] **ENG-09**: Typing never freezes the page. Both lenses are computed off the main thread in a Web Worker. If the browser cannot start it, the page computes directly and says so under "Technische Angaben". Measured and recorded:
+  - (a) Every main-thread frame an input causes stays under one frame (< 16,7 ms), including style, layout and paint. This covers the frame that reads the inputs and sends the job, and the frame that renders the result. It is the user's "under one frame" target (2026-11-06). RAIL's 50 ms input budget is the cited outer bound.
+  - (b) Input to next paint is ≤ 200 ms for every measured edit (INP "good", https://web.dev/articles/inp; the source's 75th-percentile field threshold, applied here per edit).
+  - (c) In the canonical normal case (−4,00/−2,00 × 30°, Rechteckig 52×38/18, PD 32, CR-39), input to result painted is ≤ 100 ms for every measured edit (RAIL, https://web.dev/articles/rail: "Complete a transition initiated by user input within 100 ms").
+  - (d) A result that is not painted 50 ms after the input shows "rechnet …" and marks the old values as outdated until it arrives (RAIL: "For actions that take longer than 50 ms to complete, always provide feedback"), and the result for the latest input arrives. On the page, the count of "rechnet …" displays and the longest wait since load are shown for this.
+
+  (a) and (b) are measured on the 4× CPU-throttled proxy and on a real mid-range phone via the live site. (c) and (d) are decided on the real phone. The proxy only estimates them, because CPU throttling does not slow the worker. Worker compute times are reported for information. (Restated 2026-11-06, user decision "Worker + RAIL target"; replaces the earlier one-frame recompute target. Quotes re-checked against both web.dev pages on 2026-11-06.)
 
 ### Results & Comparison — Simple View (RES)
 
