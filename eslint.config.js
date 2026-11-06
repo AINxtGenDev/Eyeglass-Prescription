@@ -14,7 +14,7 @@ export default [
     ],
   },
   js.configs.recommended,
-  // Node globals for configs, tests and e2e. Never globals.browser here (flat-config globals merge, Pitfall B).
+  // Node globals for configs, tests and e2e. No browser globals here (flat-config globals merge, Pitfall B).
   {
     files: ['*.config.js', 'test/**/*.js', 'src/**/*.test.js', 'e2e/**/*.js'],
     languageOptions: { globals: { ...globals.node } },
