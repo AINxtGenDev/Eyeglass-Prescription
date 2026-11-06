@@ -28,7 +28,7 @@
 
 ### Frame (FRAME)
 
-- [ ] **FRAME-01**: User picks a frame shape — Rund, Rechteckig, Panto, Pilot (Aviator) — each a parametric outline scaled to the boxing dimensions.
+- [x] **FRAME-01**: User picks a frame shape — Rund, Rechteckig, Panto, Pilot (Aviator) — each a parametric outline scaled to the boxing dimensions.
 - [ ] **FRAME-02**: User sets A (Glasbreite) 40–62 mm, B (Glashöhe) 28–55 mm, DBL (Stegbreite) 14–24 mm and rim depth; each shape preset has typical defaults.
 - [ ] **FRAME-03**: User can type or paste the frame stamp from the temple (`52□18 140`, `52-18-140`, `52 18 140`) to set A and DBL, with a "Wo finde ich das?" illustration; B defaults from the shape.
 
@@ -47,7 +47,7 @@
 - [ ] **ENG-02**: Front and back surfaces each use their own power (signed curvature form); the back surface is designed with the thick-lens relation so that the computed back-vertex power matches the prescription within 0,01 dpt across the full input range (verified by a round-trip test).
 - [ ] **ENG-03**: The back surface for a cylinder prescription is a true toric surface evaluated per point (x, y), with the torus oriented to the axis; its sag is numerically stable near plano and near the sag singularity.
 - [ ] **ENG-04**: Centre thickness is solved from the min-centre and min-edge constraints over the actual frame outline, including prescriptions with mixed-sign meridians.
-- [ ] **ENG-05**: Horizontal decentration = (A + DBL)/2 − mono PD, applied nasally; optional fitting height for vertical position; edge thickness at nasal, temporal, superior and inferior positions is correctly asymmetric. Left and right lenses are computed per eye, not mirrored.
+- [x] **ENG-05**: Horizontal decentration = (A + DBL)/2 − mono PD, applied nasally; optional fitting height for vertical position; edge thickness at nasal, temporal, superior and inferior positions is correctly asymmetric. Left and right lenses are computed per eye, not mirrored.
 - [ ] **ENG-06**: Engine outputs centre thickness, max/min edge thickness with location, thickness at any point, volume (numerical integration over the outline), weight (g), front-surface protrusion, decentration, and intermediate values (radii, sags, binding constraint).
 - [ ] **ENG-07**: A lens that cannot be made (sag beyond radius, negative edge) is detected and returned as a coded diagnostic with a plain-German explanation and a suggestion (smaller frame, higher index).
 - [ ] **ENG-08**: Engine results are validated by tiered tests: analytic cases; spherical manufacturer-chart rows within ±0,20 mm (after tool-index conversion); a ray-trace oracle confirming the generated lens reproduces the entered Sph/Zyl/Achse; property tests for symmetry and monotonicity.
@@ -154,7 +154,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RX-06 | Phase 2 | Pending |
 | RX-07 | Phase 2 | Pending |
 | RX-08 | Phase 2 | Pending |
-| FRAME-01 | Phase 1 | Pending |
+| FRAME-01 | Phase 1 | Complete |
 | FRAME-02 | Phase 2 | Pending |
 | FRAME-03 | Phase 2 | Pending |
 | MAT-01 | Phase 1 | Pending |
@@ -167,7 +167,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENG-02 | Phase 1 | Pending |
 | ENG-03 | Phase 1 | Pending |
 | ENG-04 | Phase 1 | Pending |
-| ENG-05 | Phase 1 | Pending |
+| ENG-05 | Phase 1 | Complete |
 | ENG-06 | Phase 1 | Pending |
 | ENG-07 | Phase 1 | Pending |
 | ENG-08 | Phase 1 | Pending |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-11-06T11:48:33.955Z"
+stopped_at: Completed 01-07-PLAN.md
+last_updated: "2026-11-06T11:58:23.564Z"
 last_activity: 2026-11-06
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 11
-  completed_plans: 6
-  percent: 55
+  completed_plans: 7
+  percent: 64
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 01 (verified-engine-live-pipeline) — EXECUTING
-Plan: 7 of 11
+Plan: 8 of 11
 Status: Ready to execute
 Last activity: 2026-11-06
 
-Progress: [██████░░░░] 55%
+Progress: [██████░░░░] 64%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [██████░░░░] 55%
 | Phase 01 P03 | 5min | 2 tasks | 5 files |
 | Phase 01 P04 | 3min | 2 tasks | 4 files |
 | Phase 01 P06 | 7min | 3 tasks | 10 files |
+| Phase 01 P07 | 9min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-06]: Trivex Abbe 45/45 from Z00981.FS1; 00617.FS1 58/56 treated as copy error (comment)
 - [Phase 01]: [01-06]: No requirement marked complete: MAT-01 Abbe recorded but not consumed; MAT-02 needs Expert view; ENG-02/04 need cyl; ENG-08 needs tiers 3/4
 - [Phase 01]: [01-06]: All 143 Zeiss fixture rows machine-matched to pdftotext output (0 mismatches); favicon data: icon added for DEPL-01, orchestrator closes it after the next deploy
+- [Phase 01]: [01-07]: Pilot weight squared (no corner at 3/9 o'clock); lower half widened temporally, orientation unverified (no pilot image in references/), open for 01-11
+- [Phase 01]: [01-07]: computeMetrics breaks exact etMax/etMin ties toward larger y so OD/OS labels agree; frameOutline memoised (about 1.8 -> 0.2 ms/lens desktop)
+- [Phase 01]: [01-07]: Only FRAME-01 and ENG-05 marked complete; ENG-04 needs cyl (01-08), ENG-06 stays pending
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06T11:48:33.950Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-11-06T11:58:23.559Z
+Stopped at: Completed 01-07-PLAN.md
 Resume file: None

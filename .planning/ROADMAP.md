@@ -67,7 +67,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 01-07-PLAN.md — Frame shapes Rund/Rechteckig/Panto/Pilot, per-eye decentration + fitting height, frame/PD inputs
+- [x] 01-07-PLAN.md — Frame shapes Rund/Rechteckig/Panto/Pilot, per-eye decentration + fitting height, frame/PD inputs
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 6/11 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 7/11 | In Progress|  |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
