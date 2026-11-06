@@ -43,11 +43,12 @@ decisions:
   - "[01-14]: The page renders per eye via memoLast(evaluateLens); evaluatePair is used only by the bench readouts (raw, no memo)"
   - "[01-14]: Proxy kept out of the CI gate: project 'perf' exists only with PERF=1 (npm run test:perf)"
   - "[01-14]: Host BenchmarkIndex 2221 (Lighthouse computeBenchmarkIndex, Chrome 158) = above the Lighthouse High-End Desktop range 1500–2000, so 4× is the table's suggested mid-tier-mobile multiplier, not a conservative one"
+  - "[01-14]: Task 4 decision web-worker (user: \"Worker + RAIL target (Recommended)\"); Web Worker and RAIL-based ENG-09 restatement go to gap plan 01-15"
   - "[01-14]: 4× FAIL (rescan-path pair 178,05 ms, Grenzfall 64,35 ms); the normal case passes at 4× (12,10 ms compute, 15,25 ms work) and fails at 6×"
 metrics:
   duration: 15min
   completed: 2026-11-06
-  tasks: 3 of 4 (Task 4 is a pending decision)
+  tasks: 4
   files: 15
 ---
 
@@ -55,7 +56,11 @@ metrics:
 
 The page now reports two separate timings, work and latency, each as the median of the last 10 edits. It recomputes at most once per frame and only for the eye that changed, and it shows three bench readouts built from one shared case definition. Diagnostic boxes are not re-announced when their text is unchanged. The CPU-throttled phone proxy ran before any push. **Result: 4× FAIL.** The 01-12 Grenzfall takes about 64 ms per pair at 4×, and the rescan-path pair takes about 178 ms. The normal case passes at 4× and fails at 6×.
 
-Decision (Task 4): PENDING. Awaiting the user's answer (continue | web-worker | restate). This line will be replaced with the verbatim answer.
+Decision (Task 4): web-worker
+
+- User's answer, quoted verbatim from the question dialog on 2026-11-06: "Worker + RAIL target (Recommended)"
+- Option text: "New gap plan: move the calculation into a Web Worker so typing never freezes. Restate ENG-09 to the RAIL model (web.dev, cited from memory, to be checked): input handling stays under one frame, a normal result appears within 100 ms, extreme cases show \"rechnet …\" until done. Then re-review, push, and the real-phone check."
+- ENG-09 will also be restated to a RAIL-based target in the follow-up plan 01-15, which the orchestrator plans next. REQUIREMENTS.md is not changed in 01-14.
 
 ## ENG-09 phone proxy
 
@@ -214,7 +219,7 @@ None. The engine stays pure, the new modules in src/state are DOM-free, and ever
 
 ## Requirements
 
-- None marked complete yet. ENG-09 depends on the Task 4 decision and the real-phone measurement (01-11 Task 3).
+- None marked complete. ENG-09 stays pending: Web Worker and RAIL restatement in 01-15, then the real-phone measurement (01-11 Task 3).
 - L10N-02 was already complete. The new tech.* keys keep it: the dictionary test passed under coverage.
 
 ## Known Stubs
@@ -234,7 +239,7 @@ None. The `__src` route and the CDP session exist only in the test harness (T-01
 | 2 A | a686858 | feat(01-14): work/latency timing, rAF coalescing, per-eye reuse, canonical bench cases, quiet diagnostics |
 | 2 B | cd61f7c | test(01-14): e2e for timing medians, coalescing count and quiet diagnostics |
 | 3 | 02cec28 | test(01-14): CPU-throttled phone proxy (D-B) |
-| 4 | — | decision checkpoint (pending) |
+| 4 | — | decision checkpoint: web-worker (user, 2026-11-06) |
 
 ## TDD Gate Compliance
 

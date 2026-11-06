@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-13-PLAN.md
-last_updated: "2026-11-06T16:27:00.018Z"
+stopped_at: Completed 01-14-PLAN.md
+last_updated: "2026-11-06T19:31:47.892Z"
 last_activity: 2026-11-06
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 01 (verified-engine-live-pipeline) — EXECUTING
-Plan: 13 of 14 (gap closure; 01-14 and 01-11 remain)
+Plan: 14 of 14 complete except 01-11 (next: gap plan 01-15 Web Worker + RAIL-based ENG-09, then 01-11)
 Status: Ready to execute
 Last activity: 2026-11-06
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [█████████░] 86%
 | Phase 01 P10 | 14min | 3 tasks | 10 files |
 | Phase 01 P12 | 45min | 3 tasks | 17 files |
 | Phase 01 P13 | 10min | 3 tasks | 15 files |
+| Phase 01 P14 | 15min | 4 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,7 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-13]: MAT-01 reworded to 'uses ne and density, exposes νe'; νe carried in intermediates.abbe and shown, not used in any computation
 - [Phase 01]: [01-13]: MAT-02 text = +0,50…+14,00 (D-A, US4185897) capped by FRONT_RADIUS_MARGIN_MM, flattest within τ 0,10 mm (D-C), back principal powers ≤ 0; Expert-view clause moved to UX-02
 - [Phase 01]: [01-13]: Base-curve cell shows the raw Vogel value plus a 'begrenzt auf' clamp note; axis input that is not whole unsigned degrees gets PARSE_AXIS_INVALID
+- [Phase 01]: [01-14]: Proxy 4x FAIL (rescan pair 178 ms, Grenzfall 64 ms; host BenchmarkIndex 2221); user decision web-worker: Web Worker + RAIL-based ENG-09 restatement in gap plan 01-15
 
 ### Pending Todos
 
@@ -113,7 +115,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Phone performance (ENG-09) is extrapolated from desktop (0.49 ms/lens); needs real-device measurement on the live site.
+- [Phase 1]: ENG-09: CPU-throttled proxy 4× FAIL (01-14: Grenzfall 64 ms, rescan-path pair 178 ms per pair); user chose Web Worker + RAIL-based restatement (01-15); real-device measurement on the live site still needed (01-11).
 - [Phase 1]: Textbook worked examples (Jalie; Brooks & Borish) and ISO 8980-1 tolerances not accessible — validation relies on analytic cases, Zeiss charts and ray-trace oracle.
 - [Phase 2]: No citable conic constants for real aspheric lenses — aspheric (MAT-05) is a generic parametric model.
 - [Phase 2]: Unverified: iOS decimal keypad minus key; German hyphenation support; Austrian terms (Basiskurve vs Durchbiegung).
@@ -126,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06T16:27:00.014Z
-Stopped at: Completed 01-13-PLAN.md
+Last session: 2026-11-06T19:31:44.485Z
+Stopped at: Completed 01-14-PLAN.md
 Resume file: None
