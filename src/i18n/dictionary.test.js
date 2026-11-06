@@ -53,6 +53,7 @@ describe('disclaimer (RES-06, lens-critic iteration-3 MAJOR-1)', () => {
 const DIAG_DATA = {
   FRONT_SAG_UNDEFINED: ['R1', 'rhoMax'],
   BACK_SAG_UNDEFINED: ['meridian', 'axisDeg', 'searched'],
+  BACK_SURFACE_CONVEX: ['D2max', 'searched'],
   VERTEX_TERM_INVALID: ['ct', 'D1'],
   THICK_LENS_NOT_CONVERGED: ['iterations'],
   NON_FINITE_RESULT: [],
@@ -128,6 +129,7 @@ describe('diagnostic texts are geometrically true (lens-critic M1/m6, iteration-
     const v = dict['diag.BACK_SAG_UNDEFINED.explain'];
     expect(v).toContain('Modell');
     expect(v).toContain('0,50');
+    expect(v).toContain('+14,00');
     expect(v).not.toContain('{meridian}');
   });
   test('BASE_CURVE_CLAMPED keys are removed (D-01 final)', () => {

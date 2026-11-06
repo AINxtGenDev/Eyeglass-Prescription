@@ -98,7 +98,7 @@ export default Object.freeze({
   'basecurve.vogelRefThicker':
     '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas an der dicksten Stelle {thickness} dick)',
   'basecurve.vogelRefImpossible':
-    '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas in diesem Modell nicht herstellbar)',
+    '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit ließe sich das Glas in diesem Modell nicht berechnen)',
 
   // ENG-07 diagnostics (L10N-01/02): one title/explain/suggest per code of DIAGNOSTICS.
   // Every suggestion is backed by a test in src/engine/diagnostics.test.js (T-01-13).
@@ -110,9 +110,16 @@ export default Object.freeze({
     'Wählen Sie eine flachere Basiskurve, eine kleinere Fassung oder ein höherbrechendes Material (z. B. 1,74).',
   'diag.BACK_SAG_UNDEFINED.title': 'Dieses Glas ist so nicht herstellbar',
   'diag.BACK_SAG_UNDEFINED.explain':
-    'In diesem Rechenmodell (Vorderfläche zwischen +0,50 und +10,00 dpt) lässt sich dieses Glas nicht herstellen: Für Ihre Werte müsste die Rückfläche in mindestens einer Richtung (meist der Richtung mit der größeren Korrektur) so stark gekrümmt sein, dass sie den Rand der Fassung in dieser Richtung nicht mehr erreicht – mit jeder erlaubten Vorderfläche. Die Untergrenze von +0,50 dpt ist eine Annahme dieses Modells, keine Grenze der Fertigung; manche Hersteller verwenden noch flachere Vorderflächen.',
+    'In diesem Rechenmodell (Vorderfläche zwischen +0,50 und +14,00 dpt) lässt sich dieses Glas nicht herstellen: Für Ihre Werte müsste die Rückfläche in mindestens einer Richtung (meist der Richtung mit der größeren Korrektur) so stark gekrümmt sein, dass sie den Rand der Fassung in dieser Richtung nicht mehr erreicht – mit jeder erlaubten Vorderfläche. Die Untergrenze von +0,50 dpt ist eine Annahme dieses Modells, keine Grenze der Fertigung; manche Hersteller verwenden noch flachere Vorderflächen.',
   'diag.BACK_SAG_UNDEFINED.suggest':
     'Wählen Sie eine kleinere, vor allem weniger hohe bzw. weniger breite Fassung oder ein höherbrechendes Material (z. B. 1,74).',
+  // 01-12: only reached when no front up to +14,00 gives a computable lens with a non-convex back
+  // (tested for +16 rund 40/18/32; a manual front of +14,50 computes there, which backs the text).
+  'diag.BACK_SURFACE_CONVEX.title': 'In diesem Rechenmodell nicht berechenbar',
+  'diag.BACK_SURFACE_CONVEX.explain':
+    'In diesem Rechenmodell ist die Rückfläche (die Seite zum Auge) nie nach außen gewölbt. Für eine so starke Pluskorrektur wäre das aber mit jeder erlaubten Vorderfläche (+0,50 bis +14,00 dpt) nötig, oder das Glas ließe sich in dieser Fassung gar nicht berechnen. Nötig wäre eine Vorderfläche, die stärker gekrümmt ist als +14,00 dpt; das liegt außerhalb des Bereichs dieses Modells.',
+  'diag.BACK_SURFACE_CONVEX.suggest':
+    'Für sehr starke Plusgläser verwenden Hersteller besondere Glasformen, die dieses Modell nicht abbildet. Fragen Sie Ihren Optiker, welche Gläser für Sie möglich sind.',
   'diag.VERTEX_TERM_INVALID.title': 'Berechnung nicht möglich',
   'diag.VERTEX_TERM_INVALID.explain':
     'Für diese Werte stößt das Rechenmodell an eine interne Grenze: Die Glasdicke wäre im Verhältnis zur Krümmung der Vorderfläche zu groß. Damit keine falschen Zahlen erscheinen, wird nichts angezeigt.',
