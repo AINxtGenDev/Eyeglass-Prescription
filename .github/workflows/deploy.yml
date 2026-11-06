@@ -1,0 +1,90 @@
+# Gated pipeline: every check runs in `build`; `deploy` needs `build`; `verify-live` needs `deploy`.
+# A failing lint rule, unit test, coverage threshold, build or browser smoke test means no
+# artifact and no deploy (DEPL-02). All actions are pinned to commit SHAs (DEPL-04); the pins
+# and this structure are enforced by test/ci/*.test.js, which run in the build job itself.
+name: CI and Pages deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Includes the engine boundary (DEPL-03).
+      - run: npm run lint
+      # Unit, property, CI-gate tests; coverage thresholds fail the step with exit 1.
+      - run: npm run test:coverage
+      # GITHUB_SHA is baked into index.html as <meta name="app-commit">.
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      # Smoke test against vite preview at /Eyeglass-Prescription/.
+      - run: npm run test:e2e
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        if: github.event_name != 'pull_request'
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name != 'pull_request'
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  verify-live:
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Wait for Pages to serve this commit
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS -H 'Cache-Control: no-cache' "https://ainxtgendev.github.io/Eyeglass-Prescription/?v=${GITHUB_SHA}" | grep -q "content=\"${GITHUB_SHA::7}\""; then
+              echo "Live page serves commit ${GITHUB_SHA::7} (attempt $i)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Live page did not serve commit ${GITHUB_SHA::7} within 10 minutes"
+          exit 1
+      # Same smoke spec against the live host (DEPL-01).
+      - run: npm run test:e2e
+        env:
+          BASE_URL: https://ainxtgendev.github.io/Eyeglass-Prescription/
