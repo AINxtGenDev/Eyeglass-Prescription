@@ -5,7 +5,8 @@
 
 import { describe, it, expect, afterAll } from 'vitest';
 import { loadZeissFixture, toolToTrue, toolCurvature } from './zeiss.js';
-import { solveCT } from '../../src/engine/solve.js';
+import { solveCT, optimiseBaseCurve, FLAT_FRONT_TOLERANCE_MM } from '../../src/engine/solve.js';
+import { baseCurveAuto } from '../../src/engine/power.js';
 import { sphereSag } from '../../src/engine/sag.js';
 import { thicknessAt } from '../../src/engine/metrics.js';
 import { circleOutline } from '../../src/engine/frame/outline.js';
@@ -135,6 +136,108 @@ describe('thin-lens discriminator', () => {
     const miss = Math.abs(thinLensCT(r) - r.CT);
     console.info(`[zeiss] thin-lens CT miss at d 75, F +4.00: ${miss.toFixed(3)} mm`);
     expect(miss).toBeGreaterThan(0.3);
+  });
+});
+
+describe('ENG-08 tier 2 (d): automatic base curve vs Zeiss stock lenses (01-12)', () => {
+  // The automatic path (optimiseBaseCurve, D-01 thinnest + D-C) on the sheet's uncut, centred
+  // round lens with the sheet's constraint. The sheet lens has a concave back and its front lies
+  // in [0.50, maxD1], so the whole Zeiss − auto CT difference is the choice of front curve.
+  // AUTO_CT (mm) is a regression pin recorded from the 01-12 GREEN engine (±0.01 mm); it fails
+  // for the pre-01-12 engine (d 75, F +4.00: 6.722 vs 6.751).
+  const AUTO_CT = {
+  '75|4': 6.751, '75|3.75': 6.394, '75|3.5': 6.038,
+  '75|3.25': 5.682, '75|3': 5.327, '75|2.75': 4.973,
+  '75|2.5': 4.620, '75|2.25': 4.266, '75|2': 3.914,
+  '75|1.75': 3.561, '75|1.5': 3.209, '75|1.25': 2.857,
+  '70|5': 7.169, '70|4.75': 6.855, '70|4.5': 6.542,
+  '70|4.25': 6.230, '70|4': 5.920, '70|3.75': 5.609,
+  '70|3.5': 5.299, '70|3.25': 4.990, '70|3': 4.681,
+  '70|2.75': 4.373, '70|2.5': 4.065, '70|2.25': 3.758,
+  '70|2': 3.451, '70|1.75': 3.144, '70|1.5': 2.837,
+  '70|1.25': 2.531, '70|1': 2.225, '70|0.75': 1.919,
+  '65|6': 7.394, '65|5.75': 7.122, '65|5.5': 6.851,
+  '65|5.25': 6.581, '65|5': 6.311, '65|4.75': 6.042,
+  '65|4.5': 5.773, '65|4.25': 5.505, '65|4': 5.238,
+  '65|3.75': 4.971, '65|3.5': 4.704, '65|3.25': 4.438,
+  '65|3': 4.173, '65|2.75': 3.907, '65|2.5': 3.642,
+  '65|2.25': 3.377, '65|2': 3.113, '65|1.75': 2.848,
+  '65|1.5': 2.584, '65|1.25': 2.320, '65|1': 2.056,
+  };
+  const plusRows = rows.filter(isSheetMinET);
+  const autoFor = (r) => {
+    const { maxD1, vogelClampedD1 } = baseCurveAuto(r.F, { n: N, rhoMax: r.d / 2 });
+    return optimiseBaseCurve({
+      sph: r.F,
+      cyl: 0,
+      axisDeg: 0,
+      n: N,
+      ...constraintFor(r),
+      outline: outlineFor(r.d),
+      oc: { x: 0, y: 0 },
+      maxD1,
+      seedD1: vogelClampedD1,
+    });
+  };
+  const diffs = [];
+  let minusMax = -Infinity;
+  let tieBreakRows = 0;
+
+  it('covers the 51 plus rows at sheet-minimum ET', () => {
+    expect(plusRows).toHaveLength(51);
+    expect(Object.keys(AUTO_CT)).toHaveLength(51);
+  });
+
+  it.each(plusRows.map((r) => [label(r), r]))('%s: non-convex back, regression pin, no thicker than the sheet front', (_, r) => {
+    const a = autoFor(r);
+    expect(a.ok).toBe(true);
+    expect(Math.max(a.surfaces.D2a, a.surfaces.D2b)).toBeLessThanOrEqual(0); // (i)
+    expect(Math.abs(a.ct - AUTO_CT[`${r.d}|${r.F}`])).toBeLessThanOrEqual(0.01); // (ii)
+    const sheet = solveCT({
+      sph: r.F,
+      cyl: 0,
+      axisDeg: 0,
+      n: N,
+      D1: toolToTrue(r.front, N),
+      ...constraintFor(r),
+      outline: outlineFor(r.d),
+      oc: { x: 0, y: 0 },
+    });
+    expect(sheet.ok).toBe(true);
+    // (iii) D-C did not run for any row (D1 ≤ F + 2, rows sit at D2 ≈ 0); if it ever does, + τ
+    const tieBreak = a.D1 > r.F + 2;
+    if (tieBreak) tieBreakRows++;
+    expect(a.maxThickness).toBeLessThanOrEqual(sheet.maxThickness + (tieBreak ? FLAT_FRONT_TOLERANCE_MM : 0) + 0.01);
+    expect(a.ct).toBeLessThanOrEqual(r.CT + MM_TOL); // (iv)
+    diffs.push(r.CT - a.ct);
+  });
+
+  it('characteristic: Zeiss − automatic CT ranges 0.044 … 0.449 mm (recorded, ±0.01 mm)', () => {
+    const d = plusRows.map((r) => r.CT - autoFor(r).ct);
+    expect(Math.abs(Math.min(...d) - 0.044)).toBeLessThanOrEqual(0.01);
+    expect(Math.abs(Math.max(...d) - 0.449)).toBeLessThanOrEqual(0.01);
+    // plausibility ceiling, not the discriminating check (that is (ii) and the range above):
+    // 0.50 = Zeiss CT tolerance ±0.30 + tier-2 tolerance 0.20
+    expect(Math.max(...d)).toBeLessThanOrEqual(0.5);
+  });
+
+  // The 9 plus rows above the sheet-minimum ET are skipped: their constraint is minCT = CT_row,
+  // so CT is fixed by construction and says nothing about the curve choice.
+  it.each(rows.filter((r) => r.F <= 0).map((r) => [label(r), r]))('%s (minus/plano): automatic ET ≤ sheet ET + 0.20 mm', (_, r) => {
+    const a = autoFor(r);
+    expect(a.ok).toBe(true);
+    const et = thicknessAt(a.surfaces, r.d / 2, 0);
+    minusMax = Math.max(minusMax, et - r.ET);
+    // user-accepted for phase 1 (MAT-03): no lower bound, the flat floor makes minus edges thinner
+    expect(et).toBeLessThanOrEqual(r.ET + MM_TOL);
+  });
+
+  afterAll(() => {
+    const f = (x) => x.toFixed(3);
+    console.info(
+      `[zeiss] tier 2 (d): ${diffs.length} plus rows, Zeiss − auto CT min ${f(Math.min(...diffs))} max ${f(Math.max(...diffs))} mm, ` +
+        `D-C rows ${tieBreakRows}; minus rows max auto ET − sheet ET ${f(minusMax)} mm`,
+    );
   });
 });
 
