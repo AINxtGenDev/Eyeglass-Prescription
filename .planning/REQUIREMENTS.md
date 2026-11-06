@@ -60,7 +60,7 @@
 - [ ] **RES-03**: User can compare two configurations (material and/or frame size/shape) side by side or as a before/after toggle on phones, in numbers and in the views.
 - [ ] **RES-04**: A large difference between left and right lens is pointed out in plain words.
 - [ ] **RES-05**: The site starts with a realistic example (clearly labelled "Beispiel — ersetzen Sie die Werte durch Ihre eigenen") and offers Rx presets (leicht kurzsichtig, stark kurzsichtig, weitsichtig, Hornhautverkrümmung) and frame presets; applying a preset over typed values asks first.
-- [ ] **RES-06**: A persistent disclaimer states this is an educational visualization, not a substitute for an optician, and names the main simplifications.
+- [x] **RES-06**: A persistent disclaimer states this is an educational visualization, not a substitute for an optician, and names the main simplifications.
 
 ### Explanations & Usability (UX)
 
@@ -177,7 +177,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-03 | Phase 2 | Pending |
 | RES-04 | Phase 2 | Pending |
 | RES-05 | Phase 2 | Pending |
-| RES-06 | Phase 1 | Pending |
+| RES-06 | Phase 1 | Complete |
 | UX-01 | Phase 2 | Pending |
 | UX-02 | Phase 2 | Pending |
 | UX-03 | Phase 2 | Pending |

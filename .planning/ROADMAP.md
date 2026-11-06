@@ -51,7 +51,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Minimal German page wired to the engine, disclaimer, timing readouts; smoke GREEN
+- [x] 01-03-PLAN.md — Minimal German page wired to the engine, disclaimer, timing readouts; smoke GREEN
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 2/11 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 3/11 | In Progress|  |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
