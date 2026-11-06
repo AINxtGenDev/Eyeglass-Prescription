@@ -28,22 +28,22 @@ describe('MAT-02 Vogel rule', () => {
 });
 
 describe('MAT-02 base curve', () => {
-  it('limits are [0.5, 10] and frozen; margin is 2 mm', () => {
-    expect(BASE_CURVE_LIMITS).toEqual({ min: 0.5, max: 10 });
+  it('limits are [0.5, 14] (D-A, 01-12) and frozen; margin is 2 mm', () => {
+    expect(BASE_CURVE_LIMITS).toEqual({ min: 0.5, max: 14 });
     expect(Object.isFrozen(BASE_CURVE_LIMITS)).toBe(true);
     expect(FRONT_RADIUS_MARGIN_MM).toBe(2);
   });
-  it('Vogel reference SE −12 → raw 0, clamped 0.5, maxD1 10', () => {
+  it('Vogel reference SE −12 → raw 0, clamped 0.5, maxD1 = 500/29 capped at 14', () => {
     expect(baseCurveAuto(-12, { n: 1.5, rhoMax: 27 })).toEqual({
       vogelD1: 0,
       vogelClampedD1: 0.5,
-      maxD1: 10,
+      maxD1: 14,
     });
   });
-  it('Vogel reference SE +12 → raw 18, clamped 10', () => {
+  it('Vogel reference SE +12 → raw 18, clamped 14', () => {
     const r = baseCurveAuto(12, { n: 1.5, rhoMax: 27 });
     expect(r.vogelD1).toBe(18);
-    expect(r.vogelClampedD1).toBe(10);
+    expect(r.vogelClampedD1).toBe(14);
   });
   it('Vogel reference SE −2 → 5, 5', () => {
     const r = baseCurveAuto(-2, { n: 1.5, rhoMax: 27 });
@@ -56,8 +56,8 @@ describe('MAT-02 base curve', () => {
       expect(Math.abs(r.maxD1 - 9.4339622642)).toBeLessThan(1e-9);
     }
   });
-  it('search upper bound n 1.738, rhoMax 51 → 738/53 > 10 so 10', () => {
-    expect(baseCurveAuto(0, { n: 1.738, rhoMax: 51 }).maxD1).toBe(10);
+  it('search upper bound n 1.738, rhoMax 51 → 738/53 (below the ceiling 14)', () => {
+    expect(Math.abs(baseCurveAuto(0, { n: 1.738, rhoMax: 51 }).maxD1 - 738 / 53)).toBeLessThan(1e-9);
   });
   it('conic aware: k1 0.5 → 500/(53·√1.5)', () => {
     const r = baseCurveAuto(0, { n: 1.5, rhoMax: 51, k1: 0.5 });
@@ -66,7 +66,7 @@ describe('MAT-02 base curve', () => {
   it('conic aware: k1 −1 and −2 → no front cap', () => {
     for (const k1 of [-1, -2]) {
       for (const rhoMax of [10, 51, 400, 5000]) {
-        expect(baseCurveAuto(0, { n: 1.5, rhoMax, k1 }).maxD1).toBe(10);
+        expect(baseCurveAuto(0, { n: 1.5, rhoMax, k1 }).maxD1).toBe(BASE_CURVE_LIMITS.max);
       }
     }
   });
@@ -84,11 +84,12 @@ describe('MAT-02 base curve', () => {
         fc.constantFrom(-1, 0, 0.5),
         (se, n, rhoMax, k1) => {
           const r = baseCurveAuto(se, { n, rhoMax, k1 });
-          if (r.vogelClampedD1 < 0.5 || r.vogelClampedD1 > 10) return false;
-          if (r.vogelClampedD1 !== Math.min(Math.max(vogelBaseCurve(se), 0.5), 10)) return false;
-          if (r.maxD1 > 10) return false;
+          const max = BASE_CURVE_LIMITS.max;
+          if (r.vogelClampedD1 < 0.5 || r.vogelClampedD1 > max) return false;
+          if (r.vogelClampedD1 !== Math.min(Math.max(vogelBaseCurve(se), 0.5), max)) return false;
+          if (r.maxD1 > max) return false;
           if (k1 === 0) {
-            const expected = Math.min(10, K(n) / (rhoMax + FRONT_RADIUS_MARGIN_MM));
+            const expected = Math.min(max, K(n) / (rhoMax + FRONT_RADIUS_MARGIN_MM));
             if (Math.abs(r.maxD1 - expected) > 1e-12) return false;
           }
           return true;

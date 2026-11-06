@@ -1,0 +1,2251 @@
+{
+  "generatedAt": "d6343e3",
+  "description": "01-12 Group A: automatic results captured before the non-convex-back constraint, ceiling +14 and D-C. noPositiveMeridian: bitwise pins. atRisk: plus/mixed lenses whose old optimum already had max(D2a, D2b) <= 0.",
+  "grid": {
+    "eye": "OD",
+    "axisDeg": 30,
+    "cyls": [
+      0,
+      -2,
+      -6
+    ],
+    "materials": [
+      "cr39",
+      "idx174"
+    ],
+    "frames": [
+      {
+        "shape": "rechteckig",
+        "A": 52,
+        "B": 38,
+        "DBL": 18,
+        "monoPD": 32
+      },
+      {
+        "shape": "rund",
+        "A": 50,
+        "B": 50,
+        "DBL": 18,
+        "monoPD": 32
+      },
+      {
+        "shape": "panto",
+        "A": 49,
+        "B": 42,
+        "DBL": 20,
+        "monoPD": 30
+      },
+      {
+        "shape": "pilot",
+        "A": 58,
+        "B": 50,
+        "DBL": 14,
+        "monoPD": 30
+      }
+    ],
+    "noPositiveMeridianSph": [
+      -12,
+      -8,
+      -4,
+      -2,
+      -0.25,
+      0
+    ],
+    "atRiskSph": "+0.25 … +12 in 0.25 steps, kept if ok and max(D2a, D2b) <= 0"
+  },
+  "noPositiveMeridian": [
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 16.1475136072324,
+      "weightG": 15.21153057413326
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 9.620713335900227,
+      "weightG": 10.717362466805186
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 11.923065762956501,
+      "weightG": 15.325905418531883
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 7.388629936940711,
+      "weightG": 10.857232013242463
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 15.49537724798169,
+      "weightG": 13.2930738410759
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 9.293387608799593,
+      "weightG": 9.389103095917504
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 25.568626236326914,
+      "weightG": 26.97321600999521
+    },
+    {
+      "sph": -12,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 13.553772464679968,
+      "weightG": 18.52581810241628
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 18.979731462243837,
+      "weightG": 16.113037217045704
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 10.81887587165331,
+      "weightG": 11.292728728151927
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 13.521239156352358,
+      "weightG": 16.37731305663919
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 8.157264664203723,
+      "weightG": 11.539140401418795
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 18.19468453569434,
+      "weightG": 14.143342276418739
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 10.462525479115659,
+      "weightG": 9.932194275246214
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 30.603460006027394,
+      "weightG": 28.998095214123357
+    },
+    {
+      "sph": -12,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 14.599239521103641,
+      "weightG": 19.650540772465604
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": false,
+      "code": "BACK_SAG_UNDEFINED"
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 13.637593113903018,
+      "weightG": 12.502235717427903
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 21.220883179249476,
+      "weightG": 18.856219827959386
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 10.57817622594433,
+      "weightG": 12.972053629213448
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": false,
+      "code": "BACK_SAG_UNDEFINED"
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 13.269255320166142,
+      "weightG": 11.074467410049676
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": false,
+      "code": "BACK_SAG_UNDEFINED"
+    },
+    {
+      "sph": -12,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 19.17562215792215,
+      "weightG": 22.084240588707328
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 10.203368228670008,
+      "weightG": 11.255544199354254
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 6.5293295377774,
+      "weightG": 8.050537677102636
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 7.998266956116048,
+      "weightG": 11.459715382850392
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.158006041476338,
+      "weightG": 8.203311214561023
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 9.879823796936531,
+      "weightG": 9.95345011638127
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 6.330636390158045,
+      "weightG": 7.115234072791688
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 14.095935509239297,
+      "weightG": 18.77741262486723
+    },
+    {
+      "sph": -8,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 8.849067720883735,
+      "weightG": 13.412946117456471
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 12.019989644356894,
+      "weightG": 12.02423991690712
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 7.579329735344386,
+      "weightG": 8.5936227963177
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 9.294966006794775,
+      "weightG": 12.370674987736974
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.928473353102231,
+      "weightG": 8.848857252586285
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 11.65955563295851,
+      "weightG": 10.679064003926062
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 7.363781448356246,
+      "weightG": 7.6281312059918935
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 16.080766869200083,
+      "weightG": 20.28650337336418
+    },
+    {
+      "sph": -8,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 9.881600149653863,
+      "weightG": 14.44544500179589
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 16.808521340032684,
+      "weightG": 13.698474677329422
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 9.930064990675683,
+      "weightG": 9.715642869058273
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 13.349690461950367,
+      "weightG": 14.352330747755495
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 8.049763394609508,
+      "weightG": 10.182875056798663
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 16.470408159447985,
+      "weightG": 12.261561673793127
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 9.7248370476769,
+      "weightG": 8.68797213913531
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 25.27824560170039,
+      "weightG": 23.772666625191608
+    },
+    {
+      "sph": -8,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 13.319611331357665,
+      "weightG": 16.6107603552204
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 5.754761742075312,
+      "weightG": 7.763361958781196
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.7462326053328137,
+      "weightG": 5.512460115352209
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 4.766074982615996,
+      "weightG": 7.979153074243695
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.090936814877765,
+      "weightG": 5.661796750572094
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 5.611954090712938,
+      "weightG": 6.9730683219988085
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.651841757160799,
+      "weightG": 4.942830334090399
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 7.41055859136439,
+      "weightG": 12.121115379935171
+    },
+    {
+      "sph": -4,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.8341577469256976,
+      "weightG": 8.662424960143607
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 7.271989367311703,
+      "weightG": 8.472545296069578
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.72956096291603,
+      "weightG": 6.037305552063321
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.023263652381059,
+      "weightG": 8.82276433330612
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.910900237681926,
+      "weightG": 6.286415284386532
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 7.11866691214353,
+      "weightG": 7.642960137603621
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.628963721426014,
+      "weightG": 5.438667803874316
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 9.190877646275,
+      "weightG": 13.460835558941831
+    },
+    {
+      "sph": -4,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.963743962976872,
+      "weightG": 9.646128195038614
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 10.791629003629124,
+      "weightG": 9.956365639631194
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 6.8618303135829635,
+      "weightG": 7.107538285804424
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 9.206614985973616,
+      "weightG": 10.588572677444724
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.870146527579575,
+      "weightG": 7.560446512041351
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 10.684538450595422,
+      "weightG": 9.044922528279473
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 6.787535874668079,
+      "weightG": 6.4498051894615225
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 14.443916987338056,
+      "weightG": 16.322419755156943
+    },
+    {
+      "sph": -4,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 8.974864685340226,
+      "weightG": 11.667980080181255
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.7479261394054415,
+      "weightG": 6.10012444171124
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.4142348846699404,
+      "weightG": 4.270092485550007
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.266535721378295,
+      "weightG": 6.3114982545518306
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.0904560971732598,
+      "weightG": 4.414726790344993
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.6786255500760703,
+      "weightG": 5.548272396981298
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.3676648163442477,
+      "weightG": 3.8777850386458153
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 4.545676598724112,
+      "weightG": 9.023533198121147
+    },
+    {
+      "sph": -2,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.949332223469403,
+      "weightG": 6.3586230560416315
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 5.213361300543109,
+      "weightG": 6.794198455247453
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.3902851361332127,
+      "weightG": 4.789899986312924
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 4.558625816227954,
+      "weightG": 7.137647250965439
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.9530031330141577,
+      "weightG": 5.0335054676282525
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 5.147043266627018,
+      "weightG": 6.2040160347932884
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.3457795217202317,
+      "weightG": 4.368906991197651
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.396376202129675,
+      "weightG": 10.32326811209573
+    },
+    {
+      "sph": -2,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.172986641233145,
+      "weightG": 7.32920699094801
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 8.473240746080727,
+      "weightG": 8.225816658426247
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.4702022979576395,
+      "weightG": 5.843814068463122
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 7.528114237181741,
+      "weightG": 8.842404494987024
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.860791560629014,
+      "weightG": 6.288355430006637
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 8.460511599627717,
+      "weightG": 7.556715184533519
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.458258139720204,
+      "weightG": 5.364689217664239
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 11.095693107543617,
+      "weightG": 13.038906715857802
+    },
+    {
+      "sph": -2,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 7.09188873859073,
+      "weightG": 9.307701426579333
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 2.0421899243811135,
+      "weightG": 4.665346205899241
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.26389031419412,
+      "weightG": 3.1900112693276785
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 1.982627032363028,
+      "weightG": 4.870629514755024
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.2236029153496109,
+      "weightG": 3.3297926240814437
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 2.0336269952870474,
+      "weightG": 4.317906561061518
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.2580992430768658,
+      "weightG": 2.951430802252131
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 2.1404784976160136,
+      "weightG": 6.367594643358765
+    },
+    {
+      "sph": -0.25,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.3303441980391884,
+      "weightG": 4.361161083706748
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.5192173023472777,
+      "weightG": 5.352319300244959
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.260345433217947,
+      "weightG": 3.707392599583799
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.3315976178776916,
+      "weightG": 5.688478829572047
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.1340834999814966,
+      "weightG": 3.9457334494337943
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.5320403242754788,
+      "weightG": 4.966990588540979
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.268942560992574,
+      "weightG": 3.4402778565624375
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 4.16264098286531,
+      "weightG": 7.648892227939044
+    },
+    {
+      "sph": -0.25,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.692316815910114,
+      "weightG": 5.325480129840519
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.644006460661206,
+      "weightG": 6.753719751712557
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.31313511496562,
+      "weightG": 4.751421509165781
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.175862090715438,
+      "weightG": 7.357381642027579
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.008025018379199,
+      "weightG": 5.188831356286201
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.71106275117867,
+      "weightG": 6.291158305640771
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.356306899148822,
+      "weightG": 4.426741499347128
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 8.585020520043777,
+      "weightG": 10.283346077606893
+    },
+    {
+      "sph": -0.25,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.560053091369006,
+      "weightG": 7.2781013964999675
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 1.8002903306430844,
+      "weightG": 4.46111728939851
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.100103675091959,
+      "weightG": 3.0359688199399777
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 1.8002189510894557,
+      "weightG": 4.665453115990091
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.100078193489383,
+      "weightG": 3.175030380733735
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 1.8002800698331085,
+      "weightG": 4.142728399450453
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.1001000124147347,
+      "weightG": 2.8192973550084357
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 1.8004080861219407,
+      "weightG": 5.990111694445241
+    },
+    {
+      "sph": 0,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 1.1001457015626768,
+      "weightG": 4.076475633926358
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.2870257536959384,
+      "weightG": 5.147507476096836
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.1041873171707994,
+      "weightG": 3.5531493510991754
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.1593525663883844,
+      "weightG": 5.482612284851542
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.018274435904721,
+      "weightG": 3.7907334304794347
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.311604915177008,
+      "weightG": 4.791264159923054
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.120756263628583,
+      "weightG": 3.3079555662584563
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 3.861828708585256,
+      "weightG": 7.269905961996695
+    },
+    {
+      "sph": 0,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 2.490676822670764,
+      "weightG": 5.040277916854952
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.395013263469883,
+      "weightG": 6.54561156428162
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.152449515482845,
+      "weightG": 4.596080330195168
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 5.9893945544374665,
+      "weightG": 7.147563632728486
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 3.8881133857373342,
+      "weightG": 5.032513713365661
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 6.4734291592488,
+      "weightG": 6.112314855663001
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 4.203522359966643,
+      "weightG": 4.293382125651788
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.8,
+      "etMax": 8.250403294388352,
+      "weightG": 9.895637338630031
+    },
+    {
+      "sph": 0,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "ok": true,
+      "D1": 0.5,
+      "ct": 1.1,
+      "etMax": 5.349546530366423,
+      "weightG": 6.990043612047675
+    }
+  ],
+  "atRisk": [
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 6.25,
+      "J": 1.8
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.1389514502293716
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 6.25,
+      "J": 1.8
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.1021369809031567
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 6.25,
+      "J": 1.8
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.1335390545843929
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "D1": 6.25,
+      "J": 1.8
+    },
+    {
+      "sph": 0.25,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.2042193290133305
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 3.0588430630997854
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 2.01305123470434
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 2.987729439770446
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 1.9235431757247985
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 3.095011116988112
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 1.998521077480198
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 3.567307014712359
+    },
+    {
+      "sph": 0.25,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 2.421354834968758
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 6.149247048082639
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 4.055453084672607
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 5.8042941669879395
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 3.7893584696489206
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 6.238709436339867
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 4.074931884801675
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 7.9211169178479786
+    },
+    {
+      "sph": 0.25,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 5.269446490528759
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 6.5,
+      "J": 1.8
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.3186103024310558
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 6.5,
+      "J": 1.8
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.2344187006550733
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 6.5,
+      "J": 1.8
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.3062425945229643
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "D1": 6.5,
+      "J": 1.8
+    },
+    {
+      "sph": 0.5,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 2.4295634824951633,
+      "J": 1.4596002359444793
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 2.835943948443747
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 2.0258929443610256
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 2.8166847447516687
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 1.929156368988102
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 2.883117795594902
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 1.9811402656336004
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 3.280099206061543
+    },
+    {
+      "sph": 0.5,
+      "cyl": -2,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 2.4571123276844675
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 5.906317207482502
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 4.060123938398199
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 5.620553281805089
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 3.7911448977861264
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 6.006897023664125
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 4.0483199078318135
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "cr39",
+      "D1": 0.5,
+      "J": 7.597168608033613
+    },
+    {
+      "sph": 0.5,
+      "cyl": -6,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 0.5,
+      "J": 5.291859135548634
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "cr39",
+      "D1": 6.75,
+      "J": 1.8
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 2.6524758424985277,
+      "J": 1.4905701301502459
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 6.75,
+      "J": 1.8
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 10,
+      "J": 1.3660228988970173
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "cr39",
+      "D1": 6.75,
+      "J": 1.8
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 3.10487837125347,
+      "J": 1.4731561576693306
+    },
+    {
+      "sph": 0.75,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 1.2213595499957939,
+      "J": 1.6897342545091913
+    },
+    {
+      "sph": 1,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 1.7573542137519977,
+      "J": 1.6543263108545052
+    },
+    {
+      "sph": 1,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "cr39",
+      "D1": 7,
+      "J": 1.8
+    },
+    {
+      "sph": 1,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 3.4508497187473712,
+      "J": 1.4932068025290286
+    },
+    {
+      "sph": 1,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 1.8606797749978972,
+      "J": 1.6311916300719913
+    },
+    {
+      "sph": 1,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 1.2213595499957939,
+      "J": 1.919634497019771
+    },
+    {
+      "sph": 1.25,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 1.6869176962471608,
+      "J": 1.817922341592624
+    },
+    {
+      "sph": 1.25,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.4164078649987384,
+      "J": 1.6167640996583827
+    },
+    {
+      "sph": 1.25,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 1.7426457862480023,
+      "J": 1.7890176897469354
+    },
+    {
+      "sph": 1.25,
+      "cyl": 0,
+      "frame": "pilot",
+      "materialId": "idx174",
+      "D1": 1.326237921249264,
+      "J": 2.1494757463015306
+    },
+    {
+      "sph": 1.5,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 1.7426457862480023,
+      "J": 1.9814673892295858
+    },
+    {
+      "sph": 1.5,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.2294901687515774,
+      "J": 1.7401622158067886
+    },
+    {
+      "sph": 1.5,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 1.7917960675006308,
+      "J": 1.946789535482834
+    },
+    {
+      "sph": 1.75,
+      "cyl": 0,
+      "frame": "rechteckig",
+      "materialId": "idx174",
+      "D1": 1.8606797749978972,
+      "J": 2.14497453870033
+    },
+    {
+      "sph": 1.75,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.2426457862480023,
+      "J": 1.863509388122859
+    },
+    {
+      "sph": 1.75,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 1.8951216287465302,
+      "J": 2.1045235511632376
+    },
+    {
+      "sph": 2,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.3130823037528394,
+      "J": 1.986823309937611
+    },
+    {
+      "sph": 2,
+      "cyl": 0,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 2.0278640450004204,
+      "J": 2.262223347107586
+    },
+    {
+      "sph": 2.25,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.4295634824951633,
+      "J": 2.110108933178679
+    },
+    {
+      "sph": 2.25,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.4508497187473712,
+      "J": 2.0883502871883985
+    },
+    {
+      "sph": 2.25,
+      "cyl": -2,
+      "frame": "panto",
+      "materialId": "idx174",
+      "D1": 2.2836654487448476,
+      "J": 2.162491374281518
+    },
+    {
+      "sph": 2.5,
+      "cyl": 0,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.5491502812526288,
+      "J": 2.233367930004125
+    },
+    {
+      "sph": 2.5,
+      "cyl": -2,
+      "frame": "rund",
+      "materialId": "idx174",
+      "D1": 2.5754615162454786,
+      "J": 2.2094183792362765
+    }
+  ]
+}
