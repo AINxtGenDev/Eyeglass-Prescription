@@ -63,7 +63,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 01-06-PLAN.md — Six cited materials (incl. Trivex 1,53), Zeiss CR-39 143-row tier-2 validation, material select
+- [x] 01-06-PLAN.md — Six cited materials (incl. Trivex 1,53), Zeiss CR-39 143-row tier-2 validation, material select
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 5/11 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 6/11 | In Progress|  |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
