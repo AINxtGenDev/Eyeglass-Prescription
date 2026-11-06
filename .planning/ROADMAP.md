@@ -34,7 +34,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A push to `main` with a failing lint rule, unit test, build or browser smoke test does not deploy; a passing push updates the live site. Actions are SHA-pinned, npm deps exact-pinned, and an engine file importing `three` or DOM APIs fails CI.
   3. The engine test suite passes and demonstrates: back-vertex-power round trip within 0,01 dpt across the input range, true-torus back surface, ray-trace oracle reproducing Sph/Zyl/Achse, spherical manufacturer-chart rows within ±0,20 mm after tool-index conversion, asymmetric nasal/temporal edges from decentration, per-eye (not mirrored) left lens, and property tests for symmetry/monotonicity. Material index, density and Abbe values carry source citations in code.
   4. An impossible lens (e.g. −12,00 / −6,00 × 10 in a 62×55 frame, CR-39 — no base curve in +0,50…+14,00 dpt computes it) yields a coded diagnostic with a plain-German explanation and suggestion instead of numbers, and all visible text and messages come from the `de-AT` dictionary.
-  5. Typing never freezes: both lenses are computed in a Web Worker (direct computation as a stated fallback), and ENG-09 as restated 2026-11-06 (user decision "Worker + RAIL target"; RAIL https://web.dev/articles/rail, INP https://web.dev/articles/inp) is measured on the 4× CPU-throttled proxy and on a real mid-range phone via the live site and recorded: every main-thread task per input < 16,7 ms, input to next paint ≤ 200 ms, canonical normal result painted within 100 ms (median), and "rechnet …" with outdated-value marking for any result slower than 50 ms, with the latest result arriving.
+  5. Typing never freezes: both lenses are computed in a Web Worker (direct computation as a stated fallback), and ENG-09 as restated 2026-11-06 (user decision "Worker + RAIL target"; RAIL https://web.dev/articles/rail, INP https://web.dev/articles/inp) is measured and recorded:
+     - (a) every main-thread task per input, including style, layout and paint, < 16,7 ms;
+     - (b) input to next paint ≤ 200 ms for every edit;
+     - (c) canonical normal result painted within 100 ms for every edit;
+     - (d) "rechnet …" with outdated-value marking for any result slower than 50 ms, and the latest result arrives.
+
+     (a) and (b) are measured on the 4× CPU-throttled proxy and on a real mid-range phone via the live site. (c) and (d) are decided on the real phone. The proxy only estimates them, because CPU throttling does not reach the worker.
   6. Explicit phase step: GitHub Pages is enabled on `AINxtGenDev/Eyeglass-Prescription` with Source "GitHub Actions" once the pipeline is ready (pre-authorized by the user 2026-11-06), and the first deploy is verified by loading the live URL.
   7. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
@@ -95,7 +101,7 @@ Plans:
 
 **Wave 15** *(gap closure; blocked on Wave 14 completion)*
 
-- [ ] 01-15-PLAN.md — ENG-09 follow-up (user decision "Worker + RAIL target"): engine in a module Web Worker with latest-wins and per-eye memo, "rechnet …" state with aria-busy after 50 ms, synchronous fallback, ENG-09 restated to RAIL/INP (cited), worker-path readouts incl. the rescan pair, throttled proxy 2×/4×/6× against the new rule plus a decision gate on 4× FAIL
+- [ ] 01-15-PLAN.md — ENG-09 follow-up (user decision "Worker + RAIL target"): engine in a module Web Worker with latest-wins and per-eye memo, "rechnet …" state with aria-busy after 50 ms, synchronous fallback, ENG-09 restated to RAIL/INP (cited), main-thread timing including paint, worker bench one run per job (compute first) incl. the rescan pair, watchdog, throttled proxy 2×/4×/6× (a,b measured; c,d estimated) plus a decision gate on 4× FAIL
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
