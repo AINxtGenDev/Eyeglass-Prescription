@@ -32,7 +32,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 - [ ] Per-eye SPH −12.00…+12.00 D (0.25), CYL −6.00…0.00 D (0.25, minus-cyl; optional plus-cyl transposition), AXIS 0…180° (TABO), monocular PD 25.0…40.0 mm; "same for both eyes" sync
 - [ ] Materials CR-39 1.50, PC 1.59, 1.60, 1.67, 1.74 with verified densities (and Abbe as nice-to-have)
 - [ ] Base curve auto (Vogel's rule, verified form) or manual 0…+10 D
-- [ ] Min center thickness (default 1.5 mm) and min edge thickness (default 1.2 mm), adjustable in Expert view
+- [ ] Min center and min edge thickness with sourced per-material defaults (research: Zeiss uses 1.8 mm CR-39, 1.2 mm 1.67, 1.1 mm 1.74 for minus CT — a single global default distorts the material comparison), adjustable in Expert view
 - [ ] Spherical vs aspheric (conic constant k) surface profile
 - [ ] Frame: A 40–62 mm, B 28–55 mm, DBL 14–24 mm, rim depth, parametric shapes
 
