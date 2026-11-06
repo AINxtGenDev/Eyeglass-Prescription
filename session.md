@@ -68,8 +68,10 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **chrome-devtools (local):** at −6,00 the max edge goes from 6,3 mm with CR-39 to 4,1 mm with 1,74, and the weight from 9,7 g to 6,9 g. At +4,00, 1,74 (6,1 g) is heavier than 1,67 (5,9 g) because of its higher density. That is plausible. No console errors.
 - **01-07 done.** Frame shapes Rund (48×44), Rechteckig, Panto and Pilot, each with A/B/DBL and a PD per eye. Decentration is (A+DBL)/2 − PD, and results are computed on the real outline. 699 unit tests and 18 e2e tests pass. ENG-05 is marked complete, but only proven for spheres; the oblique-cylinder test comes in 01-08.
 - **chrome-devtools (local), −6,00 CR-39:** Rund 6,0 mm / 7,5 g; Rechteckig 7,9 mm / 9,5 g; Panto 7,0 mm / 8,2 g; Pilot 9,6 mm / 14,9 g (max edge / weight). Both eyes are identical. The decentration values are correct, e.g. rectangular (52+18)/2 − 32 = 3,0 mm. Rund shows its thinnest edge "oben, zur Nase". I checked whether that was a bug: it is correct, because the shape is a 48×44 oval and that point is closest to the optical centre (21,5 mm vs 22 mm). On a 48×48 circle the engine says "nasal".
+- **01-08 done.** Cylinder support in the engine (minus-cylinder form) through a true torus back surface along the TABO axis. A ray-trace oracle traces through the finished lens and recovers Sph/Zyl/Achse within 0,001 dpt (300 + 100 random cases). A deliberately wrong thin-lens design is caught at 0,56 dpt. ENG-05 with an oblique cylinder on both eyes passes: the left lens is the right lens rotated 180° (not mirrored), within 1e-9 mm. ENG-01 to ENG-04 are complete, and 751 tests pass. No UI change, so no browser test.
 
 ### Open items
+- The difference table in PITFALLS.md (Pitfall 5) was computed with the barrel instead of the tyre torus. With the tyre the real differences are at most 0,086 mm, not 0,39 mm. Only the orientation sentence was corrected; lens-critic should check it in 01-11.
 - Pilot orientation (deepest on the temple side vs the nose side) is unverified, with no reference image. Decide in lens-critic 01-11.
 - MAT-01 is not marked complete: the Abbe number is stored but not yet used. Decide in 01-11 / lens-critic.
 - Cosmetic: the material labels are inconsistent ("(1,50)" vs "1,53" without brackets). Phase 2 (UI) will tidy them.
@@ -82,4 +84,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-08: true toric back surface for cylinder, plus a ray-trace oracle.
+Plan 01-09: full paper Rx entry (Sph/Zyl/Achse) in both cylinder forms, with plus-cylinder transposition in the UI.
