@@ -111,6 +111,9 @@ function checkRule(r) {
       else if (typeof v === 'object') for (const [k, w] of Object.entries(v)) walk(w, `${path}.${k}`);
     };
     walk(r.metrics, 'metrics');
+    // 01-13: ENG-06 sags and MAT-01 Abbe number are finite on every ok result
+    walk(r.intermediates.sags, 'intermediates.sags');
+    walk(r.intermediates.abbe, 'intermediates.abbe');
     // GAP-1 (01-12): every back principal power ≤ 0 (plano allowed)
     expect(Math.max(r.intermediates.D2a, r.intermediates.D2b)).toBeLessThanOrEqual(0);
   } else {

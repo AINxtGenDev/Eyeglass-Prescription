@@ -55,6 +55,14 @@ describe('MAT-01 materials', () => {
     expect(u.hostname === 'zeiss.com' || u.hostname.endsWith('.zeiss.com')).toBe(true);
   });
 
+  it.each(Object.keys(MATERIALS))('MAT-01 %s has a plausible Abbe number νe in [20, 70] with a source doc (01-13)', (id) => {
+    const m = MATERIALS[id];
+    expect(Number.isFinite(m.ve)).toBe(true);
+    expect(m.ve).toBeGreaterThanOrEqual(20);
+    expect(m.ve).toBeLessThanOrEqual(70);
+    expect(typeof m.source.doc).toBe('string');
+  });
+
   it('rows whose minET is not read from a sheet row are marked assumed', () => {
     expect(MATERIALS.idx167.assumed).toEqual(['minET']);
     expect(MATERIALS.idx174.assumed).toEqual(['minET']);

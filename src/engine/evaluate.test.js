@@ -537,3 +537,73 @@ describe('ENG-07 cylinder impossibility (SC-4)', () => {
     expect(r.diagnostics[0].data.searched).toBe(true);
   });
 });
+
+describe('ENG-06 intermediates sags (01-13)', () => {
+  const sagClosed = (R, r) => {
+    const c = 1 / R;
+    return (c * r * r) / (1 + Math.sqrt(1 - c * c * r * r));
+  };
+  const KEYS = ['nasal', 'temporal', 'superior', 'inferior', 'etMax', 'etMin', 'rhoMax'];
+  const SPECS = [
+    ['−2 rund 50×50/18 PD 32', spec()],
+    ['−4 −2 × 30 rechteckig 52×38/18 PD 32', spec({ sph: -4, cyl: -2, axisDeg: 30, frame: { shape: 'rechteckig', A: 52, B: 38, DBL: 18 } })],
+    ['+4 rechteckig 52×38/18 PD 32', spec({ sph: 4, frame: { shape: 'rechteckig', A: 52, B: 38, DBL: 18 } })],
+    ['+6 −2 × 30 panto 49×42/20 PD 30', spec({ sph: 6, cyl: -2, axisDeg: 30, frame: { shape: 'panto', A: 49, B: 42, DBL: 20 }, monoPD: 30 })],
+    ['−6 pilot 58×50/14 PD 30', spec({ sph: -6, frame: { shape: 'pilot', A: 58, B: 50, DBL: 14 }, monoPD: 30 })],
+    ['OS −4 −2 × 30 rechteckig 52×38/18 PD 32', spec({ eye: 'OS', sph: -4, cyl: -2, axisDeg: 30, frame: { shape: 'rechteckig', A: 52, B: 38, DBL: 18 } })],
+  ];
+
+  it('closed form: −2,00 OD rund 50×50/18, PD 32 nasal sag at (25, 0), r = 23', () => {
+    const r = evaluateLens(spec());
+    expect(r.ok).toBe(true);
+    const p = r.intermediates.sags.nasal;
+    expect(p.x).toBeCloseTo(25, 12);
+    expect(Math.abs(p.y)).toBeLessThan(1e-12);
+    expect(Math.abs(p.front - sagClosed(r.intermediates.R1, 23))).toBeLessThan(1e-9);
+    expect(Math.abs(p.back - sagClosed(r.intermediates.Ra, 23))).toBeLessThan(1e-9);
+    console.log('[01-13] sags −2 rund 50/18/32 OD', JSON.stringify(r.intermediates.sags));
+  });
+
+  it.each(SPECS)('consistency: ct − front + back = reported thickness (%s)', (_name, s) => {
+    const r = evaluateLens(s);
+    expect(r.ok).toBe(true);
+    const sg = r.intermediates.sags;
+    const t = (k) => r.metrics.ct - sg[k].front + sg[k].back;
+    for (const k of ['nasal', 'temporal', 'superior', 'inferior']) {
+      expect(Math.abs(t(k) - r.metrics.etAt[k]), k).toBeLessThan(1e-9);
+    }
+    expect(Math.abs(t('etMax') - r.metrics.etMax.value)).toBeLessThan(1e-9);
+    expect(Math.abs(t('etMin') - r.metrics.etMin.value)).toBeLessThan(1e-9);
+    expect(Math.abs(t('rhoMax') - thicknessAt(r.surfaces, sg.rhoMax.x, sg.rhoMax.y))).toBeLessThan(1e-9);
+    expect(sg.etMax.x).toBe(r.metrics.etMax.x);
+    expect(sg.etMin.y).toBe(r.metrics.etMin.y);
+  });
+
+  it.each(SPECS)('rhoMax point lies at distance intermediates.rhoMax from the OC (%s)', (_name, s) => {
+    const r = evaluateLens(s);
+    const p = r.intermediates.sags.rhoMax;
+    const oc = r.surfaces.oc;
+    expect(Math.abs(Math.hypot(p.x - oc.x, p.y - oc.y) - r.intermediates.rhoMax)).toBeLessThan(1e-12);
+  });
+
+  it('eye symmetry: sphere-only rund, OD and OS nasal sags are equal', () => {
+    const { OD, OS } = evaluatePair({ OD: spec({ sph: -3 }), OS: spec({ eye: 'OS', sph: -3 }) });
+    expect(OS.intermediates.sags.nasal.front).toBe(OD.intermediates.sags.nasal.front);
+    expect(OS.intermediates.sags.nasal.back).toBe(OD.intermediates.sags.nasal.back);
+  });
+
+  it.each(SPECS)('every sag value is finite (%s)', (_name, s) => {
+    const sg = evaluateLens(s).intermediates.sags;
+    for (const k of KEYS) {
+      for (const f of ['x', 'y', 'front', 'back']) expect(Number.isFinite(sg[k][f]), `${k}.${f}`).toBe(true);
+    }
+  });
+});
+
+describe('MAT-01 the engine exposes the sourced Abbe number νe (01-13)', () => {
+  it.each(Object.keys(MATERIALS))('%s: intermediates.abbe === MATERIALS[id].ve', (materialId) => {
+    const r = evaluateLens(spec({ materialId }));
+    expect(r.ok).toBe(true);
+    expect(r.intermediates.abbe).toBe(MATERIALS[materialId].ve);
+  });
+});
