@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Recompute time for both lenses is measured on a real mid-range phone via the live site and recorded, within one animation frame.
   6. Explicit phase step: GitHub Pages is enabled on `AINxtGenDev/Eyeglass-Prescription` with Source "GitHub Actions" once the pipeline is ready (pre-authorized by the user 2026-11-06), and the first deploy is verified by loading the live URL.
   7. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
-**Plans**: 11 plans (11 sequential waves; walking skeleton = 01-01..01-05, see `01-SKELETON.md`; revised 2026-11-06 per plan-checker + lens-critic; under amended D-01 the SC-4 acceptance demo is −12/−6×10 in 62×55, CR-39, and "+12 in 62×55" is computable with warnings — SC text left unchanged)
+**Plans**: 11 plans (11 sequential waves; walking skeleton = 01-01..01-05, see `01-SKELETON.md`; revised 2026-11-06 per plan-checker + lens-critic; under final D-01 (thinnest feasible base curve) the SC-4 acceptance demo is −12/−6×10 in 62×55, CR-39; SC-4 text updated to match)
 
 Plans:
 - [ ] 01-01-PLAN.md — Package legitimacy gate, exact-pinned scaffold, RED smoke test, paper-style parser + de-AT formatter + dictionary
