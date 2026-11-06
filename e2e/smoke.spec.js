@@ -193,6 +193,42 @@ test('normal lens shows Vogel reference', async ({ page }) => {
   await expect(page.locator('#diag-od')).toBeEmpty();
 });
 
+test('axis message is specific (MINOR-5)', async ({ page }) => {
+  await page.locator('#rx-od-cyl').fill('-1,00');
+  const err = page.locator('#rx-od-axis-err');
+  for (const axis of ['90,5', '-90']) {
+    await page.locator('#rx-od-axis').fill(axis);
+    await expect(err).toBeVisible();
+    await expect(err).toContainText('ganze');
+    await expect(err).toContainText('180');
+  }
+});
+
+test('material line shows the Abbe number (MAT-01)', async ({ page }) => {
+  const line = page.locator('#result-od-material');
+  await expect(page.locator('#material')).toHaveValue('cr39');
+  await expect(line).toContainText('Abbe-Zahl 56');
+  await page.locator('#material').selectOption('pc');
+  await expect(line).toContainText('Abbe-Zahl 29');
+});
+
+// Oversized E2E reference case from 01-12-SUMMARY: vogelD1 18, vogelClampedD1 14 (D-A).
+test('Vogel raw value with clamp note (MINOR-1)', async ({ page }) => {
+  await setFrame(page, 'rechteckig', 62, 55, 24);
+  await page.locator('#rx-od-pd').fill('25');
+  await page.locator('#rx-od-sph').fill('+12');
+  await page.locator('#rx-od-cyl').fill('');
+  const bc = page.locator('#result-od-basecurve');
+  await expect(bc).toContainText('Faustregel nach Vogel +18,00');
+  await expect(bc).toContainText('begrenzt auf +14,00\u00A0dpt');
+  await expect(bc).toContainText('dpt, begrenzt auf');
+  await expect(bc).not.toContainText('dpt dpt');
+  await expect(bc).not.toContainText('dpt\u00A0dpt');
+  await page.locator('#rx-od-sph').fill('-2');
+  await expect(bc).toContainText('Faustregel nach Vogel');
+  await expect(bc).not.toContainText('begrenzt');
+});
+
 test('footer shows the build commit', async ({ page }) => {
   await expect(page.locator('#app-commit')).toHaveText(/^([0-9a-f]{7}|dev)$/);
 });

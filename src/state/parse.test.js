@@ -54,7 +54,12 @@ describe('parseAxis', () => {
 
   test.each([
     ['181', PARSE_CODES.PARSE_AXIS_OUT_OF_RANGE],
-    ['45,5', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    // 01-13 MINOR-5: an axis that is not whole degrees 0–180 gets its own message
+    ['45,5', PARSE_CODES.PARSE_AXIS_INVALID],
+    ['90,5', PARSE_CODES.PARSE_AXIS_INVALID],
+    ['-90', PARSE_CODES.PARSE_AXIS_INVALID],
+    ['−90', PARSE_CODES.PARSE_AXIS_INVALID],
+    ['abc', PARSE_CODES.PARSE_AXIS_INVALID],
     ['', PARSE_CODES.PARSE_EMPTY],
   ])('%j -> %s', (raw, code) => {
     expect(parseAxis(raw)).toEqual(err(code));
