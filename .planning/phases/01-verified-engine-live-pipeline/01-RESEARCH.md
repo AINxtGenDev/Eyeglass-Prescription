@@ -332,8 +332,9 @@ The two branches are continuous at 0. Worked examples: +4.00 −1.00 × 90 → 9
 
 Then **clamp to [+0.50, +10.00] D**:
 - The ceiling is the manual range in idea.md and REQUIREMENTS MAT-03.
-- The floor is a design choice consistent with the flattest manufacturer fronts seen: Zeiss 1.74 −12.00 front 0.43 D @1.530 ≈ 0.60 D true; Zeiss CR-39 −8.00 front 1.50 D @1.530 [VERIFIED: Zeiss PDFs].
+- The floor is a project design choice, not a manufacturing limit. It was informed by Zeiss 1.74 −12.00 front 0.43 D @1.530 ≈ 0.60 D true and Zeiss CR-39 −8.00 front 1.50 D @1.530 [VERIFIED: Zeiss PDFs]. **Correction (2026-11-06, lens-critic iteration 2 m2):** the earlier wording "consistent with the flattest manufacturer fronts seen" is contradicted by ZEISS Finished SV SPH 1.53 (Trivex, doc Z00981.FS1, fsv2023.pdf p.79), whose −7.00 and −8.00 rows use a 0.15 D front @1.530 [VERIFIED: `pdftotext -f 79 -l 79` by the planner]. Flatter real fronts exist; the model simply does not go below +0.50, and user-facing texts say "in diesem Modell".
 - Emit `BASE_CURVE_CLAMPED` (info) with `{vogel, used}`.
+- **Superseded by D-01 (amended again 2026-11-06, see 01-02-PLAN context):** if the Vogel-clamped front is too steep for the frame (R1 < ρmax + 2 mm) or the lens fails (FRONT_/BACK_SAG_UNDEFINED), the engine searches [+0.50, +10.00] for the computable D1 with the smallest max(CT, etMax) and reports `BASE_CURVE_CLAMPED` reason `frame-optimised`; errors only if no D1 computes.
 - Label it in Expert view (phase 2) as "Näherung (Vogel-Regel)".
 - Vogel ignores the index; real high-index aspherics are far flatter (PITFALLS Pitfall 1). That belongs in the disclaimer's simplifications.
 
@@ -366,7 +367,7 @@ Per-eye tests:
 | `NON_FINITE_RESULT` | error | any NaN/∞ in metrics (fuzz guard) | false | internal |
 | `OC_OUTSIDE_OUTLINE` | warn | OC not inside the outline polygon | true | decentration too large |
 | `BLANK_EXCEEDS_STOCK` | warn | `mbsMm > 75` (largest Zeiss stock blank on the sheets read) | true | larger blank / special order |
-| `BASE_CURVE_CLAMPED` | info | Vogel outside [0.50, 10.00] | true | shows rule and value |
+| `BASE_CURVE_CLAMPED` | info | Vogel outside [0.50, 10.00] (reason `range`), or the D-01 fallback search chose the front (reason `frame-optimised`, added 2026-11-06) | true | shows rule and value |
 | `CT_SET_BY_MIN_ET` / `CT_SET_BY_MIN_CT` | info | binding constraint | true | (Expert, phase 2) |
 
 Parser/state codes (not engine): `PARSE_EMPTY`, `PARSE_NOT_A_NUMBER`, `PARSE_MIXED_SEPARATORS`, `PARSE_TOO_MANY_DECIMALS`, `CYL_TRANSPOSED` (info), `AXIS_MISSING_FOR_CYL`.
@@ -378,7 +379,7 @@ Range and plausibility validation (RX-04/05) is phase 2. For phase 1, the parser
 | Case (CR-39 unless noted; rectangular superellipse p=6 outline) | D1 used | Result |
 |---|---|---|
 | +12, 62×55, DBL 18, PD 32 | 10.00 (Vogel 18 clamped) | **computable**: CT 26.12 mm, MBS 89 mm (warn `BLANK_EXCEEDS_STOCK`) |
-| +12, 62×55, DBL 24, PD 25 | 10.00 | **`FRONT_SAG_UNDEFINED`** (R1 50 mm < ρmax ≈ 56 mm) |
+| +12, 62×55, DBL 24, PD 25 | 10.00 | **`FRONT_SAG_UNDEFINED`** (R1 50 mm < ρmax ≈ 56 mm) — superseded 2026-11-06 by D-01: now computable via the frame-optimised search (planner prototype D1 ≈ 6.69, CT ≈ 33.3 mm at p = 5) |
 | same, n 1.738 | 10.00 | computable, CT 23.55 mm (so "higher index" is a truthful suggestion) |
 | −12/−6 × 10, 62×55, DBL 18, PD 32 | 0.50 (Vogel −1 clamped) | **`BACK_SAG_UNDEFINED`** |
 | same, n 1.738 | 0.50 | computable, CT 1.80 |
@@ -743,7 +744,7 @@ fc.assert(fc.property(q(-12, 12), q(-6, 0), fc.integer({ min: 0, max: 179 }),
 | A1 | The dioptric power matrix formula is the "Harris/Keating" matrix (name/attribution) | Pattern 4 | Low: formula verified for consistency with ENG-01 and by trace; only the citation is at stake |
 | A2 | Tyre formation is the toric form used for spectacle lenses (secondary sources only) | Pattern 3 | Medium: off-axis ET differs 0.1–0.4 mm at CYL −6 if barrel is "right"; paraxial power unaffected |
 | A3 | Vogel's rule form (secondary teaching sources, no textbook) | MAT-02 | Medium: base curve wrong, so plus CT and protrusion shift; disclaimer covers it |
-| A4 | Clamp floor +0.50 D (design choice informed by Zeiss fronts) | MAT-02 | Low |
+| A4 | Clamp floor +0.50 D (design choice informed by Zeiss fronts; not a manufacturing limit — Trivex Z00981.FS1 uses 0.15 D @1.530 at −7/−8) | MAT-02 | Low |
 | A5 | minET defaults for 1.67/1.74 = 1.0 mm (not read from a sheet row this session) | Materials | Low–Medium: plus-lens CT for these materials off by up to about 0.1 mm |
 | A6 | Frame-shape functions and default A/B/DBL per shape | Frame Outlines | Medium for UX realism, none for engine correctness (tested on any outline) |
 | A7 | Phone is 3–6× slower than the desktop | Performance | Medium: must be measured (ENG-09 requires it anyway) |
