@@ -86,6 +86,8 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **Decision (best practice):** the rare rescan pairs (0,07 % of eyes, about 20,6 ms per pair on desktop, e.g. +11,75 −5,25×5, rund 43×55/20, PD 27) are also timed and reported in the 01-14 phone proxy. New Grenzfall: +10,75 −1×89, 1,67, rechteckig 43×43/21, PD 36, 12,5 ms on desktop.
 - **01-13 done.** Sags at 7 outline points and νe are now in the engine result (ENG-06, MAT-01). The page shows the Abbe number, the raw Vogel value with a clamp note ("+18,00, begrenzt auf +14,00"), and its own axis message. The MAT-01/MAT-02 texts were updated (+14, D-C, Expert-view clause → UX-02), and ENG-06, MAT-01 and MAT-02 are complete. 1010 unit tests and 36 e2e tests pass.
 - **chrome-devtools (local):** +4 in 1,74 gives D1 +3,97 with the honest τ wording; the material line shows "Abbe-Zahl 32"; the axis error for "90,5" is the new message; the disclaimer says "0,4 mm". No NaN, no console error. Oddity: for +0,25 the Vogel comparison has no "damit wäre … dick" clause, so the result review should check it.
+- **01-14 done.** Work and latency are now timed separately (median of 10 edits), with per-eye memo, at most one recompute per frame, three readouts and quiet diagnostics. 1022 unit tests and 44 e2e tests pass. **Phone proxy:** Lighthouse benchmarkIndex for this host is 2221 (high-end desktop), so 4× is the right proxy. At 4× the normal case takes 15,25 ms of work (passes; 6× fails), the Grenzfall 64,35 ms and the rescan pair 178,05 ms (both FAIL).
+- **User decision: "Worker + RAIL target".** The next gap plan, 01-15, adds a Web Worker and restates ENG-09. I checked https://web.dev/articles/rail: process input in < 50 ms, visible response in < 100 ms, and feedback for actions > 50 ms. The page itself recommends Core Web Vitals (INP) over RAIL, so the INP threshold must be checked against its source.
 
 ### Open items
 - **Changed requirement texts for the 01-11 manifest:** MAT-01 ("uses ne and density, exposes νe") and MAT-02 (+14, D-C, Expert view → UX-02).
@@ -106,4 +108,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-`/gsd-plan-phase 1 --gaps` (from 01-VERIFICATION.md) → lens-critic plan review → execute → lens-critic result review → push if PASS → 01-11 Task 3 (live + phone).
+Plan 01-15 (Web Worker + ENG-09 per INP/RAIL) → lens-critic plan review → execute → 01-11 (gate, lens-critic result review, push if PASS, live check, real phone).
