@@ -12,7 +12,7 @@
 
 - [ ] **DEPL-01**: The site is publicly reachable at https://ainxtgendev.github.io/Eyeglass-Prescription/ and loads without missing assets (all paths resolve under the `/Eyeglass-Prescription/` sub-path).
 - [ ] **DEPL-02**: Every push to `main` runs lint → unit tests → build → browser smoke test against the built site; any failure blocks deployment.
-- [ ] **DEPL-03**: The optics engine cannot import Three.js or DOM APIs (enforced by a lint rule in CI).
+- [x] **DEPL-03**: The optics engine cannot import Three.js or DOM APIs (enforced by a lint rule in CI).
 - [x] **DEPL-04**: All third-party GitHub Actions are pinned to commit SHAs; npm dependencies are pinned to exact versions.
 
 ### Prescription Input (RX)
@@ -144,7 +144,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DEPL-01 | Phase 1 | Pending |
 | DEPL-02 | Phase 1 | Pending |
-| DEPL-03 | Phase 1 | Pending |
+| DEPL-03 | Phase 1 | Complete |
 | DEPL-04 | Phase 1 | Complete |
 | RX-01 | Phase 2 | Pending |
 | RX-02 | Phase 1 | Pending |

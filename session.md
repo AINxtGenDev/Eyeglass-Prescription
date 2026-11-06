@@ -61,8 +61,13 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-03 done.** The minimal German page is wired to the engine, and all 14 smoke tests pass (desktop + 360 px mobile, no axe violations). Example: −2,00 per eye gives a centre thickness of 1,8 mm, a maximum edge of 3,3 mm (temple side), a minimum edge of 2,9 mm (nasal) and 6,3 g. The base-curve cell shows the chosen curve with Vogel only as a comparison value, so the open "Vogel" item is resolved without contradicting D-01.
 - **chrome-devtools test (local `vite preview`):** `lang=de-AT`, CSP meta present, no console errors, only 3 same-origin requests. Input `-2,25` is echoed as `−2,25 dpt` and `+1 dpt` as `+1,00 dpt`. `1.000,25` gives a German error and the other eye is still computed. −20 dpt is correctly rejected: the back radius of about 24 mm is smaller than the 27 mm decentred semi-diameter. The timing readout says "Median 0,90 ms". No `NaN` appears anywhere.
 - **Fix from that test (3193223):** on the 360 px view the result-table row labels broke into single letters ("Mit/ten/di/cke"), caused by `overflow-wrap: anywhere`. They now hyphenate normally, and the e2e tests pass again.
+- **01-04 done.** `.github/workflows/deploy.yml` runs build → deploy → verify-live. All 7 action references are SHA-pinned, and pages/id-token permissions are granted only in deploy. Gate tests check the pins, the workflow structure and the engine boundary, and 5 mutation checks confirmed they catch violations. `actionlint` 1.7.12 (Docker) reports no findings.
+- **01-05 done: the site is live** at https://ainxtgendev.github.io/Eyeglass-Prescription/ (commit `364dd91`). Pages was enabled with `build_type=workflow`, and 36 commits were pushed as a fast-forward (the user approved the push). CI run 42211366016 passed build, deploy and verify-live. Checked from this machine: the curl commit grep found the hash, and the live Playwright run passed 14/14. In chrome-devtools on the live site (390 px mobile), −3,75 gives CT 1,8 mm, max edge 4,6 mm and 7,8 g; the timing median was 0,90 ms.
+- DEPL-03 is complete (lint ran in CI). DEPL-01 stays open because of the favicon 404 below. DEPL-02: CI runs the full chain, but there was no demo branch showing that a failure blocks the deploy; the evidence is structural only.
 
 ### Open items
+- `https://ainxtgendev.github.io/favicon.ico` returns 404, the only console error on the live site; Playwright headless doesn't see it. 01-06 adds an inline icon link.
+- **Your action:** open the live URL on a real phone and note the model, the browser and the "Technische Angaben" median (an early ENG-09 data point).
 - Errors still show a raw code (e.g. `Code BACK_SAG_UNDEFINED`); 01-10 adds German texts.
 - The node bench (median 2,3 ms per pair) is slower than the browser measurement (0,8 ms). The phone measurement for ENG-09 comes in 01-11.
 - The warnings `BLANK_EXCEEDS_STOCK` and `OC_OUTSIDE_OUTLINE` are not raised yet. Plans 01-07 and 01-10 add them.
@@ -70,4 +75,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-04: the GitHub Actions pipeline with test gate and pin tests. Then 01-05: push, enable Pages, and test the live site (the user approved the push on 2026-11-06).
+Plan 01-06: material selection (5 materials) and the Zeiss reference check, plus the favicon fix.
