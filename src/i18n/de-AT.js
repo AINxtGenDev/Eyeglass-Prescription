@@ -160,7 +160,7 @@ export default Object.freeze({
   'tech.summary': 'Technische Angaben',
   'tech.timing': 'Rechenzeit beide Gläser: Median {median}, p95 {p95} (50 Läufe)',
   'tech.timingWorst':
-    'Rechenzeit Grenzfall (+0,50 −0,50 × 81°, Kunststoff 1,60, Panto 58 × 54, DBL 15, PD 26, Einschleifhöhe 0 mm; die meisten Rechenschritte): Median {median}, p95 {p95} (50 Läufe)',
+    'Rechenzeit Grenzfall (+10,75 −1,00 × 89°, Kunststoff 1,67, Rechteckig 43 × 43, DBL 21, PD 36, Einschleifhöhe 0 mm; der langsamste gemessene Fall): Median {median}, p95 {p95} (50 Läufe)',
   'tech.inputRender': 'Letzte Eingabe bis Anzeige: {ms}',
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',

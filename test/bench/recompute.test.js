@@ -20,20 +20,21 @@ const spec = (eye, sph, monoPD, o = {}) => ({
   ...o,
 });
 
-// Copy of WORST_CASE_BENCH_SPECS in src/ui/main.js: the Grenzfall from 01-10 Task 1 (most CT
-// iterations OD + OS over the fuzz domain). Change both together with tech.timingWorst.
+// Copy of WORST_CASE_BENCH_SPECS in src/ui/main.js: the Grenzfall from 01-12 group G (slowest
+// measured pair among the fuzz top 5 by pair CT iterations). Change both together with
+// tech.timingWorst.
 const GRENZFALL = {
-  cyl: -0.5,
-  axisDeg: 81,
-  materialId: 'idx160',
-  frame: { shape: 'panto', A: 58, B: 54, DBL: 15 },
+  cyl: -1,
+  axisDeg: 89,
+  materialId: 'idx167',
+  frame: { shape: 'rechteckig', A: 43, B: 43, DBL: 21 },
   fittingHeight: 0,
 };
 const PAIRS = {
   'normal pair (−2,00 rund 50/18/32)': { OD: spec('OD', -2, 32), OS: spec('OS', -2, 32) },
-  'Grenzfall pair (+0,50 −0,50 × 81, 1.60, panto 58×54/15, PD 26, FH 0)': {
-    OD: spec('OD', 0.5, 26, GRENZFALL),
-    OS: spec('OS', 0.5, 26, GRENZFALL),
+  'Grenzfall pair (+10,75 −1,00 × 89, 1.67, rechteckig 43×43/21, PD 36, FH 0)': {
+    OD: spec('OD', 10.75, 36, GRENZFALL),
+    OS: spec('OS', 10.75, 36, GRENZFALL),
   },
 };
 

@@ -49,14 +49,15 @@ function specFor(eye, rx, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BE
   };
 }
 
-// Grenzfall (01-10 Task 1, ENG-09 worst case): the spec with the most CT iterations OD + OS over
-// the 1000-run fuzz domain plus the known candidate. Copy in test/bench/recompute.test.js;
-// the tech.timingWorst label names these values. Change all three together.
-const GRENZFALL_FRAME = Object.freeze({ shape: 'panto', A: 58, B: 54, DBL: 15 });
-const GRENZFALL_RX = Object.freeze({ sph: 0.5, cyl: -0.5, axisDeg: 81 });
+// Grenzfall (01-12 group G, ENG-09 worst case): the slowest pair by measured desktop median
+// among the fuzz top 5 by pair CT iterations (plus the known candidate). Copy in
+// test/bench/recompute.test.js; the tech.timingWorst label names these values. Change all three
+// together.
+const GRENZFALL_FRAME = Object.freeze({ shape: 'rechteckig', A: 43, B: 43, DBL: 21 });
+const GRENZFALL_RX = Object.freeze({ sph: 10.75, cyl: -1, axisDeg: 89 });
 const WORST_CASE_BENCH_SPECS = Object.freeze({
-  OD: specFor('OD', GRENZFALL_RX, 26, 'idx160', GRENZFALL_FRAME, 0),
-  OS: specFor('OS', GRENZFALL_RX, 26, 'idx160', GRENZFALL_FRAME, 0),
+  OD: specFor('OD', GRENZFALL_RX, 36, 'idx167', GRENZFALL_FRAME, 0),
+  OS: specFor('OS', GRENZFALL_RX, 36, 'idx167', GRENZFALL_FRAME, 0),
 });
 
 const $ = (id) => /** @type {HTMLElement} */ (document.getElementById(id));

@@ -237,6 +237,10 @@ const specArb = fc
     }),
   );
 
+// Grenzfall selection rule (01-12 group G, lens-critic MAJOR-3): take the top 5 pairs by pair CT
+// iterations printed by the fuzz below, time each (10 warm-up runs, median of 50 evaluatePair
+// runs) together with this candidate; the Grenzfall is the slowest by median. Recorded in
+// 01-12-SUMMARY and wired in src/ui/main.js, test/bench/recompute.test.js and tech.timingWorst.
 const GRENZFALL_CANDIDATE = lens({
   sph: 7.5,
   cyl: -5.75,
