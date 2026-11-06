@@ -87,7 +87,7 @@ Plans:
 
 **Wave 13** *(gap closure; blocked on Wave 12 completion)*
 
-- [ ] 01-13-PLAN.md — GAP-3: ENG-06 sags, MAT-01 Abbe number used and shown, MAT-02 Expert clause to UX-02; raw Vogel value, PITFALLS note, axis message (MINOR-1/3/5)
+- [x] 01-13-PLAN.md — GAP-3: ENG-06 sags, MAT-01 Abbe number used and shown, MAT-02 Expert clause to UX-02; raw Vogel value, PITFALLS note, axis message (MINOR-1/3/5)
 
 **Wave 14** *(gap closure; blocked on Wave 13 completion)*
 
@@ -157,7 +157,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 11/14 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 12/14 | In Progress|  |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

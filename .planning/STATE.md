@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-12-PLAN.md
-last_updated: "2026-11-06T16:14:03.449Z"
+stopped_at: Completed 01-13-PLAN.md
+last_updated: "2026-11-06T16:27:00.018Z"
 last_activity: 2026-11-06
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 14
-  completed_plans: 11
-  percent: 79
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 01 (verified-engine-live-pipeline) — EXECUTING
-Plan: 12 of 14 (gap closure; 01-11, 01-13, 01-14 remain)
+Plan: 13 of 14 (gap closure; 01-14 and 01-11 remain)
 Status: Ready to execute
 Last activity: 2026-11-06
 
-Progress: [████████░░] 79%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [████████░░] 79%
 | Phase 01 P09 | 4min | 2 tasks | 8 files |
 | Phase 01 P10 | 14min | 3 tasks | 10 files |
 | Phase 01 P12 | 45min | 3 tasks | 17 files |
+| Phase 01 P13 | 10min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-12]: Automatic back never convex (max(D2a, D2b) <= 0), automatic range +0,50 ... +14,00 dpt (D-A, US4185897), boundary bisection for failing plus lenses
 - [Phase 01]: [01-12]: D-C tie-break: flattest front lo = max(0,5, m, 0) if J(lo) <= J_min + 0,10 mm; trigger widened to best.D1 > lo + 0,05 so the flattest-within-tau truth holds
 - [Phase 01]: [01-12]: Grenzfall = +10,75 -1,00 x 89, 1,67, rechteckig 43x43/21, PD 36, FH 0 (slowest of fuzz top 5, 12,5 ms node desktop); rescan-path lenses (~0,07 % of eyes, ~20,6 ms/pair, ~170 evaluations/eye) raised as ENG-09 finding
+- [Phase 01]: [01-13]: MAT-01 reworded to 'uses ne and density, exposes νe'; νe carried in intermediates.abbe and shown, not used in any computation
+- [Phase 01]: [01-13]: MAT-02 text = +0,50…+14,00 (D-A, US4185897) capped by FRONT_RADIUS_MARGIN_MM, flattest within τ 0,10 mm (D-C), back principal powers ≤ 0; Expert-view clause moved to UX-02
+- [Phase 01]: [01-13]: Base-curve cell shows the raw Vogel value plus a 'begrenzt auf' clamp note; axis input that is not whole unsigned degrees gets PARSE_AXIS_INVALID
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06T16:13:55.176Z
-Stopped at: Completed 01-12-PLAN.md
+Last session: 2026-11-06T16:27:00.014Z
+Stopped at: Completed 01-13-PLAN.md
 Resume file: None
