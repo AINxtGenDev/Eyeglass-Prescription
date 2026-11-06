@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { solveCT } from './solve.js';
+import { solveCT, optimiseBaseCurve } from './solve.js';
 import { design, backSagAt } from './design.js';
 import { thicknessAt } from './metrics.js';
 import { circleOutline, mirrorOutlineX } from './frame/outline.js';
@@ -135,5 +135,112 @@ describe('ENG-05 outline symmetry', () => {
 
   it('circleOutline throws unless n is a multiple of 4', () => {
     expect(() => circleOutline(50, 722)).toThrow();
+  });
+});
+
+describe('MAT-02 optimiseBaseCurve', () => {
+  const sweep = []; // D1 = 0.50, 0.55, …
+  for (let k = 10; k <= 200; k++) sweep.push(k / 20);
+  const bruteMin = (p, maxD1) => {
+    let m = Infinity;
+    for (const D1 of sweep) {
+      if (D1 > maxD1 + 1e-12) break;
+      const r = solveCT({ ...p, D1 });
+      if (r.ok && r.maxThickness < m) m = r.maxThickness;
+    }
+    return m;
+  };
+
+  it('+12.00 decentred 24 mm: never thicker than the seed, near brute force, deterministic', () => {
+    const outline = circleOutline(50);
+    const p = { ...base, sph: 12, outline, oc: { x: 24, y: 0 } };
+    const maxD1 = 500 / 51;
+    const r = optimiseBaseCurve({ ...p, maxD1, seedD1: 10 });
+    expect(r.ok).toBe(true);
+    expect(typeof r.seedMaxThickness).toBe('number');
+    expect(r.maxThickness).toBeLessThanOrEqual(r.seedMaxThickness + 1e-9);
+    expect(r.D1).toBeGreaterThanOrEqual(0.5);
+    expect(r.D1).toBeLessThanOrEqual(maxD1);
+    expect(r.evaluations).toBeLessThanOrEqual(40);
+    const again = optimiseBaseCurve({ ...p, maxD1, seedD1: 10 });
+    expect(again.D1).toBe(r.D1);
+    expect(again.ct).toBe(r.ct);
+    expect(r.maxThickness).toBeLessThanOrEqual(bruteMin(p, maxD1) + 0.01);
+  });
+
+  it('seed guarantee for −2.00 and +4.00 (seed = Vogel-clamped)', () => {
+    const outline = circleOutline(50);
+    for (const [sph, seedD1] of [
+      [-2, 5],
+      [4, 10],
+    ]) {
+      const r = optimiseBaseCurve({ ...base, sph, outline, maxD1: 10, seedD1 });
+      expect(r.ok).toBe(true);
+      expect(typeof r.seedMaxThickness).toBe('number');
+      expect(r.maxThickness).toBeLessThanOrEqual(r.seedMaxThickness + 1e-9);
+    }
+  });
+
+  it('nothing computes (−20.00, 62 mm centred) → BACK_SAG_UNDEFINED, searched', () => {
+    const r = optimiseBaseCurve({
+      ...base,
+      sph: -20,
+      outline: circleOutline(62),
+      maxD1: 500 / 33,
+      seedD1: 0.5,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('BACK_SAG_UNDEFINED');
+    expect(r.data.searched).toBe(true);
+    expect(r.evaluations).toBeLessThanOrEqual(130);
+  });
+
+  it('maxD1 below the floor scans the floor only and still finds a lens', () => {
+    const r = optimiseBaseCurve({ ...base, sph: -1, outline: circleOutline(50), maxD1: 0.3, seedD1: 0.5 });
+    expect(r.ok).toBe(true);
+    expect(r.D1).toBe(0.5);
+    expect(r.coarseD1).toBe(0.5);
+  });
+
+  it('coarse grid infeasible: the 0.10 dpt impossibility rescan over [0.5, 10] finds a lens', () => {
+    // maxD1 forced below the floor: the coarse grid is {0.5}, where +20 on 52 mm cannot be made
+    // (back radius ≈ 25.6 mm < 26 mm), so the rescan runs and must find a computable front.
+    const r = optimiseBaseCurve({ ...base, sph: 20, outline: circleOutline(52), maxD1: 0.3, seedD1: 10 });
+    expect(r.ok).toBe(true);
+    expect(r.evaluations).toBeGreaterThan(22);
+    expect(r.evaluations).toBeLessThanOrEqual(130);
+    expect(r.maxThickness).toBeLessThanOrEqual(r.seedMaxThickness + 1e-9);
+  });
+
+  // A spiky outline whose every 4th point (the decimated outline) lies on a small circle and all
+  // other points on a large one: decimation then hides real violations, which exercises the
+  // full-outline repeat of the coarse scan.
+  const spiky = (rIn, rOut, n = 720) => {
+    const o = new Float64Array(2 * n);
+    for (let i = 0; i < n; i++) {
+      const r = i % 4 === 0 ? rIn : rOut;
+      const a = (2 * Math.PI * i) / n;
+      o[2 * i] = r * Math.cos(a);
+      o[2 * i + 1] = r * Math.sin(a);
+    }
+    return o;
+  };
+
+  it('decimation hides a violation: full-outline repeat finds the real optimum', () => {
+    const outline = spiky(10, 55);
+    const p = { ...base, sph: 12, outline };
+    const r = optimiseBaseCurve({ ...p, maxD1: 10, seedD1: 0.5 });
+    expect(r.ok).toBe(true);
+    expect(r.coarseMaxThickness).toBe(null); // coarse best does not compute on the full outline
+    expect(r.evaluations).toBeGreaterThan(40);
+    expect(solveCT({ ...p, D1: r.D1 }).ok).toBe(true);
+    expect(r.maxThickness).toBeLessThanOrEqual(bruteMin(p, 10) + 0.01);
+  });
+
+  it('decimation hides a violation and nothing computes: coded error', () => {
+    const r = optimiseBaseCurve({ ...base, sph: -20, outline: spiky(20, 30), maxD1: 10, seedD1: 0.5 });
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('BACK_SAG_UNDEFINED');
+    expect(r.data.searched).toBe(true);
   });
 });
