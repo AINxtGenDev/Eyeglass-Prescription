@@ -5,7 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { evaluatePair } from '../../src/engine/evaluate.js';
 
 const FRAME = { shape: 'rund', A: 50, B: 50, DBL: 18 };
-const spec = (eye, sph, monoPD) => ({
+const spec = (eye, sph, monoPD, o = {}) => ({
   eye,
   sph,
   cyl: 0,
@@ -17,12 +17,24 @@ const spec = (eye, sph, monoPD) => ({
   baseCurve: null,
   minCT: null,
   minET: null,
+  ...o,
 });
 
-// Copy of WORST_CASE_BENCH_SPECS in src/ui/main.js (01-10 Task 2 replaces both).
+// Copy of WORST_CASE_BENCH_SPECS in src/ui/main.js: the Grenzfall from 01-10 Task 1 (most CT
+// iterations OD + OS over the fuzz domain). Change both together with tech.timingWorst.
+const GRENZFALL = {
+  cyl: -0.5,
+  axisDeg: 81,
+  materialId: 'idx160',
+  frame: { shape: 'panto', A: 58, B: 54, DBL: 15 },
+  fittingHeight: 0,
+};
 const PAIRS = {
   'normal pair (−2,00 rund 50/18/32)': { OD: spec('OD', -2, 32), OS: spec('OS', -2, 32) },
-  'worst-case pair (+12,00 rund 50/18/PD 10)': { OD: spec('OD', 12, 10), OS: spec('OS', 12, 10) },
+  'Grenzfall pair (+0,50 −0,50 × 81, 1.60, panto 58×54/15, PD 26, FH 0)': {
+    OD: spec('OD', 0.5, 26, GRENZFALL),
+    OS: spec('OS', 0.5, 26, GRENZFALL),
+  },
 };
 
 function bench(pair) {

@@ -18,7 +18,7 @@ const BENCH_RUNS = 50;
 // 01-06; frame shape/size and PD per eye since 01-07. Fitting height is supported by the engine but omitted here (D-04).
 const DEFAULT_SHAPE = 'rechteckig';
 const DEFAULT_PD = '32';
-// The worst-case bench keeps its own fixed frame (label tech.timingWorst names its numbers).
+// Fallback frame for the current-input bench when a field is invalid.
 const BENCH_FRAME = Object.freeze({ shape: 'rund', A: 50, B: 50, DBL: 18 });
 const DEFAULT_MATERIAL = 'cr39';
 const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
@@ -31,8 +31,9 @@ const sphOnly = (sph) => ({ sph, cyl: 0, axisDeg: 0 });
  * @param {{ sph: number, cyl: number, axisDeg: number }} rx minus-cylinder form only (cyl ≤ 0)
  * @param {number} monoPD @param {string} materialId
  * @param {{ shape: string, A: number, B: number, DBL: number }} frame
+ * @param {number|null} [fittingHeight] mm from the bottom of the box; the page sends null (D-04)
  */
-function specFor(eye, rx, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BENCH_FRAME) {
+function specFor(eye, rx, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BENCH_FRAME, fittingHeight = null) {
   return {
     eye,
     sph: rx.sph,
@@ -41,18 +42,21 @@ function specFor(eye, rx, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BE
     materialId,
     frame,
     monoPD,
-    fittingHeight: null,
+    fittingHeight,
     baseCurve: null,
     minCT: null,
     minET: null,
   };
 }
 
-// Costliest search inside the skeleton domain (sphere, rund, CR-39). NOT the overall worst case:
-// 01-10 Task 2 replaces these specs (and the bench copy and the tech.timingWorst label) in one edit.
+// Grenzfall (01-10 Task 1, ENG-09 worst case): the spec with the most CT iterations OD + OS over
+// the 1000-run fuzz domain plus the known candidate. Copy in test/bench/recompute.test.js;
+// the tech.timingWorst label names these values. Change all three together.
+const GRENZFALL_FRAME = Object.freeze({ shape: 'panto', A: 58, B: 54, DBL: 15 });
+const GRENZFALL_RX = Object.freeze({ sph: 0.5, cyl: -0.5, axisDeg: 81 });
 const WORST_CASE_BENCH_SPECS = Object.freeze({
-  OD: specFor('OD', sphOnly(12), 10),
-  OS: specFor('OS', sphOnly(12), 10),
+  OD: specFor('OD', GRENZFALL_RX, 26, 'idx160', GRENZFALL_FRAME, 0),
+  OS: specFor('OS', GRENZFALL_RX, 26, 'idx160', GRENZFALL_FRAME, 0),
 });
 
 const $ = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -229,12 +233,71 @@ function renderEmpty(eye, statusText) {
   const p = `result-${eye.toLowerCase()}`;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
   setText(`${p}-status`, statusText);
+  $(`diag-${eye.toLowerCase()}`).replaceChildren();
+}
+
+// Diagnostic data fields that are lengths in mm; every other field is never shown.
+const MM_PARAMS = ['R1', 'rhoMax', 'mbsMm', 'stockMm'];
+// Codes that mean "this lens cannot exist in the model" (others are internal limits).
+const IMPOSSIBLE = ['FRONT_SAG_UNDEFINED', 'BACK_SAG_UNDEFINED'];
+
+/** Engine numbers → German mm text for the {param} placeholders of diag.* texts. */
+function diagParams(data) {
+  const params = {};
+  for (const k of MM_PARAMS) if (Number.isFinite(data[k])) params[k] = fmtMm(data[k]);
+  return params;
+}
+
+const para = (text) => {
+  const el = document.createElement('p');
+  el.textContent = text;
+  return el;
+};
+
+/** Error: title, explanation, suggestion. Warnings: title and explanation. Info is not shown. */
+function renderDiagnostics(eye, diagnostics) {
+  const box = $(`diag-${eye.toLowerCase()}`);
+  const items = [];
+  for (const d of diagnostics) {
+    if (d.severity === 'info') continue;
+    const params = diagParams(d.data);
+    const head = document.createElement('p');
+    const strong = document.createElement('strong');
+    strong.textContent = t(eye === 'OD' ? 'rx.od' : 'rx.os') + ': ' + t(`diag.${d.code}.title`);
+    head.append(strong);
+    const block = document.createElement('div');
+    block.className = d.severity === 'error' ? 'diag-error' : 'diag-warn';
+    block.append(head, para(t(`diag.${d.code}.explain`, params)));
+    if (d.severity === 'error') block.append(para(t(`diag.${d.code}.suggest`, params)));
+    items.push(block);
+  }
+  box.replaceChildren(...items);
+}
+
+/** Text label for the status cell (never colour alone). */
+function statusLabel(diagnostics) {
+  const err = diagnostics.find((d) => d.severity === 'error');
+  if (err) return t(IMPOSSIBLE.includes(err.code) ? 'result.diagLabel.impossible' : 'result.diagLabel.failed');
+  return diagnostics.some((d) => d.severity === 'warn') ? t('result.diagLabel.warn') : '';
+}
+
+/** Base-curve cell: thinnest rule plus the Vogel reference (D-01 final, lens-critic MAJOR-2). */
+function baseCurveText(m, im) {
+  const bc = fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule);
+  if (im.baseCurveRule !== 'thinnest') return bc;
+  const vogel = fmtDiopter(im.vogelClampedD1);
+  const v = im.vogelMaxThickness;
+  const j = Math.max(m.ct, m.etMax.value);
+  if (v === null) return bc + ' ' + t('basecurve.vogelRefImpossible', { vogel });
+  if (v - j >= 0.05) return bc + ' ' + t('basecurve.vogelRefThicker', { vogel, thickness: fmtMm(v) });
+  return bc + ' ' + t('basecurve.vogelRef', { vogel });
 }
 
 function renderResult(eye, res) {
   const p = `result-${eye.toLowerCase()}`;
   if (!res.ok) {
-    renderEmpty(eye, t('result.notComputable', { code: res.diagnostics[0]?.code ?? '?' }));
+    renderEmpty(eye, statusLabel(res.diagnostics));
+    renderDiagnostics(eye, res.diagnostics);
     return;
   }
   const m = res.metrics;
@@ -245,12 +308,9 @@ function renderResult(eye, res) {
   // display only: the engine's signed x offset turned into "toward the nose" for this eye
   setText(`${p}-dec`, fmtMm(nasalSign(eye) * m.decentration.x));
   setText(`${p}-weight`, fmtGram(m.weightG));
-  let bc = fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule);
-  if (im.baseCurveRule === 'thinnest') {
-    bc += ' ' + t('basecurve.vogelRef', { vogel: fmtDiopter(im.vogelClampedD1) });
-  }
-  setText(`${p}-basecurve`, bc);
-  setText(`${p}-status`, '');
+  setText(`${p}-basecurve`, baseCurveText(m, im));
+  setText(`${p}-status`, statusLabel(res.diagnostics));
+  renderDiagnostics(eye, res.diagnostics);
 }
 
 function update() {

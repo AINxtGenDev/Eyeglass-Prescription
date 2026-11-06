@@ -201,3 +201,19 @@ legend {
   border-inline-start: 3px solid var(--fg);
   padding-inline-start: 0.5rem;
 }
+
+/* Diagnostics: the text label ("Nicht herstellbar" / "Hinweis") carries the meaning, the border only supports it. */
+.diag-error,
+.diag-warn {
+  border-inline-start: 4px solid var(--line);
+  padding-inline-start: 0.75rem;
+  margin-block: 0.5rem 1rem;
+}
+
+.diag-error {
+  border-inline-start-color: var(--error);
+}
+
+.diag p {
+  margin-block: 0.25rem;
+}

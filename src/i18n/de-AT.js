@@ -1,7 +1,6 @@
 // German (de-AT) dictionary: the single source of every visible string.
 // Thickness is always "Mittendicke"/"Randdicke" (see PITFALLS de-AT). Numbers are never
 // inside these strings; the UI formats them and passes them as {params}.
-// Plan 01-03 adds the page keys; plan 01-10 adds the diagnostic texts.
 export default Object.freeze({
   'app.title': 'Brillenglas-Rechner – Dicke und Gewicht',
 
@@ -78,7 +77,10 @@ export default Object.freeze({
   'result.inputInvalid': 'Bitte zuerst die markierten Felder korrigieren.',
   'result.dec': 'Dezentration (zur Nase)',
   'result.materialLine': '{eye}: {label}, Dichte {density}',
-  'result.notComputable': 'Dieses Glas lässt sich so nicht berechnen (Code {code}).',
+  // Text labels next to diagnostics (never colour alone).
+  'result.diagLabel.impossible': 'Nicht herstellbar',
+  'result.diagLabel.failed': 'Nicht berechenbar',
+  'result.diagLabel.warn': 'Hinweis',
 
   'loc.nasal': 'nasal (zur Nase)',
   'loc.temporal': 'schläfenseitig (außen)',
@@ -93,11 +95,65 @@ export default Object.freeze({
   'basecurve.rule.thinnest': 'so gewählt, dass das Glas möglichst dünn wird',
   'basecurve.rule.manual': 'von Ihnen vorgegeben',
   'basecurve.vogelRef': '(zum Vergleich: übliche Faustregel nach Vogel {vogel})',
+  'basecurve.vogelRefThicker':
+    '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas an der dicksten Stelle {thickness} dick)',
+  'basecurve.vogelRefImpossible':
+    '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas in diesem Modell nicht herstellbar)',
+
+  // ENG-07 diagnostics (L10N-01/02): one title/explain/suggest per code of DIAGNOSTICS.
+  // Every suggestion is backed by a test in src/engine/diagnostics.test.js (T-01-13).
+  // Params are engine numbers formatted by the UI (fmtMm).
+  'diag.FRONT_SAG_UNDEFINED.title': 'Dieses Glas ist so nicht herstellbar',
+  'diag.FRONT_SAG_UNDEFINED.explain':
+    'Mit der gewählten Basiskurve wäre die Vorderfläche ein Ausschnitt einer Kugel mit dem Radius {R1}. Der Rand der Fassung liegt aber bis zu {rhoMax} vom optischen Mittelpunkt entfernt – weiter, als diese Kugel reicht. Die Vorderfläche kann das Glas deshalb nicht ganz bedecken.',
+  'diag.FRONT_SAG_UNDEFINED.suggest':
+    'Wählen Sie eine flachere Basiskurve, eine kleinere Fassung oder ein höherbrechendes Material (z. B. 1,74).',
+  'diag.BACK_SAG_UNDEFINED.title': 'Dieses Glas ist so nicht herstellbar',
+  'diag.BACK_SAG_UNDEFINED.explain':
+    'In diesem Rechenmodell (Vorderfläche zwischen +0,50 und +10,00 dpt) lässt sich dieses Glas nicht herstellen: Für Ihre Werte müsste die Rückfläche in mindestens einer Richtung (meist der Richtung mit der größeren Korrektur) so stark gekrümmt sein, dass sie den Rand der Fassung in dieser Richtung nicht mehr erreicht – mit jeder erlaubten Vorderfläche. Die Untergrenze von +0,50 dpt ist eine Annahme dieses Modells, keine Grenze der Fertigung; manche Hersteller verwenden noch flachere Vorderflächen.',
+  'diag.BACK_SAG_UNDEFINED.suggest':
+    'Wählen Sie eine kleinere, vor allem weniger hohe bzw. weniger breite Fassung oder ein höherbrechendes Material (z. B. 1,74).',
+  'diag.VERTEX_TERM_INVALID.title': 'Berechnung nicht möglich',
+  'diag.VERTEX_TERM_INVALID.explain':
+    'Für diese Werte stößt das Rechenmodell an eine interne Grenze: Die Glasdicke wäre im Verhältnis zur Krümmung der Vorderfläche zu groß. Damit keine falschen Zahlen erscheinen, wird nichts angezeigt.',
+  'diag.VERTEX_TERM_INVALID.suggest':
+    'Prüfen Sie die Eingaben. Wenn sie stimmen, kann Ihnen Ihr Optiker sagen, welche Gläser möglich sind.',
+  'diag.THICK_LENS_NOT_CONVERGED.title': 'Berechnung nicht möglich',
+  'diag.THICK_LENS_NOT_CONVERGED.explain':
+    'Die Rechnung für die Glasdicke ist zu keinem stabilen Ergebnis gekommen – eine interne Grenze dieses Rechenmodells. Damit keine falschen Zahlen erscheinen, wird nichts angezeigt.',
+  'diag.THICK_LENS_NOT_CONVERGED.suggest':
+    'Prüfen Sie die Eingaben. Wenn sie stimmen, kann Ihnen Ihr Optiker sagen, welche Gläser möglich sind.',
+  'diag.NON_FINITE_RESULT.title': 'Berechnung nicht möglich',
+  'diag.NON_FINITE_RESULT.explain':
+    'Die Rechnung hat einen ungültigen Zahlenwert ergeben – eine interne Grenze dieses Rechenmodells. Damit keine falschen Zahlen erscheinen, wird nichts angezeigt.',
+  'diag.NON_FINITE_RESULT.suggest':
+    'Prüfen Sie die Eingaben. Wenn sie stimmen, kann Ihnen Ihr Optiker sagen, welche Gläser möglich sind.',
+  'diag.INVALID_SPEC.title': 'Berechnung nicht möglich',
+  'diag.INVALID_SPEC.explain':
+    'Die Eingaben ergeben keine vollständige Angabe für die Berechnung. Das ist eine interne Prüfung dieses Rechners.',
+  'diag.INVALID_SPEC.suggest': 'Prüfen Sie alle Felder und laden Sie die Seite bei Bedarf neu.',
+  'diag.OC_OUTSIDE_OUTLINE.title': 'Optischer Mittelpunkt außerhalb des Glases',
+  'diag.OC_OUTSIDE_OUTLINE.explain':
+    'Mit diesen Werten liegt der optische Mittelpunkt (die Stelle, durch die Sie geradeaus blicken) außerhalb der Glasform. Die Zahlen sind berechnet, ein solches Glas ist aber ungewöhnlich.',
+  'diag.OC_OUTSIDE_OUTLINE.suggest': 'Prüfen Sie PD und Fassungsmaße.',
+  'diag.BLANK_EXCEEDS_STOCK.title': 'Großes Rohglas nötig',
+  'diag.BLANK_EXCEEDS_STOCK.explain':
+    'Für dieses Glas braucht es ein Rohglas mit mindestens etwa {mbsMm} Durchmesser; übliche Lagergläser haben höchstens {stockMm}. Es ist daher meist eine Sonderanfertigung und kann dicker oder teurer sein als hier gezeigt.',
+  'diag.BLANK_EXCEEDS_STOCK.suggest':
+    'Eine kleinere Fassung, deren Glasmitte näher an Ihrer Pupille liegt, braucht ein kleineres Rohglas.',
+  'diag.CT_SET_BY_MIN_CT.title': 'Mittendicke durch Mindestdicke bestimmt',
+  'diag.CT_SET_BY_MIN_CT.explain':
+    'Die Mittendicke ist die kleinste Mittendicke, die der Hersteller für dieses Material angibt.',
+  'diag.CT_SET_BY_MIN_CT.suggest': 'Keine Eingabe nötig; das ist ein Hinweis zur Berechnung.',
+  'diag.CT_SET_BY_MIN_ET.title': 'Mittendicke durch Mindest-Randdicke bestimmt',
+  'diag.CT_SET_BY_MIN_ET.explain':
+    'Die Mittendicke ist so gewählt, dass die dünnste Stelle am Rand die Mindest-Randdicke des Herstellers erreicht.',
+  'diag.CT_SET_BY_MIN_ET.suggest': 'Keine Eingabe nötig; das ist ein Hinweis zur Berechnung.',
 
   'tech.summary': 'Technische Angaben',
   'tech.timing': 'Rechenzeit beide Gläser: Median {median}, p95 {p95} (50 Läufe)',
   'tech.timingWorst':
-    'Rechenzeit Grenzfall (+12,00 dpt, PD 10 mm, viele Rechenschritte): Median {median}, p95 {p95} (50 Läufe)',
+    'Rechenzeit Grenzfall (+0,50 −0,50 × 81°, Kunststoff 1,60, Panto 58 × 54, DBL 15, PD 26, Einschleifhöhe 0 mm; die meisten Rechenschritte): Median {median}, p95 {p95} (50 Läufe)',
   'tech.inputRender': 'Letzte Eingabe bis Anzeige: {ms}',
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',

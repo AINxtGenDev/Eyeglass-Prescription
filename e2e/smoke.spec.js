@@ -122,6 +122,59 @@ test('cylinder without axis', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 
+/** Fill the frame fieldset (shape first: it pre-fills A/B/DBL). */
+async function setFrame(page, shape, A, B, DBL) {
+  await page.locator('#frame-shape').selectOption(shape);
+  await page.locator('#frame-a').fill(String(A));
+  await page.locator('#frame-b').fill(String(B));
+  await page.locator('#frame-dbl').fill(String(DBL));
+}
+
+test('SC-4 impossible lens is explained', async ({ page }) => {
+  await setFrame(page, 'rechteckig', 62, 55, 18);
+  await page.locator('#rx-od-pd').fill('32');
+  await page.locator('#rx-od-sph').fill('-12');
+  await page.locator('#rx-od-cyl').fill('-6');
+  await page.locator('#rx-od-axis').fill('10');
+  const box = page.locator('#diag-od');
+  await expect(box).toContainText('nicht herstellbar');
+  await expect(box).toContainText('kleinere');
+  await expect(box).toContainText('Modell');
+  await expect(box).not.toContainText('BACK_SAG');
+  await expect(page.locator('#result-od-status')).toHaveText('Nicht herstellbar');
+  await expect(page.locator('#result-od-ct')).toHaveText('–');
+  await expect(page.locator('body')).not.toContainText('NaN');
+  await expect(page.locator('body')).not.toContainText('Code ');
+  await page.locator('#material').selectOption('idx174');
+  await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
+  // 1,74 makes it computable; the 62×55 frame still needs a large blank (warning, numbers stay)
+  await expect(box).not.toContainText('nicht herstellbar');
+  await expect(box).toContainText('Großes Rohglas nötig');
+});
+
+test('oversized lens warns', async ({ page }) => {
+  await setFrame(page, 'rechteckig', 62, 55, 24);
+  await page.locator('#rx-od-pd').fill('25');
+  await page.locator('#rx-od-sph').fill('+12');
+  await page.locator('#rx-od-cyl').fill('');
+  await expect(page.locator('#material')).toHaveValue('cr39');
+  await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
+  await expect(page.locator('#result-od-weight')).toHaveText(/^\d+,\d\sg$/);
+  await expect(page.locator('#diag-od')).toContainText('Großes Rohglas nötig');
+  await expect(page.locator('#result-od-status')).toHaveText('Hinweis');
+  const bc = page.locator('#result-od-basecurve');
+  for (const s of ['möglichst dünn', 'Faustregel nach Vogel', 'nicht herstellbar']) await expect(bc).toContainText(s);
+  await expect(page.locator('body')).not.toContainText('NaN');
+});
+
+test('normal lens shows Vogel reference', async ({ page }) => {
+  await page.locator('#rx-od-sph').fill('-2');
+  const bc = page.locator('#result-od-basecurve');
+  await expect(bc).toContainText('möglichst dünn');
+  await expect(bc).toContainText('Faustregel nach Vogel');
+  await expect(page.locator('#diag-od')).toBeEmpty();
+});
+
 test('footer shows the build commit', async ({ page }) => {
   await expect(page.locator('#app-commit')).toHaveText(/^([0-9a-f]{7}|dev)$/);
 });
