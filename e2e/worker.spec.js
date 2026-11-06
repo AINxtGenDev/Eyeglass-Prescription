@@ -177,7 +177,11 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
   await page.goto('./');
   await settled(page);
   const SELECTORS = ['.result-table', '#calc-status', '#disclaimer'];
-  const boxes = () => Promise.all(SELECTORS.map((s) => page.locator(s).boundingBox()));
+  const boxes = async () => [
+    await page.locator('.result-table').boundingBox(),
+    await page.locator('#calc-status').boundingBox(),
+    await page.locator('#disclaimer').boundingBox(),
+  ];
   const expectSame = (a, b, when) => {
     for (const [i, s] of SELECTORS.entries()) {
       for (const k of ['x', 'y', 'width', 'height']) {
