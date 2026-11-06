@@ -3,7 +3,8 @@ import { evaluateLens, evaluatePair } from './evaluate.js';
 import { optimiseBaseCurve } from './solve.js';
 import { baseCurveAuto, sphericalEquivalent } from './power.js';
 import { frameOutline } from './frame/outline.js';
-import { maxRadiusFromOC } from './metrics.js';
+import { maxRadiusFromOC, thicknessAt } from './metrics.js';
+import { MATERIALS } from './materials.js';
 
 const spec = (o = {}) => ({
   eye: 'OD',
@@ -179,7 +180,7 @@ describe('MAT-02 automatic base curve on frame outlines', () => {
 
 describe('ENG-07 invalid specs', () => {
   const cases = [
-    [{ cyl: -1 }, 'cyl-not-supported'],
+    [{ cyl: 0.5 }, 'plus-cyl-must-be-transposed'],
     [{ frame: { shape: 'oval', A: 50, B: 40, DBL: 18 } }, 'unknown-shape'],
     [{ frame: { shape: 'toString', A: 50, B: 40, DBL: 18 } }, 'unknown-shape'],
     [{ sph: NaN }, 'non-finite'],
@@ -374,5 +375,145 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     expect(auto.ok).toBe(true);
     expect(auto.intermediates.baseCurveRule).toBe('thinnest');
     console.log('[01-02] +12 PD5 auto: D1', auto.intermediates.D1, 'CT', auto.metrics.ct);
+  });
+});
+
+describe('ENG-03 TABO golden (cylinder orientation)', () => {
+  const centred = (o) => spec({ frame: { shape: 'rund', A: 50, B: 50, DBL: 18 }, monoPD: 34, ...o });
+  it('OD −2,00 −2,00 × 90: horizontal edges thicker than vertical', () => {
+    const r = evaluateLens(centred({ sph: -2, cyl: -2, axisDeg: 90 }));
+    expect(r.ok).toBe(true);
+    const e = r.metrics.etAt;
+    for (const h of [e.nasal, e.temporal]) {
+      expect(h).toBeGreaterThan(e.superior);
+      expect(h).toBeGreaterThan(e.inferior);
+    }
+  });
+  it('OD −2,00 −1,00 × 180: superior/inferior thicker than nasal/temporal', () => {
+    const r = evaluateLens(centred({ sph: -2, cyl: -1, axisDeg: 180 }));
+    expect(r.ok).toBe(true);
+    const e = r.metrics.etAt;
+    for (const v of [e.superior, e.inferior]) {
+      expect(v).toBeGreaterThan(e.nasal);
+      expect(v).toBeGreaterThan(e.temporal);
+    }
+  });
+});
+
+function bboxGrid(outline, k = 41) {
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < outline.length; i += 2) {
+    x0 = Math.min(x0, outline[i]);
+    x1 = Math.max(x1, outline[i]);
+    y0 = Math.min(y0, outline[i + 1]);
+    y1 = Math.max(y1, outline[i + 1]);
+  }
+  const pts = [];
+  for (let i = 0; i < k; i++) {
+    for (let j = 0; j < k; j++) pts.push([x0 + ((x1 - x0) * i) / (k - 1), y0 + ((y1 - y0) * j) / (k - 1)]);
+  }
+  return pts;
+}
+
+describe('ENG-05 OD/OS point reflection', () => {
+  const frames = [
+    { shape: 'rund', A: 50, B: 50, DBL: 18 },
+    { shape: 'rechteckig', A: 52, B: 38, DBL: 18 },
+  ];
+  const rxs = [
+    [-2, -2, 45],
+    [4, -2, 30],
+    [-6, -1, 120],
+  ];
+  for (const frame of frames) {
+    for (const [sph, cyl, axisDeg] of rxs) {
+      it(`left lens = point reflection of right (${sph}/${cyl}×${axisDeg}, ${frame.shape})`, () => {
+        const o = { sph, cyl, axisDeg, frame, monoPD: 30 };
+        const { OD, OS } = evaluatePair({ OD: spec(o), OS: spec({ ...o, eye: 'OS' }) });
+        expect(OD.ok && OS.ok).toBe(true);
+        expect(OS.intermediates.D1).toBe(OD.intermediates.D1);
+        expect(Math.abs(OS.metrics.ct - OD.metrics.ct)).toBeLessThanOrEqual(1e-9);
+        let checked = 0;
+        for (const [x, y] of bboxGrid(frameOutline(frame.shape, frame.A, frame.B, 'OS'))) {
+          const a = thicknessAt(OS.surfaces, x, y);
+          const b = thicknessAt(OD.surfaces, -x, -y);
+          if (Number.isNaN(a) || Number.isNaN(b)) continue;
+          expect(Math.abs(a - b)).toBeLessThanOrEqual(1e-9);
+          checked++;
+        }
+        expect(checked).toBeGreaterThan(1000);
+      });
+    }
+  }
+  it('is not a mirror image (−2,00 −2,00 × 45, rechteckig 52×38/18/PD 30)', () => {
+    const o = { sph: -2, cyl: -2, axisDeg: 45, frame: frames[1], monoPD: 30 };
+    const { OD, OS } = evaluatePair({ OD: spec(o), OS: spec({ ...o, eye: 'OS' }) });
+    let maxDiff = 0;
+    for (const [x, y] of bboxGrid(frameOutline('rechteckig', 52, 38, 'OS'))) {
+      const d = Math.abs(thicknessAt(OS.surfaces, x, y) - thicknessAt(OD.surfaces, -x, y));
+      if (d > maxDiff) maxDiff = d;
+    }
+    expect(maxDiff).toBeGreaterThan(0.05);
+  });
+});
+
+describe('ENG-03 oblique-axis pair check (TABO, both eyes)', () => {
+  const cases = [
+    [-2, -2, 45],
+    [-2, -2, 135],
+    [-6, -1, 45],
+  ];
+  for (const [sph, cyl, axisDeg] of cases) {
+    for (const eye of ['OD', 'OS']) {
+      it(`${eye} ${sph}/${cyl}×${axisDeg}: the meridian axis + 90° is thicker`, () => {
+        const r = evaluateLens(spec({ eye, sph, cyl, axisDeg, monoPD: 34 }));
+        expect(r.ok).toBe(true);
+        expect(r.surfaces.oc.x === 0).toBe(true);
+        let checked = 0;
+        for (let deg = 0; deg < 360; deg += 5) {
+          const x = 20 * Math.cos((deg * Math.PI) / 180);
+          const y = 20 * Math.sin((deg * Math.PI) / 180);
+          if (Math.abs(x * y) < 1) continue;
+          const thickSide = axisDeg === 45 ? x * y < 0 : x * y > 0;
+          if (!thickSide) continue;
+          const t = thicknessAt(r.surfaces, x, y);
+          const tm = thicknessAt(r.surfaces, -x, y);
+          if (!(t > tm + 1e-6)) throw new Error(`counterexample at (${x}, ${y}): ${t} vs ${tm}`);
+          checked++;
+        }
+        expect(checked).toBeGreaterThan(30);
+      });
+    }
+  }
+});
+
+describe('ENG-04 mixed meridians', () => {
+  it('+2,00 −4,00 × 90 in rechteckig 52×38/18, PD 32: both constraints honoured', () => {
+    const r = evaluateLens(spec({ sph: 2, cyl: -4, axisDeg: 90, frame: { shape: 'rechteckig', A: 52, B: 38, DBL: 18 } }));
+    expect(r.ok).toBe(true);
+    const { minCT, minET } = MATERIALS.cr39;
+    const outline = frameOutline('rechteckig', 52, 38, 'OD');
+    let tMin = Infinity;
+    for (let i = 0; i < outline.length; i += 2) tMin = Math.min(tMin, thicknessAt(r.surfaces, outline[i], outline[i + 1]));
+    expect(tMin).toBeGreaterThanOrEqual(minET - 1e-6);
+    expect(r.metrics.ct).toBeGreaterThanOrEqual(minCT - 1e-6);
+    if (r.intermediates.bindingConstraint === 'minCT') expect(Math.abs(r.metrics.ct - minCT)).toBeLessThanOrEqual(1e-3);
+    else expect(Math.abs(tMin - minET)).toBeLessThanOrEqual(1e-3);
+    console.log('[01-08] mixed +2/−4×90: binding', r.intermediates.bindingConstraint, 'CT', r.metrics.ct, 'min ET', tMin, 'D1', r.intermediates.D1);
+  });
+});
+
+describe('ENG-07 cylinder impossibility (SC-4)', () => {
+  it('−12,00 −6,00 × 10 in rechteckig 62×55/18, PD 32 → BACK_SAG_UNDEFINED cross, searched', () => {
+    const r = evaluateLens(
+      spec({ sph: -12, cyl: -6, axisDeg: 10, frame: { shape: 'rechteckig', A: 62, B: 55, DBL: 18 } }),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.diagnostics[0].code).toBe('BACK_SAG_UNDEFINED');
+    expect(r.diagnostics[0].data.meridian).toBe('cross');
+    expect(r.diagnostics[0].data.searched).toBe(true);
   });
 });

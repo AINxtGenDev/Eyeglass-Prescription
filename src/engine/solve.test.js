@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { solveCT, optimiseBaseCurve } from './solve.js';
 import { design, backSagAt } from './design.js';
 import { thicknessAt } from './metrics.js';
+import { sphereSag } from './sag.js';
 import { circleOutline, mirrorOutlineX } from './frame/outline.js';
 
 const C = { x: 0, y: 0 };
@@ -27,9 +28,17 @@ describe('ENG-02 thick-lens design', () => {
     expect(s.axisRad).toBeCloseTo(Math.PI / 6, 15);
     expect(s.k1).toBe(0);
   });
-  it('backSagAt rejects a toric back until 01-08', () => {
-    const s = design({ sph: -3, cyl: -1, axisDeg: 30, n: 1.5, D1: 5, ct: 2, oc: C });
-    expect(() => backSagAt(s, 1, 1)).toThrow();
+  it('backSagAt is the torus rotated to the TABO axis about the OC', () => {
+    const oc = { x: 3, y: -1 };
+    const s = design({ sph: -3, cyl: -1, axisDeg: 30, n: 1.5, D1: 5, ct: 2, oc });
+    const a = Math.PI / 6;
+    for (const t of [5, 12, -20]) {
+      // along the axis: base curve ca; perpendicular: cross curve cb
+      const ax = backSagAt(s, oc.x + t * Math.cos(a), oc.y + t * Math.sin(a));
+      const cr = backSagAt(s, oc.x - t * Math.sin(a), oc.y + t * Math.cos(a));
+      expect(ax).toBeCloseTo(sphereSag(s.ca, t * t), 12);
+      expect(cr).toBeCloseTo(sphereSag(s.cb, t * t), 12);
+    }
   });
 });
 
@@ -242,5 +251,23 @@ describe('MAT-02 optimiseBaseCurve', () => {
     expect(r.ok).toBe(false);
     expect(r.code).toBe('BACK_SAG_UNDEFINED');
     expect(r.data.searched).toBe(true);
+  });
+});
+
+describe('ENG-07 BACK_SAG_UNDEFINED meridian label', () => {
+  // sph −20, cyl −4, axis 0, n 1.5, D1 0.5: ca ≈ 0.041 (R ≈ 24.4 mm), cb ≈ 0.049 (R ≈ 20.4 mm).
+  const p = { ...base, sph: -20, cyl: -4, axisDeg: 0, D1: 0.5 };
+  it("base-type failure first, cross failure second → 'cross'", () => {
+    const r = solveCT({ ...p, outline: new Float64Array([30, 0, 0, 22]) });
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('BACK_SAG_UNDEFINED');
+    expect(r.data.meridian).toBe('cross');
+    expect(r.data.axisDeg).toBe(0);
+  });
+  it("only a base-type failure → 'base'", () => {
+    const r = solveCT({ ...p, outline: new Float64Array([30, 0, 0, 5]) });
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('BACK_SAG_UNDEFINED');
+    expect(r.data.meridian).toBe('base');
   });
 });
