@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "build": "vite build",
     "preview": "vite preview --port 4173 --strictPort",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:perf": "PERF=1 playwright test --project=perf"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
