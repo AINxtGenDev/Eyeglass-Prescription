@@ -3,6 +3,7 @@
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+/* global document, window, requestAnimationFrame, MutationObserver -- page.evaluate bodies run in the browser */
 
 /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
 let seen;
@@ -236,6 +237,94 @@ test('footer shows the build commit', async ({ page }) => {
 test('technical details show the timing readout', async ({ page }) => {
   await page.locator('details#tech > summary').click();
   await expect(page.locator('#timing')).toHaveText(/Median\s[\d,]+\sms/, { timeout: 5000 });
+});
+
+// 01-14: the page has rendered its first frame (results are written from a rAF callback).
+const firstFrame = (page) => expect(page.locator('#result-od-ct')).toHaveText(/mm$/);
+
+test('timing shows work and latency medians (ENG-09)', async ({ page }) => {
+  await firstFrame(page);
+  const sph = page.locator('#rx-od-sph');
+  const echo = page.locator('#rx-od-sph-echo');
+  for (let i = 1; i <= 10; i++) {
+    await sph.fill(String(-i));
+    await expect(echo).toContainText(`−${i},00`);
+  }
+  const timing = page.locator('#timing-input');
+  const re = /Median der letzten 10 Eingaben\): Rechenarbeit (\d+,\d\d)\sms, Wartezeit inklusive (\d+,\d\d)\sms/;
+  await expect(timing).toHaveText(re);
+  const [, work, latency] = (await timing.textContent()).match(re);
+  const num = (s) => Number(s.replace(',', '.'));
+  expect(num(work)).toBeGreaterThan(0);
+  expect(num(latency)).toBeGreaterThan(0);
+  expect(num(latency)).toBeGreaterThanOrEqual(num(work));
+});
+
+test('technical details show three readouts', async ({ page }) => {
+  await page.locator('details#tech > summary').click();
+  for (const id of ['#timing', '#timing-frame', '#timing-worst']) {
+    await expect(page.locator(id)).toHaveText(/Median\s[\d,]+\sms/, { timeout: 10_000 });
+  }
+  await expect(page.locator('#timing')).toContainText('−4,00');
+  await expect(page.locator('#timing')).toContainText('Rechteckig');
+});
+
+test('one recompute per frame (01-14)', async ({ page }) => {
+  await firstFrame(page);
+  const ct = page.locator('#result-od-ct');
+  const echo = page.locator('#rx-od-sph-echo');
+  await page.locator('#rx-od-sph').fill('-3');
+  await expect(echo).toContainText('−3,00');
+  const ct3 = await ct.textContent();
+  await page.locator('#rx-od-sph').fill('-2,5');
+  await expect(echo).toContainText('−2,50');
+  const r = await page.evaluate(async () => {
+    const el = document.getElementById('result-od-ct');
+    let n = 0;
+    const mo = new MutationObserver((recs) => {
+      n += recs.length;
+    });
+    mo.observe(el, { childList: true, characterData: true, subtree: true });
+    const input = /** @type {HTMLInputElement} */ (document.getElementById('rx-od-sph'));
+    for (const v of ['-1', '-2', '-3']) {
+      input.value = v;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    mo.disconnect();
+    return { n, text: el.textContent };
+  });
+  // Without coalescing every input would rewrite the cell: 3 mutations.
+  expect(r.n).toBe(1);
+  expect(r.text).toBe(ct3);
+  await expect(echo).toContainText('−3,00');
+});
+
+test('unchanged diagnostics are not re-announced (MINOR-11)', async ({ page }) => {
+  // Oversized reference case (01-12-SUMMARY "E2E reference cases"): BLANK_EXCEEDS_STOCK.
+  await setFrame(page, 'rechteckig', 62, 55, 24);
+  await page.locator('#rx-od-pd').fill('25');
+  await page.locator('#rx-od-sph').fill('+12');
+  await page.locator('#rx-od-cyl').fill('');
+  const diag = page.locator('#diag-od');
+  const ct = page.locator('#result-od-ct');
+  await expect(ct).toHaveText(/^38,3\smm$/);
+  await expect(diag).toContainText('Großes Rohglas nötig');
+  const before = await diag.textContent();
+  const ctBefore = await ct.textContent();
+  await page.evaluate(() => {
+    const box = document.getElementById('diag-od');
+    window.__diagMutations = 0;
+    new MutationObserver((recs) => {
+      window.__diagMutations += recs.length;
+    }).observe(box, { childList: true, characterData: true, subtree: true, attributes: true });
+  });
+  // −0,25 dpt: OD recomputes (memo miss); the warning text depends on frame and PD only (mbsMm).
+  await page.locator('#rx-od-sph').fill('+11,75');
+  await expect(ct).not.toHaveText(ctBefore);
+  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+  expect(await diag.textContent()).toBe(before);
+  expect(await page.evaluate(() => window.__diagMutations)).toBe(0);
 });
 
 test('no serious or critical accessibility violations', async ({ page }) => {
