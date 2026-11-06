@@ -33,9 +33,16 @@
  *   baseCurveRule: 'thinnest'|'manual',
  *   baseCurveSearch: null|{ evaluations: number, iterations: number, maxThickness: number,
  *     minMaxThickness: number },
- *   bindingConstraint: 'minCT'|'minET', iterations: number }} intermediates
+ *   bindingConstraint: 'minCT'|'minET', iterations: number,
+ *   sags: Record<'nasal'|'temporal'|'superior'|'inferior'|'etMax'|'etMin'|'rhoMax',
+ *     { x: number, y: number, front: number, back: number }>,
+ *   abbe: number }} intermediates
  *   Radii in mm, null for a plano surface (never Infinity). vogel* are reference values only
  *   ("übliche Faustregel nach Vogel"), not the chosen curve.
+ *   sags (01-13, ENG-06): lens-local (x, y) of each named outline point and the front/back sag
+ *   there, mm along +z toward the eye from each surface's vertex plane; thickness = CT − front + back.
+ *   abbe (01-13, MAT-01): νe of the material (same line as ne), exposed for display; chromatic
+ *   effects are not modelled in v1.
  * @property {null|{ n: number, ct: number, c1: number, k1: number, ca: number, cb: number,
  *   axisRad: number, oc: { x: number, y: number } }} surfaces
  */
@@ -45,7 +52,8 @@ import { MATERIALS } from './materials.js';
 import { diag, STOCK_BLANK_MAX_MM } from './diagnostics.js';
 import { sphericalEquivalent, baseCurveAuto } from './power.js';
 import { solveCT, optimiseBaseCurve } from './solve.js';
-import { computeMetrics, maxRadiusFromOC } from './metrics.js';
+import { computeMetrics, maxRadiusFromOC, extremeIndices, farthestIndexFromOC } from './metrics.js';
+import { frontSagAt, backSagAt } from './design.js';
 import { frameOutline } from './frame/outline.js';
 import { SHAPES } from './frame/shapes.js';
 
@@ -152,6 +160,22 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
 
   const s = r.surfaces;
   const metrics = computeMetrics({ surfaces: s, outline, density: m.density, eye });
+  // ENG-06: surface sags at the named outline points (same index rules as the metrics).
+  const sagPoint = (i) => {
+    const x = outline[2 * i];
+    const y = outline[2 * i + 1];
+    return { x, y, front: frontSagAt(s, x, y), back: backSagAt(s, x, y) };
+  };
+  const ext = extremeIndices(outline, eye);
+  const sags = {
+    nasal: sagPoint(ext.nasal),
+    temporal: sagPoint(ext.temporal),
+    superior: sagPoint(ext.superior),
+    inferior: sagPoint(ext.inferior),
+    etMax: sagPoint(metrics.etMax.index),
+    etMin: sagPoint(metrics.etMin.index),
+    rhoMax: sagPoint(farthestIndexFromOC(outline, oc)),
+  };
   const intermediates = {
     n,
     D1,
@@ -169,6 +193,8 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
     baseCurveSearch,
     bindingConstraint: r.binding,
     iterations: r.iterations,
+    sags,
+    abbe: m.ve,
   };
   if (!allFinite(metrics) || !allFinite(intermediates)) {
     return fail(eye, [diag('NON_FINITE_RESULT', {})]);

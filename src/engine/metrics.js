@@ -23,6 +23,41 @@ export function maxRadiusFromOC(outline, oc) {
   return Math.sqrt(m2);
 }
 
+/** Index of the outline point farthest from the OC (first index on ties); same measure as maxRadiusFromOC. */
+export function farthestIndexFromOC(outline, oc) {
+  let m2 = -1;
+  let iMax = 0;
+  for (let i = 0; i < outline.length; i += 2) {
+    const dx = outline[i] - oc.x;
+    const dy = outline[i + 1] - oc.y;
+    const r2 = dx * dx + dy * dy;
+    if (r2 > m2) (m2 = r2), (iMax = i / 2);
+  }
+  return iMax;
+}
+
+/**
+ * Indices of the nasal (max nasalSign·x), temporal (min), superior (max y) and inferior (min y)
+ * outline extremes; strict comparisons, so the first index wins on ties. Shared by metrics and sags.
+ */
+export function extremeIndices(outline, eye) {
+  const n = outline.length / 2;
+  const sign = nasalSign(eye);
+  let iN = 0;
+  let iT = 0;
+  let iS = 0;
+  let iI = 0;
+  for (let i = 0; i < n; i++) {
+    const x = outline[2 * i];
+    const y = outline[2 * i + 1];
+    if (sign * x > sign * outline[2 * iN]) iN = i;
+    if (sign * x < sign * outline[2 * iT]) iT = i;
+    if (y > outline[2 * iS + 1]) iS = i;
+    if (y < outline[2 * iI + 1]) iI = i;
+  }
+  return { nasal: iN, temporal: iT, superior: iS, inferior: iI };
+}
+
 // Distance t > 0 from the origin along (c, s) to edge i of the outline, or −1 if the ray misses it.
 // Small tolerance on u: a ray through a vertex must hit one of its two edges despite rounding.
 function hitEdge(outline, n, i, c, s) {
@@ -76,17 +111,12 @@ function point(outline, i, value, eye) {
 export function computeMetrics({ surfaces, outline, density, eye }) {
   const s = surfaces;
   const n = outline.length / 2;
-  const sign = nasalSign(eye);
   let iMax = 0;
   let iMin = 0;
   let tMax = -Infinity;
   let tMin = Infinity;
   let fMax = -Infinity;
   let fMin = Infinity;
-  let iN = 0;
-  let iT = 0;
-  let iS = 0;
-  let iI = 0;
   for (let i = 0; i < n; i++) {
     const x = outline[2 * i];
     const y = outline[2 * i + 1];
@@ -98,11 +128,8 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
     if (t < tMin || (t === tMin && y > outline[2 * iMin + 1])) (tMin = t), (iMin = i);
     if (sF > fMax) fMax = sF;
     if (sF < fMin) fMin = sF;
-    if (sign * x > sign * outline[2 * iN]) iN = i;
-    if (sign * x < sign * outline[2 * iT]) iT = i;
-    if (y > outline[2 * iS + 1]) iS = i;
-    if (y < outline[2 * iI + 1]) iI = i;
   }
+  const { nasal: iN, temporal: iT, superior: iS, inferior: iI } = extremeIndices(outline, eye);
   const at = (i) => thicknessAt(s, outline[2 * i], outline[2 * i + 1]);
 
   // Polar quadrature about the boxing centre: 128 uniform angles × GL24 radial nodes.
