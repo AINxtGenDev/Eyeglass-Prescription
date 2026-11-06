@@ -11,6 +11,8 @@ export default Object.freeze({
   'parse.PARSE_TOO_MANY_DECIMALS':
     'Zu viele Nachkommastellen: Dioptrien haben höchstens zwei (z. B. −2,25), Millimeter höchstens eine (z. B. 32,5).',
   'parse.PARSE_AXIS_OUT_OF_RANGE': 'Die Achse muss eine ganze Zahl zwischen 0° und 180° sein.',
+  'parse.PARSE_AXIS_INVALID':
+    'Die Achse ist eine ganze Gradzahl ohne Vorzeichen und ohne Komma, von 0° bis 180°, z. B. 90.',
 
   'rx.caption': 'Ihre Brillenwerte (vom Brillenpass)',
   'rx.eye': 'Auge',
@@ -76,7 +78,7 @@ export default Object.freeze({
   'result.inputMissing': 'Bitte zuerst einen gültigen Sph-Wert eingeben.',
   'result.inputInvalid': 'Bitte zuerst die markierten Felder korrigieren.',
   'result.dec': 'Dezentration (zur Nase)',
-  'result.materialLine': '{eye}: {label}, Dichte {density}',
+  'result.materialLine': '{eye}: {label}, Dichte {density}, Abbe-Zahl {abbe} (je höher, desto weniger Farbsäume)',
   // Text labels next to diagnostics (never colour alone).
   'result.diagLabel.impossible': 'Nicht herstellbar',
   'result.diagLabel.failed': 'Nicht berechenbar',
@@ -95,6 +97,7 @@ export default Object.freeze({
   'basecurve.rule.thinnest':
     'so gewählt, dass das Glas nahezu so dünn wie möglich wird (höchstens 0,1 mm mehr als das dünnste), mit der flachsten Vorderfläche unter diesen',
   'basecurve.rule.manual': 'von Ihnen vorgegeben',
+  'basecurve.vogelClamped': ', begrenzt auf {clamped}',
   'basecurve.vogelRef': '(zum Vergleich: übliche Faustregel nach Vogel {vogel})',
   'basecurve.vogelRefThicker':
     '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas an der dicksten Stelle {thickness} dick)',

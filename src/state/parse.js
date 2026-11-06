@@ -8,6 +8,7 @@ export const PARSE_CODES = Object.freeze({
   PARSE_MIXED_SEPARATORS: 'PARSE_MIXED_SEPARATORS',
   PARSE_TOO_MANY_DECIMALS: 'PARSE_TOO_MANY_DECIMALS',
   PARSE_AXIS_OUT_OF_RANGE: 'PARSE_AXIS_OUT_OF_RANGE',
+  PARSE_AXIS_INVALID: 'PARSE_AXIS_INVALID',
 });
 
 /** U+2212, U+2012, U+2013, U+2010, U+FE63, U+FF0D → ASCII hyphen-minus. */
@@ -61,7 +62,8 @@ export function parseAxis(raw) {
   const s = normalise(raw);
   if (s === '') return fail(PARSE_CODES.PARSE_EMPTY);
   const digits = s.replace(/^[x×@]\s*/, '').replace(/\s*°$/, '');
-  if (!/^\d{1,3}$/.test(digits)) return fail(PARSE_CODES.PARSE_NOT_A_NUMBER);
+  // Not whole degrees without sign (e.g. 90,5 or −90): own message (01-13, MINOR-5)
+  if (!/^\d{1,3}$/.test(digits)) return fail(PARSE_CODES.PARSE_AXIS_INVALID);
   const deg = Number(digits);
   if (deg > 180) return fail(PARSE_CODES.PARSE_AXIS_OUT_OF_RANGE);
   return okValue(deg === 180 ? 0 : deg);

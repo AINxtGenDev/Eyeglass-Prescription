@@ -22,6 +22,10 @@ const DEFAULT_PD = '32';
 const BENCH_FRAME = Object.freeze({ shape: 'rund', A: 50, B: 50, DBL: 18 });
 const DEFAULT_MATERIAL = 'cr39';
 const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
+// Abbe number νe = (ne − 1)/(nF′ − nC′): higher means less dispersion, hence fewer colour fringes.
+// That meaning is textbook knowledge, not from a fetched document; the νe values are the cited
+// Zeiss rows in materials.js, which list νe next to ne.
+const abbeNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1 });
 
 /** @param {number} sph sphere-only Rx */
 const sphOnly = (sph) => ({ sph, cyl: 0, axisDeg: 0 });
@@ -96,6 +100,8 @@ function renderMaterialLine(eye, materialId) {
       eye: t(eye === 'OD' ? 'rx.od' : 'rx.os'),
       label: t('material.' + materialId),
       density: densityNf.format(m.density) + '\u00A0g/cm³',
+      // From the catalogue, not the result: the line renders even when the lens fails (MAT-01).
+      abbe: abbeNf.format(m.ve),
     }),
   );
 }
@@ -286,7 +292,12 @@ function statusLabel(diagnostics) {
 function baseCurveText(m, im) {
   const bc = fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule);
   if (im.baseCurveRule !== 'thinnest') return bc;
-  const vogel = fmtDiopter(im.vogelClampedD1);
+  // Raw Vogel value; when the rule leaves +0,50…+14,00 (D-A) the clamp is named, and any
+  // thickness in the sentence refers to the clamped lens (01-13, MINOR-1).
+  let vogel = fmtDiopter(im.vogelD1);
+  if (im.vogelD1 !== im.vogelClampedD1) {
+    vogel += t('basecurve.vogelClamped', { clamped: fmtDiopter(im.vogelClampedD1) });
+  }
   const v = im.vogelMaxThickness;
   const j = Math.max(m.ct, m.etMax.value);
   if (v === null) return bc + ' ' + t('basecurve.vogelRefImpossible', { vogel });
