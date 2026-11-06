@@ -2,7 +2,7 @@
 // Signs per conventions.js: c1 = +D1/K (convex front), c = −D2/K per back principal meridian.
 
 import { K } from './conventions.js';
-import { sphereSag } from './sag.js';
+import { sphereSag, torusSag, sphereSagGrad, torusSagGrad } from './sag.js';
 
 /**
  * The Rx is a back-vertex power. The front is spherical, so
@@ -39,13 +39,35 @@ export function frontSagAt(s, x, y) {
   return sphereSag(s.c1, dx * dx + dy * dy, s.k1);
 }
 
-/**
- * Back sag at lens-local (x, y). Sphere only in 01-02 (the torus arrives in 01-08);
- * evaluate rejects cyl ≠ 0 before this point.
- */
-export function backSagAt(s, x, y) {
-  if (s.ca !== s.cb) throw new Error('backSagAt: toric back surface not supported yet (01-08)');
+// Axis coordinates relative to the OC (TABO angle α, CCW from +x, same for both eyes):
+// u = x′cosα + y′sinα (along the cylinder axis), v = −x′sinα + y′cosα.
+function axisUV(s, x, y) {
   const dx = x - s.oc.x;
   const dy = y - s.oc.y;
-  return sphereSag(s.ca, dx * dx + dy * dy);
+  const c = Math.cos(s.axisRad);
+  const sn = Math.sin(s.axisRad);
+  return [dx * c + dy * sn, -dx * sn + dy * c];
+}
+
+/**
+ * Back sag at lens-local (x, y): tyre torus (sag.js, D-03) with the base curve ca along the
+ * cylinder axis and the cross curve cb perpendicular to it. NaN outside the domain.
+ */
+export function backSagAt(s, x, y) {
+  const [u, v] = axisUV(s, x, y);
+  return torusSag(s.ca, s.cb, u, v);
+}
+
+/** Front sag gradient [∂sF/∂x, ∂sF/∂y] at lens-local (x, y). */
+export function frontSagGradAt(s, x, y) {
+  return sphereSagGrad(s.c1, x - s.oc.x, y - s.oc.y, s.k1);
+}
+
+/** Back sag gradient [∂sB/∂x, ∂sB/∂y] at lens-local (x, y) (rotated back from u/v by α). */
+export function backSagGradAt(s, x, y) {
+  const [u, v] = axisUV(s, x, y);
+  const [gu, gv] = torusSagGrad(s.ca, s.cb, u, v);
+  const c = Math.cos(s.axisRad);
+  const sn = Math.sin(s.axisRad);
+  return [gu * c - gv * sn, gu * sn + gv * c];
 }

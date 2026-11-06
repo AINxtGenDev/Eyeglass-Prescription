@@ -7,12 +7,43 @@ import { design, frontSagAt, backSagAt } from './design.js';
 import { K } from './conventions.js';
 import { maxRadiusFromOC } from './metrics.js';
 
+function backSagError(axisDeg, cross, iterations) {
+  return {
+    ok: false,
+    code: 'BACK_SAG_UNDEFINED',
+    data: { meridian: cross ? 'cross' : 'base', axisDeg },
+    iterations,
+  };
+}
+
+// cb²·v² > 1: the cross-curve circle itself is undefined at this point.
+function crossViolated(s, x, y) {
+  const v = -(x - s.oc.x) * Math.sin(s.axisRad) + (y - s.oc.y) * Math.cos(s.axisRad);
+  return s.cb * s.cb * v * v > 1;
+}
+
 /**
+ * earlyExit: stop at the first undefined back sag (feasibility only; used on the decimated
+ * search outlines). Otherwise the whole outline of that iteration is scanned for the label.
  * @returns {{ ok: true, ct: number, surfaces: object, binding: 'minCT'|'minET', iterations: number,
  *             maxThickness: number }
  *          | { ok: false, code: string, data: object, iterations: number }}
  */
-export function solveCT({ sph, cyl, axisDeg, n, D1, k1 = 0, minCT, minET, outline, oc, maxIter = 50, ct0 }) {
+export function solveCT({
+  sph,
+  cyl,
+  axisDeg,
+  n,
+  D1,
+  k1 = 0,
+  minCT,
+  minET,
+  outline,
+  oc,
+  maxIter = 50,
+  ct0,
+  earlyExit = false,
+}) {
   let ct = Math.max(minCT, ct0 ?? minCT);
   const np = outline.length / 2;
   for (let it = 0; it < maxIter; it++) {
@@ -22,6 +53,8 @@ export function solveCT({ sph, cyl, axisDeg, n, D1, k1 = 0, minCT, minET, outlin
     const s = design({ sph, cyl, axisDeg, n, D1, k1, ct, oc });
     let dMax = -Infinity;
     let eMax = -Infinity;
+    let backFailed = false;
+    let crossFailed = false;
     for (let i = 0; i < np; i++) {
       const x = outline[2 * i];
       const y = outline[2 * i + 1];
@@ -36,12 +69,18 @@ export function solveCT({ sph, cyl, axisDeg, n, D1, k1 = 0, minCT, minET, outlin
       }
       const sB = backSagAt(s, x, y);
       if (Number.isNaN(sB)) {
-        return { ok: false, code: 'BACK_SAG_UNDEFINED', data: { meridian: 'cross' }, iterations: it };
+        if (earlyExit) return backSagError(axisDeg, true, it);
+        // Scan the rest of this iteration: the label is 'cross' if any failing point violates
+        // the cross-curve circle itself (cb²·v² > 1), else 'base'.
+        backFailed = true;
+        if (crossViolated(s, x, y)) crossFailed = true;
+        continue;
       }
       const d = sF - sB;
       if (d > dMax) dMax = d;
       if (-d > eMax) eMax = -d;
     }
+    if (backFailed) return backSagError(axisDeg, crossFailed, it);
     const next = Math.max(minCT, minET + dMax);
     if (Math.abs(next - ct) < 1e-4) {
       return {
@@ -96,7 +135,8 @@ export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, 
   let searchIterations = 0;
   const solve = (D1, ol, ct0) => {
     evaluations++;
-    const r = solveCT({ sph, cyl, axisDeg, n, D1, k1, minCT, minET, outline: ol, oc, ct0 });
+    const earlyExit = ol !== outline;
+    const r = solveCT({ sph, cyl, axisDeg, n, D1, k1, minCT, minET, outline: ol, oc, ct0, earlyExit });
     searchIterations += r.iterations;
     return r;
   };

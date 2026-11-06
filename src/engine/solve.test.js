@@ -95,7 +95,7 @@ describe('ENG-04 CT solve', () => {
     const r = solveCT({ ...base, sph: -20, D1: 0.5, outline: circleOutline(62) });
     expect(r.ok).toBe(false);
     expect(r.code).toBe('BACK_SAG_UNDEFINED');
-    expect(r.data).toEqual({ meridian: 'cross' });
+    expect(r.data).toEqual({ meridian: 'cross', axisDeg: 0 });
   });
 
   it('warm start converges to the same fixed point with no more iterations', () => {

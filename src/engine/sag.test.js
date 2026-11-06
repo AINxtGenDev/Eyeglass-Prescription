@@ -152,7 +152,9 @@ describe('ENG-03 model difference (PITFALLS Pitfall 5 cross-check)', () => {
       const D1 = vogelBaseCurve(sphericalEquivalent(sph, cyl));
       const s = design({ sph, cyl, axisDeg: 0, n: 1.5, D1, ct: 2, oc: { x: 0, y: 0 } });
       const r = 30;
-      expect(torusSag(s.ca, s.cb, r, 0)).toBe(meridional(s.ca, s.cb, r, 0));
+      expect(Math.abs(torusSag(s.ca, s.cb, r, 0) - meridional(s.ca, s.cb, r, 0))).toBeLessThanOrEqual(
+        1e-15 * Math.abs(meridional(s.ca, s.cb, r, 0)),
+      );
       expect(Math.abs(torusSag(s.ca, s.cb, 0, r) - meridional(s.ca, s.cb, 0, r))).toBeLessThanOrEqual(
         1e-15 * Math.abs(meridional(s.ca, s.cb, 0, r)),
       );
@@ -167,8 +169,12 @@ describe('ENG-03 model difference (PITFALLS Pitfall 5 cross-check)', () => {
       }
       const q = r / Math.SQRT2;
       const diag = torusSag(s.ca, s.cb, q, q) - meridional(s.ca, s.cb, q, q);
+      const barrel = torusSag(s.cb, s.ca, q, q) - meridional(s.ca, s.cb, q, q);
       expect(maxDiff).toBeGreaterThan(1e-3);
-      console.log(`[01-08] Pitfall 5 ${sph}/${cyl}: D1 ${D1}, diag 45° diff ${diag.toFixed(4)} mm, max |diff| ${maxDiff.toFixed(4)} mm`);
+      console.log(
+        `[01-08] Pitfall 5 ${sph}/${cyl}: D1 ${D1}, 45° tyre−meridional ${diag.toFixed(4)} mm, ` +
+          `max |tyre−meridional| ${maxDiff.toFixed(4)} mm, 45° barrel−meridional ${barrel.toFixed(4)} mm`,
+      );
     });
   }
 });

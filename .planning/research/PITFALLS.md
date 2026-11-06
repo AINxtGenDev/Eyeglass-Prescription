@@ -150,7 +150,8 @@ At the 45° diagonal they disagree [CALC; n 1.50, Vogel base, r = 30 mm]:
 - Also, the "torus" orientation (which principal radius is the sweep and which is the rotation) changes the result. Don't hard-code one without saying which.
 
 **How to avoid:**
-- Implement the **true torus** as the reference model: the profile circle in the cylinder-axis meridian, rotated about an axis parallel to it at the cross-curve radius. This is the "Zemax toroidal" form.
+- Implement the **true torus** as the reference model: the generating circle is always the meridian perpendicular to the cylinder axis (the cross curve; the steeper one only for a concave minus-cylinder back), swept along the axis direction at the base-curve radius — the tyre form used for mass-produced toric lenses; the barrel form swaps the roles.
+- Corrected 2026-11-06 per lens-critic m2 and D-03; the previous text described the barrel form.
 - Keep the meridional model only as a cross-check.
 - Document the chosen orientation.
 - Unit test: along both principal meridians, all models must agree *exactly* with the circle sag. Off-axis, assert the documented difference.

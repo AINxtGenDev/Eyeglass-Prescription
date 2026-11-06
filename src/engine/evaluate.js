@@ -69,8 +69,8 @@ function invalidReason(spec) {
   if (!(spec.fittingHeight == null || fin(spec.fittingHeight))) return 'fitting-height';
   if (!optPositive(spec.baseCurve)) return 'base-curve';
   if (!optPositive(spec.minCT) || !optPositive(spec.minET)) return 'min-thickness';
-  // Skeleton limit (lifted in 01-08)
-  if (spec.cyl !== 0) return 'cyl-not-supported';
+  // Minus-cylinder form only; the UI transposes plus-cylinder input (src/state/transpose.js, 01-09).
+  if (spec.cyl > 0) return 'plus-cyl-must-be-transposed';
   return null;
 }
 
