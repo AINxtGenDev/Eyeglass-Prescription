@@ -50,3 +50,45 @@ export function baseCurveAuto(se, { n, rhoMax, k1 = 0 }) {
   const maxD1 = Math.min(BASE_CURVE_LIMITS.max, frontCap);
   return { vogelD1, vogelClampedD1, maxD1 };
 }
+
+// ENG-01 meridian power and the dioptric power matrix.
+// Matrix name "dioptric power matrix (Harris/Keating)" is an [ASSUMED attribution, RESEARCH A1];
+// its consistency with ENG-01 (eᵀ·F·e = S + C·sin²(θ − α)) is proven in power.test.js.
+
+const DEG = Math.PI / 180;
+
+/** D(θ) = S + C·sin²(θ − α): S in the axis meridian, S + C at α + 90° (TABO degrees). */
+export function meridianPower(sph, cyl, axisDeg, thetaDeg) {
+  const s = Math.sin((thetaDeg - axisDeg) * DEG);
+  return sph + cyl * s * s;
+}
+
+/**
+ * @param {{ sph: number, cyl: number, axisDeg: number }} rx
+ * @returns {number[][]} [[S + C sin²α, −C sinα cosα], [−C sinα cosα, S + C cos²α]]
+ */
+export function rxToMatrix({ sph, cyl, axisDeg }) {
+  const s = Math.sin(axisDeg * DEG);
+  const c = Math.cos(axisDeg * DEG);
+  const f12 = -cyl * s * c;
+  return [
+    [sph + cyl * s * s, f12],
+    [f12, sph + cyl * c * c],
+  ];
+}
+
+/**
+ * Inverse of rxToMatrix in minus-cylinder form.
+ * @param {number[][]} F symmetric 2×2 (F[0][1] is used for the off-diagonal)
+ * @returns {{ sph: number, cyl: number, axisDeg: number }} cyl ≤ 0, axisDeg ∈ [0, 180)
+ */
+export function matrixToRx(F) {
+  const m = (F[0][0] + F[1][1]) / 2;
+  const h = (F[0][0] - F[1][1]) / 2;
+  const r = Math.hypot(h, F[0][1]);
+  if (r === 0) return { sph: m, cyl: 0, axisDeg: 0 };
+  let axisDeg = (0.5 * Math.atan2(2 * F[0][1], 2 * h)) / DEG;
+  axisDeg = ((axisDeg % 180) + 180) % 180;
+  if (axisDeg >= 180) axisDeg = 0;
+  return { sph: m + r, cyl: -2 * r, axisDeg };
+}
