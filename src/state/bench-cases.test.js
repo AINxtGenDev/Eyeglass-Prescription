@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { NORMAL_PAIR, GRENZFALL_PAIR, frameMissPair, specFor, BENCH_RUNS } from './bench-cases.js';
 import { evaluatePair } from '../engine/evaluate.js';
 
-const withoutEye = ({ eye: _eye, ...rest }) => rest;
+const withoutEye = (spec) => ({ ...spec, eye: undefined });
 
 describe('shared ENG-09 bench cases (01-14)', () => {
   test('BENCH_RUNS is 50', () => expect(BENCH_RUNS).toBe(50));
