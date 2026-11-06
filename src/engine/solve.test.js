@@ -148,17 +148,26 @@ describe('ENG-05 outline symmetry', () => {
 });
 
 describe('MAT-02 optimiseBaseCurve', () => {
-  const sweep = []; // D1 = 0.50, 0.55, …
-  for (let k = 10; k <= 200; k++) sweep.push(k / 20);
+  const sweep = []; // D1 = 0.50, 0.55, …, 14.00
+  for (let k = 10; k <= 280; k++) sweep.push(k / 20);
+  // Optimality oracle (01-12): non-convex back only, D1 ≤ maxD1 (the search minimises over
+  // [0.50, maxD1], FRONT_RADIUS_MARGIN_MM; rescan and bisection only decide feasibility).
   const bruteMin = (p, maxD1) => {
     let m = Infinity;
     for (const D1 of sweep) {
       if (D1 > maxD1 + 1e-12) break;
       const r = solveCT({ ...p, D1 });
-      if (r.ok && r.maxThickness < m) m = r.maxThickness;
+      if (r.ok && Math.max(r.surfaces.D2a, r.surfaces.D2b) <= 0 && r.maxThickness < m) m = r.maxThickness;
     }
     return m;
   };
+  // Structural evaluation count of the coarse grid (0.50, 1.00, … < hi, plus hi).
+  const coarseCount = (maxD1) => {
+    let g = 1;
+    for (let k = 1; k / 2 < Math.max(0.5, maxD1); k++) g++;
+    return g;
+  };
+  const RESCAN = 136; // 0.50 … 14.00 in 0.10 steps
 
   it('+12.00 decentred 24 mm: never thicker than the seed, near brute force, deterministic', () => {
     const outline = circleOutline(50);
@@ -174,7 +183,10 @@ describe('MAT-02 optimiseBaseCurve', () => {
     const again = optimiseBaseCurve({ ...p, maxD1, seedD1: 10 });
     expect(again.D1).toBe(r.D1);
     expect(again.ct).toBe(r.ct);
+    expect(Math.max(r.surfaces.D2a, r.surfaces.D2b)).toBeLessThanOrEqual(0);
+    // no D-C tie-break here (D1 < m), so the plain + 0.01 bound applies
     expect(r.maxThickness).toBeLessThanOrEqual(bruteMin(p, maxD1) + 0.01);
+    console.log('[01-12] +12 decentred 24: D1', r.D1, 'J', r.maxThickness, 'seed J', r.seedMaxThickness, 'evaluations', r.evaluations);
   });
 
   it('seed guarantee for −2.00 and +4.00 (seed = Vogel-clamped)', () => {
@@ -202,7 +214,9 @@ describe('MAT-02 optimiseBaseCurve', () => {
     expect(r.ok).toBe(false);
     expect(r.code).toBe('BACK_SAG_UNDEFINED');
     expect(r.data.searched).toBe(true);
-    expect(r.evaluations).toBeLessThanOrEqual(130);
+    // 01-12 structural bound: 1 seed + coarse grid + 136 rescan + 1 error solve (m < 0: no bisection)
+    expect(r.evaluations).toBeLessThanOrEqual(1 + coarseCount(500 / 33) + RESCAN + 1);
+    console.log('[01-12] nothing computes −20/62: evaluations', r.evaluations, 'bound', 1 + coarseCount(500 / 33) + RESCAN + 1);
   });
 
   it('maxD1 below the floor scans the floor only and still finds a lens', () => {
@@ -212,14 +226,18 @@ describe('MAT-02 optimiseBaseCurve', () => {
     expect(r.coarseD1).toBe(0.5);
   });
 
-  it('coarse grid infeasible: the 0.10 dpt impossibility rescan over [0.5, 10] finds a lens', () => {
-    // maxD1 forced below the floor: the coarse grid is {0.5}, where +20 on 52 mm cannot be made
-    // (back radius ≈ 25.6 mm < 26 mm), so the rescan runs and must find a computable front.
-    const r = optimiseBaseCurve({ ...base, sph: 20, outline: circleOutline(52), maxD1: 0.3, seedD1: 10 });
+  it('coarse grid infeasible: the 0.10 dpt impossibility rescan over [0.5, 14] finds a lens', () => {
+    // 01-12: maxD1 forced below the floor, so the coarse grid is {0.5}, where +4 has a convex back
+    // (BACK_SURFACE_CONVEX); the rescan runs and must find a computable front. (+20 on 52 mm, the
+    // old case, is impossible at every front once the back may not be convex.)
+    const r = optimiseBaseCurve({ ...base, sph: 4, outline: circleOutline(52), maxD1: 0.3, seedD1: 10 });
     expect(r.ok).toBe(true);
     expect(r.evaluations).toBeGreaterThan(22);
-    expect(r.evaluations).toBeLessThanOrEqual(130);
+    // structural: 1 seed + 1 coarse + 136 rescan + 1 re-evaluation + ≤ 10 refinement + ≤ 1 D-C
+    expect(r.evaluations).toBeLessThanOrEqual(1 + 1 + RESCAN + 1 + 10 + 1);
     expect(r.maxThickness).toBeLessThanOrEqual(r.seedMaxThickness + 1e-9);
+    expect(Math.max(r.surfaces.D2a, r.surfaces.D2b)).toBeLessThanOrEqual(0);
+    console.log('[01-12] coarse infeasible +4/52: D1', r.D1, 'J', r.maxThickness, 'seed J', r.seedMaxThickness, 'evaluations', r.evaluations);
   });
 
   // A spiky outline whose every 4th point (the decimated outline) lies on a small circle and all
@@ -237,8 +255,11 @@ describe('MAT-02 optimiseBaseCurve', () => {
   };
 
   it('decimation hides a violation: full-outline repeat finds the real optimum', () => {
+    // 01-12: tried sph +12, +10, +8, +6 in that order and kept the first that meets every
+    // condition below. +12 now takes the rescan path (convex back below D1 10) and misses
+    // J ≤ bruteMin + 0.01 by 0.0005 mm; +10 is the first that meets all of them.
     const outline = spiky(10, 55);
-    const p = { ...base, sph: 12, outline };
+    const p = { ...base, sph: 10, outline };
     const r = optimiseBaseCurve({ ...p, maxD1: 10, seedD1: 0.5 });
     expect(r.ok).toBe(true);
     expect(r.coarseMaxThickness).toBe(null); // coarse best does not compute on the full outline

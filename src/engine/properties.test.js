@@ -256,7 +256,8 @@ describe('ENG-08 tier-4 properties', () => {
       }
     }
     console.log('[01-10] monotonicity: ok samples', samples, 'worst drop (mm)', worst, worstAt);
-    expect(samples).toBeGreaterThan(3000);
+    // 01-12: observed 3188 ok samples with the +14 ceiling and the non-convex back (gate = observed)
+    expect(samples).toBeGreaterThanOrEqual(3188);
   }, 60_000);
 
   it('axis sweep 0…179 is continuous (CT and etMax step ≤ 0.05 mm, including 179 → 0)', () => {

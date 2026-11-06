@@ -153,6 +153,8 @@ const GOLDEN = (Math.sqrt(5) - 1) / 2;
  * Cost per eye: 1 seed + ≤ 28 coarse + 1 re-evaluation + ≤ 10 refinement = 40 for lenses that
  * compute in the coarse pass, + ≤ 1 tie-break solve (D-C lenses only). Failing lenses add
  * ≤ 136 rescan + ≤ 30 bisection (+ ≤ 10 refinement when it finds a window) + 1 error solve.
+ * When decimation hid a violation, the full-outline repeat adds one more grid pass (≤ 28, or
+ * ≤ 136 after a rescan) + ≤ 10 refinement.
  * Each solve is capped by maxIter. It runs on every automatic recompute (ENG-09 cost).
  * Returns minMaxThickness = J_min (the thinnest found) next to maxThickness = J of the chosen D1.
  */
