@@ -3,6 +3,7 @@
 import './style.css';
 import { parseDiopter } from '../state/parse.js';
 import { evaluatePair, evaluateLens } from '../engine/evaluate.js';
+import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
 import { fmtDiopter, fmtMm, fmtGram, fmtMs } from '../i18n/format.js';
 
@@ -10,18 +11,21 @@ const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
 const BENCH_RUNS = 50;
 
-// Skeleton limits (01-03): sphere only, fixed round frame, CR-39. Lifted by 01-06 … 01-09.
+// Skeleton limits (01-03): sphere only, fixed round frame. Material select since 01-06;
+// the rest is lifted by 01-07 … 01-09.
 const FRAME = Object.freeze({ shape: 'rund', A: 50, B: 50, DBL: 18 });
 const MONO_PD = 32;
+const DEFAULT_MATERIAL = 'cr39';
+const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
 
-/** @param {'OD'|'OS'} eye @param {number} sph @param {number} monoPD */
-function specFor(eye, sph, monoPD = MONO_PD) {
+/** @param {'OD'|'OS'} eye @param {number} sph @param {number} monoPD @param {string} materialId */
+function specFor(eye, sph, monoPD = MONO_PD, materialId = DEFAULT_MATERIAL) {
   return {
     eye,
     sph,
     cyl: 0,
     axisDeg: 0,
-    materialId: 'cr39',
+    materialId,
     frame: FRAME,
     monoPD,
     fittingHeight: null,
@@ -45,6 +49,38 @@ const setText = (id, text) => {
 
 /** @type {{ OD: object, OS: object } | null} */
 let currentSpecs = null;
+
+const materialSelect = () => /** @type {HTMLSelectElement} */ ($('material'));
+
+/** Options from MATERIALS ids only (T-01-21); labels from the dictionary. */
+function buildMaterialOptions() {
+  const select = materialSelect();
+  for (const id of Object.keys(MATERIALS)) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = t('material.' + id);
+    select.append(opt);
+  }
+  select.value = DEFAULT_MATERIAL;
+}
+
+/** Selected id, guarded to a MATERIALS key. */
+function currentMaterialId() {
+  const id = materialSelect().value;
+  return Object.hasOwn(MATERIALS, id) ? id : DEFAULT_MATERIAL;
+}
+
+function renderMaterialLine(eye, materialId) {
+  const m = MATERIALS[materialId];
+  setText(
+    `result-${eye.toLowerCase()}-material`,
+    t('result.materialLine', {
+      eye: t(eye === 'OD' ? 'rx.od' : 'rx.os'),
+      label: t('material.' + materialId),
+      density: densityNf.format(m.density) + '\u00A0g/cm³',
+    }),
+  );
+}
 
 function applyDictionary() {
   for (const el of document.querySelectorAll('[data-i18n]')) {
@@ -106,8 +142,11 @@ function renderResult(eye, res) {
 function update() {
   const start = performance.now();
   const values = { OD: readEye('OD'), OS: readEye('OS') };
+  const materialId = currentMaterialId();
+  for (const eye of EYES) renderMaterialLine(eye, materialId);
+  const spec = (eye) => specFor(eye, values[eye], MONO_PD, materialId);
   if (values.OD !== null && values.OS !== null) {
-    currentSpecs = { OD: specFor('OD', values.OD), OS: specFor('OS', values.OS) };
+    currentSpecs = { OD: spec('OD'), OS: spec('OS') };
     const pair = evaluatePair(currentSpecs);
     for (const eye of EYES) renderResult(eye, pair[eye]);
   } else {
@@ -115,7 +154,7 @@ function update() {
     currentSpecs = null;
     for (const eye of EYES) {
       if (values[eye] === null) renderEmpty(eye, t('result.inputMissing'));
-      else renderResult(eye, evaluateLens(specFor(eye, values[eye])));
+      else renderResult(eye, evaluateLens(spec(eye)));
     }
   }
   const ms = performance.now() - start;
@@ -147,6 +186,8 @@ function runBench() {
 
 function init() {
   applyDictionary();
+  buildMaterialOptions();
+  materialSelect().addEventListener('change', update);
   for (const eye of EYES) {
     const input = /** @type {HTMLInputElement} */ ($(`rx-${eye.toLowerCase()}-sph`));
     input.value = '-2,00';

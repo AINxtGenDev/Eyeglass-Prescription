@@ -24,7 +24,18 @@ export default Object.freeze({
   'rx.od.sph.label': 'Sph rechtes Auge in Dioptrien',
   'rx.os.sph.label': 'Sph linkes Auge in Dioptrien',
 
-  'frame.note': 'Vorschau: Fassung rund, 50 mm, Steg 18 mm; PD je Auge 32 mm; Material CR-39 1,50',
+  'frame.note': 'Vorschau: Fassung rund, 50 mm, Steg 18 mm; PD je Auge 32 mm',
+
+  // Option labels per MATERIALS id. Never imply that 1,74 is always better (PITFALLS Pitfall 8).
+  'material.label': 'Material (Brechungsindex)',
+  'material.hint':
+    'Ein höherer Brechungsindex macht Minusgläser am Rand dünner. Ob sich das lohnt, hängt von Ihren Werten und der Fassung ab – vergleichen Sie die Zahlen unten.',
+  'material.cr39': 'Kunststoff CR-39 (1,50)',
+  'material.trivex': 'Trivex 1,53',
+  'material.pc': 'Polycarbonat (1,59)',
+  'material.idx160': 'Kunststoff 1,60',
+  'material.idx167': 'Kunststoff 1,67',
+  'material.idx174': 'Kunststoff 1,74',
 
   'result.title': 'Ergebnis je Glas',
   'result.ct': 'Mittendicke',
@@ -34,6 +45,7 @@ export default Object.freeze({
   'result.basecurve': 'Basiskurve (Vorderfläche)',
   'result.status': 'Hinweis',
   'result.inputMissing': 'Bitte zuerst einen gültigen Sph-Wert eingeben.',
+  'result.materialLine': '{eye}: {label}, Dichte {density}',
   'result.notComputable': 'Dieses Glas lässt sich so nicht berechnen (Code {code}).',
 
   'loc.nasal': 'nasal (zur Nase)',

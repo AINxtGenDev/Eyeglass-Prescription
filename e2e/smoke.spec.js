@@ -61,6 +61,22 @@ test('malformed input shows an error, never NaN', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 
+test('material choice changes thickness', async ({ page }) => {
+  await page.locator('#rx-od-sph').fill('-4,00');
+  await page.locator('#rx-os-sph').fill('-4,00');
+  const select = page.locator('#material');
+  await expect(select.locator('option')).toHaveCount(6);
+  await expect(select.locator('option', { hasText: 'Trivex 1,53' })).toHaveCount(1);
+  await expect(select).toHaveValue('cr39');
+  const etmax = page.locator('#result-od-etmax');
+  await expect(etmax).toHaveText(/^\d+,\d/);
+  const num = async () => Number((await etmax.textContent()).match(/^(\d+,\d)/)[1].replace(',', '.'));
+  const cr39 = await num();
+  await select.selectOption('idx167');
+  await expect(page.locator('#result-od-material')).toContainText('1,67');
+  await expect.poll(num).toBeLessThan(cr39);
+});
+
 test('footer shows the build commit', async ({ page }) => {
   await expect(page.locator('#app-commit')).toHaveText(/^([0-9a-f]{7}|dev)$/);
 });
