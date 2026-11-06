@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import dict from './de-AT.js';
 import { t } from './t.js';
 import { PARSE_CODES } from '../state/parse.js';
+import { RX_CODES } from '../state/transpose.js';
 
 describe('t() (L10N-02)', () => {
   test('returns the German title', () => {
@@ -25,6 +26,10 @@ describe('de-AT dictionary', () => {
 
   test.each(Object.keys(PARSE_CODES))('has parse.%s', (code) => {
     expect(dict).toHaveProperty([`parse.${code}`]);
+  });
+
+  test.each(Object.keys(RX_CODES))('has rx.%s', (code) => {
+    expect(dict).toHaveProperty([`rx.${code}`]);
   });
 
   test('never uses "Stärke" (thickness is Mittendicke/Randdicke)', () => {

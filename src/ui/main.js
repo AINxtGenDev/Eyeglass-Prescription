@@ -1,20 +1,21 @@
-// The only DOM tier: raw field text → parseDiopter → evaluatePair → German render.
+// The only DOM tier: raw field text → parse → transpose (minus cyl) → evaluatePair → German render.
 // Every visible string comes from t(); everything is written with textContent.
 import './style.css';
-import { parseDiopter, parseMm } from '../state/parse.js';
+import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
+import { transpose, RX_CODES } from '../state/transpose.js';
 import { evaluatePair, evaluateLens } from '../engine/evaluate.js';
 import { MATERIALS } from '../engine/materials.js';
 import { SHAPES } from '../engine/frame/shapes.js';
 import { nasalSign } from '../engine/conventions.js';
 import { t } from '../i18n/t.js';
-import { fmtDiopter, fmtMm, fmtGram, fmtMs } from '../i18n/format.js';
+import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtMs } from '../i18n/format.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
 const BENCH_RUNS = 50;
 
-// Phase-1 limits: sphere only (cyl in 01-08). Material select since 01-06; frame shape/size and
-// PD per eye since 01-07. Fitting height is supported by the engine but omitted here (D-04).
+// Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material select since
+// 01-06; frame shape/size and PD per eye since 01-07. Fitting height is supported by the engine but omitted here (D-04).
 const DEFAULT_SHAPE = 'rechteckig';
 const DEFAULT_PD = '32';
 // The worst-case bench keeps its own fixed frame (label tech.timingWorst names its numbers).
@@ -22,16 +23,21 @@ const BENCH_FRAME = Object.freeze({ shape: 'rund', A: 50, B: 50, DBL: 18 });
 const DEFAULT_MATERIAL = 'cr39';
 const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
 
+/** @param {number} sph sphere-only Rx */
+const sphOnly = (sph) => ({ sph, cyl: 0, axisDeg: 0 });
+
 /**
- * @param {'OD'|'OS'} eye @param {number} sph @param {number} monoPD @param {string} materialId
+ * @param {'OD'|'OS'} eye
+ * @param {{ sph: number, cyl: number, axisDeg: number }} rx minus-cylinder form only (cyl ≤ 0)
+ * @param {number} monoPD @param {string} materialId
  * @param {{ shape: string, A: number, B: number, DBL: number }} frame
  */
-function specFor(eye, sph, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BENCH_FRAME) {
+function specFor(eye, rx, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = BENCH_FRAME) {
   return {
     eye,
-    sph,
-    cyl: 0,
-    axisDeg: 0,
+    sph: rx.sph,
+    cyl: rx.cyl,
+    axisDeg: rx.axisDeg,
     materialId,
     frame,
     monoPD,
@@ -45,8 +51,8 @@ function specFor(eye, sph, monoPD = 32, materialId = DEFAULT_MATERIAL, frame = B
 // Costliest search inside the skeleton domain (sphere, rund, CR-39). NOT the overall worst case:
 // 01-10 Task 2 replaces these specs (and the bench copy and the tech.timingWorst label) in one edit.
 const WORST_CASE_BENCH_SPECS = Object.freeze({
-  OD: specFor('OD', 12, 10),
-  OS: specFor('OS', 12, 10),
+  OD: specFor('OD', sphOnly(12), 10),
+  OS: specFor('OS', sphOnly(12), 10),
 });
 
 const $ = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -126,27 +132,96 @@ function prefillFrame(shape) {
   }
 }
 
+/** Mark a field valid and show its echo (may be empty). */
+function showFieldOk(id, echo) {
+  setText(`${id}-echo`, echo);
+  const err = $(`${id}-err`);
+  err.textContent = '';
+  err.hidden = true;
+  $(id).removeAttribute('aria-invalid');
+}
+
+/** Mark a field invalid with a German message. */
+function showFieldError(id, message) {
+  setText(`${id}-echo`, '');
+  const err = $(`${id}-err`);
+  err.textContent = message;
+  err.hidden = false;
+  $(id).setAttribute('aria-invalid', 'true');
+}
+
+const isBlank = (id) => /** @type {HTMLInputElement} */ ($(id)).value.trim() === '';
+
 /** Parse one field, show echo or error; returns the value or null. */
 function readField(id, parse, format) {
-  const input = /** @type {HTMLInputElement} */ ($(id));
-  const err = $(`${id}-err`);
-  const r = parse(input.value);
+  const r = parse(/** @type {HTMLInputElement} */ ($(id)).value);
   if (r.ok) {
-    setText(`${id}-echo`, format(r.value));
-    err.textContent = '';
-    err.hidden = true;
-    input.removeAttribute('aria-invalid');
+    showFieldOk(id, format(r.value));
     return r.value;
   }
-  setText(`${id}-echo`, '');
-  err.textContent = t('parse.' + r.code);
-  err.hidden = false;
-  input.setAttribute('aria-invalid', 'true');
+  showFieldError(id, t('parse.' + r.code));
   return null;
 }
 
 const readSph = (eye) => readField(`rx-${eye.toLowerCase()}-sph`, parseDiopter, fmtDiopter);
 const readMm = (id) => readField(id, parseMm, fmtMm);
+
+/** Zyl: blank means 0 (common on paper). */
+function readCyl(eye) {
+  const id = `rx-${eye.toLowerCase()}-cyl`;
+  if (isBlank(id)) {
+    showFieldOk(id, '');
+    return 0;
+  }
+  return readField(id, parseDiopter, fmtDiopter);
+}
+
+/** Achse: required when Zyl ≠ 0, never defaulted (T-01-10); blank without Zyl is fine. */
+function readAxis(eye, cyl) {
+  const id = `rx-${eye.toLowerCase()}-axis`;
+  if (isBlank(id)) {
+    if (cyl !== null && cyl !== 0) {
+      showFieldError(id, t('rx.' + RX_CODES.AXIS_MISSING_FOR_CYL));
+      return null;
+    }
+    showFieldOk(id, '');
+    return 0;
+  }
+  return readField(id, parseAxis, fmtAxis);
+}
+
+/** "Sph / Zyl × Achse" for one cylinder form. */
+const fmtForm = (f) => `${fmtDiopter(f.sph)} / ${fmtDiopter(f.cyl)} × ${fmtAxis(f.axisDeg)}`;
+
+/**
+ * Read Sph/Zyl/Achse for one eye, show both cylinder forms, and return the minus-cylinder Rx
+ * for the engine (T-01-25), or null when a field is invalid.
+ */
+function readRx(eye) {
+  const sph = readSph(eye);
+  const cyl = readCyl(eye);
+  const axisDeg = readAxis(eye, cyl);
+  const formsId = `rx-${eye.toLowerCase()}-forms`;
+  if (sph === null || cyl === null || axisDeg === null) {
+    setText(formsId, '');
+    $(formsId).hidden = true;
+    return { sph, rx: null };
+  }
+  const r = transpose({ sph, cyl, axisDeg });
+  if (r.plus === null) {
+    setText(formsId, '');
+    $(formsId).hidden = true;
+  } else {
+    const forms = t('rx.forms', {
+      eye: t(eye === 'OD' ? 'rx.od' : 'rx.os'),
+      minus: fmtForm(r.minus),
+      plus: fmtForm(r.plus),
+    });
+    setText(formsId, r.transposed ? t('rx.' + RX_CODES.CYL_TRANSPOSED) + ' ' + forms : forms);
+    $(formsId).hidden = false;
+  }
+  return { sph, rx: r.minus };
+}
 
 const CELLS = ['ct', 'etmax', 'etmin', 'dec', 'weight', 'basecurve'];
 
@@ -180,15 +255,15 @@ function renderResult(eye, res) {
 
 function update() {
   const start = performance.now();
-  const sph = { OD: readSph('OD'), OS: readSph('OS') };
+  const read = { OD: readRx('OD'), OS: readRx('OS') };
   const pd = { OD: readMm('rx-od-pd'), OS: readMm('rx-os-pd') };
   const dims = { A: readMm('frame-a'), B: readMm('frame-b'), DBL: readMm('frame-dbl') };
   const frameOk = dims.A !== null && dims.B !== null && dims.DBL !== null;
   const frame = frameOk ? { shape: currentShape(), A: dims.A, B: dims.B, DBL: dims.DBL } : null;
   const materialId = currentMaterialId();
   for (const eye of EYES) renderMaterialLine(eye, materialId);
-  const spec = (eye) => specFor(eye, sph[eye], pd[eye], materialId, frame);
-  const ready = (eye) => frameOk && sph[eye] !== null && pd[eye] !== null;
+  const spec = (eye) => specFor(eye, read[eye].rx, pd[eye], materialId, frame);
+  const ready = (eye) => frameOk && read[eye].rx !== null && pd[eye] !== null;
   if (ready('OD') && ready('OS')) {
     currentSpecs = { OD: spec('OD'), OS: spec('OS') };
     const pair = evaluatePair(currentSpecs);
@@ -198,7 +273,7 @@ function update() {
     currentSpecs = null;
     for (const eye of EYES) {
       if (ready(eye)) renderResult(eye, evaluateLens(spec(eye)));
-      else if (sph[eye] === null) renderEmpty(eye, t('result.inputMissing'));
+      else if (read[eye].sph === null) renderEmpty(eye, t('result.inputMissing'));
       else renderEmpty(eye, t('result.inputInvalid'));
     }
   }
@@ -222,7 +297,7 @@ function measure(specs) {
 }
 
 function runBench() {
-  const specs = currentSpecs ?? { OD: specFor('OD', -2), OS: specFor('OS', -2) };
+  const specs = currentSpecs ?? { OD: specFor('OD', sphOnly(-2)), OS: specFor('OS', sphOnly(-2)) };
   const cur = measure(specs);
   setText('timing', t('tech.timing', { median: fmtMs(cur.median), p95: fmtMs(cur.p95) }));
   const worst = measure(WORST_CASE_BENCH_SPECS);
@@ -245,6 +320,8 @@ function init() {
     const input = /** @type {HTMLInputElement} */ ($(`rx-${e}-sph`));
     input.value = '-2,00';
     input.addEventListener('input', update);
+    // Zyl and Achse start empty (sphere-only until the user types a cylinder).
+    for (const f of ['cyl', 'axis']) $(`rx-${e}-${f}`).addEventListener('input', update);
     const pdInput = /** @type {HTMLInputElement} */ ($(`rx-${e}-pd`));
     pdInput.value = DEFAULT_PD;
     pdInput.addEventListener('input', update);

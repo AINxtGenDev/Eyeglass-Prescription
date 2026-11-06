@@ -1,4 +1,4 @@
-// Walking-skeleton smoke contract (DEPL-01, RX-02, L10N-01, RES-06, SC-1, ENG-09).
+// Walking-skeleton smoke contract (DEPL-01, RX-02, RX-03, L10N-01, RES-06, SC-1, ENG-09).
 // RED until plan 01-03 ships the German page; runs against `vite preview` locally
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
@@ -95,6 +95,30 @@ test('frame shape and PD change the edge', async ({ page }) => {
   await expect(page.locator('#frame-a')).toHaveValue('58');
   await expect(page.locator('#frame-b')).toHaveValue('50');
   await expect(page.locator('#frame-dbl')).toHaveValue('14');
+  await expect(page.locator('body')).not.toContainText('NaN');
+});
+
+test('plus cylinder shows both forms', async ({ page }) => {
+  await page.locator('#rx-od-sph').fill('+1,00');
+  await page.locator('#rx-od-cyl').fill('+2,00');
+  await page.locator('#rx-od-axis').fill('90');
+  const forms = page.locator('#rx-od-forms');
+  await expect(forms).toBeVisible();
+  for (const s of ['+3,00', '−2,00', '180°', '+2,00', '90°', 'umgerechnet']) await expect(forms).toContainText(s);
+  for (const id of ['#result-od-ct', '#result-od-etmax', '#result-od-etmin', '#result-od-weight']) {
+    await expect(page.locator(id)).toHaveText(/^\d+,\d\s(mm|g)/);
+  }
+  await expect(page.locator('#result-od-status')).toBeEmpty();
+  await expect(page.locator('body')).not.toContainText('NaN');
+});
+
+test('cylinder without axis', async ({ page }) => {
+  await page.locator('#rx-od-cyl').fill('-1,00');
+  await page.locator('#rx-od-axis').fill('');
+  const err = page.locator('#rx-od-axis-err');
+  await expect(err).toBeVisible();
+  await expect(err).not.toBeEmpty();
+  await expect(page.locator('#result-od-ct')).toHaveText('–');
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 

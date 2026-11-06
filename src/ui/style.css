@@ -190,3 +190,14 @@ legend {
 #frame-hint {
   color: var(--muted);
 }
+
+/* Five Rx columns must fit a 360 px phone. */
+.rx-table th,
+.rx-table td {
+  padding-inline: 0.25rem;
+}
+
+.rx-forms {
+  border-inline-start: 3px solid var(--fg);
+  padding-inline-start: 0.5rem;
+}

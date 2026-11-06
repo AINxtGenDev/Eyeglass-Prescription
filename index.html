@@ -23,6 +23,14 @@
                 <abbr data-i18n="rx.sph.abbr" data-i18n-title="rx.sph.title"></abbr>
                 <span data-i18n="rx.sph.unit"></span>
               </th>
+              <th scope="col">
+                <abbr data-i18n="rx.cyl.abbr" data-i18n-title="rx.cyl.title"></abbr>
+                <span data-i18n="rx.sph.unit"></span>
+              </th>
+              <th scope="col">
+                <abbr data-i18n="rx.axis.abbr" data-i18n-title="rx.axis.title"></abbr>
+                <span data-i18n="rx.axis.unit"></span>
+              </th>
               <th scope="col" data-i18n="rx.pd.header"></th>
             </tr>
           </thead>
@@ -35,6 +43,20 @@
                   aria-describedby="rx-od-sph-echo rx-od-sph-err">
                 <output id="rx-od-sph-echo" for="rx-od-sph"></output>
                 <p id="rx-od-sph-err" class="error" aria-live="polite" hidden></p>
+              </td>
+              <td>
+                <label for="rx-od-cyl" class="visually-hidden" data-i18n="rx.od.cyl.label"></label>
+                <input id="rx-od-cyl" name="od-cyl" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="rx-od-cyl-echo rx-od-cyl-err">
+                <output id="rx-od-cyl-echo" for="rx-od-cyl"></output>
+                <p id="rx-od-cyl-err" class="error" aria-live="polite" hidden></p>
+              </td>
+              <td>
+                <label for="rx-od-axis" class="visually-hidden" data-i18n="rx.od.axis.label"></label>
+                <input id="rx-od-axis" name="od-axis" type="text" inputmode="numeric" autocomplete="off"
+                  aria-describedby="rx-od-axis-echo rx-od-axis-err">
+                <output id="rx-od-axis-echo" for="rx-od-axis"></output>
+                <p id="rx-od-axis-err" class="error" aria-live="polite" hidden></p>
               </td>
               <td>
                 <label for="rx-od-pd" class="visually-hidden" data-i18n="rx.od.pd.label"></label>
@@ -54,6 +76,20 @@
                 <p id="rx-os-sph-err" class="error" aria-live="polite" hidden></p>
               </td>
               <td>
+                <label for="rx-os-cyl" class="visually-hidden" data-i18n="rx.os.cyl.label"></label>
+                <input id="rx-os-cyl" name="os-cyl" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="rx-os-cyl-echo rx-os-cyl-err">
+                <output id="rx-os-cyl-echo" for="rx-os-cyl"></output>
+                <p id="rx-os-cyl-err" class="error" aria-live="polite" hidden></p>
+              </td>
+              <td>
+                <label for="rx-os-axis" class="visually-hidden" data-i18n="rx.os.axis.label"></label>
+                <input id="rx-os-axis" name="os-axis" type="text" inputmode="numeric" autocomplete="off"
+                  aria-describedby="rx-os-axis-echo rx-os-axis-err">
+                <output id="rx-os-axis-echo" for="rx-os-axis"></output>
+                <p id="rx-os-axis-err" class="error" aria-live="polite" hidden></p>
+              </td>
+              <td>
                 <label for="rx-os-pd" class="visually-hidden" data-i18n="rx.os.pd.label"></label>
                 <input id="rx-os-pd" name="os-pd" type="text" inputmode="decimal" autocomplete="off"
                   aria-describedby="rx-os-pd-echo rx-os-pd-err">
@@ -64,6 +100,10 @@
           </tbody>
         </table>
         <p id="rx-hint" data-i18n="rx.sph.label"></p>
+        <p id="rx-cyl-hint" data-i18n="rx.cyl.label"></p>
+        <p id="rx-axis-hint" data-i18n="rx.axis.label"></p>
+        <p id="rx-od-forms" class="rx-forms" aria-live="polite" hidden></p>
+        <p id="rx-os-forms" class="rx-forms" aria-live="polite" hidden></p>
         <div class="field">
           <label for="material" data-i18n="material.label"></label>
           <select id="material" name="material" aria-describedby="material-hint"></select>
