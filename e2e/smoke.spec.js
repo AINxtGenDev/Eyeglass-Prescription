@@ -77,6 +77,27 @@ test('material choice changes thickness', async ({ page }) => {
   await expect.poll(num).toBeLessThan(cr39);
 });
 
+test('frame shape and PD change the edge', async ({ page }) => {
+  await page.locator('#rx-od-sph').fill('-6,00');
+  await page.locator('#rx-os-sph').fill('-6,00');
+  await expect(page.locator('#frame-shape')).toHaveValue('rechteckig');
+  await expect(page.locator('#frame-a')).toHaveValue('52');
+  await expect(page.locator('#rx-od-pd')).toHaveValue('32');
+  const etmax = page.locator('#result-od-etmax');
+  await expect(etmax).toContainText('schläfenseitig');
+  const num = async () => Number((await etmax.textContent()).match(/^(\d+,\d)/)[1].replace(',', '.'));
+  const before = await num();
+  await expect(page.locator('#result-od-dec')).toHaveText(/^3,0\smm$/);
+  await page.locator('#rx-od-pd').fill('28');
+  await expect(page.locator('#result-od-dec')).toHaveText(/^7,0\smm$/);
+  await expect.poll(num).toBeGreaterThan(before);
+  await page.locator('#frame-shape').selectOption('pilot');
+  await expect(page.locator('#frame-a')).toHaveValue('58');
+  await expect(page.locator('#frame-b')).toHaveValue('50');
+  await expect(page.locator('#frame-dbl')).toHaveValue('14');
+  await expect(page.locator('body')).not.toContainText('NaN');
+});
+
 test('footer shows the build commit', async ({ page }) => {
   await expect(page.locator('#app-commit')).toHaveText(/^([0-9a-f]{7}|dev)$/);
 });

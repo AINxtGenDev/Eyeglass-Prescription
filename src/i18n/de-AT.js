@@ -23,8 +23,22 @@ export default Object.freeze({
   'rx.sph.label': 'Tippen Sie den Sph-Wert so ein, wie er auf dem Brillenpass steht, z. B. −2,25 oder +1.',
   'rx.od.sph.label': 'Sph rechtes Auge in Dioptrien',
   'rx.os.sph.label': 'Sph linkes Auge in Dioptrien',
+  'rx.pd.header': 'PD (mm, je Auge)',
+  'rx.od.pd.label': 'PD rechtes Auge in Millimetern (Abstand Nasenmitte bis Pupille)',
+  'rx.os.pd.label': 'PD linkes Auge in Millimetern (Abstand Nasenmitte bis Pupille)',
 
-  'frame.note': 'Vorschau: Fassung rund, 50 mm, Steg 18 mm; PD je Auge 32 mm',
+  // Frame (FRAME-01). Shape outlines are model shapes, not a specific product.
+  'frame.legend': 'Fassung',
+  'frame.shape.label': 'Form der Fassung',
+  'frame.shape.rund': 'Rund',
+  'frame.shape.rechteckig': 'Rechteckig',
+  'frame.shape.panto': 'Panto',
+  'frame.shape.pilot': 'Pilot',
+  'frame.a.label': 'A – Glasbreite (mm)',
+  'frame.b.label': 'B – Glashöhe (mm)',
+  'frame.dbl.label': 'DBL – Stegbreite (mm)',
+  'frame.hint':
+    'Glasbreite und Stegbreite stehen meist innen am Bügel, z. B. „52□18 145“: 52 mm Glasbreite, 18 mm Stegbreite. Die Glashöhe steht dort selten; beim Wechsel der Form werden typische Werte vorgeschlagen.',
 
   // Option labels per MATERIALS id. Never imply that 1,74 is always better (PITFALLS Pitfall 8).
   'material.label': 'Material (Brechungsindex)',
@@ -45,6 +59,8 @@ export default Object.freeze({
   'result.basecurve': 'Basiskurve (Vorderfläche)',
   'result.status': 'Hinweis',
   'result.inputMissing': 'Bitte zuerst einen gültigen Sph-Wert eingeben.',
+  'result.inputInvalid': 'Bitte zuerst die markierten Felder korrigieren.',
+  'result.dec': 'Dezentration (zur Nase)',
   'result.materialLine': '{eye}: {label}, Dichte {density}',
   'result.notComputable': 'Dieses Glas lässt sich so nicht berechnen (Code {code}).',
 

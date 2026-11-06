@@ -176,3 +176,17 @@ select {
 .material-line {
   color: var(--muted);
 }
+
+fieldset {
+  margin-block: 1rem;
+  border: 2px solid var(--line);
+  border-radius: 4px;
+}
+
+legend {
+  font-weight: 600;
+}
+
+#frame-hint {
+  color: var(--muted);
+}

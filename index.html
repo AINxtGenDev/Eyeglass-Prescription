@@ -23,6 +23,7 @@
                 <abbr data-i18n="rx.sph.abbr" data-i18n-title="rx.sph.title"></abbr>
                 <span data-i18n="rx.sph.unit"></span>
               </th>
+              <th scope="col" data-i18n="rx.pd.header"></th>
             </tr>
           </thead>
           <tbody>
@@ -35,6 +36,13 @@
                 <output id="rx-od-sph-echo" for="rx-od-sph"></output>
                 <p id="rx-od-sph-err" class="error" aria-live="polite" hidden></p>
               </td>
+              <td>
+                <label for="rx-od-pd" class="visually-hidden" data-i18n="rx.od.pd.label"></label>
+                <input id="rx-od-pd" name="od-pd" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="rx-od-pd-echo rx-od-pd-err">
+                <output id="rx-od-pd-echo" for="rx-od-pd"></output>
+                <p id="rx-od-pd-err" class="error" aria-live="polite" hidden></p>
+              </td>
             </tr>
             <tr>
               <th scope="row" data-i18n="rx.os"></th>
@@ -45,6 +53,13 @@
                 <output id="rx-os-sph-echo" for="rx-os-sph"></output>
                 <p id="rx-os-sph-err" class="error" aria-live="polite" hidden></p>
               </td>
+              <td>
+                <label for="rx-os-pd" class="visually-hidden" data-i18n="rx.os.pd.label"></label>
+                <input id="rx-os-pd" name="os-pd" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="rx-os-pd-echo rx-os-pd-err">
+                <output id="rx-os-pd-echo" for="rx-os-pd"></output>
+                <p id="rx-os-pd-err" class="error" aria-live="polite" hidden></p>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -54,9 +69,36 @@
           <select id="material" name="material" aria-describedby="material-hint"></select>
           <p id="material-hint" data-i18n="material.hint"></p>
         </div>
+        <fieldset id="frame">
+          <legend data-i18n="frame.legend"></legend>
+          <div class="field">
+            <label for="frame-shape" data-i18n="frame.shape.label"></label>
+            <select id="frame-shape" name="frame-shape" aria-describedby="frame-hint"></select>
+          </div>
+          <div class="field">
+            <label for="frame-a" data-i18n="frame.a.label"></label>
+            <input id="frame-a" name="frame-a" type="text" inputmode="decimal" autocomplete="off"
+              aria-describedby="frame-a-echo frame-a-err">
+            <output id="frame-a-echo" for="frame-a"></output>
+            <p id="frame-a-err" class="error" aria-live="polite" hidden></p>
+          </div>
+          <div class="field">
+            <label for="frame-b" data-i18n="frame.b.label"></label>
+            <input id="frame-b" name="frame-b" type="text" inputmode="decimal" autocomplete="off"
+              aria-describedby="frame-b-echo frame-b-err">
+            <output id="frame-b-echo" for="frame-b"></output>
+            <p id="frame-b-err" class="error" aria-live="polite" hidden></p>
+          </div>
+          <div class="field">
+            <label for="frame-dbl" data-i18n="frame.dbl.label"></label>
+            <input id="frame-dbl" name="frame-dbl" type="text" inputmode="decimal" autocomplete="off"
+              aria-describedby="frame-dbl-echo frame-dbl-err">
+            <output id="frame-dbl-echo" for="frame-dbl"></output>
+            <p id="frame-dbl-err" class="error" aria-live="polite" hidden></p>
+          </div>
+          <p id="frame-hint" data-i18n="frame.hint"></p>
+        </fieldset>
       </form>
-
-      <p id="frame-note" data-i18n="frame.note"></p>
 
       <section id="result" aria-labelledby="result-title">
         <h2 id="result-title" data-i18n="result.title"></h2>
@@ -83,6 +125,11 @@
               <th scope="row" data-i18n="result.etmin"></th>
               <td id="result-od-etmin"></td>
               <td id="result-os-etmin"></td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="result.dec"></th>
+              <td id="result-od-dec"></td>
+              <td id="result-os-dec"></td>
             </tr>
             <tr>
               <th scope="row" data-i18n="result.weight"></th>
