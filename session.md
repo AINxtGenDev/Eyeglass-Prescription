@@ -66,8 +66,11 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - DEPL-03 is complete (lint ran in CI). DEPL-01 stays open because of the favicon 404 below. DEPL-02: CI runs the full chain, but there was no demo branch showing that a failure blocks the deploy; the evidence is structural only.
 - **01-06 done.** A material selection now offers 6 materials: CR-39, Trivex, PC, 1,60, 1,67 and 1,74, with cited Zeiss constants. The engine is checked against the Zeiss CR-39 thickness chart (143 rows, 0 transcription errors). The worst edge-thickness error is 0,069 mm and the worst centre-thickness error 0,072 mm, against a 0,20 mm limit. The thin-lens formula misses by 0,375 mm, which proves it would fail this check. 639 unit tests and 16 e2e tests pass. Favicon fix `39882ef`.
 - **chrome-devtools (local):** at −6,00 the max edge goes from 6,3 mm with CR-39 to 4,1 mm with 1,74, and the weight from 9,7 g to 6,9 g. At +4,00, 1,74 (6,1 g) is heavier than 1,67 (5,9 g) because of its higher density. That is plausible. No console errors.
+- **01-07 done.** Frame shapes Rund (48×44), Rechteckig, Panto and Pilot, each with A/B/DBL and a PD per eye. Decentration is (A+DBL)/2 − PD, and results are computed on the real outline. 699 unit tests and 18 e2e tests pass. ENG-05 is marked complete, but only proven for spheres; the oblique-cylinder test comes in 01-08.
+- **chrome-devtools (local), −6,00 CR-39:** Rund 6,0 mm / 7,5 g; Rechteckig 7,9 mm / 9,5 g; Panto 7,0 mm / 8,2 g; Pilot 9,6 mm / 14,9 g (max edge / weight). Both eyes are identical. The decentration values are correct, e.g. rectangular (52+18)/2 − 32 = 3,0 mm. Rund shows its thinnest edge "oben, zur Nase". I checked whether that was a bug: it is correct, because the shape is a 48×44 oval and that point is closest to the optical centre (21,5 mm vs 22 mm). On a 48×48 circle the engine says "nasal".
 
 ### Open items
+- Pilot orientation (deepest on the temple side vs the nose side) is unverified, with no reference image. Decide in lens-critic 01-11.
 - MAT-01 is not marked complete: the Abbe number is stored but not yet used. Decide in 01-11 / lens-critic.
 - Cosmetic: the material labels are inconsistent ("(1,50)" vs "1,53" without brackets). Phase 2 (UI) will tidy them.
 - `https://ainxtgendev.github.io/favicon.ico` returns 404, the only console error on the live site; Playwright headless doesn't see it. 01-06 adds an inline icon link.
@@ -79,4 +82,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-07: frame shape, size and PD per eye on the real outline with decentration.
+Plan 01-08: true toric back surface for cylinder, plus a ray-trace oracle.
