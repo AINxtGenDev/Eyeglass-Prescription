@@ -269,7 +269,14 @@ test('technical details show the timing readout', async ({ page }) => {
   await expect(page.locator('#timing')).toHaveText(/Median\s[\d,]+\sms/, { timeout: 5000 });
 });
 
-test('timing shows work and latency medians (ENG-09)', async ({ page }) => {
+const msNum = (str) => Number(str.replace(',', '.'));
+const INPUT_RE =
+  /letzte 10 Eingaben\): Median (\d+,\d\d)\sms, längste (\d+,\d\d)\sms; Hauptthread je Eingabe einschließlich Darstellung: Median (\d+,\d\d)\sms, längste (\d+,\d\d)\sms/;
+const RESULT_RE =
+  /Eingabe bis Ergebnis sichtbar \(letzte (\d+) Ergebnisse\): Median (\d+,\d\d)\sms, längste (\d+,\d\d)\sms; Darstellung des Ergebnisses längstens (\d+,\d\d)\sms; davon Rechnen: Median (\d+,\d\d)\sms/;
+const BUSY_RE = /„rechnet …“ angezeigt seit dem Laden: (\d+)-mal; längste Wartezeit auf ein Ergebnis: (\d+,\d\d)\sms/;
+
+test('timing shows reaction, main-thread and result medians (ENG-09)', async ({ page }) => {
   await settled(page);
   const sph = page.locator('#rx-od-sph');
   const echo = page.locator('#rx-od-sph-echo');
@@ -278,24 +285,96 @@ test('timing shows work and latency medians (ENG-09)', async ({ page }) => {
     await settled(page);
     await expect(echo).toContainText(`−${i},00`);
   }
-  const timing = page.locator('#timing-input');
-  const re = /Median der letzten 10 Eingaben\): Rechenarbeit (\d+,\d\d)\sms, Wartezeit inklusive (\d+,\d\d)\sms/;
-  await expect(timing).toHaveText(re);
-  const [, work, latency] = (await timing.textContent()).match(re);
-  const num = (s) => Number(s.replace(',', '.'));
-  expect(num(work)).toBeGreaterThan(0);
-  expect(num(latency)).toBeGreaterThan(0);
-  expect(num(latency)).toBeGreaterThanOrEqual(num(work));
+  const input = page.locator('#timing-input');
+  await expect(input).toHaveText(INPUT_RE);
+  const [, reactMed, reactMax, mainMed, mainMax] = (await input.textContent()).match(INPUT_RE).map(String);
+  for (const v of [reactMed, reactMax, mainMed, mainMax]) expect(msNum(v)).toBeGreaterThan(0);
+  expect(msNum(reactMed)).toBeGreaterThanOrEqual(msNum(mainMed));
+  const result = page.locator('#timing-result');
+  await expect(result).toHaveText(RESULT_RE);
+  const [, n, ...resultValues] = (await result.textContent()).match(RESULT_RE);
+  expect(Number(n)).toBe(10);
+  for (const v of resultValues) expect(msNum(v)).toBeGreaterThan(0);
+  await expect(page.locator('#timing-busy')).toHaveText(BUSY_RE);
 });
 
-test('technical details show three readouts', async ({ page }) => {
+const READOUT_IDS = ['#timing', '#timing-frame', '#timing-worst', '#timing-rescan'];
+
+test('technical details show four readouts', async ({ page }) => {
   await settled(page);
   await page.locator('details#tech > summary').click();
-  for (const id of ['#timing', '#timing-frame', '#timing-worst']) {
-    await expect(page.locator(id)).toHaveText(/Median\s[\d,]+\sms/, { timeout: 10_000 });
-  }
+  await expect(page.locator('#tech')).toHaveAttribute('data-bench-runs', '1', { timeout: 60_000 });
+  for (const id of READOUT_IDS) await expect(page.locator(id)).toHaveText(/Median\s[\d,]+\sms/);
   await expect(page.locator('#timing')).toContainText('−4,00');
   await expect(page.locator('#timing')).toContainText('Rechteckig');
+  await expect(page.locator('#timing-rescan')).toContainText('erweiterter Suche');
+  await expect(page.locator('#timing-rescan')).toContainText('Einschleifhöhe');
+});
+
+test('bench re-entry is ignored; compute goes first', async ({ page }) => {
+  test.setTimeout(90_000);
+  await settled(page);
+  const et2 = await etmaxOf(page, 'od');
+  const tech = page.locator('#tech');
+  await page.locator('details#tech > summary').click();
+  await expect(tech).toHaveAttribute('data-bench-runs', '1', { timeout: 60_000 });
+  // Two synchronous clicks: the second must hit the guard and change nothing (MINOR-5, orchestrator MINOR-12).
+  const r = await page.evaluate(() => {
+    const el = document.getElementById('timing');
+    const mo = new MutationObserver(() => {});
+    mo.observe(el, { childList: true, characterData: true, subtree: true });
+    const button = document.getElementById('timing-rerun');
+    button.click();
+    const afterFirst = mo.takeRecords().length;
+    button.click();
+    const afterSecond = mo.takeRecords().length;
+    mo.disconnect();
+    return { afterFirst, afterSecond, text: el.textContent };
+  });
+  expect(r.afterFirst).toBe(1);
+  expect(r.text).toBe('wird gemessen …');
+  // runBench returned early: the readout was not reset to 'wird gemessen …' a second time.
+  expect(r.afterSecond).toBe(0);
+  await page.locator('#rx-od-sph').fill('-3');
+  await settled(page, { timeout: 2000 });
+  const et3 = await etmaxOf(page, 'od');
+  expect(et3).not.toBe(et2);
+  expect(et3).toBe(4.7);
+  // Compute went ahead of the remaining bench runs: the bench is still running.
+  await expect(tech).toHaveAttribute('aria-busy', 'true');
+  await expect(tech).toHaveAttribute('data-bench-runs', '2', { timeout: 60_000 });
+  await expect(page.locator('#timing-rerun')).not.toHaveAttribute('aria-disabled', /.*/);
+  await page.waitForTimeout(500);
+  await expect(tech).toHaveAttribute('data-bench-runs', '2');
+});
+
+test('message handler is negligible (measured, MINOR-13)', async ({ page }) => {
+  await settled(page);
+  await page.goto('./?msgprobe');
+  await settled(page);
+  const sph = page.locator('#rx-od-sph');
+  for (let i = 0; i < 20; i++) {
+    await sph.fill(i % 2 ? '-4,25' : '-4,00');
+    await settled(page);
+  }
+  const ms = await page.evaluate(() => window.__msgMs);
+  expect(ms.length).toBeGreaterThanOrEqual(20);
+  const last = ms.slice(-20).sort((a, b) => a - b);
+  const med = (last[9] + last[10]) / 2;
+  console.info(`message handler (20 result deliveries): median ${med.toFixed(3)} ms, max ${last.at(-1).toFixed(3)} ms`);
+  expect(Number.isFinite(med)).toBe(true);
+});
+
+test('event timing readout is filled', async ({ page }) => {
+  await settled(page);
+  const sph = page.locator('#rx-od-sph');
+  await sph.fill('');
+  await sph.pressSequentially('-3,75', { delay: 30 });
+  await settled(page);
+  const ev = page.locator('#timing-event');
+  await expect(ev).not.toBeEmpty();
+  await expect(ev).not.toContainText('{');
+  await expect(ev).toContainText('Event Timing');
 });
 
 test('one recompute per frame (01-14)', async ({ page }) => {

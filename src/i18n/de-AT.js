@@ -175,6 +175,10 @@ export default Object.freeze({
     'Rechenzeit {where}, Normalfall mit geänderter Fassungsbreite (Form neu berechnet): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.timingWorst':
     'Rechenzeit {where}, Grenzfall ({case}; langsamster Fall unter den geprüften Zufallsfällen): Median {median}, p{pct} {tail} ({runs} Läufe)',
+  'tech.timingRescan':
+    'Rechenzeit {where}, seltener Fall mit erweiterter Suche ({case}): Median {median}, p{pct} {tail} ({runs} Läufe)',
+  'tech.measuring': 'wird gemessen …',
+  'tech.benchFailed': 'Messung abgebrochen',
   'tech.where.worker': 'im Hintergrund',
   'tech.where.sync': 'direkt auf der Seite',
   'tech.mode.worker': 'Rechenweg: im Hintergrund (Web Worker); Eingaben bleiben flüssig.',
@@ -184,8 +188,15 @@ export default Object.freeze({
     'Rechenweg: direkt auf der Seite, weil der Hintergrund-Rechner (Web Worker) nicht geantwortet hat. Ein schwerer Fall kann die Eingabe dabei einmal kurz stocken lassen.',
   'tech.case': '{rx}, {material}, {shape} {A} × {B}, DBL {dbl}, PD {pd}',
   'tech.caseFh': ', Einschleifhöhe {fh}',
+  // Main-thread timing (01-15): every frame an input causes, including style, layout and paint.
   'tech.inputRender':
-    'Eingabe bis Anzeige (Median der letzten {n} Eingaben): Rechenarbeit {work}, Wartezeit inklusive {latency}',
+    'Eingabe bis Reaktion (letzte {n} Eingaben): Median {reactMed}, längste {reactMax}; Hauptthread je Eingabe einschließlich Darstellung: Median {mainMed}, längste {mainMax}',
+  'tech.result':
+    'Eingabe bis Ergebnis sichtbar (letzte {n} Ergebnisse): Median {med}, längste {max}; Darstellung des Ergebnisses längstens {renderMax}; davon Rechnen: Median {compute}',
+  'tech.busy': '„rechnet …“ angezeigt seit dem Laden: {count}-mal; längste Wartezeit auf ein Ergebnis: {longest}',
+  'tech.eventTiming': 'Längste Interaktion laut Browser-Messung (Event Timing, letzte {n}): {max}',
+  'tech.eventTimingEmpty': 'Browser-Messung (Event Timing): keine Interaktion über {threshold}',
+  'tech.eventTimingNone': 'Browser-Messung (Event Timing): nicht verfügbar',
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',
 

@@ -5,7 +5,7 @@ import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
 import { transpose, RX_CODES } from '../state/transpose.js';
 import { createFrameScheduler } from '../state/frame-scheduler.js';
 import { createComputeClient, TAIL_PCT } from '../state/compute-client.js';
-import { specFor, NORMAL_PAIR, GRENZFALL_PAIR } from '../state/bench-cases.js';
+import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR } from '../state/bench-cases.js';
 import { MATERIALS } from '../engine/materials.js';
 import { SHAPES } from '../engine/frame/shapes.js';
 import { nasalSign } from '../engine/conventions.js';
@@ -325,10 +325,13 @@ let computeMode = 'worker';
 /** @type {Worker | null} */
 let worker = null;
 const busyEyes = new Set();
+// "rechnet …" displays since load (ENG-09 (d), observable on a phone).
+let busyCount = 0;
 
 function onBusy(eye, on) {
   if (on) {
     busyEyes.add(eye);
+    busyCount++;
     setText(`result-${eye.toLowerCase()}-status`, t('result.computing'));
     setStale(eye, true);
     $('result').setAttribute('aria-busy', 'true');
@@ -365,9 +368,15 @@ function onFailed(eyes) {
 /** @type {Record<string, { seq: number, result: object }>} */
 const deliveries = {};
 let deliveryFrame = null;
+/** Earliest open input of the deliveries waiting for the frame, when they complete the page. */
+let deliveryOpenTs = null;
 
 function paintDeliveries() {
   deliveryFrame = null;
+  const frameStart = performance.now();
+  const openTs = deliveryOpenTs;
+  deliveryOpenTs = null;
+  let painted = 0;
   for (const eye of EYES) {
     const d = deliveries[eye];
     if (!d) continue;
@@ -375,16 +384,33 @@ function paintDeliveries() {
     // Skipped eyes leave the delivered set too: they are open again (or cancelled), so the
     // settled signal cannot hang on them.
     pending.delivered.delete(eye);
-    if (client.isCurrent(eye, d.seq)) renderResult(eye, d.result);
+    if (client.isCurrent(eye, d.seq)) {
+      renderResult(eye, d.result);
+      painted++;
+    }
   }
   writePending();
+  if (painted === 0) return;
+  // 'result' is recorded only when no eye is still open; the start-up result is not an input.
+  const complete = openTs !== null && openTs > initInputTs && pending.open.size === 0;
+  setTimeout(() => {
+    const end = performance.now();
+    pushTiming(timings.resultFrame, end - frameStart);
+    if (complete) {
+      pushTiming(timings.result, end - openTs);
+      longestResult = Math.max(longestResult, end - openTs);
+    }
+    writeResultTiming();
+  }, 0);
 }
 
-function onResults({ results }) {
+function onResults({ results, openTs, computeMs, current }) {
   for (const [eye, d] of Object.entries(results)) {
     deliveries[eye] = d;
     pending.delivered.add(eye);
   }
+  if (Number.isFinite(computeMs)) pushTiming(timings.compute, computeMs);
+  deliveryOpenTs = current && openTs !== null ? Math.min(deliveryOpenTs ?? Infinity, openTs) : null;
   writePending();
   if (deliveryFrame === null) deliveryFrame = requestAnimationFrame(paintDeliveries);
 }
@@ -406,22 +432,45 @@ function caseLabel(pair) {
   return s.fittingHeight === null ? label : label + t('tech.caseFh', { fh: fmtMm(s.fittingHeight) });
 }
 
+// Worker bench readouts in run order (one run per worker job, 01-15).
 const READOUTS = {
   normal: { id: 'timing', key: 'tech.timing', pair: NORMAL_PAIR },
   frameMiss: { id: 'timing-frame', key: 'tech.timingFrame', pair: null },
   grenzfall: { id: 'timing-worst', key: 'tech.timingWorst', pair: GRENZFALL_PAIR },
+  rescan: { id: 'timing-rescan', key: 'tech.timingRescan', pair: RESCAN_PAIR },
 };
+const BENCH_CASES = Object.keys(READOUTS);
+let benchRuns = 0;
+
+function finishBench() {
+  benchRuns++;
+  const tech = $('tech');
+  tech.dataset.benchRuns = String(benchRuns);
+  tech.removeAttribute('aria-busy');
+  $('timing-rerun').removeAttribute('aria-disabled');
+}
 
 function onBench(caseId, r) {
+  if ('error' in r) {
+    for (const id of BENCH_CASES.slice(BENCH_CASES.indexOf(caseId))) setText(READOUTS[id].id, t('tech.benchFailed'));
+    finishBench();
+    return;
+  }
   const ro = READOUTS[caseId];
-  if (!ro || 'error' in r) return;
   const params = { where: where(), median: fmtMs(r.median), tail: fmtMs(r.tail), pct: TAIL_PCT, runs: r.runs };
   if (ro.pair) params.case = caseLabel(ro.pair);
   setText(ro.id, t(ro.key, params));
+  if (caseId === BENCH_CASES.at(-1)) finishBench();
 }
 
+/** Start the four worker readouts; ignored while a bench is running (re-entry guard, MINOR-5). */
 function runBench() {
-  client.bench(['normal', 'frameMiss', 'grenzfall']);
+  if (client.isBenchRunning()) return;
+  for (const id of BENCH_CASES) setText(READOUTS[id].id, t('tech.measuring'));
+  $('tech').setAttribute('aria-busy', 'true');
+  // aria-disabled, not disabled, so keyboard focus stays on the button.
+  $('timing-rerun').setAttribute('aria-disabled', 'true');
+  client.bench(BENCH_CASES);
 }
 
 function setComputeMode(mode, key) {
@@ -467,10 +516,14 @@ function startWorker() {
     client.workerError();
     return;
   }
+  // Test-only probe (?msgprobe): duration of the message task for result deliveries (MINOR-13).
+  const probe = location.search.includes('msgprobe') ? (window.__msgMs = []) : null;
   worker.onmessage = (e) => {
     // Engine error text is English and for developers only (T-01-41).
     if (e.data?.type === 'error') console.warn('compute worker:', e.data.message);
+    const t0 = performance.now();
     client.receive(e.data);
+    if (probe && e.data?.type === 'result') probe.push(performance.now() - t0);
   };
   worker.addEventListener('error', () => client.workerError());
   worker.addEventListener('messageerror', () => client.workerError());
@@ -501,21 +554,52 @@ const median = (sorted) => {
   return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
 };
 
-// Input timing (ENG-09, lens-critic MAJOR-2). Method (Nolan Lawson, "Accurately measuring layout
+// Main-thread timing (ENG-09 (a)–(c), 01-15). Method (Nolan Lawson, "Accurately measuring layout
 // on the web", 2018-09-25, https://nolanlawson.com/2018/09/25/accurately-measuring-layout-on-the-web/):
 // rAF callbacks run just before the browser's rendering step, so a setTimeout queued from inside
-// one runs after style, layout and paint.
-// - work = reading the inputs and sending the job, plus render: from the start of the rAF callback to that task;
-// - latency = work plus the wait for the next frame that coalescing introduces (up to about one
-//   frame): from the input event's timeStamp to the same task.
+// one runs after style, layout and paint. Rings of the last TIMING_WINDOW values:
+// - inputFrame  = input frame (read inputs, echo, send the job) incl. paint: rAF start → after paint;
+// - reaction    = input event timeStamp → after paint of that frame (input to next paint);
+// - resultFrame = result frame (render the delivered result) incl. paint: rAF start → after paint;
+// - result      = earliest open input → result painted, only when no eye is still open;
+// - compute     = the worker's computeMs (information only).
 // event.timeStamp and performance.now() share the same time origin.
-const timings = { work: [], latency: [] };
+const timings = { inputFrame: [], reaction: [], resultFrame: [], result: [], compute: [] };
+let longestResult = 0;
 let skipTiming = true; // the init() frame is not an input
+let initInputTs = Infinity;
 
 const pushTiming = (buf, v) => {
   buf.push(v);
   if (buf.length > TIMING_WINDOW) buf.shift();
 };
+const medOf = (buf) => fmtMs(median([...buf].sort((a, b) => a - b)));
+const maxOf = (buf) => fmtMs(Math.max(...buf));
+const countNf = new Intl.NumberFormat('de-AT');
+
+function writeResultTiming() {
+  const r = timings.result;
+  if (r.length > 0) {
+    setText(
+      'timing-result',
+      t('tech.result', {
+        n: r.length,
+        med: medOf(r),
+        max: maxOf(r),
+        renderMax: maxOf(timings.resultFrame),
+        compute: timings.compute.length > 0 ? medOf(timings.compute) : DASH,
+      }),
+    );
+  }
+  writeBusyTiming();
+}
+
+function writeBusyTiming() {
+  setText(
+    'timing-busy',
+    t('tech.busy', { count: countNf.format(busyCount), longest: timings.result.length > 0 ? fmtMs(longestResult) : DASH }),
+  );
+}
 
 function runFrame({ inputTs, frameStart }) {
   const timed = !skipTiming;
@@ -529,14 +613,43 @@ function runFrame({ inputTs, frameStart }) {
   if (!timed) return;
   setTimeout(() => {
     const end = performance.now();
-    pushTiming(timings.work, end - frameStart);
-    pushTiming(timings.latency, end - inputTs);
-    const med = (buf) => fmtMs(median([...buf].sort((a, b) => a - b)));
+    pushTiming(timings.inputFrame, end - frameStart);
+    pushTiming(timings.reaction, end - inputTs);
     setText(
       'timing-input',
-      t('tech.inputRender', { work: med(timings.work), latency: med(timings.latency), n: timings.work.length }),
+      t('tech.inputRender', {
+        n: timings.inputFrame.length,
+        reactMed: medOf(timings.reaction),
+        reactMax: maxOf(timings.reaction),
+        mainMed: medOf(timings.inputFrame),
+        mainMax: maxOf(timings.inputFrame),
+      }),
     );
+    writeBusyTiming();
   }, 0);
+}
+
+// Browser cross-check (Event Timing; MDN PerformanceEventTiming: minimum durationThreshold 16 ms,
+// durations rounded to 8 ms): the longest interaction of the last TIMING_WINDOW interactions.
+function startEventTiming() {
+  if (typeof PerformanceObserver === 'undefined' || !PerformanceObserver.supportedEntryTypes?.includes('event')) {
+    setText('timing-event', t('tech.eventTimingNone'));
+    return;
+  }
+  setText('timing-event', t('tech.eventTimingEmpty', { threshold: fmtMs(16) }));
+  /** @type {Map<number, number>} interactionId → longest entry duration */
+  const longest = new Map();
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) {
+      const id = /** @type {any} */ (e).interactionId;
+      if (!(id > 0)) continue;
+      longest.set(id, Math.max(longest.get(id) ?? 0, e.duration));
+      while (longest.size > TIMING_WINDOW) longest.delete(longest.keys().next().value);
+    }
+    if (longest.size > 0) {
+      setText('timing-event', t('tech.eventTiming', { n: longest.size, max: fmtMs(Math.max(...longest.values())) }));
+    }
+  }).observe({ type: 'event', durationThreshold: 16, buffered: true });
 }
 
 const scheduleFrame = createFrameScheduler((cb) => requestAnimationFrame(cb), runFrame, () => performance.now());
@@ -586,8 +699,11 @@ function init() {
   setText('ua', t('tech.ua', { ua: navigator.userAgent }));
   const meta = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="app-commit"]'));
   setText('app-commit', meta?.content ?? 'dev');
+  startEventTiming();
+  writeBusyTiming();
   startWorker();
-  schedule(performance.now());
+  initInputTs = performance.now();
+  schedule(initInputTs);
 }
 
 init();
