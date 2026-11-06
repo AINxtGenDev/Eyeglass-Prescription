@@ -43,10 +43,10 @@
 
 ### Optics Engine (ENG)
 
-- [ ] **ENG-01**: Engine computes meridian power D(θ) = Sph + Zyl·sin²(θ − Achse) in the TABO convention, with one documented sign/axis convention module used everywhere.
-- [ ] **ENG-02**: Front and back surfaces each use their own power (signed curvature form); the back surface is designed with the thick-lens relation so that the computed back-vertex power matches the prescription within 0,01 dpt across the full input range (verified by a round-trip test).
-- [ ] **ENG-03**: The back surface for a cylinder prescription is a true toric surface evaluated per point (x, y), with the torus oriented to the axis; its sag is numerically stable near plano and near the sag singularity.
-- [ ] **ENG-04**: Centre thickness is solved from the min-centre and min-edge constraints over the actual frame outline, including prescriptions with mixed-sign meridians.
+- [x] **ENG-01**: Engine computes meridian power D(θ) = Sph + Zyl·sin²(θ − Achse) in the TABO convention, with one documented sign/axis convention module used everywhere.
+- [x] **ENG-02**: Front and back surfaces each use their own power (signed curvature form); the back surface is designed with the thick-lens relation so that the computed back-vertex power matches the prescription within 0,01 dpt across the full input range (verified by a round-trip test).
+- [x] **ENG-03**: The back surface for a cylinder prescription is a true toric surface evaluated per point (x, y), with the torus oriented to the axis; its sag is numerically stable near plano and near the sag singularity.
+- [x] **ENG-04**: Centre thickness is solved from the min-centre and min-edge constraints over the actual frame outline, including prescriptions with mixed-sign meridians.
 - [x] **ENG-05**: Horizontal decentration = (A + DBL)/2 − mono PD, applied nasally; optional fitting height for vertical position; edge thickness at nasal, temporal, superior and inferior positions is correctly asymmetric. Left and right lenses are computed per eye, not mirrored.
 - [ ] **ENG-06**: Engine outputs centre thickness, max/min edge thickness with location, thickness at any point, volume (numerical integration over the outline), weight (g), front-surface protrusion, decentration, and intermediate values (radii, sags, binding constraint).
 - [ ] **ENG-07**: A lens that cannot be made (sag beyond radius, negative edge) is detected and returned as a coded diagnostic with a plain-German explanation and a suggestion (smaller frame, higher index).
@@ -163,10 +163,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MAT-04 | Phase 2 | Pending |
 | MAT-05 | Phase 2 | Pending |
 | MAT-06 | Phase 2 | Pending |
-| ENG-01 | Phase 1 | Pending |
-| ENG-02 | Phase 1 | Pending |
-| ENG-03 | Phase 1 | Pending |
-| ENG-04 | Phase 1 | Pending |
+| ENG-01 | Phase 1 | Complete |
+| ENG-02 | Phase 1 | Complete |
+| ENG-03 | Phase 1 | Complete |
+| ENG-04 | Phase 1 | Complete |
 | ENG-05 | Phase 1 | Complete |
 | ENG-06 | Phase 1 | Pending |
 | ENG-07 | Phase 1 | Pending |
