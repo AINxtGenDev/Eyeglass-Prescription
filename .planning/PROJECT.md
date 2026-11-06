@@ -89,7 +89,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 | Simple vs Expert progressive disclosure | Lay users first without losing expert depth | — Pending |
 | Minus-cylinder, TABO axis conventions | Standard in DACH prescriptions | — Pending |
 | `lens-critic` review gate on every phase | User wants a reviewer that always pushes for better results | — Pending |
-| Publish via GitHub Pages (Actions-based deploy) from phase 1 | User wants to use the website on GitHub Pages; early deploy gives real-phone testing each phase | — Pending |
+| Publish via GitHub Pages (Actions-based deploy) from phase 1 | User wants to use the website on GitHub Pages; early deploy gives real-phone testing each phase. User pre-authorized (2026-11-06) enabling Pages (Source: GitHub Actions) once phase 1 is ready | — Pending |
 | Coarse granularity, YOLO/auto, research + plan-check + verifier on, quality model profile | Chosen by user at init | — Pending |
 
 ## Evolution
