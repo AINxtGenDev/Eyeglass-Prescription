@@ -35,7 +35,7 @@
 ### Materials & Lens Design (MAT)
 
 - [ ] **MAT-01**: User chooses a material — CR-39 1,50, Trivex 1,53, Polycarbonat 1,59, 1,60, 1,67, 1,74 — and the engine uses the sourced true refractive index (ne), density and Abbe number for each, with sources recorded in code.
-- [ ] **MAT-02**: Base curve (front surface power) is chosen automatically by a documented, sourced rule that is clamped so it never produces a flat/concave front or an impossible lens; the auto value and the rule used are shown in Expert view.
+- [ ] **MAT-02**: Base curve (front surface power) is chosen automatically as the value in +0,50…+10,00 dpt that makes the lens thinnest (smallest maximum thickness) for the given Rx, frame and material; it never produces a flat/concave front, and an impossible-lens error appears only if no value in that range computes. The sourced Vogel rule is shown as a reference value; the auto value and the rule used are shown in Expert view.
 - [ ] **MAT-03**: Expert user can override base curve manually (0,00…+10,00 dpt).
 - [ ] **MAT-04**: Minimum centre and edge thickness default to sourced per-material values and are adjustable in Expert view; the result shows which constraint is binding.
 - [ ] **MAT-05**: Expert user can switch the front surface between spherical and aspheric (conic constant k, with a documented default); aspheric is labelled as a generic model, not a specific manufacturer design.
