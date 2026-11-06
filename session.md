@@ -69,8 +69,11 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-07 done.** Frame shapes Rund (48×44), Rechteckig, Panto and Pilot, each with A/B/DBL and a PD per eye. Decentration is (A+DBL)/2 − PD, and results are computed on the real outline. 699 unit tests and 18 e2e tests pass. ENG-05 is marked complete, but only proven for spheres; the oblique-cylinder test comes in 01-08.
 - **chrome-devtools (local), −6,00 CR-39:** Rund 6,0 mm / 7,5 g; Rechteckig 7,9 mm / 9,5 g; Panto 7,0 mm / 8,2 g; Pilot 9,6 mm / 14,9 g (max edge / weight). Both eyes are identical. The decentration values are correct, e.g. rectangular (52+18)/2 − 32 = 3,0 mm. Rund shows its thinnest edge "oben, zur Nase". I checked whether that was a bug: it is correct, because the shape is a 48×44 oval and that point is closest to the optical centre (21,5 mm vs 22 mm). On a 48×48 circle the engine says "nasal".
 - **01-08 done.** Cylinder support in the engine (minus-cylinder form) through a true torus back surface along the TABO axis. A ray-trace oracle traces through the finished lens and recovers Sph/Zyl/Achse within 0,001 dpt (300 + 100 random cases). A deliberately wrong thin-lens design is caught at 0,56 dpt. ENG-05 with an oblique cylinder on both eyes passes: the left lens is the right lens rotated 180° (not mirrored), within 1e-9 mm. ENG-01 to ENG-04 are complete, and 751 tests pass. No UI change, so no browser test.
+- **01-09 done.** The page now takes Sph/Zyl/Achse per eye in both cylinder forms. A plus cylinder is converted automatically and both forms are shown in German. RX-02 and RX-03 are complete; 760 unit tests and 22 e2e tests pass.
+- **chrome-devtools (local, 390 px):** for R −2,00/−1,50×45 the max edge is 5,1 mm at the upper temple side. For L −0,50/+1,50×135, displayed as "+1,00/−1,50×45°", the thickest edge is at the lower temple side and the thinnest at the upper temple side. Checked against TABO: both are physically correct. A missing or invalid axis shows a German error and blocks only that eye. No NaN, no horizontal scroll, no console error.
 
 ### Open items
+- After conversion there is no range check yet: +11 +3 becomes Sph +14 and is accepted. That is RX-04 in phase 2.
 - The difference table in PITFALLS.md (Pitfall 5) was computed with the barrel instead of the tyre torus. With the tyre the real differences are at most 0,086 mm, not 0,39 mm. Only the orientation sentence was corrected; lens-critic should check it in 01-11.
 - Pilot orientation (deepest on the temple side vs the nose side) is unverified, with no reference image. Decide in lens-critic 01-11.
 - MAT-01 is not marked complete: the Abbe number is stored but not yet used. Decide in 01-11 / lens-critic.
@@ -84,4 +87,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-09: full paper Rx entry (Sph/Zyl/Achse) in both cylinder forms, with plus-cylinder transposition in the UI.
+Plan 01-10: German explanations for impossible and borderline lenses (BLANK_EXCEEDS_STOCK, OC_OUTSIDE_OUTLINE, …), plus NaN and base-curve property tests.
