@@ -56,9 +56,13 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-01 done.** The user approved the 9 dev packages (checked with `npm view <pkg> version repository.url`); they are installed with exact pins. Vite, ESLint and Playwright are configured, and ESLint enforces the engine/UI boundary. The browser smoke test is written and fails on purpose until 01-03. Also built: `parseDiopter`, the de-AT formatters (`−2,25 dpt` with U+2212 and NBSP), and the `de-AT.js` dictionary plus `t()`. Lint passes and 70/70 unit tests pass.
 - Executor deviation: only L10N-02 is marked complete. RX-02, L10N-01, DEPL-01, DEPL-03 and DEPL-04 stay pending until the page, CI and deploy exist.
 
+- **01-02 done.** The engine core (`src/engine/`) has sag, an automatic base curve (a thinnest-lens search with Vogel as the starting value), CR-39, the thick-lens design with a centre-thickness fixed point, metrics, and `evaluateLens`/`evaluatePair`. Lint passes and 154/154 tests pass. Engine coverage is 97.8 % of lines and 96.8 % of branches. Example: −2,00 in a round 50/18 frame at PD 32 gives a maximum thickness of 3,27 mm (3,41 mm with Vogel). The base-curve search is within 2.5e-6 mm of a brute-force sweep. One lens takes 0.35–0.93 ms on desktop.
+- Plan 01-02 deviations: the speed-up in `metrics.js` gives identical results; a volume bug at outline vertices was fixed; the Task 3 tests were not written first.
+
 ### Open items
+- The warnings `BLANK_EXCEEDS_STOCK` and `OC_OUTSIDE_OUTLINE` are not raised yet. Plans 01-07 and 01-10 add them.
 - Smoke test 3 expects "Vogel" in `#result-od-basecurve`, but the disclaimer avoids saying "Vogel-Regel" (D-01). Check the wording in 01-03 and with lens-critic.
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-02: engine core (sag, base curve, CR-39, thick-lens design, CT fixed point, `evaluateLens`/`evaluatePair`).
+Plan 01-03: the minimal German page wired to the engine (the smoke test should pass), followed by a local browser test with chrome-devtools.
