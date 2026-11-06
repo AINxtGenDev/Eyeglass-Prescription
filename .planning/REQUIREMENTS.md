@@ -73,7 +73,7 @@
 ### Localization (L10N)
 
 - [ ] **L10N-01**: All visible text is German (Austrian conventions), served with `lang="de-AT"`; numbers formatted via `Intl.NumberFormat("de-AT")` with correct handling of minus sign and "-0".
-- [ ] **L10N-02**: All strings and diagnostic messages come from one dictionary keyed by message codes, so another language can be added without code changes.
+- [x] **L10N-02**: All strings and diagnostic messages come from one dictionary keyed by message codes, so another language can be added without code changes.
 
 ### 2D Analytics (ANA)
 
@@ -103,10 +103,12 @@
 Deferred to a future release. Tracked but not in the current roadmap.
 
 ### Sharing & Output
+
 - **SHARE-01**: Opt-in shareable link with the configuration in the URL hash (never sent to a server), with a privacy note.
 - **SHARE-02**: Printable one-page summary ("Für den Optiker") via print CSS.
 
 ### Deeper Insight
+
 - **INS-01**: "Was würde helfen?" ranked levers (smaller frame, higher index, rounder shape) by mm saved.
 - **INS-02**: Tap/keyboard point inspector for thickness at any point.
 - **INS-03**: 360° unrolled edge-thickness chart.
@@ -114,9 +116,11 @@ Deferred to a future release. Tracked but not in the current roadmap.
 - **INS-05**: Tangible size references (e.g. "etwa so dick wie ein Bleistift") and illustrated "Warum?" cards.
 
 ### Languages
+
 - **LANG-01**: English UI.
 
 ### Data
+
 - **DATA-01**: Import of frame tracer data (OMA).
 
 ## Out of Scope
@@ -180,7 +184,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-04 | Phase 2 | Pending |
 | UX-05 | Phase 2 | Pending |
 | L10N-01 | Phase 1 | Pending |
-| L10N-02 | Phase 1 | Pending |
+| L10N-02 | Phase 1 | Complete |
 | ANA-01 | Phase 2 | Pending |
 | ANA-02 | Phase 2 | Pending |
 | VIZ-01 | Phase 3 | Pending |
@@ -194,6 +198,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OFF-01 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 54 total
 - Mapped to phases: 54
 - Unmapped: 0 ✓

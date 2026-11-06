@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Roadmap and STATE created; next is `/gsd:plan-phase 1`"
-last_updated: "2026-11-06T10:56:10.749Z"
-last_activity: 2026-11-06 -- Phase 1 planning complete
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-11-06T11:08:46.401Z"
+last_activity: 2026-11-06
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 11
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 9
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-06)
 
 **Core value:** A non-expert can type in their paper prescription and, within a few minutes, see correctly computed lens thickness and weight for their frame — and how material or frame choice changes it.
-**Current focus:** Phase 1 — Verified Engine & Live Pipeline
+**Current focus:** Phase 01 — verified-engine-live-pipeline
 
 ## Current Position
 
-Phase: 1 of 4 (Verified Engine & Live Pipeline)
-Plan: 0 of TBD in current phase
+Phase: 01 (verified-engine-live-pipeline) — EXECUTING
+Plan: 2 of 11
 Status: Ready to execute
-Last activity: 2026-11-06 -- Phase 1 planning complete
+Last activity: 2026-11-06
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 9%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 6min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,9 @@ Recent decisions affecting current work:
 - [Roadmap]: Engine (ENG-*) built and validated in Phase 1, before any 3D mesh work (Phase 3).
 - [Roadmap]: Expert view (UX-02) and 2D cross-section (ANA-01) land in Phase 2; Phase 3 adds the heatmap into the existing Expert view.
 - [Roadmap]: Every phase gated by `lens-critic` (plan + result): PASS or user-accepted findings.
+- [Phase 01]: [01-01]: Parsers normalise -0 to +0; t() interpolation tested via vi.mock dictionary (no test-only keys ship)
+- [Phase 01]: [01-01]: e2e smoke runs against vite preview (dist/); build before test:e2e locally and in CI
+- [Phase 01]: [01-01]: Only L10N-02 marked complete; RX-02, L10N-01, DEPL-01/03/04 stay pending until page, CI and live deploy exist
 
 ### Pending Todos
 
@@ -85,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06
-Stopped at: Roadmap and STATE created; next is `/gsd:plan-phase 1`
+Last session: 2026-11-06T11:08:42.913Z
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
