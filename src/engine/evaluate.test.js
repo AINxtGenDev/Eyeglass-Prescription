@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { evaluateLens, evaluatePair } from './evaluate.js';
 import { optimiseBaseCurve } from './solve.js';
 import { baseCurveAuto, sphericalEquivalent } from './power.js';
-import { circleOutline } from './frame/outline.js';
+import { frameOutline } from './frame/outline.js';
 import { maxRadiusFromOC } from './metrics.js';
 
 const spec = (o = {}) => ({
@@ -62,11 +62,126 @@ describe('ENG-05 decentration', () => {
   });
 });
 
+const fspec = (shape, A, B, DBL, o = {}) => spec({ frame: { shape, A, B, DBL }, ...o });
+const pair = (shape, A, B, DBL, o = {}) =>
+  evaluatePair({ OD: fspec(shape, A, B, DBL, o), OS: fspec(shape, A, B, DBL, { ...o, eye: 'OS' }) });
+
+describe('ENG-05 decentration on frame outlines', () => {
+  it('decentration = (A + DBL)/2 − monoPD, nasal per eye', () => {
+    const a = pair('rechteckig', 52, 40, 18, { monoPD: 32 });
+    expect(a.OD.metrics.decentration.x).toBe(3);
+    expect(a.OS.metrics.decentration.x).toBe(-3);
+    const b = pair('rechteckig', 52, 40, 18, { monoPD: 35 });
+    expect(Math.abs(b.OD.metrics.decentration.x)).toBe(0);
+    expect(Math.abs(b.OS.metrics.decentration.x)).toBe(0);
+    const c = pair('rechteckig', 40, 40, 24, { monoPD: 25 });
+    expect(c.OD.ok && c.OS.ok).toBe(true);
+    expect(c.OD.metrics.decentration.x).toBe(7);
+    expect(c.OS.metrics.decentration.x).toBe(-7);
+  });
+
+  it('minus lens −6.00 rechteckig 52×40/18, PD 32: temporal edge thicker than nasal, both eyes', () => {
+    const { OD, OS } = pair('rechteckig', 52, 40, 18, { sph: -6, monoPD: 32 });
+    for (const r of [OD, OS]) {
+      expect(r.ok).toBe(true);
+      expect(r.metrics.etAt.temporal).toBeGreaterThan(r.metrics.etAt.nasal);
+      expect(r.metrics.etMax.location).toContain('temporal');
+    }
+    console.log(
+      '[01-07] −6.00 rechteckig 52×40/18 PD 32 CR-39:',
+      'OD nasal', OD.metrics.etAt.nasal, 'temporal', OD.metrics.etAt.temporal,
+      '| OS nasal', OS.metrics.etAt.nasal, 'temporal', OS.metrics.etAt.temporal,
+      '| CT', OD.metrics.ct, 'etMax', OD.metrics.etMax.value, OD.metrics.etMax.location,
+    );
+  });
+
+  for (const [shape, A, B, DBL, PD] of [
+    ['rund', 48, 44, 20, 30],
+    ['rechteckig', 52, 38, 18, 30],
+    ['panto', 49, 42, 20, 30],
+    ['pilot', 58, 50, 14, 30],
+  ]) {
+    for (const sph of [-4, 4]) {
+      it(`sphere ${sph} on ${shape} ${A}×${B}/${DBL}: OD and OS mirror exactly (decentration)`, () => {
+        const { OD, OS } = pair(shape, A, B, DBL, { sph, monoPD: PD });
+        expect(OD.ok && OS.ok).toBe(true);
+        expect(OS.intermediates.D1).toBe(OD.intermediates.D1);
+        expect(OS.metrics.ct).toBe(OD.metrics.ct);
+        for (const k of ['nasal', 'temporal', 'superior', 'inferior']) {
+          expect(Math.abs(OS.metrics.etAt[k] - OD.metrics.etAt[k])).toBeLessThan(1e-9);
+        }
+        expect(Math.abs(OS.metrics.etMax.value - OD.metrics.etMax.value)).toBeLessThan(1e-9);
+        expect(OS.metrics.etMax.location).toBe(OD.metrics.etMax.location);
+      });
+    }
+  }
+
+  it('plus lens +4.00 rechteckig: thinnest edge is temporal and CT is set by minET', () => {
+    const { OD, OS } = pair('rechteckig', 52, 40, 18, { sph: 4, monoPD: 32 });
+    for (const r of [OD, OS]) {
+      expect(r.ok).toBe(true);
+      expect(r.metrics.etMin.location).toContain('temporal');
+      expect(r.intermediates.bindingConstraint).toBe('minET');
+      expect(r.metrics.etMin.value).toBeCloseTo(1.0, 6);
+      expect(r.diagnostics.map((d) => d.code)).toContain('CT_SET_BY_MIN_ET');
+    }
+  });
+
+  it('fittingHeight moves the OC up (D-04): minus lens is thicker at the inferior edge', () => {
+    const r = evaluateLens(fspec('rechteckig', 52, 40, 18, { sph: -6, fittingHeight: 24 }));
+    expect(r.ok).toBe(true);
+    expect(r.metrics.decentration.y).toBe(4);
+    expect(r.metrics.etAt.inferior).toBeGreaterThan(r.metrics.etAt.superior);
+    const z = evaluateLens(fspec('rechteckig', 52, 40, 18, { sph: -6 }));
+    expect(z.metrics.decentration.y).toBe(0);
+  });
+
+  it('accepts every shape with A ≠ B', () => {
+    for (const shape of ['rund', 'rechteckig', 'panto', 'pilot']) {
+      expect(evaluateLens(fspec(shape, 55, 30, 18, { sph: -3 })).ok).toBe(true);
+    }
+  });
+});
+
+describe('ENG-04 outline sampling convergence', () => {
+  for (const sph of [6, -6]) {
+    it(`pilot 58×50/14 PD 30, sph ${sph}: n = 720 vs 5760 within 0.005 mm`, () => {
+      const s = fspec('pilot', 58, 50, 14, { sph, monoPD: 30 });
+      const a = evaluateLens(s);
+      const b = evaluateLens(s, { outlinePoints: 5760 });
+      expect(a.ok && b.ok).toBe(true);
+      const dCT = Math.abs(a.metrics.ct - b.metrics.ct);
+      const dET = Math.abs(a.metrics.etMax.value - b.metrics.etMax.value);
+      console.log(`[01-07] convergence sph ${sph}: ΔCT ${dCT}, ΔetMax ${dET}`);
+      expect(dCT).toBeLessThanOrEqual(0.005);
+      expect(dET).toBeLessThanOrEqual(0.005);
+    }, 30_000);
+  }
+});
+
+describe('MAT-02 automatic base curve on frame outlines', () => {
+  it('+12.00 rechteckig 62×55/24, PD 25: rhoMax from the real outline, D1 frame-limited', () => {
+    const r = evaluateLens(fspec('rechteckig', 62, 55, 24, { sph: 12, monoPD: 25 }));
+    expect(r.ok).toBe(true);
+    const im = r.intermediates;
+    const rho = maxRadiusFromOC(frameOutline('rechteckig', 62, 55, 'OD'), { x: 18, y: 0 });
+    expect(im.rhoMax).toBe(rho);
+    expect(im.rhoMax).toBeGreaterThan(50);
+    expect(im.baseCurveRule).toBe('thinnest');
+    const maxD1 = 500 / (im.rhoMax + 2);
+    expect(im.D1).toBeLessThanOrEqual(maxD1);
+    expect(im.R1).toBeGreaterThanOrEqual(im.rhoMax + 2 - 1e-9);
+    expect(im.vogelClampedD1).toBe(10);
+    expect(im.vogelMaxThickness).toBe(null);
+    console.log('[01-07] +12 rechteckig 62×55/24 PD 25: rhoMax', im.rhoMax, 'maxD1', maxD1, 'D1', im.D1, 'CT', r.metrics.ct);
+  });
+});
+
 describe('ENG-07 invalid specs', () => {
   const cases = [
     [{ cyl: -1 }, 'cyl-not-supported'],
-    [{ frame: { shape: 'rechteckig', A: 50, B: 50, DBL: 18 } }, 'shape-not-supported'],
-    [{ frame: { shape: 'rund', A: 50, B: 40, DBL: 18 } }, 'shape-not-supported'],
+    [{ frame: { shape: 'oval', A: 50, B: 40, DBL: 18 } }, 'unknown-shape'],
+    [{ frame: { shape: 'toString', A: 50, B: 40, DBL: 18 } }, 'unknown-shape'],
     [{ sph: NaN }, 'non-finite'],
     [{ monoPD: Infinity }, 'non-finite'],
     [{ materialId: 'glass' }, 'material'],
@@ -157,7 +272,7 @@ describe('MAT-02 automatic base curve (D-01)', () => {
   });
 
   it('refinement beats the coarse best (+12.00, round 50/18/PD 10)', () => {
-    const outline = circleOutline(50);
+    const outline = frameOutline('rund', 50, 50, 'OD');
     const oc = { x: 24, y: 0 };
     const bc = baseCurveAuto(sphericalEquivalent(12, 0), { n: 1.5, rhoMax: maxRadiusFromOC(outline, oc) });
     const r = optimiseBaseCurve({
