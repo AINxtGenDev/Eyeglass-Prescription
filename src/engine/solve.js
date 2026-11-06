@@ -6,6 +6,7 @@
 import { design, frontSagAt, backSagAt } from './design.js';
 import { K } from './conventions.js';
 import { maxRadiusFromOC } from './metrics.js';
+import { BASE_CURVE_LIMITS } from './power.js';
 
 function backSagError(axisDeg, cross, iterations) {
   return {
@@ -23,6 +24,9 @@ function crossViolated(s, x, y) {
 }
 
 /**
+ * iterations = outline passes run (MINOR-12, 01-12): ≥ 1 on convergence and on a failure found
+ * inside a pass; maxIter when it does not converge; VERTEX_TERM_INVALID is detected before the
+ * pass and does not count it.
  * earlyExit: stop at the first undefined back sag (feasibility only; used on the decimated
  * search outlines). Otherwise the whole outline of that iteration is scanned for the label.
  * @returns {{ ok: true, ct: number, surfaces: object, binding: 'minCT'|'minET', iterations: number,
@@ -64,12 +68,12 @@ export function solveCT({
           ok: false,
           code: 'FRONT_SAG_UNDEFINED',
           data: { R1: K(n) / D1, rhoMax: maxRadiusFromOC(outline, oc) },
-          iterations: it,
+          iterations: it + 1,
         };
       }
       const sB = backSagAt(s, x, y);
       if (Number.isNaN(sB)) {
-        if (earlyExit) return backSagError(axisDeg, true, it);
+        if (earlyExit) return backSagError(axisDeg, true, it + 1);
         // Scan the rest of this iteration: the label is 'cross' if any failing point violates
         // the cross-curve circle itself (cb²·v² > 1), else 'base'.
         backFailed = true;
@@ -80,7 +84,7 @@ export function solveCT({
       if (d > dMax) dMax = d;
       if (-d > eMax) eMax = -d;
     }
-    if (backFailed) return backSagError(axisDeg, crossFailed, it);
+    if (backFailed) return backSagError(axisDeg, crossFailed, it + 1);
     const next = Math.max(minCT, minET + dMax);
     if (Math.abs(next - ct) < 1e-4) {
       return {
@@ -88,7 +92,7 @@ export function solveCT({
         ct: next,
         surfaces: design({ sph, cyl, axisDeg, n, D1, k1, ct: next, oc }),
         binding: next === minCT ? 'minCT' : 'minET',
-        iterations: it,
+        iterations: it + 1,
         maxThickness: Math.max(next, next + eMax),
       };
     }
@@ -102,19 +106,29 @@ export function solveCT({
   };
 }
 
-const D1_MIN = 0.5;
-const D1_MAX = 10;
+// One source for the automatic range (D-A, 01-12): power.js BASE_CURVE_LIMITS.
+const D1_MIN = BASE_CURVE_LIMITS.min;
+const D1_MAX = BASE_CURVE_LIMITS.max;
+
+// GAP-1 (01-12): an automatic lens never has a convex back surface. 0 dpt is the definitional
+// boundary of "not convex" (a plano back gives the plano-convex form); a margin would be an
+// unsourced design constant (D-01 final). Applied to the designed principal powers D2a, D2b.
+export const BACK_CONVEX_MAX_DPT = 0;
 const BRACKET_DPT = 0.05;
 const GOLDEN = (Math.sqrt(5) - 1) / 2;
 
 /**
- * D-01 final ("always pick the thinnest"): the D1 in [0.50, 10.00] with the smallest
- * J(D1) = maxThickness = max(CT, largest outline edge thickness). Deterministic and bounded:
+ * D-01 final ("always pick the thinnest"): the D1 in [0.50, 14.00] with the smallest
+ * J(D1) = maxThickness = max(CT, largest outline edge thickness) among fronts whose back surface
+ * is not convex (every back principal power ≤ BACK_CONVEX_MAX_DPT = 0, GAP-1). A result with
+ * max(D2a, D2b) > 0 counts as infeasible (code BACK_SURFACE_CONVEX). Lenses with
+ * max(sph, sph + cyl) ≤ 0 are never affected: D2max = m − D1v < 0 for every D1 > 0.
+ * Deterministic and bounded:
  *   (0) seed: full-outline solve at seedD1 (Vogel-clamped), always; a candidate when it computes,
  *       so the result is never thicker than the Vogel lens;
  *   (1) coarse scan 0.50, 1.00, … < hi plus hi (hi = maxD1) on a decimated outline (every 4th
  *       point; a subset can only under-report violations), warm-started;
- *   (2) nothing computes → rescan [0.50, 10.00] in 0.10 steps on the decimated outline, ignoring
+ *   (2) nothing computes → rescan [0.50, 14.00] in 0.10 steps on the decimated outline, ignoring
  *       the numerical margin, so an impossibility claim covers the whole allowed range;
  *   (3) coarse best re-evaluated on the full outline (candidate), then golden-section refinement
  *       on the full outline in [cb − 0.5, cb + 0.5] ∩ [0.5, bound] to a bracket ≤ 0.05 dpt,
@@ -138,6 +152,12 @@ export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, 
     const earlyExit = ol !== outline;
     const r = solveCT({ sph, cyl, axisDeg, n, D1, k1, minCT, minET, outline: ol, oc, ct0, earlyExit });
     searchIterations += r.iterations;
+    if (r.ok) {
+      const D2max = Math.max(r.surfaces.D2a, r.surfaces.D2b);
+      if (D2max > BACK_CONVEX_MAX_DPT) {
+        return { ok: false, code: 'BACK_SURFACE_CONVEX', data: { D2max }, iterations: r.iterations };
+      }
+    }
     return r;
   };
   let best = null; // full-outline feasible candidate with the smallest J (first one on ties)
@@ -228,7 +248,7 @@ export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, 
   let cb = scan(grid, dec);
   if (cb === null) {
     grid = [];
-    for (let k = 5; k <= 100; k++) grid.push(k / 10);
+    for (let k = 5; k <= 10 * D1_MAX; k++) grid.push(k / 10);
     bound = D1_MAX;
     cb = scan(grid, dec);
   }
@@ -243,6 +263,30 @@ export function optimiseBaseCurve({ sph, cyl, axisDeg, n, k1 = 0, minCT, minET, 
     if (!first.found) {
       const cbFull = scan(grid, outline);
       if (cbFull !== null) refine(cbFull, bound, true);
+    }
+  }
+
+  // (4) boundary bisection (lens-critic MINOR-1, MAJOR-B), failing lenses with a positive
+  // meridian only, on the full outline over the same margin-free domain as the rescan. For a
+  // positive meridian m, fronts flatter than about m give a convex back (convex, or a convex back
+  // too steep to reach the edge), and much steeper fronts give a concave back too steep to reach
+  // the edge, so feasibility is an interval the 0.10 dpt rescan can step over. Rule at mid:
+  // computes → stop and refine around it (≤ 10 solves); BACK_SURFACE_CONVEX, or
+  // BACK_SAG_UNDEFINED with m − mid > 0 → the window lies above (lo = mid); otherwise hi = mid.
+  const m = Math.max(sph, sph + cyl);
+  if (best === null && m > 0) {
+    let lo = D1_MIN;
+    let hiB = D1_MAX;
+    for (let k = 0; k < 30 && hiB - lo >= 1e-4; k++) {
+      const mid = (lo + hiB) / 2;
+      const r = solve(mid, outline);
+      if (r.ok) {
+        consider(mid, r);
+        refine({ D1: mid, J: r.maxThickness, ct: r.ct }, D1_MAX, true);
+        break;
+      }
+      if (r.code === 'BACK_SURFACE_CONVEX' || (r.code === 'BACK_SAG_UNDEFINED' && m - mid > 0)) lo = mid;
+      else hiB = mid;
     }
   }
 

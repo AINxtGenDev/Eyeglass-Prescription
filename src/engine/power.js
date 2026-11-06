@@ -10,8 +10,14 @@
 //   [CITED, MEDIUM: open-exam-prep.com ABO optics II; optiboard thread; slideshare base-curve
 //    deck. No primary textbook accessed.]
 //
-// Range rationale:
-//   ceiling +10.00 = the manual base-curve range (REQUIREMENTS MAT-03, idea.md).
+// Range rationale (this is the AUTOMATIC range; the manual range 0…+10 is MAT-03, phase 2, and
+// is not enforced by the engine in phase 1):
+//   ceiling +14.00 = user decision D-A (2026-11-06). Source: US4185897 (Frieder, 1980,
+//     "Prosthetic aspheric spectacle lens for aphakia"): each base-curve lens series "presently
+//     used in the optical industry has a central zone … ranging from 12 to 16 diopters"
+//     (verified 2026-11-06 at https://patents.google.com/patent/US4185897A). The old +10 was the
+//     manual range from idea.md:48, written from memory. Still capped per lens by
+//     FRONT_RADIUS_MARGIN_MM (maxD1 = min(14, K/(ρmax + 2))). The Vogel clamp uses the same range.
 //   floor +0.50 = a project design choice, NOT a manufacturing limit. It was informed by
 //     Zeiss 1.74 −12.00 front ≈ 0.60 D true and Zeiss CR-39 −8.00 front 1.50 D @1.530, but it is
 //     contradicted as a hard limit by ZEISS Finished SV SPH 1.53 (Trivex, doc Z00981.FS1,
@@ -21,7 +27,7 @@
 
 import { K } from './conventions.js';
 
-export const BASE_CURVE_LIMITS = Object.freeze({ min: 0.5, max: 10 });
+export const BASE_CURVE_LIMITS = Object.freeze({ min: 0.5, max: 14 });
 
 // Numerical guard, not a physical or manufacturing limit. It bounds the search
 // (D1 ≤ K/((ρmax + margin)·√(1 + k1))) so that q = 1 − ρ²/R1² stays away from 0, where the sag

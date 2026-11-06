@@ -6,6 +6,7 @@ const entry = (severity) => Object.freeze({ severity });
 export const DIAGNOSTICS = Object.freeze({
   FRONT_SAG_UNDEFINED: entry('error'),
   BACK_SAG_UNDEFINED: entry('error'),
+  BACK_SURFACE_CONVEX: entry('error'), // automatic search only (01-12): no front ≤ ceiling gives a non-convex back
   VERTEX_TERM_INVALID: entry('error'),
   THICK_LENS_NOT_CONVERGED: entry('error'),
   NON_FINITE_RESULT: entry('error'),
