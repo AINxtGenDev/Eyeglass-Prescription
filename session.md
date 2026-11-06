@@ -96,6 +96,7 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - a decision gate.
 
   Restated ENG-09: main thread < 16,7 ms per task (the user's words: "under one frame"; RAIL's 50 ms only as the outer bound), a normal result within 100 ms, INP ≤ 200 ms ("good", checked on web.dev/articles/inp, applied strictly per edit), and in extreme cases "rechnet …" while the UI stays responsive. Plan checker and lens-critic are reviewing it.
+- **01-15 review rounds.** Round 1: lens-critic NEEDS WORK with 4 MAJORs. It proved that CDP CPU throttling does not slow the worker (45→50 ms vs main 46→193 ms; worker target: "Operation is only supported for pages, not workers"). So the proxy measures only (a)/(b); (c)/(d) are estimates and the real phone decides. Round 2: the 4 MAJORs are resolved, with 3 new ones: CT is 1,8 mm for every minus lens, so the tests can't discriminate (use etmax/weight); a layout shift at 360 px; no "settled" signal. The third revision is running.
 
 ### Open items
 - **Changed requirement texts for the 01-11 manifest:** MAT-01 ("uses ne and density, exposes νe") and MAT-02 (+14, D-C, Expert view → UX-02).
