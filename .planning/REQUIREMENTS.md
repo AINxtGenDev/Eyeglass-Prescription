@@ -49,8 +49,8 @@
 - [x] **ENG-04**: Centre thickness is solved from the min-centre and min-edge constraints over the actual frame outline, including prescriptions with mixed-sign meridians.
 - [x] **ENG-05**: Horizontal decentration = (A + DBL)/2 − mono PD, applied nasally; optional fitting height for vertical position; edge thickness at nasal, temporal, superior and inferior positions is correctly asymmetric. Left and right lenses are computed per eye, not mirrored.
 - [ ] **ENG-06**: Engine outputs centre thickness, max/min edge thickness with location, thickness at any point, volume (numerical integration over the outline), weight (g), front-surface protrusion, decentration, and intermediate values (radii, sags, binding constraint).
-- [ ] **ENG-07**: A lens that cannot be made (sag beyond radius, negative edge) is detected and returned as a coded diagnostic with a plain-German explanation and a suggestion (smaller frame, higher index).
-- [ ] **ENG-08**: Engine results are validated by tiered tests: analytic cases; spherical manufacturer-chart rows within ±0,20 mm (after tool-index conversion); a ray-trace oracle confirming the generated lens reproduces the entered Sph/Zyl/Achse; property tests for symmetry and monotonicity.
+- [x] **ENG-07**: A lens that cannot be made (sag beyond radius, negative edge) is detected and returned as a coded diagnostic with a plain-German explanation and a suggestion (smaller frame, higher index).
+- [x] **ENG-08**: Engine results are validated by tiered tests: analytic cases; spherical manufacturer-chart rows within ±0,20 mm (after tool-index conversion); a ray-trace oracle confirming the generated lens reproduces the entered Sph/Zyl/Achse; property tests for symmetry and monotonicity.
 - [ ] **ENG-09**: Recomputing both lenses after an input change completes within one animation frame on a mid-range phone (target measured on a real device and recorded).
 
 ### Results & Comparison — Simple View (RES)
@@ -72,7 +72,7 @@
 
 ### Localization (L10N)
 
-- [ ] **L10N-01**: All visible text is German (Austrian conventions), served with `lang="de-AT"`; numbers formatted via `Intl.NumberFormat("de-AT")` with correct handling of minus sign and "-0".
+- [x] **L10N-01**: All visible text is German (Austrian conventions), served with `lang="de-AT"`; numbers formatted via `Intl.NumberFormat("de-AT")` with correct handling of minus sign and "-0".
 - [x] **L10N-02**: All strings and diagnostic messages come from one dictionary keyed by message codes, so another language can be added without code changes.
 
 ### 2D Analytics (ANA)
@@ -169,8 +169,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENG-04 | Phase 1 | Complete |
 | ENG-05 | Phase 1 | Complete |
 | ENG-06 | Phase 1 | Pending |
-| ENG-07 | Phase 1 | Pending |
-| ENG-08 | Phase 1 | Pending |
+| ENG-07 | Phase 1 | Complete |
+| ENG-08 | Phase 1 | Complete |
 | ENG-09 | Phase 1 | Pending |
 | RES-01 | Phase 2 | Pending |
 | RES-02 | Phase 2 | Pending |
@@ -183,7 +183,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-03 | Phase 2 | Pending |
 | UX-04 | Phase 2 | Pending |
 | UX-05 | Phase 2 | Pending |
-| L10N-01 | Phase 1 | Pending |
+| L10N-01 | Phase 1 | Complete |
 | L10N-02 | Phase 1 | Complete |
 | ANA-01 | Phase 2 | Pending |
 | ANA-02 | Phase 2 | Pending |
