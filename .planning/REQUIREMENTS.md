@@ -18,8 +18,8 @@
 ### Prescription Input (RX)
 
 - [ ] **RX-01**: User enters the prescription in a table laid out like the paper Rx: rows R (rechtes Auge / OD) and L (linkes Auge / OS); columns Sph, Zyl, Achse, PD.
-- [ ] **RX-02**: Number fields accept comma or point decimals, Unicode minus, leading `+`, trailing `dpt`/`D`, `°` on axis, and `plan`/`pl`/`plano` as 0; the parsed value is echoed back in de-AT format (e.g. `−2,25 dpt`).
-- [ ] **RX-03**: Plus-cylinder input is accepted and automatically transposed to minus-cylinder form, and the user is shown both forms.
+- [x] **RX-02**: Number fields accept comma or point decimals, Unicode minus, leading `+`, trailing `dpt`/`D`, `°` on axis, and `plan`/`pl`/`plano` as 0; the parsed value is echoed back in de-AT format (e.g. `−2,25 dpt`).
+- [x] **RX-03**: Plus-cylinder input is accepted and automatically transposed to minus-cylinder form, and the user is shown both forms.
 - [ ] **RX-04**: Ranges enforced with plain-German messages next to the field: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (after transposition), Achse 0…180° (0 ≡ 180), PD 25,0…40,0 mm per eye. Values are never silently clamped.
 - [ ] **RX-05**: Validation distinguishes invalid (e.g. Zyl without Achse, Achse 200°), unusual-but-computed (e.g. off a 0,25 step → "Meinten Sie …?"), and outside-the-model; messages are linked to the field for screen readers.
 - [ ] **RX-06**: PD can be entered as monocular per eye (`32/33`, `32,5`) or binocular (`64`, split evenly with a note); if PD is missing, a default is used and the result states clearly that PD was assumed.
@@ -147,8 +147,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEPL-03 | Phase 1 | Complete |
 | DEPL-04 | Phase 1 | Complete |
 | RX-01 | Phase 2 | Pending |
-| RX-02 | Phase 1 | Pending |
-| RX-03 | Phase 1 | Pending |
+| RX-02 | Phase 1 | Complete |
+| RX-03 | Phase 1 | Complete |
 | RX-04 | Phase 2 | Pending |
 | RX-05 | Phase 2 | Pending |
 | RX-06 | Phase 2 | Pending |

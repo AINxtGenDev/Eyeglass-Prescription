@@ -75,7 +75,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 01-09-PLAN.md — Zyl/Achse input with plus-cylinder transposition, both forms shown
+- [x] 01-09-PLAN.md — Zyl/Achse input with plus-cylinder transposition, both forms shown
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 8/11 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 9/11 | In Progress|  |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-11-06T12:08:17.146Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-11-06T12:13:15.392Z"
 last_activity: 2026-11-06
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 01 (verified-engine-live-pipeline) — EXECUTING
-Plan: 9 of 11
+Plan: 10 of 11
 Status: Ready to execute
 Last activity: 2026-11-06
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 73%
 | Phase 01 P06 | 7min | 3 tasks | 10 files |
 | Phase 01 P07 | 9min | 3 tasks | 11 files |
 | Phase 01 P08 | 8min | 2 tasks | 12 files |
+| Phase 01 P09 | 4min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,8 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-08]: Pitfall-5 table in PITFALLS.md reproduces barrel−meridional (0.03/0.16/0.10/0.39); implemented tyre−meridional is 0.014/0.013/0.021/0.086 mm max; table left unchanged, values in 01-08-SUMMARY
 - [Phase 01]: [01-08]: ENG-01/02/03/04 marked complete; ENG-08 pending tier 4 (01-10); ENG-05 now also proven for oblique cylinders on both eyes (point reflection + oblique pair)
 - [Phase 01]: [01-08]: Oracle worst element error 1.0e-3 dpt (design, 300 runs) and 8.6e-4 dpt (evaluateLens, 100 runs); thin-lens design rejected at 0.56 dpt
+- [Phase 01]: [01-09]: Blank Zyl = 0; Achse required only when Zyl ≠ 0 and never defaulted; a non-blank invalid Achse blocks the eye even with Zyl 0
+- [Phase 01]: [01-09]: RX-02 and RX-03 marked complete (axis field now on the page); L10N-01 pending until 01-10 diagnostic texts
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06T12:08:09.828Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-11-06T12:13:09.062Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
