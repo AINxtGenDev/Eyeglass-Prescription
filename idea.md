@@ -21,7 +21,7 @@ An interactive, physically accurate 3D web application (HTML, CSS, JavaScript, T
 - **Comparison is the key insight for lay users:** easy side-by-side or before/after comparison of materials (index) and frame size, showing thickness and weight savings.
 - **Responsive:** usable on desktop, tablet, and phone; touch gestures for 3D rotation; controls reachable without scrolling the 3D view away on phones.
 - **Accessibility:** keyboard operable, sufficient contrast, labels for screen readers on all inputs, numbers not conveyed by color alone (heatmap has a legend and numeric callouts).
-- **UI language:** English; structure strings so a German translation can be added later.
+- **UI language: German (required).** All visible text — labels, explanations, validation messages, summaries, disclaimer — is in German using Austrian conventions (e.g. "Dioptrien (dpt)", "Brillenglas", "Fassung", comma decimals `-2,25`, `Jänner` not `Januar` where dates appear, Austrian optician terminology where it differs). Numbers formatted with `Intl.NumberFormat("de-AT")`. `<html lang="de-AT">`. Strings live in one dictionary so English can be added later, but German is the only v1 language.
 - **Disclaimer:** visualization/education tool, not a substitute for an optician's measurement.
 
 ## 4. Input Parameters

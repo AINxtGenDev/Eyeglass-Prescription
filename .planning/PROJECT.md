@@ -25,7 +25,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 - [ ] Side-by-side / before-after comparison of material and frame size with thickness and weight savings
 - [ ] Responsive desktop/tablet/phone with touch rotation; controls reachable on phone without losing the 3D view
 - [ ] Accessible: keyboard operable, contrast, screen-reader labels, information never by color alone
-- [ ] English UI with strings structured for later German translation
+- [ ] **German UI (required)** — all text in German with Austrian conventions (de-AT number formatting, comma decimals, `lang="de-AT"`, optician terms as used in Austria); strings in one dictionary so English can be added later
 - [ ] Disclaimer: educational visualization, not a substitute for an optician
 
 **Inputs**
@@ -67,7 +67,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 
 - Original brief was pasted by the user; `idea.md` in the repo root is the corrected, authoritative spec. Corrections versus the brief: each surface uses its own power for its radius; decentration is (A+DBL)/2 − mono PD; MeshPhysicalMaterial transmission is a screen-space approximation, not exact optics; aspheric needs a conic constant; weight needs per-material densities; cylinder makes the back surface toric, not rotationally symmetric.
 - Material densities and Vogel's rule in `idea.md` are from memory and must be verified with cited sources during research.
-- Developer is in Austria (DACH): comma decimals must be accepted; German UI is a likely future addition.
+- Developer is in Austria (DACH): the website must be in German (Austrian conventions); comma decimals must be accepted. English is a possible later addition only.
 - Repo: `AINxtGenDev/Eyeglass-Prescription` (public, GitHub). Target hosting: GitHub Pages.
 - Process: a project-local critical reviewer agent `lens-critic` (`.claude/agents/lens-critic.md`) reviews every phase plan before execution and every phase result after execution; a phase completes only when its BLOCKER/MAJOR findings are resolved or explicitly accepted by the user.
 
@@ -90,6 +90,7 @@ A non-expert can type in their paper prescription and, within a few minutes, see
 | Minus-cylinder, TABO axis conventions | Standard in DACH prescriptions | — Pending |
 | `lens-critic` review gate on every phase | User wants a reviewer that always pushes for better results | — Pending |
 | Publish via GitHub Pages (Actions-based deploy) from phase 1 | User wants to use the website on GitHub Pages; early deploy gives real-phone testing each phase. User pre-authorized (2026-11-06) enabling Pages (Source: GitHub Actions) once phase 1 is ready | — Pending |
+| German (de-AT) as the only v1 UI language | User requirement: website must be in German; audience is Austrian/DACH lay users | — Pending |
 | Coarse granularity, YOLO/auto, research + plan-check + verifier on, quality model profile | Chosen by user at init | — Pending |
 
 ## Evolution
