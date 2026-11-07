@@ -3,6 +3,8 @@ import { describe, test, expect } from 'vitest';
 import fc from 'fast-check';
 import {
   thickest,
+  thinnest,
+  evenThickness,
   roundMm,
   roundG,
   uniformEdge,
@@ -44,6 +46,59 @@ describe('thickest(m) = max(CT, thickest edge) (lens-critic B1)', () => {
   test('tie CT = edge: the centre', () => {
     expect(thickest({ ct: 2.5, etMax: { value: 2.5, location: 'nasal' } }).where).toBe('centre');
   });
+});
+
+describe('RES-01 thinnest point (lens-critic B1): thinnest(m) = min(CT, thinnest edge)', () => {
+  test('RES-01 minus lens: the centre', () => {
+    expect(thinnest({ ct: 1.8, etMin: { value: 3.0, location: 'superior' }, etMax: { value: 4.6, location: 'temporal-superior' } })).toEqual({
+      value: 1.8,
+      where: 'centre',
+    });
+  });
+  test('RES-01 plus lens: the thinnest edge', () => {
+    expect(thinnest({ ct: 3.9, etMin: { value: 1.0, location: 'temporal-superior' }, etMax: { value: 1.3, location: 'nasal' } })).toEqual({
+      value: 1.0,
+      where: 'temporal-superior',
+    });
+  });
+  test('RES-01 mixed cylinder: the thinnest edge', () => {
+    expect(thinnest({ ct: 2.5, etMin: { value: 2.0, location: 'nasal' }, etMax: { value: 3.1, location: 'superior' } })).toEqual({
+      value: 2.0,
+      where: 'nasal',
+    });
+  });
+  test('RES-01 tie CT = thinnest edge: the centre', () => {
+    expect(thinnest({ ct: 2.0, etMin: { value: 2.0, location: 'nasal' }, etMax: { value: 2.6, location: 'superior' } }).where).toBe('centre');
+  });
+  test('RES-01 evenThickness: plano-like → true, minus example → false', () => {
+    expect(evenThickness({ ct: 2.0, etMin: { value: 2.0, location: 'nasal' }, etMax: { value: 2.04, location: 'superior' } })).toBe(true);
+    expect(evenThickness({ ct: 1.8, etMin: { value: 3.0, location: 'superior' }, etMax: { value: 4.6, location: 'temporal-superior' } })).toBe(false);
+  });
+  // Engine-backed: page example OD, Weitsichtig preset OD and a plano lens, CR-39, Rechteckig 52 × 38 / 18, PD 32.
+  const FRAME = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+  const lens = (rx) => {
+    const r = evaluateLens(specFor('OD', rx, 32, 'cr39', FRAME));
+    expect(r.ok).toBe(true);
+    return r.metrics;
+  };
+  const CASES = [
+    ['example OD −2,75 −0,50 × 180 → centre', { sph: -2.75, cyl: -0.5, axisDeg: 180 }, 'minus'],
+    ['Weitsichtig OD +3,00 → an edge', { sph: 3, cyl: 0, axisDeg: 0 }, 'plus'],
+    ['plano 0 / 0', { sph: 0, cyl: 0, axisDeg: 0 }, 'plano'],
+  ];
+  for (const [name, rx, kind] of CASES) {
+    test(`RES-01 engine: ${name}`, () => {
+      const m = lens(rx);
+      const th = thinnest(m);
+      expect(th.value).toBe(Math.min(m.ct, m.etMin.value));
+      expect(th.value).toBeLessThanOrEqual(thickest(m).value);
+      expect(th.value).toBeLessThanOrEqual(m.ct);
+      expect(th.value).toBeLessThanOrEqual(m.etMin.value);
+      if (kind === 'minus') expect(th.where).toBe('centre');
+      if (kind === 'plus') expect(th.where).toBe(m.etMin.location);
+      if (kind === 'plus') expect(th.where).not.toBe('centre');
+    });
+  }
 });
 
 describe('uniformEdge(m): displayed thickest edge = thinnest edge', () => {
