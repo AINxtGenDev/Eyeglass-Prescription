@@ -72,6 +72,11 @@ describe('disclaimer (RES-06, lens-critic iteration-3 MAJOR-1)', () => {
   test('says real lenses can be dicker', () => expect(body()).toContain('dicker'));
   test('is a Lernhilfe', () => expect(body()).toContain('Lernhilfe'));
   test('states the CT tolerance as ±0,3 mm', () => expect(body()).toContain('±0,3 mm'));
+  // 02-11 (MAT-05, UI-SPEC disclaimer note): the sphere is the default, the asphere is generic.
+  test('says the spherical front applies without the Expert setting and is not a manufacturer design', () => {
+    expect(body()).toContain('ohne Experten-Einstellung mit einer sphärischen Vorderfläche');
+    expect(body()).toContain('nicht mit asphärischen Herstellerdesigns');
+  });
 });
 
 // Documented data fields per code (src/engine/diagnostics.js, solve.js, evaluate.js).
@@ -374,5 +379,28 @@ describe('presets (02-09)', () => {
 
   test('the Hornhaut·verkrümmung escape is in place', () => {
     expect(dict['preset.rx.hhv']).toBe('Hornhaut\u00ADverkrümmung');
+  });
+});
+
+describe('02-11 aspheric front and rim depth copy (MAT-05, FRAME-02)', () => {
+  test('generic-model label, k range, plus-lens note, spherical-basis label', () => {
+    expect(dict['expert.front.asph']).toContain('allgemeines Modell, kein bestimmtes Herstellerdesign');
+    expect(dict['expert.k.label']).toBe('Konische Konstante k (Standard −1, erlaubt −5,0 bis −1,0)');
+    expect(dict['expert.asph.note']).toContain('vor allem Plusgläser');
+    expect(dict['basecurve.sphericalBasis']).toBe('(für sphärische Vorderfläche bestimmt)');
+  });
+  test('rim depth: assumed default, no effect on thickness or weight, {glass} and {excess} only', () => {
+    expect(dict['frame.rim.note']).toContain('angenommener Wert, keine Herstellerangabe');
+    expect(dict['frame.rim.note']).toContain('ändert Dicke und Gewicht nicht');
+    const ph = (k) => [...dict[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+    expect(ph('frame.rim.over')).toEqual(['excess', 'glass']);
+    expect(ph('frame.rim.fits')).toEqual(['glass']);
+    expect(ph('frame.rim.note')).toEqual(['value']);
+  });
+  test('k and Randtiefe have toggletips', () => {
+    for (const k of ['k', 'rim']) {
+      expect(dict).toHaveProperty([`tip.${k}.name`]);
+      expect(dict).toHaveProperty([`tip.${k}.text`]);
+    }
   });
 });

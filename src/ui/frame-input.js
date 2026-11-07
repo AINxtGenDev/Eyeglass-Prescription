@@ -2,16 +2,20 @@
 // and fills A and DBL; the shape is picked from radio cards; B follows the shape ratio until typed.
 // Values outside the FRAME-02 ranges are Außerhalb des Modells and block both eyes, never clamped.
 // Only parsed numbers are written back into fields (T-02-13); every visible string comes from t().
+// 02-11 (FRAME-02): [Expert] Randtiefe. Display only: the rim depth is not part of the LensSpec
+// (RESEARCH D-13 change), so changing it repaints the rim lines and never starts a compute job.
 import { SHAPES } from '../engine/frame/shapes.js';
 import { frameOutline } from '../engine/frame/outline.js';
 import { parseMm, parseStamp, PARSE_CODES, STAMP_CODES } from '../state/parse.js';
 import { estimateB } from '../state/frame.js';
-import { validateFrame, TIERS } from '../state/validate.js';
+import { validateFrame, validateRimDepth, TIERS } from '../state/validate.js';
+import { RIM_DEPTH_DEFAULT_MM, edgeBeyondRim } from '../engine/rim.js';
 import { t } from '../i18n/t.js';
 import { fmtMm } from '../i18n/format.js';
 import { $, setText } from './dom.js';
 import { icon } from './icons.js';
 import { showFieldMessage, messageStatus, flushOnBlur } from './rx-input.js';
+import { isExpert } from './expert.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const DEFAULT_SHAPE = 'rechteckig';
@@ -43,6 +47,40 @@ let schedule = () => {};
 let onShown = () => {};
 
 const stampText = (A, DBL, len) => `${numNf.format(A)}${SQUARE}${numNf.format(DBL)}${len === null ? '' : ' ' + len}`;
+
+const RIM_ID = 'frame-rim';
+const RIM_GLASS = { OD: 'result.glass.od', OS: 'result.glass.os' };
+/** Metrics of the painted main result per eye (null = no result). */
+const rimMetrics = { OD: null, OS: null };
+
+/**
+ * Rim lines from the painted metrics (pipeline.js, main lane, after renderResult). Nothing is
+ * written while the switch is off; turning it on calls paintRim.
+ * @param {'OD'|'OS'} eye @param {object|null} metrics LensResult.metrics of the painted result
+ */
+export function renderRim(eye, metrics) {
+  rimMetrics[eye] = metrics;
+  if (isExpert()) paintRim();
+}
+
+/** Paint both rim lines: empty field = the assumed default; an invalid field shows no line. */
+export function paintRim() {
+  const r = validateRimDepth(input(RIM_ID).value);
+  showFieldMessage(RIM_ID, r.msg, { kind: 'mm', blocks: false, apply: null });
+  const depth = r.msg ? null : (r.value ?? RIM_DEPTH_DEFAULT_MM);
+  setText(`${RIM_ID}-echo`, depth === null ? '' : fmtMm(depth));
+  for (const eye of /** @type {const} */ (['OD', 'OS'])) {
+    const m = rimMetrics[eye];
+    let text = '';
+    if (m && depth !== null) {
+      const excess = edgeBeyondRim(m, depth);
+      const glass = t(RIM_GLASS[eye]);
+      // 'dicker' only when the shown 0,1 mm value is not 0,0 (fmtMm rounds 0,05 up).
+      text = excess >= 0.05 ? t('frame.rim.over', { glass, excess: fmtMm(excess) }) : t('frame.rim.fits', { glass });
+    }
+    setText(`${RIM_ID}-result-${eye.toLowerCase()}`, text);
+  }
+}
 
 /** Selected id, guarded to a SHAPES key (T-01-21). */
 export function currentShape() {
@@ -341,7 +379,10 @@ export function initFrameInput(hooks) {
       schedule(e.timeStamp);
     });
   }
-  for (const id of [STAMP_ID, ID.A, ID.B, ID.DBL]) flushOnBlur(id);
+  for (const id of [STAMP_ID, ID.A, ID.B, ID.DBL, RIM_ID]) flushOnBlur(id);
+  setText('frame-rim-note', t('frame.rim.note', { value: fmtMm(RIM_DEPTH_DEFAULT_MM) }));
+  // No schedule: the rim depth changes no spec (no compute job, no 'rechnet …').
+  input(RIM_ID).addEventListener('input', paintRim);
   document.querySelector('#frame-shape').addEventListener('change', (e) => {
     if (!FIELDS.some((f) => userTyped[f])) prefillFrame(currentShape());
     schedule(e.timeStamp);

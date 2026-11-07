@@ -236,6 +236,23 @@
                   <div id="frame-dbl-err" class="msg" aria-live="polite" hidden></div>
                 </div>
               </div>
+              <div id="frame-rim-wrap" data-expert hidden>
+                <span class="expert-tag" data-i18n="expert.tag"></span>
+                <div class="field">
+                  <span class="term"><label for="frame-rim" data-i18n="frame.rim.label"></label><button type="button" class="tip-btn"
+                      aria-expanded="false" aria-controls="tip-rim" data-i18n-aria-label="tip.rim.name"></button></span>
+                  <p id="tip-rim" class="tip" hidden data-i18n="tip.rim.text"></p>
+                  <p id="frame-rim-note" class="field-hint"></p>
+                  <input id="frame-rim" name="frame-rim" type="text" inputmode="decimal" autocomplete="off" value="3,0"
+                    aria-describedby="frame-rim-note frame-rim-echo frame-rim-err">
+                  <output id="frame-rim-echo" for="frame-rim"></output>
+                  <div id="frame-rim-err" class="msg" aria-live="polite" hidden></div>
+                </div>
+                <div id="frame-rim-result" class="small">
+                  <p id="frame-rim-result-od"></p>
+                  <p id="frame-rim-result-os"></p>
+                </div>
+              </div>
             </div>
           </section>
           <section id="material-section" aria-labelledby="material-title">
@@ -292,6 +309,26 @@
               <div id="expert-binding-note" class="small">
                 <p id="expert-binding-od"></p>
                 <p id="expert-binding-os"></p>
+              </div>
+              <fieldset id="expert-front" class="segmented">
+                <legend data-i18n="expert.front.legend"></legend>
+                <label><input type="radio" name="expert-front" value="sph" checked><span data-i18n="expert.front.sph"></span></label>
+                <label><input type="radio" name="expert-front" value="asph"><span data-i18n="expert.front.asph"></span></label>
+              </fieldset>
+              <div id="expert-k-wrap" hidden>
+                <div class="field">
+                  <span class="term"><label for="expert-k" data-i18n="expert.k.label"></label><button type="button" class="tip-btn"
+                      aria-expanded="false" aria-controls="tip-k" data-i18n-aria-label="tip.k.name"></button></span>
+                  <p id="tip-k" class="tip" hidden data-i18n="tip.k.text"></p>
+                  <span class="input-group">
+                    <button type="button" class="sign" data-for="expert-k" data-i18n-aria-label="rx.sign.expert-k">±</button>
+                    <input id="expert-k" name="expert-k" type="text" inputmode="decimal" autocomplete="off" value="−1"
+                      aria-describedby="expert-k-echo expert-k-err expert-asph-note">
+                  </span>
+                  <output id="expert-k-echo" for="expert-k"></output>
+                  <div id="expert-k-err" class="msg" aria-live="polite" hidden></div>
+                </div>
+                <p id="expert-asph-note" class="small" data-i18n="expert.asph.note"></p>
               </div>
             </div>
           </section>

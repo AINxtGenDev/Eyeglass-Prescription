@@ -13,7 +13,7 @@ import {
   repaintFromLast,
 } from './results.js';
 import { initRxInput, readRx, eyeStatus } from './rx-input.js';
-import { initFrameInput, readFrame, frameStatus, frameSizesTyped, applyFrameSizes } from './frame-input.js';
+import { initFrameInput, readFrame, frameStatus, frameSizesTyped, applyFrameSizes, paintRim } from './frame-input.js';
 import { initPresets } from './presets.js';
 import { EXAMPLE } from '../state/presets.js';
 import { initMaterialInput, currentMaterialId, renderMaterialLine } from './material-input.js';
@@ -183,6 +183,7 @@ function init() {
   initExpert(
     (ts) => {
       repaintFromLast();
+      paintRim();
       schedule(ts);
     },
     { schedule, onMessageShown: () => EYES.forEach(onMessageShown), materialId: currentMaterialId() },

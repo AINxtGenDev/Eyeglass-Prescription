@@ -20,6 +20,9 @@ export const VAL_CODES = Object.freeze({
   // 02-10 Expert fields (MAT-03, MAT-04)
   VAL_BASECURVE_OUT_OF_MODEL: 'VAL_BASECURVE_OUT_OF_MODEL',
   VAL_MINTHICKNESS_OUT_OF_MODEL: 'VAL_MINTHICKNESS_OUT_OF_MODEL',
+  // 02-11 Expert fields (MAT-05, FRAME-02 rim depth)
+  VAL_CONIC_OUT_OF_MODEL: 'VAL_CONIC_OUT_OF_MODEL',
+  VAL_RIMDEPTH_OUT_OF_MODEL: 'VAL_RIMDEPTH_OUT_OF_MODEL',
 });
 
 // RX-04, REQUIREMENTS.md verbatim: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (minus form),
@@ -257,3 +260,25 @@ export const validateBaseCurve = (raw) =>
  */
 export const validateMinThickness = (raw) =>
   expertField(raw, parseMm, MIN_THICKNESS_RANGE, VAL_CODES.VAL_MINTHICKNESS_OUT_OF_MODEL);
+
+// MAT-05: Jalie US4289387 uses p 0…−4 for the hyperboloidal front, p = 1 + k ⇒ k −1…−5. Only the
+// cited range is offered (lens-critic MINOR-2, RESEARCH A1): k = 0 is the 'sphärisch' radio, and
+// −1 < k < 0 has no source and is out of model. The engine itself accepts any k ≤ 0.
+export const CONIC_RANGE = Object.freeze([-5, -1]);
+// Default k when the field is empty: the mildest cited end (p = 0, paraboloid).
+export const CONIC_DEFAULT = -1;
+// [ASSUMED, design constant] rim depth bounds that only stop typos (no citable range).
+export const RIM_DEPTH_RANGE = Object.freeze([0.5, 10]);
+
+/**
+ * Expert conic constant k of the front (02-11, MAT-05): empty = default. Never clamped.
+ * @param {string} raw @returns {{ value: number|null, msg: FieldMsg|null }}
+ */
+export const validateConic = (raw) => expertField(raw, parseDiopter, CONIC_RANGE, VAL_CODES.VAL_CONIC_OUT_OF_MODEL);
+
+/**
+ * Expert rim depth of the frame (02-11, FRAME-02): empty = RIM_DEPTH_DEFAULT_MM. Display only, it
+ * never blocks an eye (the rim depth is not part of the LensSpec).
+ * @param {string} raw @returns {{ value: number|null, msg: FieldMsg|null }}
+ */
+export const validateRimDepth = (raw) => expertField(raw, parseMm, RIM_DEPTH_RANGE, VAL_CODES.VAL_RIMDEPTH_OUT_OF_MODEL);

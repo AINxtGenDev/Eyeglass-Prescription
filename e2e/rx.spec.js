@@ -105,7 +105,7 @@ test('the message slot is linked to the field', async ({ page }) => {
 test('"±" inserts a minus into an empty field and flips a value', async ({ page }) => {
   await page.locator('#example-clear').click();
   const sign = page.getByRole('button', { name: 'Vorzeichen umkehren: Sph rechts' });
-  await expect(page.locator('button.sign')).toHaveCount(4);
+  await expect(page.locator('.rx-table button.sign')).toHaveCount(4);
   await sign.click();
   await expect(sph(page)).toHaveValue('−');
   await expect(sph(page)).toBeFocused();

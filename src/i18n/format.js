@@ -52,3 +52,8 @@ export function fmtMs(v) {
 export function fmtGramWhole(v) {
   return v < 0.5 ? null : intNf.format(v) + NBSP + 'g';
 }
+
+/** Conic constant k, 1 decimal, no unit: −1 → "−1,0", 0 → "0,0" (MAT-05). */
+export function fmtConic(v) {
+  return typographicMinus(oneDecimalNf.format(v));
+}

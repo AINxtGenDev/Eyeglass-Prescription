@@ -4,13 +4,15 @@
 // The switch state is not persisted (D-32, T-02-03: shared ainxtgendev.github.io origin).
 // 02-10 (MAT-03, MAT-04, D-33, D-34): the Glas-Einstellungen block (manual base curve, minimum
 // thicknesses). Overrides apply only while the switch is on (T-02-28); typed values are kept.
+// 02-11 (MAT-05): Vorderfläche sphärisch / asphärisch with the conic constant k (generic model).
 import { $, setText } from './dom.js';
+import { icon } from './icons.js';
 import { nasalSign } from '../engine/conventions.js';
 import { MATERIALS } from '../engine/materials.js';
 import { sphericalEquivalent } from '../engine/power.js';
-import { validateBaseCurve, validateMinThickness, BASE_CURVE_MANUAL } from '../state/validate.js';
+import { validateBaseCurve, validateMinThickness, validateConic, BASE_CURVE_MANUAL, CONIC_DEFAULT } from '../state/validate.js';
 import { t } from '../i18n/t.js';
-import { fmtDiopter, fmtMm, fmtGram } from '../i18n/format.js';
+import { fmtDiopter, fmtMm, fmtGram, fmtConic } from '../i18n/format.js';
 import { showFieldMessage, messageStatus, flushOnBlur } from './rx-input.js';
 
 const DASH = '–';
@@ -32,7 +34,8 @@ function apply() {
 
 const BC_ID = 'expert-basecurve';
 const MIN_ID = { minCT: 'expert-min-ct', minET: 'expert-min-et' };
-const EXPERT_FIELDS = [BC_ID, MIN_ID.minCT, MIN_ID.minET];
+const K_ID = 'expert-k';
+const EXPERT_FIELDS = [BC_ID, MIN_ID.minCT, MIN_ID.minET, K_ID];
 const field = (id) => /** @type {HTMLInputElement} */ ($(id));
 // Field text without sign or unit, as typed: "1,8" (parseMm takes one decimal), "4,50".
 const mmField = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
@@ -94,6 +97,17 @@ export function initExpert(onChange, { schedule, onMessageShown, materialId }) {
       schedule(e.timeStamp);
     });
   }
+  // Vorderfläche: the k field only for asphärisch; either choice runs an input frame. The check
+  // icon carries the selected state (not colour alone), as in #cmp-show.
+  for (const radio of document.querySelectorAll('input[name=expert-front]')) {
+    radio.after(icon('check'));
+    radio.addEventListener('change', (e) => {
+      $('expert-k-wrap').hidden = !aspheric();
+      schedule(e.timeStamp);
+    });
+  }
+  $('expert-k-wrap').hidden = !aspheric();
+  field(K_ID).addEventListener('input', (e) => schedule(e.timeStamp));
   for (const id of EXPERT_FIELDS) flushOnBlur(id);
   $('expert-min-reset').addEventListener('click', (e) => {
     fillMinDefaults(fieldMaterial, { reset: true });
@@ -108,10 +122,15 @@ export function initExpert(onChange, { schedule, onMessageShown, materialId }) {
   });
 }
 
+/** 'asphärisch' is chosen (the k field is shown). */
+const aspheric = () =>
+  /** @type {HTMLInputElement | null} */ (document.querySelector('input[name=expert-front]:checked'))?.value === 'asph';
+
 const NO_OVERRIDES = Object.freeze({
   baseCurve: null,
   minCT: null,
   minET: null,
+  frontConic: null,
   active: false,
   blocked: false,
   firstBlockedFieldId: null,
@@ -131,7 +150,10 @@ function minSource(k, m, value) {
  * null, so the spec (cache key) equals the one without overrides and the result is shared with
  * the material table.
  * @param {string} materialId
- * @returns {{ baseCurve: number|null, minCT: number|null, minET: number|null, active: boolean,
+ * frontConic (02-11): k while 'asphärisch' is chosen and the k field is valid (empty = CONIC_DEFAULT),
+ * else null (sphere). A k message blocks both eyes only while 'asphärisch' is chosen.
+ * @returns {{ baseCurve: number|null, minCT: number|null, minET: number|null,
+ *   frontConic: number|null, active: boolean,
  *   blocked: boolean, firstBlockedFieldId: string|null, pendingMessage: boolean }}
  */
 export function readExpertOverrides(materialId) {
@@ -147,6 +169,11 @@ export function readExpertOverrides(materialId) {
     setText(`${MIN_ID[k]}-echo`, r.msg ? '' : minSource(k, m, r.value));
     out[k] = r.value === null || r.value === m[k] ? null : r.value;
   }
+  const asph = aspheric();
+  const k = asph ? validateConic(field(K_ID).value) : { value: null, msg: null };
+  showFieldMessage(K_ID, k.msg, { kind: 'k', apply: null, shown: onShown });
+  out.frontConic = asph && !k.msg ? (k.value ?? CONIC_DEFAULT) : null;
+  setText(`${K_ID}-echo`, out.frontConic === null ? '' : t('expert.k.echo', { k: fmtConic(out.frontConic) }));
   const st = expertStatus();
   return { ...out, blocked: st.firstBlockedFieldId !== null, ...st };
 }
@@ -172,7 +199,7 @@ export function expertStatus() {
  * named when it computes (lens-critic phase-1 MINOR-2); a manual result names the Vogel value only.
  * `rounded` appends the 0,25 dpt step that 'Vogel-Basiskurve übernehmen' writes (MINOR-5).
  */
-function vogelRefText(im, { rounded = false } = {}) {
+function vogelRefText(im, { rounded = false, basis = '' } = {}) {
   // Raw Vogel value; when the rule leaves +0,50…+14,00 (D-A) the clamp is named, and any
   // thickness in the sentence refers to the clamped lens (01-13, MINOR-1).
   let vogel = fmtDiopter(im.vogelD1);
@@ -189,13 +216,24 @@ function vogelRefText(im, { rounded = false } = {}) {
         ? t('basecurve.vogelRefImpossible', { vogel })
         : t('basecurve.vogelRefThicker', { vogel, thickness: fmtMm(v) });
   }
+  text += basis;
   if (rounded) text += ' ' + t('basecurve.vogelRounded', { rounded: fmtDiopter(vogelRounded(im.vogelD1)) });
   return text;
 }
 
-/** Base-curve cell: the rule plus the Vogel reference. */
-function baseCurveText(im) {
-  return fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule) + ' ' + vogelRefText(im);
+/**
+ * ' (für sphärische Vorderfläche bestimmt)' for an automatic curve with an aspheric front, else ''.
+ * A manual curve is not chosen by the rule and its Vogel sentence has no thickness.
+ */
+const sphericalBasis = (im, k1) => (k1 !== 0 && im.baseCurveRule === 'thinnest' ? ' ' + t('basecurve.sphericalBasis') : '');
+
+/**
+ * Base-curve cell: the rule plus the Vogel reference. With an aspheric front (k1 ≠ 0) the rule and
+ * the Vogel thickness were evaluated at k = 0, so both say so (lens-critic MINOR-1).
+ */
+function baseCurveText(im, k1 = 0) {
+  const basis = sphericalBasis(im, k1);
+  return fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule) + basis + ' ' + vogelRefText(im, { basis });
 }
 
 const GLASS = { OD: 'result.glass.od', OS: 'result.glass.os' };
@@ -217,7 +255,9 @@ export function renderGlassSettings({ specs, main, auto }) {
     const a = auto?.[eye];
     if (a?.ok) {
       const im = a.intermediates;
-      setText(`expert-bc-auto-${e}`, t('expert.bc.autoLine', { glass, value: fmtDiopter(im.D1), vogelRef: vogelRefText(im, { rounded: true }) }));
+      const basis = sphericalBasis(im, a.surfaces.k1);
+      const vogelRef = (basis ? basis.trim() + ' ' : '') + vogelRefText(im, { rounded: true, basis });
+      setText(`expert-bc-auto-${e}`, t('expert.bc.autoLine', { glass, value: fmtDiopter(im.D1), vogelRef }));
       // The phase-1 rule puts minus lenses at the +0,50 floor (01-SKELETON): say so (D-01 disclosure).
       const s = specs[eye];
       if (s && sphericalEquivalent(s.sph, s.cyl) < 0 && im.baseCurveRule === 'thinnest' && im.D1 <= 0.5 + 1e-9) minusFloor = true;
@@ -252,7 +292,7 @@ export function renderZwischenwerte(eye, res) {
   setText(`${p}-dec`, fmtMm(nasalSign(eye) * m.decentration.x));
   // 'Dickster Rand' is the edge value, number first (e2e etmaxOf).
   setText(`${p}-etmax`, fmtMm(m.etMax.value));
-  setText(`${p}-basecurve`, baseCurveText(im));
+  setText(`${p}-basecurve`, baseCurveText(im, res.surfaces.k1));
   setText(`${p}-d2`, t('expert.zw.d2.value', { a: fmtDiopter(im.D2a), b: fmtDiopter(im.D2b) }));
   setText(`${p}-radii`, t('expert.zw.radii.value', { r1: radius(im.R1), ra: radius(im.Ra), rb: radius(im.Rb) }));
   setText(

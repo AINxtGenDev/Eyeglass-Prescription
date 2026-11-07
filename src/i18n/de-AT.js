@@ -64,6 +64,12 @@ export default Object.freeze({
     'Basiskurve {value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
   'val.VAL_MINTHICKNESS_OUT_OF_MODEL':
     '{value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
+  // 02-11 (MAT-05): k = 0 is chosen with 'sphärisch'; only the cited −5,0…−1,0 is computed.
+  'val.VAL_CONIC_OUT_OF_MODEL':
+    'k {value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für eine Kugelfläche „sphärisch“ wählen. Für beide Gläser wird nichts berechnet.',
+  // 02-11 (FRAME-02): the rim depth never blocks an eye; only the rim line is not shown.
+  'val.VAL_RIMDEPTH_OUT_OF_MODEL':
+    'Randtiefe {value} liegt außerhalb des Bereichs ({min} bis {max}). Die Dicke und das Gewicht ändern sich dadurch nicht.',
   // Sph checked on the minus-cylinder form after a plus cylinder (RESEARCH Pitfall 8).
   'val.transposedSuffix': 'Der Wert gilt in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}.',
   'val.contactLensSuffix': 'Falls das der Durchmesser (DIA) einer Kontaktlinse ist: Hier gehören die Werte vom Brillenpass hin.',
@@ -76,6 +82,7 @@ export default Object.freeze({
   'rx.sign.od.cyl': 'Vorzeichen umkehren: Zyl rechts',
   'rx.sign.os.sph': 'Vorzeichen umkehren: Sph links',
   'rx.sign.os.cyl': 'Vorzeichen umkehren: Zyl links',
+  'rx.sign.expert-k': 'Vorzeichen umkehren: konische Konstante k',
   // D-04 as changed by the UI-SPEC: Sph, Zyl and Achse only (RESEARCH Pitfall 9).
   'rx.same': 'Linkes Auge gleich wie rechtes (Sph, Zyl, Achse)',
   'rx.mirrored': 'übernommen von rechts',
@@ -165,6 +172,15 @@ export default Object.freeze({
   'tip.b.text': 'Glashöhe: die Höhe eines Glases in der Fassung. Steht selten am Bügel; wir schätzen sie aus der Form.',
   'tip.dbl.name': 'Erklärung: Stegbreite DBL',
   'tip.dbl.text': 'Stegbreite: der Abstand zwischen den beiden Gläsern über der Nase. Die zweite Zahl am Bügel.',
+  // 02-11 (FRAME-02, UI-SPEC "Randtiefe"): display only, never in the LensSpec.
+  'frame.rim.label': 'Randtiefe der Fassung (mm)',
+  'frame.rim.note': 'Standard {value} (angenommener Wert, keine Herstellerangabe). Die Randtiefe ändert Dicke und Gewicht nicht.',
+  // {glass} = result.glass.*, {excess} = fmtMm(edgeBeyondRim): uses etMax, never the centre.
+  'frame.rim.over':
+    '{glass}: Der Glasrand ist an seiner dicksten Stelle {excess} dicker als die Fassung tief ist (vorne und hinten zusammen).',
+  'frame.rim.fits': '{glass}: Der Glasrand passt in die Tiefe der Fassung.',
+  'tip.rim.name': 'Erklärung: Randtiefe',
+  'tip.rim.text': 'Wie tief der Rand der Fassung ist, der das Glas hält. Ein dickerer Glasrand steht vorne oder hinten heraus.',
 
   // Material cards (02-07, D-14, UI-SPEC "Material"): index first, then a neutral descriptor.
   // Never imply that 1,74 is always better (PITFALLS Pitfall 8). material.<id> is the short label
@@ -393,7 +409,7 @@ export default Object.freeze({
   // later phase-2 plans extend it with their Expert blocks.
   'expert.switch': 'Experten-Ansicht',
   'expert.hint':
-    'Zeigt zusätzlich die Glas-Einstellungen (Basiskurve und Mindestdicken selbst wählen) und die Zwischenwerte: Dezentration, Basiskurve, Rückfläche, Radien, Pfeilhöhen, festlegende Mindestdicke und das Gewicht auf 0,1 g.',
+    'Zeigt zusätzlich die Glas-Einstellungen (Basiskurve, Mindestdicken und asphärische Vorderfläche selbst wählen), die Randtiefe der Fassung und die Zwischenwerte: Dezentration, Basiskurve, Rückfläche, Radien, Pfeilhöhen, festlegende Mindestdicke und das Gewicht auf 0,1 g.',
   'expert.tag': 'Experten-Ansicht',
   'expert.analysis.title': 'Experten-Analyse',
   'expert.zw.title': 'Zwischenwerte',
@@ -431,6 +447,15 @@ export default Object.freeze({
   'expert.min.typed': 'von Ihnen vorgegeben',
   // {glass} = result.glass.*, {text} = expert.binding.*
   'expert.binding.line': '{glass}: {text}',
+  // 02-11 (MAT-05, UI-SPEC Copywriting "Vorderfläche"): a generic conic, never a manufacturer design.
+  'expert.front.legend': 'Vorderfläche',
+  'expert.front.sph': 'sphärisch',
+  'expert.front.asph': 'asphärisch (allgemeines Modell, kein bestimmtes Herstellerdesign)',
+  'expert.k.label': 'Konische Konstante k (Standard −1, erlaubt −5,0 bis −1,0)',
+  'expert.k.echo': 'k = {k}',
+  'expert.asph.note': 'In diesem Modell ändert die asphärische Vorderfläche vor allem Plusgläser.',
+  'tip.k.name': 'Erklärung: konische Konstante k',
+  'tip.k.text': 'Konische Konstante: 0 ist eine Kugel, negative Werte flachen die Fläche zum Rand hin ab.',
 
   // D-01 final + D-C (01-12): the flattest front within τ = 0,1 mm of the thinnest; Vogel is a reference only.
   'basecurve.rule.thinnest':
@@ -442,6 +467,8 @@ export default Object.freeze({
     '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas an der dicksten Stelle {thickness} dick)',
   // 02-10 (lens-critic phase-1 MINOR-5): the Vogel value as a usable 0,25 dpt step in 0,00…+10,00.
   'basecurve.vogelRounded': 'Zum Übernehmen gerundet: {rounded}.',
+  // 02-11 (lens-critic MINOR-1): the rule and the Vogel comparison were evaluated at k = 0.
+  'basecurve.sphericalBasis': '(für sphärische Vorderfläche bestimmt)',
   'basecurve.vogelRefImpossible':
     '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit ließe sich das Glas in diesem Modell nicht berechnen)',
 
@@ -545,5 +572,5 @@ export default Object.freeze({
   'footer.version': 'Version',
 
   'disclaimer.title': 'Wichtiger Hinweis',
-  'disclaimer.body': 'Diese Seite ist eine Lernhilfe: eine vereinfachte Veranschaulichung, kein Ersatz für die Messung und Beratung beim Optiker. Alle Zahlen sind Modellwerte. Das Modell rechnet mit einer sphärischen Vorderfläche, nicht mit asphärischen Herstellerdesigns, und die Rückfläche ist in diesem Modell nie nach außen gewölbt. Die Basiskurve wird so gewählt, dass das Glas in diesem Modell nahezu so dünn wie möglich wird (höchstens 0,1 mm dicker), mit der flachsten Vorderfläche unter diesen (Vorderfläche mindestens +0,50 dpt). Optiker und Hersteller wählen die Kurve auch nach Abbildungsqualität und Aussehen; echte Gläser können deshalb dicker sein – bei Plusgläsern in der Mitte um bis zu etwa 0,4 mm (verglichen mit Zeiss-Lagergläsern bis +6 dpt), bei stärkeren Plusgläsern möglicherweise mehr; bei starken Minusgläsern in großen Fassungen am Rand um einige Millimeter (oder mit asphärischen Gläsern dünner). Die Mindestdicken sind typische Herstellerwerte; die Fertigungstoleranz der Mittendicke beträgt laut Hersteller bis zu ±0,3 mm. Prismen, Addition und Gleitsichtgläser werden nicht berücksichtigt; Rohglasdurchmesser und Facettenlage sind nicht modelliert.',
+  'disclaimer.body': 'Diese Seite ist eine Lernhilfe: eine vereinfachte Veranschaulichung, kein Ersatz für die Messung und Beratung beim Optiker. Alle Zahlen sind Modellwerte. Das Modell rechnet ohne Experten-Einstellung mit einer sphärischen Vorderfläche, nicht mit asphärischen Herstellerdesigns, und die Rückfläche ist in diesem Modell nie nach außen gewölbt. Die Basiskurve wird so gewählt, dass das Glas in diesem Modell nahezu so dünn wie möglich wird (höchstens 0,1 mm dicker), mit der flachsten Vorderfläche unter diesen (Vorderfläche mindestens +0,50 dpt). Optiker und Hersteller wählen die Kurve auch nach Abbildungsqualität und Aussehen; echte Gläser können deshalb dicker sein – bei Plusgläsern in der Mitte um bis zu etwa 0,4 mm (verglichen mit Zeiss-Lagergläsern bis +6 dpt), bei stärkeren Plusgläsern möglicherweise mehr; bei starken Minusgläsern in großen Fassungen am Rand um einige Millimeter (oder mit asphärischen Gläsern dünner). Die Mindestdicken sind typische Herstellerwerte; die Fertigungstoleranz der Mittendicke beträgt laut Hersteller bis zu ±0,3 mm. Prismen, Addition und Gleitsichtgläser werden nicht berücksichtigt; Rohglasdurchmesser und Facettenlage sind nicht modelliert.',
 });

@@ -6,6 +6,11 @@ import {
   validateFrame,
   validateBaseCurve,
   validateMinThickness,
+  validateConic,
+  validateRimDepth,
+  CONIC_RANGE,
+  CONIC_DEFAULT,
+  RIM_DEPTH_RANGE,
   BASE_CURVE_MANUAL,
   MIN_THICKNESS_RANGE,
   VAL_CODES,
@@ -344,3 +349,46 @@ describe('Expert fields (02-10, MAT-03, MAT-04)', () => {
   });
 });
 
+
+describe('Expert fields (02-11, MAT-05 k, FRAME-02 rim depth)', () => {
+  test('ranges: k −5…−1 (US4289387 p 0…−4, p = 1 + k), default −1; rim depth 0,5…10 mm', () => {
+    expect(CONIC_RANGE).toEqual([-5, -1]);
+    expect(CONIC_DEFAULT).toBe(-1);
+    expect(RIM_DEPTH_RANGE).toEqual([0.5, 10]);
+  });
+  test('k: −1, −5 and −2,5 accepted, empty means the default', () => {
+    expect(validateConic('−1')).toEqual({ value: -1, msg: null });
+    expect(validateConic('-5')).toEqual({ value: -5, msg: null });
+    expect(validateConic('−2,5')).toEqual({ value: -2.5, msg: null });
+    expect(validateConic('')).toEqual({ value: null, msg: null });
+  });
+  test.each([
+    ['0', 0],
+    ['−0,5', -0.5],
+    ['−6', -6],
+    ['1', 1],
+  ])('k %s is out of model, never clamped', (raw, value) => {
+    expect(validateConic(raw)).toEqual({
+      value: null,
+      msg: { tier: TIERS.OUT, code: VAL_CODES.VAL_CONIC_OUT_OF_MODEL, data: { value, min: -5, max: -1 } },
+    });
+  });
+  test('k: not a number is a Fehler', () => {
+    expect(validateConic('abc').msg.tier).toBe(TIERS.ERROR);
+  });
+  test('rim depth: 3 and 5 accepted, empty is the default, 0,4 and 12 out of model', () => {
+    expect(validateRimDepth('3,0')).toEqual({ value: 3, msg: null });
+    expect(validateRimDepth('5')).toEqual({ value: 5, msg: null });
+    expect(validateRimDepth('')).toEqual({ value: null, msg: null });
+    for (const [raw, value] of [
+      ['0,4', 0.4],
+      ['12', 12],
+    ]) {
+      expect(validateRimDepth(raw).msg).toEqual({
+        tier: TIERS.OUT,
+        code: VAL_CODES.VAL_RIMDEPTH_OUT_OF_MODEL,
+        data: { value, min: 0.5, max: 10 },
+      });
+    }
+  });
+});

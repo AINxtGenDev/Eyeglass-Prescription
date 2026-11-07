@@ -304,3 +304,130 @@ test('Glas-Einstellungen: no WCAG violations in the material section with the sw
   await expect(page.locator('#tip-dec')).toContainText('optische Mittelpunkt');
 });
 
+
+// ---- Vorderfläche and Randtiefe (02-11, MAT-05, FRAME-02) ----
+const front = (page, v) => page.locator(`input[name=expert-front][value=${v}]`);
+const kField = (page) => page.locator('#expert-k');
+const num = (s) => Number(s.replace(/[^\d,−-]/g, '').replace('−', '-').replace(',', '.'));
+/** First signed decimal of the base-curve cell ("+3,95 dpt – …"). */
+const d1Of = async (page) => num((await text(page, '#result-od-basecurve')).match(/[+−-]?\d+,\d+/)[0]);
+
+test('aspheric front: k field and note only for asphärisch, thinner plus centre, same base curve', async ({ page }) => {
+  // engine: +4,00 CR-39 rechteckig 52×38/18 CT 4,876 (k 0) → 4,817 (−1) → 4,613 (−5); D1 3,9508 → 3,9514 at −5
+  await sphPair(page, '+4,00', '+4,00');
+  await sw(page).check();
+  await settled(page);
+  await expect(front(page, 'sph')).toBeChecked();
+  await expect(page.locator('#expert-k-wrap')).toBeHidden();
+  const ctSph = num(await text(page, '#result-od-ct'));
+  const d1Sph = await d1Of(page);
+  await expect(page.locator('#expert-bc-auto-od')).not.toContainText('für sphärische Vorderfläche bestimmt');
+  await front(page, 'asph').check();
+  await expect(page.locator('#expert-k-wrap')).toBeVisible();
+  await expect(kField(page)).toHaveValue('−1');
+  await expect(page.locator('#expert-asph-note')).toHaveText('In diesem Modell ändert die asphärische Vorderfläche vor allem Plusgläser.');
+  await settled(page);
+  expect(num(await text(page, '#result-od-ct'))).toBeLessThan(ctSph);
+  expect(Math.abs((await d1Of(page)) - d1Sph)).toBeLessThan(0.01);
+  await expect(page.locator('#expert-bc-auto-od')).toContainText('für sphärische Vorderfläche bestimmt');
+  await expect(page.locator('#result-od-basecurve')).toContainText('für sphärische Vorderfläche bestimmt');
+  await expect(page.locator('#cmp-footnote')).toBeVisible();
+  // k = −5 keeps the base curve (engine raise +0,0006 dpt) and thins the centre further
+  const ctK1 = num(await text(page, '#result-od-ct'));
+  await kField(page).fill('−5');
+  await settled(page);
+  expect(Math.abs((await d1Of(page)) - d1Sph)).toBeLessThan(0.01);
+  expect(num(await text(page, '#result-od-ct'))).toBeLessThan(ctK1);
+  // back to sphärisch: the sphere result and no spherical-basis label
+  await front(page, 'sph').check();
+  await expect(page.locator('#expert-k-wrap')).toBeHidden();
+  await settled(page);
+  expect(num(await text(page, '#result-od-ct'))).toBe(ctSph);
+  await expect(page.locator('#expert-bc-auto-od')).not.toContainText('für sphärische Vorderfläche bestimmt');
+});
+
+test('k range: −6, 0 and −0,5 are Außerhalb des Modells; −1 and −5 compute', async ({ page }) => {
+  await sphPair(page, '+4,00', '+4,00');
+  await sw(page).check();
+  await front(page, 'asph').check();
+  for (const k of ['−6', '0', '−0,5']) {
+    await kField(page).fill(k);
+    await kField(page).blur();
+    await expect(page.locator('#expert-k-err')).toContainText('Außerhalb des Modells');
+    await settled(page);
+    await expect(page.locator('#result-od-ct')).toHaveText('–');
+  }
+  for (const k of ['−1', '−5']) {
+    await kField(page).fill(k);
+    await kField(page).blur();
+    await settled(page);
+    await expect(page.locator('#expert-k-err')).toBeHidden();
+    await expect(page.locator('#result-od-ct')).not.toHaveText('–');
+  }
+  // the sign button flips the value
+  await page.locator('button.sign[data-for=expert-k]').click();
+  await expect(kField(page)).toHaveValue('+5,00');
+});
+
+test('Randtiefe: default 3,0 mm, the example edge is 1,6 mm deeper, 5 fits, no recompute', async ({ page }) => {
+  await settled(page);
+  // same compute-message counter as the toggle test above
+  await page.addInitScript(() => {
+    window.__computeMsgs = 0;
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (msg, ...rest) {
+      if (msg?.type === 'compute') window.__computeMsgs++;
+      return post.call(this, msg, ...rest);
+    };
+  });
+  await page.reload();
+  await settled(page);
+  await sw(page).check();
+  await settled(page);
+  await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
+  const n = await page.evaluate(() => window.__computeMsgs);
+  expect(n, 'the counter must see the start-up compute').toBeGreaterThan(0);
+  const rim = page.locator('#frame-rim');
+  await expect(rim).toHaveValue('3,0');
+  await expect(page.locator('#frame-rim-note')).toContainText('angenommener Wert, keine Herstellerangabe');
+  // example etMax 4,597 mm (OD) and 4,597 mm (OS): 4,6 − 3,0 = 1,6 mm
+  await expect(page.locator('#frame-rim-result-od')).toHaveText(
+    'Rechtes Glas: Der Glasrand ist an seiner dicksten Stelle 1,6 mm dicker als die Fassung tief ist (vorne und hinten zusammen).',
+  );
+  await expect(page.locator('#frame-rim-result-os')).toContainText('Linkes Glas: Der Glasrand ist an seiner dicksten Stelle 1,6 mm');
+  const ct = await text(page, '#result-od-ct');
+  const weight = await text(page, '#result-od-weight');
+  await rim.fill('5');
+  await expect(page.locator('#frame-rim-result-od')).toHaveText('Rechtes Glas: Der Glasrand passt in die Tiefe der Fassung.');
+  // display only: never a compute job, so never 'rechnet …' and no pending result
+  await expect(page.locator('#result-od-status')).not.toHaveText('rechnet …');
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => window.__computeMsgs)).toBe(n);
+  await expect(page.locator('#result')).toHaveAttribute('data-pending', '');
+  expect(await text(page, '#result-od-ct')).toBe(ct);
+  expect(await text(page, '#result-od-weight')).toBe(weight);
+  await rim.fill('12');
+  await rim.blur();
+  await expect(page.locator('#frame-rim-err')).toContainText('Außerhalb des Modells');
+  await expect(page.locator('#frame-rim-result-od')).toHaveText('');
+  // it never blocks an eye
+  await expect(page.locator('#result-od-ct')).toHaveText(ct);
+});
+
+test('Vorderfläche and Randtiefe: no WCAG violations with the switch on', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await front(page, 'asph').check();
+  await kField(page).fill('−6');
+  await kField(page).blur();
+  await expect(page.locator('#expert-k-err')).toBeVisible();
+  for (const id of ['tip-k', 'tip-rim']) await page.locator(`[aria-controls=${id}]`).click();
+  await expect(page.locator('#tip-k')).toContainText('0 ist eine Kugel');
+  await expect(page.locator('#tip-rim')).toContainText('Rand der Fassung');
+  const { violations } = await new AxeBuilder({ page })
+    .include('#glass-settings')
+    .include('#frame-rim-wrap')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+});

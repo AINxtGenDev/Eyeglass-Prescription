@@ -183,7 +183,7 @@ for (const vp of [
     test.use({ viewport: vp });
     test('figure and tips open, a message shown: zero violations, no horizontal scroll', async ({ page }) => {
       await page.locator('#frame-stamp-help').click();
-      for (const b of await page.locator('#frame-section button.tip-btn').all()) await b.click();
+      for (const b of await page.locator('#frame-section button.tip-btn:visible').all()) await b.click();
       await expect(page.locator('#frame-section button.tip-btn[aria-expanded="true"]')).toHaveCount(4);
       await page.locator('#frame-stamp').fill('16□56');
       await page.locator('#frame-stamp').blur();

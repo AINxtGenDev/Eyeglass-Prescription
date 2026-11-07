@@ -9,7 +9,7 @@ import { transpose, RX_CODES } from '../state/transpose.js';
 import { validateRxEye, resolvePd, TIERS, VAL_CODES } from '../state/validate.js';
 import { createDebouncer } from '../state/debounce.js';
 import { t } from '../i18n/t.js';
-import { fmtDiopter, fmtAxis, fmtMm } from '../i18n/format.js';
+import { fmtDiopter, fmtAxis, fmtMm, fmtConic } from '../i18n/format.js';
 import { $, setText } from './dom.js';
 import { icon } from './icons.js';
 
@@ -37,7 +37,7 @@ export const fmtForm = (f) => `${fmtDiopter(f.sph)} / ${fmtDiopter(f.cyl)} × ${
 
 /**
  * German text of a field message; params are formatted numbers or fixed terms only (T-02-09).
- * @param {{ code: string, data: Record<string, any> }} m @param {'dpt'|'mm'} kind
+ * @param {{ code: string, data: Record<string, any> }} m @param {'dpt'|'mm'|'k'} kind
  */
 function messageText(m, kind) {
   const d = m.data;
@@ -46,7 +46,7 @@ function messageText(m, kind) {
     return t('pd.' + d.question, params) + ' ' + t('val.' + m.code);
   }
   if (Object.hasOwn(VAL_CODES, m.code)) {
-    const fmt = kind === 'mm' ? fmtMm : fmtDiopter;
+    const fmt = kind === 'mm' ? fmtMm : kind === 'k' ? fmtConic : fmtDiopter;
     const params = {};
     if (Number.isFinite(d.suggestion)) params.suggestion = fmtDiopter(d.suggestion);
     for (const k of ['value', 'min', 'max']) if (Number.isFinite(d[k])) params[k] = fmt(d[k]);
@@ -69,7 +69,7 @@ function messageText(m, kind) {
 
 /**
  * Write one field's message slot: tier label + icon, text, and the "übernehmen" button.
- * @param {string} id @param {object|null} m @param {{ kind: 'dpt'|'mm', apply: string|null }} opts
+ * @param {string} id @param {object|null} m @param {{ kind: 'dpt'|'mm'|'k', apply: string|null }} opts
  */
 function paintMessage(id, m, { kind, apply }) {
   const err = $(`${id}-err`);
@@ -138,7 +138,7 @@ function stateOf(id) {
  * on screen that no longer fits is removed at once. Shared by the Rx and frame fields.
  * @param {string} id
  * @param {object|null} m FieldMsg
- * @param {{ kind?: 'dpt'|'mm', blocks?: boolean, apply?: string|null, shown?: () => void }} [opts]
+ * @param {{ kind?: 'dpt'|'mm'|'k', blocks?: boolean, apply?: string|null, shown?: () => void }} [opts]
  *   blocks defaults to "not a Hinweis"; apply = text the "übernehmen" button writes (default: the
  *   suggestion of a Hinweis, "Meinten Sie −2,25?").
  */

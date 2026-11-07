@@ -1452,3 +1452,43 @@ td:has(.msg-out) input[aria-invalid='true'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* 02-11 Vorderfläche (MAT-05) inside the Glas-Einstellungen, and the [Expert] Randtiefe in the
+   frame section (FRAME-02): same Expert surface as #glass-settings. */
+#expert-front {
+  justify-self: stretch;
+  margin-block: var(--space-2) 0;
+}
+
+#expert-k-wrap {
+  display: grid;
+  gap: var(--space-2);
+  justify-self: stretch;
+}
+
+#expert-k-wrap[hidden],
+#frame-rim-wrap[hidden] {
+  display: none;
+}
+
+#expert-k-wrap .small {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+#frame-rim-wrap {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-4);
+  margin-block: var(--space-4) 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+#frame-rim-result {
+  font-size: 0.875rem;
+}
+
+#frame-rim-result p {
+  margin-block: 0 var(--space-1);
+}

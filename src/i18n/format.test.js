@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtGramWhole, fmtMs } from './format.js';
+import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtGramWhole, fmtMs, fmtConic } from './format.js';
 
 const NBSP = ' ';
 const MINUS = '−';
@@ -50,4 +50,14 @@ describe('fmtGramWhole (RES-01, whole grams)', () => {
     expect(fmtGramWhole(0.49)).toBeNull();
     expect(fmtGramWhole(0)).toBeNull();
   });
+});
+
+describe('fmtConic (MAT-05, no unit)', () => {
+  test.each([
+    [-1, '−1,0'],
+    [-5, '−5,0'],
+    [-2.25, '−2,3'],
+    [0, '0,0'],
+    [-0, '0,0'],
+  ])('fmtConic(%d) -> %j', (v, s) => expect(fmtConic(v)).toBe(s));
 });

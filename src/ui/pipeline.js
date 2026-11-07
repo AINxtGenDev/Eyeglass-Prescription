@@ -24,6 +24,7 @@ import {
 } from './compare-view.js';
 import { renderMaterialLine } from './material-input.js';
 import { renderGlassSettings } from './expert.js';
+import { renderRim } from './frame-input.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
@@ -91,6 +92,7 @@ function onBusy(eye, on) {
 function onFailed(eyes) {
   for (const eye of eyes) {
     renderFailed(eye);
+    renderRim(eye, null);
     shown[eye] = { key: requestedKeys[eye], result: null };
   }
   scheduleComparePaint();
@@ -123,6 +125,8 @@ function paintDeliveries() {
       // this input is painted (paintCompare → paintCards).
       if (showA) setStale(eye, true);
       else renderResult(eye, d.result, requested[eye]);
+      // 02-11: rim lines from the painted main result (never the Vorher card values).
+      renderRim(eye, d.result?.ok ? d.result.metrics : null);
       shown[eye] = { key: requestedKeys[eye], result: d.result };
       painted++;
     }
@@ -219,15 +223,23 @@ export function requestMain(specs, inputTs) {
   requested = specs;
   requestedKeys = { OD: specs.OD ? JSON.stringify(specs.OD) : null, OS: specs.OS ? JSON.stringify(specs.OS) : null };
   client.request(specs, inputTs);
+  for (const eye of EYES) if (specs[eye] === null) renderRim(eye, null);
   $('cmp-footnote').hidden = !hasOverrides(specs);
   // A changed main request starts a new compare generation in the client (and drops its queue);
   // an identical one keeps it, so the comparison is only requested when a main key changed.
   if (!client.isCompareCurrent(compareGen)) startCompare(specs);
 }
 
-/** A main spec carries an Expert override (02-10; overrides are null while the switch is off). */
+/**
+ * A main spec carries an Expert override (02-10; overrides are null while the switch is off).
+ * 02-11: frontConic is only present when non-zero (specFor), and it is shared by every row.
+ */
 const hasOverrides = (specs) =>
-  EYES.some((eye) => specs[eye] && (specs[eye].baseCurve !== null || specs[eye].minCT !== null || specs[eye].minET !== null));
+  EYES.some(
+    (eye) =>
+      specs[eye] &&
+      (specs[eye].baseCurve !== null || specs[eye].minCT !== null || specs[eye].minET !== null || specs[eye].frontConic != null),
+  );
 /** A main spec has a manual base curve: the automatic one needs its own job (02-10). */
 const hasManualBaseCurve = (specs) => EYES.some((eye) => specs[eye] && specs[eye].baseCurve !== null);
 
