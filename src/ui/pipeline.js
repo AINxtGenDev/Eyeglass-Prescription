@@ -21,7 +21,7 @@ import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
 import { $, setText } from './dom.js';
 import { icon } from './icons.js';
-import { renderResult, renderFailed, renderLrCallout, setStale } from './results.js';
+import { renderResult, renderFailed, renderLrCallout, setStale, setCardConfig } from './results.js';
 import {
   renderMaterialTable,
   markOutdated,
@@ -619,6 +619,8 @@ export function cardMaterial(currentId) {
  * marked stale until A is painted). An eye without a main spec keeps main.js's not-ready card.
  */
 function paintCards() {
+  // Before the cards are painted, so every paintBar inside renderResult carries the prefix (M2).
+  setCardConfig(showA ? 'a' : null);
   for (const eye of EYES) {
     if (requested[eye] === null) continue;
     if (showA) {

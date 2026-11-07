@@ -419,6 +419,9 @@ export default Object.freeze({
   // strings the result cards were painted with. bar.jump is the hidden start of the bar's name.
   'layout.results.region': 'Ergebnis und Vergleich',
   'bar.label': 'Dickste Stelle · Gewicht',
+  // 02-17 (lens-critic M2): shown before bar.label / result.computing while the result cards show
+  // Vorher (A); same words as cmp.show.suffix.a.
+  'bar.prefix.a': 'Vorher (A):',
   'bar.eye': '{thick} · {weight}',
   'bar.values': 'R {od} | L {os}',
   'bar.jump': 'Zum Ergebnis:',

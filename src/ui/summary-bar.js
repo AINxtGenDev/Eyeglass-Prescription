@@ -43,11 +43,13 @@ const pair = (v) => (v ? t('bar.eye', { thick: v.thick, weight: v.weight }) : DA
 /**
  * Repaint the bar from the card strings.
  * @param {{ OD: { thick: string, weight: string } | null, OS: { thick: string, weight: string } | null,
- *   busy: boolean, stale: boolean }} s  thick = the card's thickest point (thickest(m)), weight =
- *   the card's whole grams; null = no result for that eye ('–').
+ *   busy: boolean, stale: boolean, config?: 'a' | null }} s  thick = the card's thickest point
+ *   (thickest(m)), weight = the card's whole grams; null = no result for that eye ('–');
+ *   config 'a' = the cards show Vorher (A), so the label gets the 'Vorher (A):' prefix (02-17, M2).
  */
-export function updateSummaryBar({ OD, OS, busy, stale }) {
-  setText('summary-bar-label', t(busy ? 'result.computing' : 'bar.label'));
+export function updateSummaryBar({ OD, OS, busy, stale, config = null }) {
+  const label = t(busy ? 'result.computing' : 'bar.label');
+  setText('summary-bar-label', config === 'a' ? `${t('bar.prefix.a')} ${label}` : label);
   setText('summary-bar-values', t('bar.values', { od: pair(OD), os: pair(OS) }));
   const values = $('summary-bar-values');
   if (stale) values.dataset.stale = 'true';

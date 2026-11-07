@@ -311,15 +311,23 @@ test.describe('RES-03 summary bar marks Vorher (A), 360 × 780', () => {
 test.describe('RES-03 summary bar with the Vorher prefix, 320 × 640', () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
-  // style.css scroll-padding-bottom: 72px (WCAG 2.4.11) assumes a bar of at most 56 px (no wrap).
-  test('RES-03 summary bar: the prefixed bar stays ≤ 56 px tall', async ({ page }) => {
+  // style.css scroll-padding-bottom: 72px (WCAG 2.4.11) assumes the bar does not grow: the prefix
+  // must not wrap the label. Measured 02-17: the bar is 59,6 px tall with and without the prefix
+  // (8 + 19,6 label + 24 values + 8; min-height 56 px), so the gate is "same height as without
+  // the prefix, label on one line, bar below the 72 px scroll padding".
+  test('RES-03 summary bar: the prefixed bar does not wrap and stays under the scroll padding', async ({ page }) => {
     await settledCompare(page);
     await compareWith174(page);
+    await barInView(page);
+    const plainBox = await page.locator('#summary-bar').boundingBox();
     await showRadio(page, 'a').check();
     await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
     await barInView(page);
     expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
     const box = await page.locator('#summary-bar').boundingBox();
-    expect(box.height).toBeLessThanOrEqual(56);
+    const label = await page.locator('#summary-bar-label').boundingBox();
+    expect(Math.abs(box.height - plainBox.height), 'prefix adds no line').toBeLessThanOrEqual(1);
+    expect(label.height, 'label on one line (14 px × 1.4)').toBeLessThanOrEqual(20.6);
+    expect(box.height, 'bar below scroll-padding-bottom').toBeLessThan(72);
   });
 });

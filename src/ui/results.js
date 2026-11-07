@@ -32,10 +32,33 @@ const displayed = { OD: null, OS: null };
 /** Eyes whose values are marked stale ("rechnet …", set by main.js onBusy via setStale). */
 const staleEyes = new Set();
 
+/**
+ * The configuration the cards show: 'a' = Vorher (A), null = the current one (02-17, M2). Written
+ * only by pipeline.js paintCards via setCardConfig.
+ * @type {'a' | null}
+ */
+let cardConfig = null;
+
 /** Summary bar from the strings the cards were painted with (no second formatting pass, T-02-05). */
 function paintBar() {
   const bar = (d) => (d ? { thick: d.thickText, weight: d.weightText } : null);
-  updateSummaryBar({ OD: bar(displayed.OD), OS: bar(displayed.OS), busy: staleEyes.size > 0, stale: staleEyes.size > 0 });
+  updateSummaryBar({
+    OD: bar(displayed.OD),
+    OS: bar(displayed.OS),
+    busy: staleEyes.size > 0,
+    stale: staleEyes.size > 0,
+    config: cardConfig,
+  });
+}
+
+/**
+ * Tell the summary bar which configuration the cards show; repaints the bar when it changed.
+ * @param {'a' | null} config
+ */
+export function setCardConfig(config) {
+  if (config === cardConfig) return;
+  cardConfig = config;
+  paintBar();
 }
 
 /**

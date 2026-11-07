@@ -192,7 +192,7 @@ Why container queries: at 900–1100 px the input column is only about 400–600
 
 - One column in DOM order. The results follow the material section.
 - **Summary bar** `#summary-bar` (D-20): `position: fixed; inset-inline: 0; bottom: 0; min-height: 56px; padding: 8px 16px calc(8px + env(safe-area-inset-bottom))`, `--bar-bg`, white text. It is an `<a href="#result">` (one tap target, whole bar). Content, two lines:
-  - Line 1 (14 px, `#d4d4d4`): "Dickste Stelle · Gewicht" (or "rechnet …" while pending).
+  - Line 1 (14 px, `#d4d4d4`): "Dickste Stelle · Gewicht" (or "rechnet …" while pending). While the result cards show Vorher (A) the line starts with "Vorher (A): " (02-17, lens-critic M2); the toggle is never switched for the user.
   - Line 2 (16 px, 600, tabular): "R 4,1 mm · 9 g | L 3,8 mm · 8 g". Stale values get `text-decoration: underline dotted`, same as phase 1.
   - `#bar-view-slot` (`hidden`, empty) sits at the start of the bar, reserved for the phase-3 mini preview.
   - The bar is hidden (`hidden` attribute) while any part of `#result` is in the viewport (IntersectionObserver), so it never duplicates visible numbers and never covers the result cards.
