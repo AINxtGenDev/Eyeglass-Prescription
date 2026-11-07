@@ -1,8 +1,8 @@
 // ENG-06 metrics. Lens-local (boxing-centre) coordinates; surfaces are OC-relative internally.
 
-import { frontSagAt, backSagAt } from './design.js';
-import { locationLabel, nasalSign } from './conventions.js';
-import { GL24 } from './quadrature.js';
+import { frontSagAt, backSagAt } from "./design.js";
+import { locationLabel, nasalSign } from "./conventions.js";
+import { GL24 } from "./quadrature.js";
 
 const N_ANGLES = 128;
 
@@ -31,7 +31,7 @@ export function farthestIndexFromOC(outline, oc) {
     const dx = outline[i] - oc.x;
     const dy = outline[i + 1] - oc.y;
     const r2 = dx * dx + dy * dy;
-    if (r2 > m2) (m2 = r2), (iMax = i / 2);
+    if (r2 > m2) ((m2 = r2), (iMax = i / 2));
   }
   return iMax;
 }
@@ -98,6 +98,19 @@ for (let j = 0; j < N_ANGLES; j++) {
   SIN[j] = Math.sin((2 * Math.PI * j) / N_ANGLES);
 }
 
+/**
+ * Tie tolerance for the reported etMax/etMin location (02-01, lens-critic round 2 MAJOR-1).
+ * Thicknesses at mirrored outline points (x, ±y) are equal in exact arithmetic whenever the OC
+ * lies on the box's horizontal mid-line and the cylinder axis is 0, 90 or 180 (or cyl = 0). In
+ * floating point they differ by about 1e-16…1e-15 mm (measured 4,4e-16 mm at Achse 180; Achse 0
+ * and 180 values differ by up to 7,1e-15 mm), so exact equality picked the reported corner by
+ * noise, and Achse 0 and 180 (the same TABO axis) or the two eyes of a mirrored Rx got different
+ * lay words. 1e-9 mm is six orders above that noise, eight orders below the 0,1 mm display step
+ * and far below any real thickness difference between neighbouring outline samples.
+ * Design constant, no optical meaning.
+ */
+export const TIE_TOL_MM = 1e-9;
+
 function point(outline, i, value, eye) {
   const x = outline[2 * i];
   const y = outline[2 * i + 1];
@@ -115,6 +128,8 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
   let iMin = 0;
   let tMax = -Infinity;
   let tMin = Infinity;
+  let tSelMax = -Infinity;
+  let tSelMin = Infinity;
   let fMax = -Infinity;
   let fMin = Infinity;
   for (let i = 0; i < n; i++) {
@@ -122,14 +137,31 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
     const y = outline[2 * i + 1];
     const sF = frontSagAt(s, x, y);
     const t = s.ct - sF + backSagAt(s, x, y);
-    // Exact ties (mirrored points (x, ±y)) go to the larger y, so OD and OS pick the same
-    // location label although the OS outline runs through the points in mirrored order.
-    if (t > tMax || (t === tMax && y > outline[2 * iMax + 1])) (tMax = t), (iMax = i);
-    if (t < tMin || (t === tMin && y > outline[2 * iMin + 1])) (tMin = t), (iMin = i);
+    // Reported values are the exact running max/min (bitwise as in phase 1).
+    if (t > tMax) tMax = t;
+    if (t < tMin) tMin = t;
+    // The reported index is chosen separately: ties within TIE_TOL_MM (mirrored points (x, ±y))
+    // go to the larger y, so OD and OS pick the same location label although the OS outline runs
+    // through the points in mirrored order, and Achse 0 and 180 pick the same corner.
+    if (
+      t > tSelMax + TIE_TOL_MM ||
+      (Math.abs(t - tSelMax) <= TIE_TOL_MM && y > outline[2 * iMax + 1])
+    )
+      ((tSelMax = t), (iMax = i));
+    if (
+      t < tSelMin - TIE_TOL_MM ||
+      (Math.abs(t - tSelMin) <= TIE_TOL_MM && y > outline[2 * iMin + 1])
+    )
+      ((tSelMin = t), (iMin = i));
     if (sF > fMax) fMax = sF;
     if (sF < fMin) fMin = sF;
   }
-  const { nasal: iN, temporal: iT, superior: iS, inferior: iI } = extremeIndices(outline, eye);
+  const {
+    nasal: iN,
+    temporal: iT,
+    superior: iS,
+    inferior: iI,
+  } = extremeIndices(outline, eye);
   const at = (i) => thicknessAt(s, outline[2 * i], outline[2 * i + 1]);
 
   // Polar quadrature about the boxing centre: 128 uniform angles × GL24 radial nodes.
@@ -150,9 +182,15 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
 
   return {
     ct: s.ct,
+    // value = exact max/min; the selected point's own thickness differs by at most TIE_TOL_MM.
     etMax: point(outline, iMax, tMax, eye),
     etMin: point(outline, iMin, tMin, eye),
-    etAt: { nasal: at(iN), temporal: at(iT), superior: at(iS), inferior: at(iI) },
+    etAt: {
+      nasal: at(iN),
+      temporal: at(iT),
+      superior: at(iS),
+      inferior: at(iI),
+    },
     volumeMm3: volume,
     weightG: (volume / 1000) * density,
     frontProtrusion: { max: fMax, min: fMin },
