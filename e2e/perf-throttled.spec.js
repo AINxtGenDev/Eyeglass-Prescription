@@ -152,6 +152,21 @@ async function readCompare(page) {
   return { measured: true, n: Number(m[1]), med: num(m[2]), max: num(m[3]) };
 }
 
+/**
+ * 02-20: the deferred compare start task (#timing-compare-start) and data-min-gap, the smallest
+ * start − input-frame end in ms (amendment MJ-1: must be ≥ 0, the task never runs inside a
+ * measured input frame).
+ */
+async function readCompareStart(page) {
+  const el = page.locator('#timing-compare-start');
+  const text = await el.textContent();
+  const m = text.match(COMPARE_RE);
+  expect(m, text).not.toBeNull();
+  const minGap = Number(await el.getAttribute('data-min-gap'));
+  expect(minGap, 'compare start before the end of its input frame').toBeGreaterThanOrEqual(0);
+  return { measured: true, n: Number(m[1]), med: num(m[2]), max: num(m[3]), minGapMs: minGap };
+}
+
 async function readEvent(page) {
   const text = await textOf(page, 'timing-event');
   const m = text.match(EVENT_RE);
@@ -414,6 +429,7 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     // 02-07: the comparison lane ran behind every edit; its paint frames share the main thread.
     await settledCompare(page, { timeout: 60_000 });
     row.caseA.compareFrame = await readCompare(page);
+    row.caseA.compareStart = await readCompareStart(page);
 
     // (iii) case B: the Grenzfall typed (FH null), OD Sph +11,00 / +10,75
     await typePair(page, CASE_B);
@@ -421,6 +437,9 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     const [runB, traceB] = await traced(browser, page, rate, 'caseB', () => editRun(page, ['+11,00', '+10,75']));
     row.caseB = { discriminator: discB, ...runB };
     if (traceB) traces.push({ rate, run: 'caseB', ...traceB });
+    // 02-20: the compare start after each case B input is a main-thread task an input causes.
+    await settledCompare(page, { timeout: 60_000 });
+    row.caseB.compareStart = await readCompareStart(page);
 
     // (iv) extreme run: case A edits typed key by key while the worker runs the rescan bench
     await typePair(page, CASE_A);
@@ -460,7 +479,7 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     // Verdict (MINOR-10): (a)/(b) measured on the main thread; (c)/(d) estimated.
     const mains = [row.caseA, row.caseB]
       .flatMap((c) => [c.input.mainMax, c.result.renderMax])
-      .concat([ext.mainMax, ext.renderMax, row.caseA.compareFrame.max]);
+      .concat([ext.mainMax, ext.renderMax, row.caseA.compareFrame.max, row.caseA.compareStart.max, row.caseB.compareStart.max]);
     const reacts = [row.caseA.input.reactMax, row.caseB.input.reactMax, ext.reactMax];
     const overhead = row.caseA.result.max - row.caseA.result.computeMed;
     const estimateC = overhead + COMPUTE14_P95[rate].normal;
