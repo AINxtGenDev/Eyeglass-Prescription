@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-14-PLAN.md
-last_updated: "2026-11-07T16:30:09.600Z"
+stopped_at: Completed 02-16-PLAN.md
+last_updated: "2026-11-07T17:32:29.078Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 30
-  completed_plans: 29
+  total_plans: 36
+  completed_plans: 30
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 15 of 15
+Plan: 16 of 21 (gap closure; next 02-17; 02-15 Tasks 2–3 resume after 02-21 and the lens-critic re-review)
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -79,6 +79,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P12 | 50min | 2 tasks | 24 files |
 | Phase 02 P13 | 27min | 2 tasks | 17 files |
 | Phase 02 P14 | 24min | 2 tasks | 11 files |
+| Phase 02 P16 | 14min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,7 @@ Recent decisions affecting current work:
 - [Phase 02]: Rx preset chips moved below the Rx table (phone first screen); horizontal chip scroller rejected (WCAG 1.4.10 Note 2)
 - [Phase 02]: Querschnitt figure is a reserved 5:2 box (120-240 px) plus pending table rows: no layout shift
 - [Phase 02]: ENG-09 proxy findings ENG09-PROXY-1..4 (4x case A input max 19,5-19,9 ms vs 16,30 in 01-15) go to 02-15; UX-03 left Pending (lens view is phase 3)
+- [Phase 02]: 02-16: lay 'Dünnste Stelle' = thinnest(m) = min(CT, etMin), tie → centre; thinnest edge kept as Zwischenwert 'Dünnster Rand' plus a 'Rand ab …' card line (lens-critic B1)
 
 ### Pending Todos
 
@@ -181,6 +183,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T16:30:09.595Z
-Stopped at: Completed 02-14-PLAN.md
+Last session: 2026-11-07T17:32:23.721Z
+Stopped at: Completed 02-16-PLAN.md
 Resume file: None

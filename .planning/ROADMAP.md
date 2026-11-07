@@ -190,7 +190,7 @@ Plans:
 
 **Wave 16** *(gap closure; after 02-15 Task 1)*
 
-- [ ] 02-16-PLAN.md — B1: thinnest point = min(CT, thinnest edge) incl. 'in der Mitte'; 'Dünnster Rand' as Zwischenwert; e2e re-pinned (RES-01)
+- [x] 02-16-PLAN.md — B1: thinnest point = min(CT, thinnest edge) incl. 'in der Mitte'; 'Dünnster Rand' as Zwischenwert; e2e re-pinned (RES-01)
 
 **Wave 17** *(blocked on Wave 16 completion)*
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 14/21 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 15/21 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
