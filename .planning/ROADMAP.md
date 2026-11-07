@@ -154,7 +154,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 02-07-PLAN.md — Material cards and always-visible material comparison table with compare-frame readout and e2e (RES-02, UX-01)
+- [x] 02-07-PLAN.md — Material cards and always-visible material comparison table with compare-frame readout and e2e (RES-02, UX-01)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 6/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 7/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

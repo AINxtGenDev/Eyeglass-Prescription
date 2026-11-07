@@ -62,7 +62,7 @@
 ### Results & Comparison — Simple View (RES)
 
 - [x] **RES-01**: Simple view shows a plain-German headline per eye: thickest point (mm, with location), thinnest point, centre thickness and weight (g), rounded to 0,1 mm and 1 g.
-- [ ] **RES-02**: User can compare materials: a table/bars of max edge, centre thickness and weight per material with absolute differences ("1,67 spart 1,7 mm und 2 g"); percentages only as a secondary hint.
+- [x] **RES-02**: User can compare materials: a table/bars of max edge, centre thickness and weight per material with absolute differences ("1,67 spart 1,7 mm und 2 g"); percentages only as a secondary hint.
 - [ ] **RES-03**: User can compare two configurations (material and/or frame size/shape) side by side or as a before/after toggle on phones, in numbers and in the views.
 - [x] **RES-04**: A large difference between left and right lens is pointed out in plain words.
 - [ ] **RES-05**: The site starts with a realistic example (clearly labelled "Beispiel — ersetzen Sie die Werte durch Ihre eigenen") and offers Rx presets (leicht kurzsichtig, stark kurzsichtig, weitsichtig, Hornhautverkrümmung) and frame presets; applying a preset over typed values asks first.
@@ -179,7 +179,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENG-08 | Phase 1 | Complete |
 | ENG-09 | Phase 1 | Complete |
 | RES-01 | Phase 2 | Complete |
-| RES-02 | Phase 2 | Pending |
+| RES-02 | Phase 2 | Complete |
 | RES-03 | Phase 2 | Pending |
 | RES-04 | Phase 2 | Complete |
 | RES-05 | Phase 2 | Pending |
