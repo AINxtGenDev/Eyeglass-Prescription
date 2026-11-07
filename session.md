@@ -145,5 +145,9 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - `properties.test.js` MAT-02 monotonicity near its 60 s timeout under coverage — 02-09 extra task.
 - Requirements still pending by design: RES-03 (cross-section overlay 02-13), UX-01 (remaining tips 02-10), FRAME-02 (rim depth 02-11), UX-02/UX-03 (later plans / real iPhone).
 
+- **Executed 02-09..02-14** (not pushed): presets with inline confirm (RES-05), disclaimer no longer covered on desktop, Expert manual base curve + min thicknesses (MAT-03/04, UX-01 all 12 tips), aspheric front + rim depth (MAT-05, FRAME-02), custom material (MAT-06), cross-section with A/B overlay (ANA-01, RES-03), whole-page WCAG 2.2 AA axe matrix + keyboard flow (UX-04). Gate at 200634d: 1564 unit, 336 e2e green.
+- **ENG-09 proxy findings (02-14):** 4× case A input frame max 19,5–19,9 ms (limit 16,7; phase 1 16,3) — ENG09-PROXY-1..4; (b) passes (≤ 98 ms). Real Pixel decides in 02-15.
+- New open bug: a field message appearing on blur can shift the next control under the pointer, so the click is lost.
+
 ### Next step
-Continue 02-09..02-14 automatically; 02-15 stops for push approval and the real-phone check.
+02-15: gate, lens-critic result review, push approval (user), live + real-phone check (Pixel).
