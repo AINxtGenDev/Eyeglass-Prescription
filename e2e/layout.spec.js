@@ -59,12 +59,14 @@ test.describe('360 × 780', () => {
   test('summary bar shows both eyes while the result is out of view', async ({ page }) => {
     await settled(page);
     await page.evaluate(() => window.scrollTo(0, 0));
-    // 02-09: the Rx preset chips (UI-SPEC page structure) are the first Rx controls; at 780 px
-    // height they push R Sph just below the first screen (top 834 px, measured).
-    await expect(page.locator('#rx-presets')).toBeInViewport();
     await expect(page.locator('#result')).not.toBeInViewport();
     const bar = page.locator('#summary-bar');
     await expect(bar).toBeVisible();
+    // 02-14: the Rx preset chips follow the table, so the Rx entry starts on the first screen:
+    // the table caption is in view and R Sph begins above the summary bar (measured 693 < 720 px).
+    await expect(page.locator('#rx-table caption')).toBeInViewport();
+    const sphTop = (await page.locator('#rx-od-sph').boundingBox()).y;
+    expect(sphTop, 'R Sph top above the summary bar top').toBeLessThan((await bar.boundingBox()).y);
     expect(await barValues(page)).toBe('R 4,6 mm · 7 g | L 4,6 mm · 7 g');
     await expect(page.locator('#summary-bar-label')).toHaveText('Dickste Stelle · Gewicht');
     // the bar repeats the card strings, it never formats on its own (T-02-05)

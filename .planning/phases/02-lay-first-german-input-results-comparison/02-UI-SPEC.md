@@ -149,9 +149,11 @@ Why container queries: at 900–1100 px the input column is only about 400–600
  <div class="layout-cols">   (02-09: the two-column grid; ends before .col-full so the sticky column cannot cover it)
   <div class="col-inputs">
     #example-banner      (D-26)
-    section #rx-section  h2 · Rx preset chips #rx-presets · inline confirm slot
-                         · table #rx-table (reflows) · #rx-same checkbox
-                         · #rx-od-forms/#rx-os-forms · details #rx-other (RX-08)
+    section #rx-section  h2 · table #rx-table (reflows) · #rx-same checkbox
+                         · #rx-od-forms/#rx-os-forms · Rx preset chips #rx-presets
+                         · inline confirm slot · details #rx-other (RX-08)
+                         (02-14: chips moved below the table; at 360 × 780 the 3-row chip
+                         row pushed R Sph below the first screen)
     section #frame-section h2 · stamp #frame-stamp + "Wo finde ich das?"
                          · shape cards fieldset #frame-shape · frame preset chips #frame-presets
                          · Einzelmaße A/B/DBL · [Expert] rim depth #frame-rim
@@ -369,7 +371,7 @@ Message slot under the field, linked by `aria-describedby` (extends the existing
 | Esc | Closes the toggletip in focus; cancels the preset confirm |
 | Motion | No animations except the switch knob (150 ms ease-out), disabled under `prefers-reduced-motion` |
 
-**Keyboard order (D-39 test path):** Expert switch → example banner button → Rx preset chips → Rx fields row by row (R: ±, Sph, ±, Zyl, Achse, PD; then L) with their tip buttons in header order → "Gleich für beide Augen" → RX-08 details → stamp → "Wo finde ich das?" → shape radios (one tab stop, arrows inside) → frame chips → A, B, DBL → material radios (one tab stop) → [Expert inputs] → results region → comparison CTA → [Expert analysis] → disclaimer → tech details. No positive `tabindex` anywhere.
+**Keyboard order (D-39 test path):** Expert switch → example banner button → Rx fields row by row (R: ±, Sph, ±, Zyl, Achse, PD; then L) with their tip buttons in header order → "Gleich für beide Augen" → Rx preset chips (02-14: after the table) → RX-08 details → stamp → "Wo finde ich das?" → shape radios (one tab stop, arrows inside) → frame chips → A, B, DBL → material radios (one tab stop) → [Expert inputs] → results region → comparison CTA → [Expert analysis] → disclaimer → tech details. No positive `tabindex` anywhere.
 
 **Focus visibility:** every focusable element shows the 3 px accent outline with 2 px offset (`#8ab4f8` inside the dark bar). Radio cards show it on the card via `:has(:focus-visible)`.
 

@@ -25,11 +25,6 @@
             <button type="button" id="example-clear" data-i18n="example.clear"></button>
           </div>
           <form id="rx" novalidate>
-            <div id="rx-presets" class="presets" role="group" aria-labelledby="rx-presets-label">
-              <span id="rx-presets-label" class="presets-label" data-i18n="preset.rx.label"></span>
-              <div class="chips"></div>
-            </div>
-            <div id="rx-preset-confirm-slot"></div>
             <table id="rx-table" class="rx-table">
               <caption data-i18n="rx.caption"></caption>
               <thead>
@@ -160,6 +155,13 @@
             </div>
             <p id="rx-od-forms" class="rx-forms" aria-live="polite" hidden></p>
             <p id="rx-os-forms" class="rx-forms" aria-live="polite" hidden></p>
+            <!-- 02-14: the Rx preset chips follow the table, so on a phone the Rx entry starts right
+                 after the example banner (the chip row is 3 rows high at 360 px). -->
+            <div id="rx-presets" class="presets" role="group" aria-labelledby="rx-presets-label">
+              <span id="rx-presets-label" class="presets-label" data-i18n="preset.rx.label"></span>
+              <div class="chips"></div>
+            </div>
+            <div id="rx-preset-confirm-slot"></div>
             <details id="rx-other">
               <summary data-i18n="rx.other.summary"></summary>
               <p data-i18n="rx.other.intro"></p>
