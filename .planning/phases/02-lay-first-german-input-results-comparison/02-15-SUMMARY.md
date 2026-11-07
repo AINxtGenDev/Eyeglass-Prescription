@@ -211,3 +211,18 @@ Verified correct: thickest = max(CT, edge) everywhere; custom = cr39 bitwise; ma
 - Commit hash: recorded in the orchestrator return message (the commit contains this file).
 
 ## Self-Check: PASSED (Task 1 scope; plan not complete)
+
+## lens-critic result RE-review (after gap plans 02-16 … 02-22), 2026-11-07
+
+Range 12219a5 .. d60caf5; independent build, e2e 389 passed / 1 skipped; drove the page at 320/360 px with touch.
+
+**Verdict: NEEDS WORK (0 BLOCKER, 1 MAJOR). Safe to push to the live site now: yes** — numbers and lay UI correct, ENG-09 honestly Pending; condition: 02-15 must not close ENG-09 or M4 on the quiet proxy.
+
+- Verified fixed on the built page: B1 (example "am dünnsten 1,8 mm in der Mitte" + "Rand ab 3,0 mm"; plus, plano, mixed cyl correct), M1 (xsec labels for axes 170/45/180/90, Zyl 0, +2 −4 × 30 match F(θ)), M2 ("Vorher (A):" on one line at 320/360 px), M3 (touch taps on #rx-same and frame chip land; no Fehler on untouched fields; message announced once), m-g (accepted).
+- **MAJOR-1 (= M4 still open):** quiet method measures whole-value edits only. Key-by-key at 4×: input max 13,2–22,2 ms, 3/14 runs ≥ 16,7 ms. Window starts at the input's own rAF callback (earlier callbacks in the same frame not counted); ruleA omits result and compare-paint frames; max-of-3 flips with host load (one default run 19,0 ms). Fix: quiet-keys mode, window from the rAF timestamp, include result/compare frames, p95 over ≥ 5 runs with load recorded.
+- MINOR-1: card and bar empty and refill on every incomplete keystroke ("-", "-4,"); keep last valid values greyed out instead (also the main extra typing cost).
+- MINOR-2: bar test fixture narrow; style.css:112 comment wrong (margin 12,4 px); 200 % text size unverified.
+- MINOR-3: check app-commit on the phone matches the pushed HEAD (stale-app risk).
+- MINOR-4: STATE.md "Total plans completed: 15" stale.
+
+Orchestrator: REQUIREMENTS.md ENG-09 note narrowed to "whole-value edits only" so it does not overstate the proxy result.
