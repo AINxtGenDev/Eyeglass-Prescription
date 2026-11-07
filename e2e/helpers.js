@@ -15,6 +15,19 @@ export async function settled(page, { timeout = 10_000 } = {}) {
 }
 
 /**
+ * settled(), then wait until the comparison lane has nothing pending either (02-07):
+ * #compare[data-pending] = '' (no compare job open, none delivered but unpainted), then one more
+ * frame. After settled() the input frame has run, so a changed main input has already queued its
+ * compare jobs.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function settledCompare(page, { timeout = 10_000 } = {}) {
+  await settled(page, { timeout });
+  await expect(page.locator('#compare')).toHaveAttribute('data-pending', '', { timeout });
+  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+}
+
+/**
  * Numeric value of #result-<eye>-etmax ("2,8 mm" → 2.8); NaN when the cell shows no number.
  * Since 02-01 this is the 'Dickster Rand' technical row (the edge value). Callers that mean the
  * shown thickest point use thickOf; perf-throttled discriminator() stays on the edge on purpose.
@@ -30,14 +43,16 @@ export async function etmaxOf(page, eye) {
 export const WORKER_URL = /\/assets\/[^/]*worker[^/]*\.js$/;
 
 /**
- * Serve the real worker with `result` messages delayed by delayMs (READY, bench and error are
- * not delayed). Must be called before page.goto.
+ * Serve the real worker with messages of the given types delayed by delayMs (default only
+ * `result`; READY, bench and error are never delayed). 02-07: `types: ['compare']` delays the
+ * comparison lane only. Must be called before page.goto.
  * @param {import('@playwright/test').Page} page @param {number} delayMs
+ * @param {{ types?: string[] }} [opts]
  */
-export async function slowWorker(page, delayMs) {
+export async function slowWorker(page, delayMs, { types = ['result'] } = {}) {
   const patch =
-    `{const post = self.postMessage.bind(self);` +
-    `self.postMessage = (m, ...rest) => { if (m && m.type === 'result') setTimeout(() => post(m, ...rest), ${Number(delayMs)}); else post(m, ...rest); };}\n`;
+    `{const post = self.postMessage.bind(self); const slow = ${JSON.stringify(types)};` +
+    `self.postMessage = (m, ...rest) => { if (m && slow.includes(m.type)) setTimeout(() => post(m, ...rest), ${Number(delayMs)}); else post(m, ...rest); };}\n`;
   await page.route(WORKER_URL, async (route) => {
     const response = await route.fetch();
     const body = await response.text();

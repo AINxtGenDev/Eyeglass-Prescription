@@ -5,7 +5,7 @@
 // here), and assert the stored pair differs before the main assertion.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, thickOf, sphOnly, slowWorker, WORKER_URL } from './helpers.js';
+import { settled, settledCompare, thickOf, sphOnly, slowWorker, WORKER_URL } from './helpers.js';
 /* global window, document, MutationObserver -- page.evaluate bodies run in the browser */
 
 // Must equal vite.config.js CSP exactly (T-01-39).
@@ -179,6 +179,9 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
   await settled(page);
   // 02-01: the first Rx input removes the example banner; remove it before the baseline boxes.
   await sphOnly(page);
+  // 02-07: the material table under the result fills in after the main result; the baseline
+  // boxes are taken once it is complete.
+  await settledCompare(page);
   // 02-02: the phase-1 .result-table is gone (its rows are Zwischenwerte behind the
   // Experten-Ansicht), so the two result cards are measured instead: they hold the values that are
   // marked stale and sit above #calc-status, so any growth of a card would also move the others.
@@ -237,6 +240,56 @@ test('retyping the previous value while busy restores the result (MINOR-3)', asy
   await page.waitForTimeout(2500);
   expect(await thickOf(page, 'od')).toBe(et2);
   expect(await thickOf(page, 'od')).not.toBe(et3);
+});
+
+// 02-07 (D-16, T-02-17, T-02-50): compare jobs queue behind main work, so a slow comparison
+// lane never holds back the main result. #result[data-pending] stays main-only.
+test('main result is not delayed by the comparison', async ({ page }) => {
+  await slowWorker(page, 300, { types: ['compare'] });
+  await page.goto('./');
+  await settledCompare(page);
+  await page.evaluate(() => {
+    window.__statusSeen = [];
+    for (const id of ['result-od-status', 'result-os-status']) {
+      const el = document.getElementById(id);
+      new MutationObserver(() => window.__statusSeen.push(el.textContent)).observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+  });
+  const before = await thickOf(page, 'od');
+  await sph(page).fill('-4');
+  await settled(page);
+  const after = await thickOf(page, 'od');
+  expect(after).not.toBe(before);
+  // The main result is painted while the comparison is still open.
+  const cmpPending = await page.locator('#compare').getAttribute('data-pending');
+  expect(cmpPending).not.toBe('');
+  expect(cmpPending).not.toBeNull();
+  expect(await page.locator('#result').getAttribute('data-pending')).toBe('');
+  expect(await page.evaluate(() => window.__statusSeen)).not.toContain('rechnet …');
+  await settledCompare(page);
+  expect(await thickOf(page, 'od')).toBe(after);
+});
+
+// 02-07 (T-02-18): in the sync fallback the comparison would run on the main thread, so it only
+// runs after 'Vergleich berechnen'.
+test('sync fallback: the comparison runs only after "Vergleich berechnen"', async ({ page }) => {
+  await page.route(WORKER_URL, (route) => route.abort());
+  await page.goto('./');
+  await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'sync');
+  await settled(page);
+  const run = page.locator('#cmp-run');
+  await expect(run).toBeVisible();
+  await expect(run).toHaveText('Vergleich berechnen');
+  await page.waitForTimeout(500);
+  await expect(page.locator('#cmp-material-table tbody tr[data-material=idx174]')).not.toContainText('dünner');
+  await run.click();
+  await expect(page.locator('#cmp-material-table tbody tr[data-material=idx174]')).toContainText(/1,6\smm dünner/);
+  await expect(page.locator('#compare')).toHaveAttribute('data-pending', '');
+  await expect(run).toBeHidden();
 });
 
 test('no "rechnet …" for a normal edit', async ({ page }) => {
