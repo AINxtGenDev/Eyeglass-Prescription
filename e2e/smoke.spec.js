@@ -119,17 +119,18 @@ test('frame shape and PD change the edge', async ({ page }) => {
 
 // evaluateLens of +3,00 −2,00 × 180 (OD, Rechteckig 52×38/18, PD 32, CR-39), 02-01 node re-check:
 // CT 3,589, etMax 3,234 superior, etMin 1,000 temporal, 7,01 g → thickest(m) = CT 3,6 mm 'in der
-// Mitte', fmtGramWhole 7 g. The −2,00 start (sphOnly) shows 1,8 / 3,7 / 2,5 mm and 6 g.
+// Mitte', thinnest(m) = the edge 1,0 mm (02-16), fmtGramWhole 7 g. The −2,00 start (sphOnly)
+// shows 1,8 / 3,7 / 1,8 mm and 6 g.
 const PLUS_CYL_VALUES = [
   ['#result-od-ct', /^3,6\smm$/],
   ['#result-od-thick', /^3,6\smm$/],
-  ['#result-od-etmin', /^1,0\smm$/],
+  ['#result-od-thin', /^1,0\smm$/],
   ['#result-od-weight', /^7\sg$/],
 ];
 
 test('plus cylinder shows both forms', async ({ page }) => {
   await sphOnly(page);
-  const CELLS = ['#result-od-ct', '#result-od-thick', '#result-od-etmin', '#result-od-weight'];
+  const CELLS = ['#result-od-ct', '#result-od-thick', '#result-od-thin', '#result-od-weight'];
   const before = await Promise.all(CELLS.map((id) => page.locator(id).textContent()));
   await page.locator('#rx-od-sph').fill('+1,00');
   await page.locator('#rx-od-cyl').fill('+2,00');

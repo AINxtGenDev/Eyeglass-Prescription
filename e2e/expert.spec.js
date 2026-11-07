@@ -99,7 +99,10 @@ test('uniform edge keeps "am ganzen Rand" with the Expert suffix', async ({ page
   await settled(page);
   await sw(page).check();
   expect(await text(page, '#result-od-etmin-loc')).toBe('am ganzen Rand (rundum gleich)');
+  expect(await text(page, '#result-od-etmax-loc')).toBe('am ganzen Rand (rundum gleich)');
   expect(await text(page, '#result-od-thick-loc')).toBe('am ganzen Rand (rundum gleich)');
+  // Thinnest point = the centre (02-16), with the Expert suffix.
+  expect(await text(page, '#result-od-thin-loc')).toBe('in der Mitte (optischer Mittelpunkt)');
 });
 
 test('toggling rewrites the location suffix and sends no compute message', async ({ page }) => {
@@ -443,7 +446,7 @@ async function customMaterial(page, { ne = '', density = '', abbe = '', minCT = 
 }
 const cardValues = async (page) => {
   const out = [];
-  for (const e of ['od', 'os']) for (const c of ['thick', 'ct', 'etmin', 'weight']) out.push(await text(page, `#result-${e}-${c}`));
+  for (const e of ['od', 'os']) for (const c of ['thick', 'ct', 'thin', 'weight']) out.push(await text(page, `#result-${e}-${c}`));
   return out;
 };
 

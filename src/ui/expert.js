@@ -18,7 +18,7 @@ import { showFieldMessage, messageStatus, flushOnBlur } from './rx-input.js';
 const DASH = '–';
 
 /** Expert value ids per eye (results.js setStale marks them like the card values). */
-export const EXPERT_CELLS = ['dec', 'etmax', 'basecurve', 'd2', 'radii', 'sags', 'binding', 'weight-precise'];
+export const EXPERT_CELLS = ['dec', 'etmax', 'etmin', 'basecurve', 'd2', 'radii', 'sags', 'binding', 'weight-precise'];
 
 // Named outline points of the sags row, in this order (lay words from loc.*).
 const SAG_POINTS = ['nasal', 'temporal', 'superior', 'inferior'];
@@ -294,8 +294,8 @@ const radius = (r) => (r === null ? t('expert.zw.plano') : fmtMm(r));
 
 /**
  * Fill the Zwischenwerte of one eye from a successful LensResult, whatever the switch state.
- * The location next to 'Dickster Rand' (#result-{eye}-etmax-loc) is written by results.js, which
- * owns all location words and their Expert suffix.
+ * The locations next to 'Dickster Rand' and 'Dünnster Rand' (#result-{eye}-etmax-loc, -etmin-loc)
+ * are written by results.js, which owns all location words and their Expert suffix.
  * @param {'OD'|'OS'} eye @param {object} res LensResult with ok = true
  */
 export function renderZwischenwerte(eye, res) {
@@ -306,6 +306,8 @@ export function renderZwischenwerte(eye, res) {
   setText(`${p}-dec`, fmtMm(nasalSign(eye) * m.decentration.x));
   // 'Dickster Rand' is the edge value, number first (e2e etmaxOf).
   setText(`${p}-etmax`, fmtMm(m.etMax.value));
+  // 'Dünnster Rand' (02-16): the thinnest edge, kept next to the card's thinnest point.
+  setText(`${p}-etmin`, fmtMm(m.etMin.value));
   setText(`${p}-basecurve`, baseCurveText(im, res.surfaces.k1));
   setText(`${p}-d2`, t('expert.zw.d2.value', { a: fmtDiopter(im.D2a), b: fmtDiopter(im.D2b) }));
   setText(`${p}-radii`, t('expert.zw.radii.value', { r1: radius(im.R1), ra: radius(im.Ra), rb: radius(im.Rb) }));

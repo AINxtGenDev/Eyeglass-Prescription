@@ -32,9 +32,15 @@ test('example at load: banner, both cards with the pinned values, no L/R sentenc
   await expect(page.locator('#result-os-card h3')).toHaveText('Linkes Glas (L)');
   // OD −2,75/−0,50×180 PD 32: CT 1,800, etMax 4,597 temporal-superior, etMin 2,980 superior, 6,86 g.
   // OS −2,50/−0,75×170 PD 31,5: CT 1,800, etMax 4,597 temporal-superior, etMin 2,969 superior, 6,75 g.
+  // Thinnest point = min(CT, etMin) = the centre 1,8 mm (lens-critic B1, 02-16); the thinnest edge
+  // 3,0 mm oben stays on the card as 'Rand ab 3,0 mm' and as the 'Dünnster Rand' Zwischenwert.
   for (const eye of ['od', 'os']) {
     await expect(page.locator(`#result-${eye}-thick`)).toHaveText(/^4,6\smm$/);
     await expect(page.locator(`#result-${eye}-thick-loc`)).toHaveText('außen oben');
+    await expect(page.locator(`#result-${eye}-thin`)).toHaveText(/^1,8\smm$/);
+    await expect(page.locator(`#result-${eye}-thin-loc`)).toHaveText('in der Mitte');
+    await expect(page.locator(`#result-${eye}-thin-edge`)).toBeVisible();
+    expect(await text(page, `#result-${eye}-thin-edge`)).toBe('Rand ab 3,0 mm');
     await expect(page.locator(`#result-${eye}-etmin`)).toHaveText(/^3,0\smm$/);
     await expect(page.locator(`#result-${eye}-etmin-loc`)).toHaveText('oben');
     await expect(page.locator(`#result-${eye}-ct`)).toHaveText(/^1,8\smm$/);
@@ -42,10 +48,10 @@ test('example at load: banner, both cards with the pinned values, no L/R sentenc
     await expect(page.locator(`#result-${eye}-grid dd`)).toHaveCount(4);
   }
   expect(await text(page, '#result-od-headline')).toBe(
-    'Rechtes Glas: am dicksten 4,6 mm außen oben, am dünnsten 3,0 mm oben. Mitte 1,8 mm, Gewicht 7 g.',
+    'Rechtes Glas: am dicksten 4,6 mm außen oben, am dünnsten 1,8 mm in der Mitte. Mitte 1,8 mm, Gewicht 7 g.',
   );
   expect(await text(page, '#result-os-headline')).toBe(
-    'Linkes Glas: am dicksten 4,6 mm außen oben, am dünnsten 3,0 mm oben. Mitte 1,8 mm, Gewicht 7 g.',
+    'Linkes Glas: am dicksten 4,6 mm außen oben, am dünnsten 1,8 mm in der Mitte. Mitte 1,8 mm, Gewicht 7 g.',
   );
   await expect(page.locator('#lr-callout')).toBeHidden();
 });
@@ -127,7 +133,12 @@ test('uniform edge: rund 50/50/18, PD 34, −3,00 both eyes', async ({ page }) =
     'Rechtes Glas: Rand ringsum 3,7 mm dick, Mitte 1,8 mm. Gewicht 7 g.',
   );
   await expect(page.locator('#result-od-thick-loc')).toHaveText('am ganzen Rand');
+  // The thinnest point is the centre, not the edge (02-16 amendment m-a); Zwischenwerte: uniform.
+  await expect(page.locator('#result-od-thin')).toHaveText(/^1,8\smm$/);
+  await expect(page.locator('#result-od-thin-loc')).toHaveText('in der Mitte');
+  expect(await text(page, '#result-od-thin-edge')).toBe('Rand ab 3,7 mm');
   await expect(page.locator('#result-od-etmin-loc')).toHaveText('am ganzen Rand');
+  await expect(page.locator('#result-od-etmax-loc')).toHaveText('am ganzen Rand');
 });
 
 test('plus lens is thickest in the middle', async ({ page }) => {
@@ -140,6 +151,36 @@ test('plus lens is thickest in the middle', async ({ page }) => {
   await expect(page.locator('#result-od-thick-loc')).toHaveText('in der Mitte');
   await expect(page.locator('#result-os-thick')).toHaveText(/^3,7\smm$/);
   await expect(page.locator('#result-os-thick-loc')).toHaveText('in der Mitte');
+});
+
+test('plus lens keeps the thinnest edge as the thinnest point (02-16, lens-critic B1)', async ({ page }) => {
+  // R +3,00 PD 32: min(CT 3,902, etMin 1,000 temporal-superior) = the edge; no 'Rand ab' line.
+  await sphPair(page, '+3,00', '+2,75');
+  for (const eye of ['od', 'os']) {
+    await expect(page.locator(`#result-${eye}-thin`)).toHaveText(/^1,0\smm$/);
+    await expect(page.locator(`#result-${eye}-thin-loc`)).toHaveText('außen oben');
+    await expect(page.locator(`#result-${eye}-thin-edge`)).toBeHidden();
+  }
+});
+
+test('plano lens: thickest = thinnest point, both read "überall gleich" (02-16)', async ({ page }) => {
+  // 0,00 both eyes, Zyl empty, Rechteckig 52×38/18: CT = etMin = etMax → 1,8 mm everywhere, 4 g.
+  await sphPair(page, '0,00', '0,00');
+  for (const eye of ['od', 'os']) {
+    for (const c of ['thick', 'thin']) {
+      await expect(page.locator(`#result-${eye}-${c}`)).toHaveText(/^1,8\smm$/);
+      await expect(page.locator(`#result-${eye}-${c}-loc`)).toHaveText('überall gleich');
+    }
+    await expect(page.locator(`#result-${eye}-thin-edge`)).toBeHidden();
+    // No location word with two different values on the card.
+    const locs = [await text(page, `#result-${eye}-thick-loc`), await text(page, `#result-${eye}-thin-loc`)];
+    const vals = [await text(page, `#result-${eye}-thick`), await text(page, `#result-${eye}-thin`)];
+    if (locs[0] === locs[1]) expect(vals[0]).toBe(vals[1]);
+    // Zwischenwerte: a uniform edge never names a direction (amendment m-b).
+    await expect(page.locator(`#result-${eye}-etmax-loc`)).toHaveText('am ganzen Rand');
+    await expect(page.locator(`#result-${eye}-etmin-loc`)).toHaveText('am ganzen Rand');
+  }
+  expect(await text(page, '#result-od-headline')).toBe('Rechtes Glas: Rand ringsum 1,8 mm dick, Mitte 1,8 mm. Gewicht 4 g.');
 });
 
 test('mixed cylinder: the edge wins over the centre', async ({ page }) => {

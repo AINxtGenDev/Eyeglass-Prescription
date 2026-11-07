@@ -204,7 +204,14 @@ describe('diagnostic texts are geometrically true (lens-critic M1/m6, iteration-
 describe('result cards (02-01)', () => {
   const placeholders = (key) => [...dict[key].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
   test('result.headline placeholders', () => {
-    expect(placeholders('result.headline')).toEqual(['ct', 'etmin', 'etminLoc', 'glass', 'thick', 'thickLoc', 'weight']);
+    expect(placeholders('result.headline')).toEqual(['ct', 'glass', 'thick', 'thickLoc', 'thin', 'thinLoc', 'weight']);
+  });
+  test('thinnest point and thinnest edge keys (02-16, lens-critic B1)', () => {
+    expect(dict['result.label.thin']).toBe('Dünnste Stelle');
+    expect(dict['expert.zw.etmin']).toBe('Dünnster Rand');
+    expect(placeholders('result.thinEdge')).toEqual(['etmin']);
+    expect(dict['loc.even']).toBe('überall gleich');
+    expect(dict['loc.tech.even']?.length).toBeGreaterThan(0);
   });
   test('result.headline.uniformEdge placeholders', () => {
     expect(placeholders('result.headline.uniformEdge')).toEqual(['ct', 'etmin', 'glass', 'weight']);

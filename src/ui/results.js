@@ -2,7 +2,7 @@
 // marks and the L/R callout. The technical values live in the Zwischenwerte (expert.js, 02-02).
 // Every number comes from the engine result or from src/state/compare.js.
 import { $, setText, para } from './dom.js';
-import { thickest, roundMm, roundG, uniformEdge, lrCause, lrDifference } from '../state/compare.js';
+import { thickest, thinnest, roundMm, roundG, uniformEdge, evenThickness, lrCause, lrDifference } from '../state/compare.js';
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtGramWhole } from '../i18n/format.js';
 import { renderZwischenwerte, clearZwischenwerte, isExpert, EXPERT_CELLS } from './expert.js';
@@ -13,9 +13,12 @@ import { PD_DEFAULT_MM } from '../state/frame.js';
 const DASH = '–';
 
 /** The four card value ids per eye. */
-export const CELLS = ['ct', 'thick', 'etmin', 'weight'];
-// Location spans per eye, keyed as in lastLoc (etmax = the 'Dickster Rand' Zwischenwert).
-const LOCS = { thick: 'thick-loc', etmin: 'etmin-loc', etmax: 'etmax-loc' };
+export const CELLS = ['ct', 'thick', 'thin', 'weight'];
+// Location spans per eye, keyed as in lastLoc (etmin / etmax = the 'Dünnster Rand' / 'Dickster
+// Rand' Zwischenwerte; thin = the card's 'Dünnste Stelle').
+const LOCS = { thick: 'thick-loc', thin: 'thin-loc', etmin: 'etmin-loc', etmax: 'etmax-loc' };
+// Secondary card line 'Rand ab …' under a centre thinnest point (02-16 amendment).
+const THIN_EDGE = 'thin-edge';
 
 const glass = (eye) => t(eye === 'OD' ? 'result.glass.od' : 'result.glass.os');
 const side = (eye) => t(eye === 'OD' ? 'result.side.od' : 'result.side.os');
@@ -36,8 +39,9 @@ function paintBar() {
 }
 
 /**
- * Location codes painted per eye ({ thick, etmin, etmax }: 'centre', 'temporal-superior', …, and
- * 'uniform' wherever the uniform-edge rule painted loc.uniform); null = no result shown. Lets
+ * Location codes painted per eye ({ thick, thin, etmin, etmax }: 'centre', 'temporal-superior', …,
+ * 'uniform' wherever the uniform-edge rule painted loc.uniform, and 'even' where the displayed
+ * thickest and thinnest point are equal, loc.even); null = no result shown. Lets
  * repaintFromLast() switch the Expert suffix without a recompute.
  */
 const lastLoc = { OD: null, OS: null };
@@ -49,6 +53,13 @@ function writeLocs(eye) {
   const p = `result-${eye.toLowerCase()}`;
   const codes = lastLoc[eye];
   for (const [k, id] of Object.entries(LOCS)) setText(`${p}-${id}`, codes ? locText(codes[k]) : '');
+}
+
+/** 'Rand ab {etmin}' under the card's thinnest point; '' hides the line. */
+function thinEdge(eye, text) {
+  const el = $(`result-${eye.toLowerCase()}-${THIN_EDGE}`);
+  setText(el.id, text);
+  if (el.hidden !== (text === '')) el.hidden = text === '';
 }
 
 /** Hide the "Zum markierten Feld" button (shown only by renderBlocked). */
@@ -70,6 +81,7 @@ function noResult(eye) {
   displayed[eye] = null;
   lastLoc[eye] = null;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
+  thinEdge(eye, '');
   clearZwischenwerte(eye);
   writeLocs(eye);
   $(`${p}-grid`).hidden = true;
@@ -178,7 +190,7 @@ export function initResultJumps() {
 
 /** Dotted underline on an eye's value cells while its values belong to the previous input. */
 export function setStale(eye, on) {
-  for (const c of [...CELLS, ...EXPERT_CELLS]) {
+  for (const c of [...CELLS, THIN_EDGE, ...EXPERT_CELLS]) {
     const el = $(`result-${eye.toLowerCase()}-${c}`);
     if (on) el.dataset.stale = 'true';
     else delete el.dataset.stale;
@@ -220,24 +232,34 @@ export function renderResult(eye, res, spec) {
   }
   const m = res.metrics;
   const th = thickest(m);
+  const tn = thinnest(m);
   const thick = fmtMm(th.value);
+  const thin = fmtMm(tn.value);
   const ct = fmtMm(m.ct);
+  // The thinnest EDGE (never the thinnest point): the uniform-edge headline 'Rand ringsum …' and
+  // the 'Rand ab …' card line; the 'Dünnster Rand' Zwischenwert is written by expert.js.
   const etmin = fmtMm(m.etMin.value);
   const weight = fmtGramWhole(m.weightG) ?? t('result.weightUnder1');
   // Uniform edge: the displayed thickest and thinnest edge are equal, so no edge location is named.
+  // Even: the displayed thickest and thinnest point are equal, so no location at all (02-16).
   const uniform = uniformEdge(m);
+  const even = evenThickness(m);
+  const edgeLoc = (loc) => (uniform ? 'uniform' : loc);
   lastLoc[eye] = {
-    thick: uniform && th.where !== 'centre' ? 'uniform' : th.where,
-    etmin: uniform ? 'uniform' : m.etMin.location,
-    etmax: m.etMax.location,
+    thick: even ? 'even' : uniform && th.where !== 'centre' ? 'uniform' : th.where,
+    thin: even ? 'even' : tn.where === 'centre' ? 'centre' : edgeLoc(m.etMin.location),
+    etmin: edgeLoc(m.etMin.location),
+    etmax: edgeLoc(m.etMax.location),
   };
   // The headline keeps the lay words only; the spans get the Expert suffix (writeLocs).
   const thickLoc = t('loc.' + lastLoc[eye].thick);
-  const etminLoc = t('loc.' + lastLoc[eye].etmin);
+  const thinLoc = t('loc.' + lastLoc[eye].thin);
   $(`${p}-grid`).hidden = false;
   $(`${p}-empty`).hidden = true;
   setText(`${p}-thick`, thick);
-  setText(`${p}-etmin`, etmin);
+  setText(`${p}-thin`, thin);
+  // A centre thinnest point hides the thin-edge number; name it on a second line when it differs.
+  thinEdge(eye, !even && tn.where === 'centre' && etmin !== thin ? t('result.thinEdge', { etmin }) : '');
   writeLocs(eye);
   setText(`${p}-ct`, ct);
   setText(`${p}-weight`, weight);
@@ -245,7 +267,7 @@ export function renderResult(eye, res, spec) {
     `${p}-headline`,
     uniform
       ? t('result.headline.uniformEdge', { glass: glass(eye), etmin, ct, weight })
-      : t('result.headline', { glass: glass(eye), thick, thickLoc, etmin, etminLoc, ct, weight }),
+      : t('result.headline', { glass: glass(eye), thick, thickLoc, thin, thinLoc, ct, weight }),
   );
   // Every number on this card comes from the user's own material constants (02-12, D-17).
   customLabel(eye, spec?.materialId === 'custom');

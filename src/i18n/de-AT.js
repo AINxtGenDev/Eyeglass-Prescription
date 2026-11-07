@@ -363,10 +363,11 @@ export default Object.freeze({
   'result.side.od': 'rechte',
   'result.side.os': 'linke',
   'result.headline':
-    '{glass}: am dicksten {thick} {thickLoc}, am dünnsten {etmin} {etminLoc}. Mitte {ct}, Gewicht {weight}.',
+    '{glass}: am dicksten {thick} {thickLoc}, am dünnsten {thin} {thinLoc}. Mitte {ct}, Gewicht {weight}.',
   'result.headline.uniformEdge': '{glass}: Rand ringsum {etmin} dick, Mitte {ct}. Gewicht {weight}.',
   'result.label.thick': 'Dickste Stelle',
-  'result.label.etmin': 'Dünnste Stelle',
+  'result.label.thin': 'Dünnste Stelle',
+  'result.thinEdge': 'Rand ab {etmin}',
   'result.label.ct': 'Mitte (Mittendicke)',
   'result.label.weight': 'Gewicht',
   'result.weightUnder1': 'unter 1 g',
@@ -405,6 +406,7 @@ export default Object.freeze({
   // Lay location words (D-23); 'centre' = thickest point of a plus lens (B1).
   'loc.centre': 'in der Mitte',
   'loc.uniform': 'am ganzen Rand',
+  'loc.even': 'überall gleich',
   'loc.nasal': 'innen (zur Nase)',
   'loc.temporal': 'außen (zur Schläfe)',
   'loc.superior': 'oben',
@@ -424,6 +426,7 @@ export default Object.freeze({
   // Experten-Ansicht suffix after the lay word, in parentheses (UI-SPEC "Location words (Expert suffix)").
   'loc.tech.centre': 'optischer Mittelpunkt',
   'loc.tech.uniform': 'rundum gleich',
+  'loc.tech.even': 'gleichmäßige Dicke',
   'loc.tech.nasal': 'nasal',
   'loc.tech.temporal': 'temporal',
   'loc.tech.superior': 'superior',
@@ -443,6 +446,7 @@ export default Object.freeze({
   'expert.zw.title': 'Zwischenwerte',
   'expert.zw.dec': 'Dezen\u00ADtration (zur Nase)',
   'expert.zw.etmax': 'Dickster Rand',
+  'expert.zw.etmin': 'Dünnster Rand',
   'expert.zw.basecurve': 'Basiskurve D1',
   'expert.zw.d2': 'Rückfläche D2 (Hauptschnitte)',
   'expert.zw.radii': 'Radien',

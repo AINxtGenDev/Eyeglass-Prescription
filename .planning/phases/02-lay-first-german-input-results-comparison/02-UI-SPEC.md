@@ -282,7 +282,7 @@ Preset data (`src/state/presets.js`; planner verifies each in the engine and rec
 - **Per-eye card** `#result-od-card`, `#result-os-card` (OD first): `--surface`, 1 px `--line` border, 8 px radius, 16 px padding, 16 px gap between cards. On desktop the two cards stack in the 400 px column.
   1. `h3` "Rechtes Glas (R)" (Body 600).
   2. Headline sentence `#result-od-headline` (Body 400), `aria-live="polite"` on the card's status region only, not on every value.
-  3. Value grid 2×2 (`grid-template-columns: repeat(2, minmax(0, 1fr))`, 16 px gap): each cell = label (14 px muted) + value (Display 28 px 600, tabular, `white-space: nowrap`) + location line (14 px) for the two edge values. Value ids: `#result-od-thick`, `#result-od-etmin`, `#result-od-ct`, `#result-od-weight`; location ids `#result-od-thick-loc`, `#result-od-etmin-loc`. **Dickste Stelle = thickest(m) = max(Mittendicke, dickster Rand)** (lens-critic B1, revision 2026-11-07): for a plus lens it is the centre and its location reads 'in der Mitte' (R +3,00: 3,9 mm in der Mitte); for minus lenses the edge; for mixed cylinder usually the edge. The phase-1 id `#result-od-etmax` moves to Zwischenwerte as the 'Dickster Rand' row.
+  3. Value grid 2×2 (`grid-template-columns: repeat(2, minmax(0, 1fr))`, 16 px gap): each cell = label (14 px muted) + value (Display 28 px 600, tabular, `white-space: nowrap`) + location line (14 px) for the thickest and the thinnest point. Value ids: `#result-od-thick`, `#result-od-thin`, `#result-od-ct`, `#result-od-weight`; location ids `#result-od-thick-loc`, `#result-od-thin-loc`. **Dünnste Stelle = thinnest(m) = min(Mittendicke, dünnster Rand)** (lens-critic B1, 02-16): for a minus lens it is the centre ('in der Mitte', example 1,8 mm) with a secondary line `#result-od-thin-edge` 'Rand ab {etmin}' (shown only when the thinnest point is the centre and the displayed thinnest edge differs); for a plus lens the thinnest edge with its location (R +3,00: 1,0 mm außen oben). When the displayed thickest and thinnest point are equal (evenThickness, plano-like lens) both location lines read 'überall gleich' (Expert: 'gleichmäßige Dicke'). The thinnest edge itself moves to Zwischenwerte as the 'Dünnster Rand' row (`#result-od-etmin`, `#result-od-etmin-loc`). **Dickste Stelle = thickest(m) = max(Mittendicke, dickster Rand)** (lens-critic B1, revision 2026-11-07): for a plus lens it is the centre and its location reads 'in der Mitte' (R +3,00: 3,9 mm in der Mitte); for minus lenses the edge; for mixed cylinder usually the edge. The phase-1 id `#result-od-etmax` moves to Zwischenwerte as the 'Dickster Rand' row.
   4. Diagnostics `#diag-od` (existing pattern, text label first).
   5. Material line `#result-od-material` (14 px muted), plus "beruht auf Ihren Angaben, kein geprüftes Material" when custom.
 - Rounding: 0,1 mm; weight whole grams with "unter 1 g" below 0,5 g (new `fmtGramWhole`; Expert Zwischenwerte keep 0,1 g, Research Pitfall 10).
@@ -508,14 +508,14 @@ The trade term "Einstärkenglas" (single vision) is deliberately avoided: the UX
 |----------|------|
 | Section h2 | Ergebnis |
 | Card titles | Rechtes Glas (R) · Linkes Glas (L) |
-| Headline | {Rechtes/Linkes} Glas: am dicksten {thick} {thickLoc}, am dünnsten {etmin} {etminLoc}. Mitte {ct}, Gewicht {weight}. (plus example: Rechtes Glas: am dicksten 3,9 mm in der Mitte, am dünnsten 1,0 mm außen oben. Mitte 3,9 mm, Gewicht 7 g.) |
-| Value labels | Dickste Stelle · Dünnste Stelle · Mitte (Mittendicke) · Gewicht |
+| Headline | {Rechtes/Linkes} Glas: am dicksten {thick} {thickLoc}, am dünnsten {thin} {thinLoc}. Mitte {ct}, Gewicht {weight}. (minus example: Rechtes Glas: am dicksten 4,6 mm außen oben, am dünnsten 1,8 mm in der Mitte. Mitte 1,8 mm, Gewicht 7 g.; plus example: Rechtes Glas: am dicksten 3,9 mm in der Mitte, am dünnsten 1,0 mm außen oben. Mitte 3,9 mm, Gewicht 7 g.) |
+| Value labels | Dickste Stelle · Dünnste Stelle (thinnest point: centre or edge, 02-16) · Mitte (Mittendicke) · Gewicht; secondary line 'Rand ab {etmin}' under a centre thinnest point |
 | Location words (Simple) | in der Mitte · außen (zur Schläfe) · innen (zur Nase) · oben · unten · außen oben · außen unten · innen oben · innen unten |
 | Location words (Expert suffix) | optischer Mittelpunkt · temporal · nasal · superior · inferior (in parentheses after the lay word) |
 | Weight below 0,5 g | unter 1 g |
 | L/R callout | Das {linke/rechte} Glas ist an der dicksten Stelle {diff} dicker als das {rechte/linke} {cause} |
 | L/R callout (weight only) | Das {linke/rechte} Glas ist {diff} schwerer als das {rechte/linke} {cause} |
-| L/R cause | rx: – weil die Rezeptwerte der beiden Augen verschieden sind. · pd: – weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung. · rx-pd: – weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind. Choice: same Rx and PD (or fitting height) differs → pd; Rx differs and PD differs by less than 2 mm (LR_PD_CAUSE_MM) → rx; Rx differs and PD differs by at least 2 mm → rx-pd (lens-critic rounds 2 and 3). Uniform edge (displayed thickest edge = thinnest edge): headline '{Rechtes/Linkes} Glas: Rand ringsum {etmin} dick, Mitte {ct}. Gewicht {weight}.'; edge location spans 'am ganzen Rand'. |
+| L/R cause | rx: – weil die Rezeptwerte der beiden Augen verschieden sind. · pd: – weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung. · rx-pd: – weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind. Choice: same Rx and PD (or fitting height) differs → pd; Rx differs and PD differs by less than 2 mm (LR_PD_CAUSE_MM) → rx; Rx differs and PD differs by at least 2 mm → rx-pd (lens-critic rounds 2 and 3). Uniform edge (displayed thickest edge = thinnest edge): headline '{Rechtes/Linkes} Glas: Rand ringsum {etmin} dick, Mitte {ct}. Gewicht {weight}.'; edge location spans 'am ganzen Rand' (Dickster Rand and Dünnster Rand in the Zwischenwerte too, never a direction). Even thickness (displayed thickest point = thinnest point): both card location lines 'überall gleich'. |
 | Short disclaimer | Modellwerte – kein Ersatz für die Messung und Beratung beim Optiker. |
 | Disclaimer link | Zum Hinweis unten |
 | Computing (existing) | rechnet … / rechnet … Die Werte gehören noch zur vorigen Eingabe. |
@@ -559,7 +559,7 @@ The existing `disclaimer.body` says "Das Modell rechnet mit einer sphärischen V
 |----------|------|
 | h2 | Experten-Analyse |
 | Zwischenwerte h3 | Zwischenwerte |
-| Rows | Dezentration (zur Nase) · Dickster Rand · Basiskurve D1 · Rückfläche D2 (Hauptschnitte) · Radien · Pfeilhöhen · Festlegende Mindestdicke · Gewicht (0,1 g) |
+| Rows | Dezentration (zur Nase) · Dickster Rand · Dünnster Rand (02-16) · Basiskurve D1 · Rückfläche D2 (Hauptschnitte) · Radien · Pfeilhöhen · Festlegende Mindestdicke · Gewicht (0,1 g) |
 | Querschnitt h3 | Querschnitt |
 | Eye picker | Rechtes Glas · Linkes Glas |
 | Meridian label | Schnitt |

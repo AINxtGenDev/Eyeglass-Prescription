@@ -165,7 +165,7 @@ const CASE_A = { sph: '-4', cyl: '-2', axis: '30', pd: '32', material: 'cr39', s
 // The 01-12 Grenzfall typed in. The page has no fitting-height field (D-04), so it computes FH
 // null, not FH 0; the exact FH-0 Grenzfall is the #timing-worst worker readout.
 const CASE_B = { sph: '+10,75', cyl: '-1', axis: '89', pd: '36', material: 'idx167', shape: 'rechteckig', A: '43', B: '43', DBL: '21' };
-const OD_CELLS = ['ct', 'thick', 'etmin', 'weight', 'dec', 'etmax', 'basecurve', 'status'];
+const OD_CELLS = ['ct', 'thick', 'thin', 'etmin', 'weight', 'dec', 'etmax', 'basecurve', 'status'];
 const odColumn = (page) => page.evaluate((cells) => cells.map((c) => document.getElementById(`result-od-${c}`).textContent).join(' | '), OD_CELLS);
 
 /**
