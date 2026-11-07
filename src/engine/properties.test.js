@@ -216,20 +216,25 @@ describe('ENG-08 tier-4 properties', () => {
   // Sweeps in which both principal meridians move away from zero power. A sweep that crosses a
   // meridian through zero is not monotone by nature: with cyl −2, sph 0 → +0,25 lowers |power| of
   // the cross meridian (−2 → −1,75) and J legitimately drops by about 0.64 mm, so it is excluded.
-  it('MAT-02 monotonicity of the thinnest lens along away-from-zero sphere sweeps (≤ 0.005 mm drop)', () => {
-    const frames = [
-      [frame('rechteckig', 52, 38, 18), 32],
-      [frame('rechteckig', 62, 55, 24), 25],
-      [frame('rund', 50, 50, 18), 32],
-      [frame('rund', 40, 40, 24), 25],
-      [frame('panto', 49, 42, 20), 30],
-      [frame('pilot', 58, 50, 14), 30],
-    ];
-    let worst = -Infinity;
-    let worstAt = null;
-    let samples = 0;
-    for (const [f, monoPD] of frames) {
-      for (const materialId of ['cr39', 'idx174']) {
+  // MAT-02 monotonicity, one test per frame × material (02-09). The sweep was one 60 s test that
+  // used 45,9 s of it under unloaded `test:coverage` and failed at 72 s with 4 CPU burners. Same
+  // 12 cases, same sphere sweeps, same assertion; only the timeout budget is now per case. The
+  // per-case floors are the observed ok-sample counts (02-09 scratch count, gate = observed) and
+  // sum to the former total gate of 3188 (01-12).
+  const MAT02_CASES = [
+    [frame('rechteckig', 52, 38, 18), 32, { cr39: 270, idx174: 270 }],
+    [frame('rechteckig', 62, 55, 24), 25, { cr39: 223, idx174: 269 }],
+    [frame('rund', 50, 50, 18), 32, { cr39: 270, idx174: 270 }],
+    [frame('rund', 40, 40, 24), 25, { cr39: 270, idx174: 270 }],
+    [frame('panto', 49, 42, 20), 30, { cr39: 270, idx174: 270 }],
+    [frame('pilot', 58, 50, 14), 30, { cr39: 266, idx174: 270 }],
+  ];
+  for (const [f, monoPD, floors] of MAT02_CASES) {
+    for (const materialId of ['cr39', 'idx174']) {
+      it(`MAT-02 monotonicity of the thinnest lens along away-from-zero sphere sweeps (≤ 0.005 mm drop): ${f.shape} ${f.A}×${f.B}/${f.DBL} ${materialId}`, () => {
+        let worst = -Infinity;
+        let worstAt = null;
+        let samples = 0;
         for (const cyl of [0, -2, -4]) {
           const sweeps = [
             [0, -12, -0.25],
@@ -246,19 +251,18 @@ describe('ENG-08 tier-4 properties', () => {
               const j = J(r);
               if (prev !== null) {
                 const drop = prev.j - j;
-                if (drop > worst) (worst = drop), (worstAt = `${f.shape} ${f.A}×${f.B} ${materialId} cyl ${cyl}: ${prev.sph} → ${sph}`);
+                if (drop > worst) (worst = drop), (worstAt = `cyl ${cyl}: ${prev.sph} → ${sph}`);
                 expect(drop, `${f.shape} ${f.A}×${f.B} ${materialId} cyl ${cyl} sph ${sph}`).toBeLessThanOrEqual(0.005);
               }
               prev = { j, sph };
             }
           }
         }
-      }
+        console.log(`[01-10] monotonicity ${f.shape} ${f.A}×${f.B} ${materialId}: ok samples`, samples, 'worst drop (mm)', worst, worstAt);
+        expect(samples).toBeGreaterThanOrEqual(floors[materialId]);
+      }, 60_000);
     }
-    console.log('[01-10] monotonicity: ok samples', samples, 'worst drop (mm)', worst, worstAt);
-    // 01-12: observed 3188 ok samples with the +14 ceiling and the non-convex back (gate = observed)
-    expect(samples).toBeGreaterThanOrEqual(3188);
-  }, 60_000);
+  }
 
   it('axis sweep 0…179 is continuous (CT and etMax step ≤ 0.05 mm, including 179 → 0)', () => {
     for (const sph of [-4, 4]) {
