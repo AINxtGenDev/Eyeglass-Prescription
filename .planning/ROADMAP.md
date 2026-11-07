@@ -219,7 +219,7 @@ Plans:
 **Goal**: Users see their glasses in 3D: both lenses rendered from the engine's verified geometry inside a parametric frame, rotatable on phone and desktop, with an Expert thickness heatmap — without lag or memory leaks on a mid-range phone.
 **Mode:** mvp
 **Depends on**: Phase 2 (engine validated in Phase 1 before any mesh work)
-**Requirements**: VIZ-01, VIZ-02, VIZ-03, VIZ-04, VIZ-05, VIZ-06
+**Requirements**: VIZ-01, VIZ-02, VIZ-03, VIZ-04, VIZ-05, VIZ-06; completes RES-03 (3D view of both configurations), UX-02 (heatmap in the Experten-Ansicht), UX-03 (lens view stays visible while editing on phones)
 **Success Criteria** (what must be TRUE):
 
   1. Both lenses appear as 3D meshes inside a parametric frame (rim, bridge, temples) whose local edge thickness matches the engine numbers shown in the results, with a transparent glass look over a checkerboard / eye-chart background labelled as a visual impression.

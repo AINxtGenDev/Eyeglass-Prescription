@@ -50,3 +50,12 @@
 - Accepted: lens-critic result-review MINORs **m5** (per-field "Beispielwert" tag), **m6** (lay note for very thick lenses) and **m7** (shorter Simple view on phones) are deferred to a later phase.
 - Accepted: **RES-03, UX-02, UX-03** are set to Pending ("Phase 2 + 3"), because they need the phase-3 3D view.
 - Not covered by this approval: the push to the live site. That stays a separate explicit decision at the 02-15 checkpoint, after the lens-critic re-review.
+
+## From the 02-15 lens-critic result review (accepted for later, 02-19)
+
+The plan for 02-19 asked to mark these as "accepted for later, needs user confirmation at the 02-15 checkpoint". That confirmation is already on record: "User decision 2026-11-07" above ("i approve"). So the status below is final for phase 2; the findings are closed by user acceptance (CLAUDE.md lens-critic gate), not by a fix.
+
+- **m5 (per-field "Beispielwert" tag).** Rationale: the example banner and the preset chips already label the example; a per-field tag touches every input row and the example flow (main.js initExample), and is better designed together with m7's page restructuring. Status: accepted for later (user confirmed 2026-11-07).
+- **m6 (lay note for very thick results, +12 → 13,1 mm; −12/−6 → 18,6 mm).** Rationale: it needs a design threshold with no cited source and wording that must not read as medical advice; the always-visible material comparison already shows how to get thinner; revisit with the phase-3 3D view, where thickness is visible. Status: accepted for later (user confirmed 2026-11-07).
+- **m7 (Simple view ≈ 7850 px tall at 360 px; transposition line and Expert hint always shown).** Rationale: a layout restructuring (collapsing sections) that interacts with the phase-3 lens view slot (#bar-view-slot, UX-03); planned with the phase-3 UI work. Status: accepted for later (user confirmed 2026-11-07).
+- **m1** is closed in 02-19 by the traceability change (RES-03, UX-02, UX-03 → "Phase 2 + 3", Pending), not deferred.

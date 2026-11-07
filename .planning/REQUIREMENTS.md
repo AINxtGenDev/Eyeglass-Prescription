@@ -63,7 +63,7 @@
 
 - [x] **RES-01**: Simple view shows a plain-German headline per eye: thickest point (mm, with location), thinnest point, centre thickness and weight (g), rounded to 0,1 mm and 1 g.
 - [x] **RES-02**: User can compare materials: a table/bars of max edge, centre thickness and weight per material with absolute differences ("1,67 spart 1,7 mm und 2 g"); percentages only as a secondary hint.
-- [x] **RES-03**: User can compare two configurations (material and/or frame size/shape) side by side or as a before/after toggle on phones, in numbers and in the views.
+- [ ] **RES-03**: User can compare two configurations (material and/or frame size/shape) side by side or as a before/after toggle on phones, in numbers and in the views. (2026-11-07, lens-critic m1: numbers, Vorher/Nachher toggle and 2D cross-section overlay delivered in phase 2; the 3D-view part follows in phase 3. Pending until then.)
 - [x] **RES-04**: A large difference between left and right lens is pointed out in plain words.
 - [x] **RES-05**: The site starts with a realistic example (clearly labelled "Beispiel — ersetzen Sie die Werte durch Ihre eigenen") and offers Rx presets (leicht kurzsichtig, stark kurzsichtig, weitsichtig, Hornhautverkrümmung) and frame presets; applying a preset over typed values asks first.
 - [x] **RES-06**: A persistent disclaimer states this is an educational visualization, not a substitute for an optician, and names the main simplifications.
@@ -71,8 +71,8 @@
 ### Explanations & Usability (UX)
 
 - [x] **UX-01**: Every technical term (Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration) has a one- or two-sentence German explanation that opens by tap (not hover-only) and by keyboard.
-- [ ] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06).
-- [ ] **UX-03**: Layout works on phone (from 320 px width), tablet and desktop; on phones the lens view stays visible while editing inputs; long German compound words never overflow.
+- [ ] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06). (2026-11-07, lens-critic m1: everything except the heatmap is delivered in phase 2; the heatmap follows in phase 3 with the 3D view. Pending until then.)
+- [ ] **UX-03**: Layout works on phone (from 320 px width), tablet and desktop; on phones the lens view stays visible while editing inputs; long German compound words never overflow. (2026-11-07, lens-critic m1: phone/tablet/desktop layout and German word wrapping are delivered in phase 2; the lens view that stays visible while editing on phones needs the phase-3 3D view (#bar-view-slot). Pending until then.)
 - [x] **UX-04**: Fully keyboard operable; all inputs labelled; WCAG AA contrast; no information conveyed by colour alone; automated accessibility checks pass in CI.
 - [x] **UX-05**: Terminology avoids ambiguous words (e.g. "Stärke" for both power and thickness): power is "Dioptrien (dpt)", thickness is "Mittendicke"/"Randdicke".
 
@@ -180,13 +180,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENG-09 | Phase 1 | Complete |
 | RES-01 | Phase 2 | Complete |
 | RES-02 | Phase 2 | Complete |
-| RES-03 | Phase 2 | Complete |
+| RES-03 | Phase 2 + 3 | Pending |
 | RES-04 | Phase 2 | Complete |
 | RES-05 | Phase 2 | Complete |
 | RES-06 | Phase 1 | Complete |
 | UX-01 | Phase 2 | Complete |
-| UX-02 | Phase 2 | Pending |
-| UX-03 | Phase 2 | Pending |
+| UX-02 | Phase 2 + 3 | Pending |
+| UX-03 | Phase 2 + 3 | Pending |
 | UX-04 | Phase 2 | Complete |
 | UX-05 | Phase 2 | Complete |
 | L10N-01 | Phase 1 | Complete |
@@ -211,4 +211,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-06*
-*Last updated: 2026-11-06 after roadmap creation*
+*Last updated: 2026-11-07 (02-19, lens-critic m1): RES-03, UX-02 and UX-03 mapped to "Phase 2 + 3" and Pending, because each has a part that needs the phase-3 3D view (user decision 2026-11-07, deferred-items.md).*
