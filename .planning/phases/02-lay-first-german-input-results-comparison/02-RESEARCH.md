@@ -577,7 +577,7 @@ Local check (`axe.getRules`): `wcag2a` 62 rules, `wcag2aa` 3, `wcag21aa` 3, `wca
 | `-webkit-hyphens` only on Safari | Unprefixed `hyphens` | Safari/iOS 17 | Keep the prefix for older iPhones |
 | Hover tooltips | Toggletips/disclosures, WCAG 2.2 target size 24 px | WCAG 2.2 (2023) | axe `target-size` now gates the "i" buttons |
 
-## Open Questions (each answered with a source or labelled a design constant)
+## Open Questions (RESOLVED — each answered with a source or labelled a design constant)
 
 1. **Adult PD default (D-06).** ANSUR 2012 (via [Wikipedia "Pupillary distance"](https://en.wikipedia.org/wiki/Pupillary_distance)): female mean 61,7 mm (SD 3,6, n 1986), male 64,0 mm (SD 3,4, n 4082). Dodgson 2004 (SPIE 5291) is quoted secondarily as "near 63 mm" (full text not accessed). → **Keep 64 mm / 32 mm per eye as a design default**, labelled "angenommen". It equals the male mean and is about 0,6 SD above the female mean. Caveat: the sample is the US Army, not DACH. Effect of 1 mm PD error: decentration changes by 1 mm (ENG-05 formula). Confidence MEDIUM.
 

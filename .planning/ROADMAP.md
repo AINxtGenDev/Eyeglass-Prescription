@@ -128,19 +128,58 @@ Plans:
 **Plans**: 13 plans (13 sequential waves: every slice touches index.html, de-AT.js and style.css; MVP vertical slices, each usable on the page; push only in 02-13 after lens-critic and explicit approval)
 
 Plans:
+**Wave 1**
+
 - [ ] 02-01-PLAN.md — Plain-German result cards per eye, example banner, L/R callout, Experten-Ansicht switch with Zwischenwerte (RES-01, RES-04, UX-02, UX-05, ANA-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 02-02-PLAN.md — Layout 320 px → desktop: two columns with sticky results, phone summary bar, no overflow (UX-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 02-03-PLAN.md — Paper-shaped Rx table: three message tiers, "Meinten Sie …?", ± sign, mirror, RX-08 details, toggletips (RX-01, RX-04, RX-05, RX-07, RX-08)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 02-04-PLAN.md — Smart PD, temple stamp with own SVG help, shape cards, frame ranges (RX-06, FRAME-02, FRAME-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 02-05-PLAN.md — Material cards and always-visible material comparison on a low-priority worker lane (RES-02)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 02-06-PLAN.md — Two-configuration comparison with Vorher/Nachher toggle (RES-03)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 02-07-PLAN.md — Rx and frame presets with inline confirm (RES-05)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 02-08-PLAN.md — Expert: manual base curve (0,00…+10,00), minimum thicknesses, binding constraint, Vogel follow-ups (MAT-03, MAT-04)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [ ] 02-09-PLAN.md — Expert: generic aspheric front (D1 chosen at k = 0) and rim depth (MAT-05, FRAME-02)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
 - [ ] 02-10-PLAN.md — Expert: user-supplied material, labelled, excluded from comparison rows (MAT-06)
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
 - [ ] 02-11-PLAN.md — Cross-section SVG of selectable meridians with A/B overlay (ANA-01)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
 - [ ] 02-12-PLAN.md — Whole-page WCAG 2.2 AA matrix, keyboard flow, ENG-09 proxy record with the comparison lane (UX-01, UX-03, UX-04)
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
 - [ ] 02-13-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live and real-phone checks
+
 **UI hint**: yes
 
 ### Phase 3: 3D Lenses & Frame
