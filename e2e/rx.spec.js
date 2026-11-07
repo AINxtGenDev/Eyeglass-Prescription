@@ -145,6 +145,17 @@ test('"Linkes Auge gleich wie rechtes" mirrors Sph, Zyl, Achse read-only; PD sta
   await expect(page.locator('#result-os-ct')).toHaveText(/^\d+,\d\smm$/);
 });
 
+test('the mirror never copies PD: "64" on the right still gives the left eye 32 (02-04)', async ({ page }) => {
+  await page.locator('#rx-od-pd').fill('64');
+  await page.locator('#rx-os-pd').fill('');
+  await page.getByLabel('Linkes Auge gleich wie rechtes (Sph, Zyl, Achse)').check();
+  await expect(page.locator('#rx-os-pd')).toHaveValue('');
+  await expect(page.locator('#rx-os-pd')).not.toHaveAttribute('readonly', '');
+  expect(plain(await page.locator('#rx-os-pd-echo').textContent())).toBe('32,0 mm');
+  await settled(page);
+  await expect(page.locator('#result-os-ct')).toHaveText(/^\d+,\d\smm$/);
+});
+
 test('other values on the paper (RX-08) are explained in a closed <details>', async ({ page }) => {
   const other = page.locator('#rx-other');
   expect(await other.evaluate((d) => d.open)).toBe(false);

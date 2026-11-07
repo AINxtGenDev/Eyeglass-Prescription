@@ -136,12 +136,8 @@ export default Object.freeze({
   'stamp.svg.dbl': 'Stegbreite',
   'stamp.svg.temple': 'Bügellänge',
 
-  // Frame (FRAME-01). Shape outlines are model shapes, not a specific product.
-  // Phase-1 fieldset keys, removed with the fieldset in 02-04 Task 2.
-  'frame.legend': 'Fassung',
-  'frame.shape.label': 'Form der Fassung',
-  'frame.hint':
-    'Glasbreite und Stegbreite stehen meist innen am Bügel, z. B. „52□18 145“: 52 mm Glasbreite, 18 mm Stegbreite. Die Glashöhe steht dort selten; beim Wechsel der Form werden typische Werte vorgeschlagen.',
+  // Frame section (02-04, FRAME-01/02/03; UI-SPEC Copywriting "Fassung"). Shape outlines are model
+  // shapes, not a specific product.
   'frame.title': 'Ihre Fassung',
   'frame.shape.legend': 'Form der Fassung',
   'frame.shape.rund': 'Rund',

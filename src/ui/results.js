@@ -7,6 +7,8 @@ import { t } from '../i18n/t.js';
 import { fmtMm, fmtGramWhole } from '../i18n/format.js';
 import { renderZwischenwerte, clearZwischenwerte, isExpert, EXPERT_CELLS } from './expert.js';
 import { updateSummaryBar } from './summary-bar.js';
+import { icon } from './icons.js';
+import { PD_DEFAULT_MM } from '../state/frame.js';
 
 const DASH = '–';
 
@@ -266,4 +268,36 @@ export function renderLrCallout() {
   el.dataset.sig = text;
   el.textContent = text;
   el.hidden = text === '';
+}
+
+/** Hinweis note with the hint icon; rewritten only when its text changes (MINOR-11 rule). */
+function paintNote(id, text) {
+  const el = $(id);
+  if ((el.dataset.sig ?? '') === text) return;
+  el.dataset.sig = text;
+  if (text === '') el.replaceChildren();
+  else el.replaceChildren(icon('hint'), text);
+  el.hidden = text === '';
+}
+
+/**
+ * "PD angenommen: 32,0 mm je Auge (rechts) …" for the computed eyes that use the default PD
+ * (D-06, ANSUR 2012 design default in src/state/frame.js). Hidden for an empty list.
+ * @param {Array<'OD'|'OS'>} eyes
+ */
+export function renderPdNote(eyes) {
+  let text = '';
+  if (eyes.length > 0) {
+    const key = eyes.length === 2 ? 'pd.eyes.both' : eyes[0] === 'OD' ? 'pd.eyes.od' : 'pd.eyes.os';
+    text = t('pd.assumed', { pd: fmtMm(PD_DEFAULT_MM), eyes: t(key) });
+  }
+  paintNote('pd-note', text);
+}
+
+/**
+ * "Glashöhe B geschätzt: … aus der Form" while B is estimated, not typed (lens-critic MINOR-6).
+ * @param {number | null} B the estimate, null = no note
+ */
+export function renderBNote(B) {
+  paintNote('b-note', B === null ? '' : t('frame.bAssumed', { B: fmtMm(B) }));
 }

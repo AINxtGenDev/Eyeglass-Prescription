@@ -170,41 +170,68 @@
               <dd data-i18n="rx.other.ep.text"></dd>
             </dl>
           </details>
+        </form>
+        <section id="frame-section" aria-labelledby="frame-title">
+          <h2 id="frame-title" data-i18n="frame.title"></h2>
+          <div class="frame">
+            <div class="field field-stamp">
+              <span class="term"><label for="frame-stamp" data-i18n="stamp.label"></label><button type="button" class="tip-btn"
+                  aria-expanded="false" aria-controls="tip-stamp" data-i18n-aria-label="tip.stamp.name"></button></span>
+              <p id="tip-stamp" class="tip" hidden data-i18n="tip.stamp.text"></p>
+              <p id="frame-stamp-hint" class="field-hint" data-i18n="stamp.hint"></p>
+              <input id="frame-stamp" name="frame-stamp" type="text" autocomplete="off" spellcheck="false"
+                aria-describedby="frame-stamp-hint frame-stamp-echo frame-stamp-err">
+              <output id="frame-stamp-echo" for="frame-stamp"></output>
+              <div id="frame-stamp-err" class="msg" aria-live="polite" hidden></div>
+              <button type="button" id="frame-stamp-help" class="link-button" aria-expanded="false"
+                aria-controls="frame-stamp-figure" data-i18n="stamp.help"></button>
+              <figure id="frame-stamp-figure" hidden>
+                <div id="frame-stamp-svg"></div>
+                <figcaption data-i18n="stamp.figcaption"></figcaption>
+              </figure>
+            </div>
+            <fieldset id="frame-shape">
+              <legend data-i18n="frame.shape.legend"></legend>
+              <div class="shape-cards"></div>
+            </fieldset>
+            <button type="button" id="frame-defaults" class="link-button" hidden></button>
+            <h3 data-i18n="frame.single"></h3>
+            <div class="frame-dims">
+              <div class="field">
+                <span class="term"><label for="frame-a" data-i18n="frame.a.label"></label><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-a" data-i18n-aria-label="tip.a.name"></button></span>
+                <p id="tip-a" class="tip" hidden data-i18n="tip.a.text"></p>
+                <input id="frame-a" name="frame-a" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="frame-a-echo frame-a-err">
+                <output id="frame-a-echo" for="frame-a"></output>
+                <div id="frame-a-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+              <div class="field">
+                <span class="term"><label for="frame-b" data-i18n="frame.b.label"></label><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-b" data-i18n-aria-label="tip.b.name"></button></span>
+                <p id="tip-b" class="tip" hidden data-i18n="tip.b.text"></p>
+                <input id="frame-b" name="frame-b" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="frame-b-echo frame-b-err">
+                <output id="frame-b-echo" for="frame-b"></output>
+                <div id="frame-b-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+              <div class="field">
+                <span class="term"><label for="frame-dbl" data-i18n="frame.dbl.label"></label><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-dbl" data-i18n-aria-label="tip.dbl.name"></button></span>
+                <p id="tip-dbl" class="tip" hidden data-i18n="tip.dbl.text"></p>
+                <input id="frame-dbl" name="frame-dbl" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="frame-dbl-echo frame-dbl-err">
+                <output id="frame-dbl-echo" for="frame-dbl"></output>
+                <div id="frame-dbl-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+            </div>
+          </div>
+        </section>
           <div class="field">
             <label for="material" data-i18n="material.label"></label>
             <select id="material" name="material" aria-describedby="material-hint"></select>
             <p id="material-hint" data-i18n="material.hint"></p>
           </div>
-          <fieldset id="frame">
-            <legend data-i18n="frame.legend"></legend>
-            <div class="field">
-              <label for="frame-shape" data-i18n="frame.shape.label"></label>
-              <select id="frame-shape" name="frame-shape" aria-describedby="frame-hint"></select>
-            </div>
-            <div class="field">
-              <label for="frame-a" data-i18n="frame.a.label"></label>
-              <input id="frame-a" name="frame-a" type="text" inputmode="decimal" autocomplete="off"
-                aria-describedby="frame-a-echo frame-a-err">
-              <output id="frame-a-echo" for="frame-a"></output>
-              <p id="frame-a-err" class="error" aria-live="polite" hidden></p>
-            </div>
-            <div class="field">
-              <label for="frame-b" data-i18n="frame.b.label"></label>
-              <input id="frame-b" name="frame-b" type="text" inputmode="decimal" autocomplete="off"
-                aria-describedby="frame-b-echo frame-b-err">
-              <output id="frame-b-echo" for="frame-b"></output>
-              <p id="frame-b-err" class="error" aria-live="polite" hidden></p>
-            </div>
-            <div class="field">
-              <label for="frame-dbl" data-i18n="frame.dbl.label"></label>
-              <input id="frame-dbl" name="frame-dbl" type="text" inputmode="decimal" autocomplete="off"
-                aria-describedby="frame-dbl-echo frame-dbl-err">
-              <output id="frame-dbl-echo" for="frame-dbl"></output>
-              <p id="frame-dbl-err" class="error" aria-live="polite" hidden></p>
-            </div>
-            <p id="frame-hint" data-i18n="frame.hint"></p>
-          </fieldset>
-        </form>
       </div>
 
       <div class="col-results" tabindex="0" role="region" data-i18n-aria-label="layout.results.region">
@@ -266,6 +293,8 @@
             </dl>
           </article>
           <p id="lr-callout" class="callout" hidden></p>
+          <p id="pd-note" class="msg msg-hint" hidden></p>
+          <p id="b-note" class="msg msg-hint" hidden></p>
           <p id="calc-status" class="calc-status"></p>
           <div id="diag-od" class="diag" role="status"></div>
           <div id="diag-os" class="diag" role="status"></div>

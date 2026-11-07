@@ -78,7 +78,7 @@ test('"Wo finde ich das?" opens our own drawing of a temple', async ({ page }) =
 test('shape cards: defaults while untyped, "Standardmaße übernehmen" after typing', async ({ page }) => {
   await expect(page.locator('input[name=frame-shape]')).toHaveCount(4);
   await expect(shape(page, 'rechteckig')).toBeChecked();
-  await expect(page.locator('#frame-shape .radio-card svg path')).toHaveCount(4);
+  await expect(page.locator('#frame-shape .radio-card svg.shape-thumb path')).toHaveCount(4);
   await shape(page, 'pilot').check();
   await expect(page.locator('#frame-a')).toHaveValue('58');
   await expect(page.locator('#frame-b')).toHaveValue('50');
@@ -131,7 +131,7 @@ test.describe('smart PD (RX-06)', () => {
   test('"32/33" in the left field fills R 32 and L 33', async ({ page }) => {
     await page.locator('#rx-od-pd').fill('');
     await page.locator('#rx-os-pd').fill('32/33');
-    expect(await text(page, '#rx-os-pd-echo')).toContain('32,0 mm rechts, 33,0 mm links');
+    await expect(page.locator('#rx-os-pd-echo')).toHaveText(/^32,0\smm rechts, 33,0\smm links$/);
     expect(await text(page, '#rx-od-pd-echo')).toBe('32,0 mm');
     await settled(page);
     await page.locator('#expert').check();

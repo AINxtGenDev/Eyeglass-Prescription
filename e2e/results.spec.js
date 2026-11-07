@@ -114,7 +114,7 @@ test.describe('L/R callout (RES-04)', () => {
 test('uniform edge: rund 50/50/18, PD 34, −3,00 both eyes', async ({ page }) => {
   // decentration 0, etMax = etMin = 3,692 mm, CT 1,800, 7,11 g
   await page.locator('#example-clear').click();
-  await page.locator('#frame-shape').selectOption('rund');
+  await page.locator('input[name=frame-shape][value=rund]').check();
   await page.locator('#frame-a').fill('50');
   await page.locator('#frame-b').fill('50');
   await page.locator('#frame-dbl').fill('18');

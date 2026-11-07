@@ -139,7 +139,7 @@ async function benchReadouts(page, runs) {
 
 async function typePair(page, { sph, cyl, axis, pd, material, shape, A, B, DBL }) {
   await page.locator('#material').selectOption(material);
-  await page.locator('#frame-shape').selectOption(shape);
+  await page.locator(`input[name=frame-shape][value=${shape}]`).check();
   await page.locator('#frame-a').fill(A);
   await page.locator('#frame-b').fill(B);
   await page.locator('#frame-dbl').fill(DBL);

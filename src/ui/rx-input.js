@@ -1,8 +1,10 @@
 // Rx table (02-03, RX-01, RX-04, RX-05, RX-07): raw field text → validateRxEye → echo, cylinder
 // forms and tiered field messages. Only the message display is debounced (600 ms pause or blur);
 // the caller sends the compute request every input frame (RESEARCH Pitfall 5).
+// 02-04: both PD fields are read together (resolvePd, RX-06): a pair or a binocular PD in one field
+// gives both eyes a value, a question blocks the eye, an empty field uses the stated default.
 // Every visible string comes from t() and is written as text, never as markup (T-02-09).
-import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
+import { parseDiopter, parseAxis, STAMP_CODES } from '../state/parse.js';
 import { transpose, RX_CODES } from '../state/transpose.js';
 import { validateRxEye, resolvePd, TIERS, VAL_CODES } from '../state/validate.js';
 import { createDebouncer } from '../state/debounce.js';
@@ -12,7 +14,8 @@ import { $, setText } from './dom.js';
 import { icon } from './icons.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
-const FIELDS = /** @type {const} */ (['sph', 'cyl', 'axis', 'pd']);
+const RX_FIELDS = /** @type {const} */ (['sph', 'cyl', 'axis']);
+const FIELDS = /** @type {const} */ ([...RX_FIELDS, 'pd']);
 // "Gleich für beide Augen" mirrors Sph, Zyl and Achse only; PD stays per eye (RESEARCH Pitfall 9).
 const MIRRORED = ['sph', 'cyl', 'axis'];
 const MIRROR_NOTE = 'rx-mirror-note';
@@ -20,58 +23,35 @@ const TIER_ICON = { [TIERS.ERROR]: 'error', [TIERS.HINT]: 'hint', [TIERS.OUT]: '
 const TIER_CLASS = { [TIERS.ERROR]: 'msg-error', [TIERS.HINT]: 'msg-hint', [TIERS.OUT]: 'msg-out' };
 // Every minus form parseDiopter accepts (U+2212, U+2012, U+2013, U+2010, U+FE63, U+FF0D, '-').
 const LEADING_MINUS = /^\s*[-−‒–‐﹣－]\s*/;
+// The literal frame terms a VAL_FRAME_OUT_OF_MODEL message may name.
+const FRAME_TERMS = ['A', 'B', 'DBL'];
 
 const input = (id) => /** @type {HTMLInputElement} */ ($(id));
 const fieldId = (eye, f) => `rx-${eye.toLowerCase()}-${f}`;
 const isBlank = (id) => input(id).value.trim() === '';
-const blocking = (m) => m !== null && m.tier !== TIERS.HINT;
 /** "−2,25" (no unit): what the sign and apply buttons write into a field. */
 const bare = (v) => fmtDiopter(v).replace(/\u00A0dpt$/, '');
 
 /** "Sph / Zyl × Achse" for one cylinder form. */
 export const fmtForm = (f) => `${fmtDiopter(f.sph)} / ${fmtDiopter(f.cyl)} × ${fmtAxis(f.axisDeg)}`;
 
-/** Mark a field valid and show its echo (may be empty). Used by the frame fields. */
-function showFieldOk(id, echo) {
-  setText(`${id}-echo`, echo);
-  const err = $(`${id}-err`);
-  err.replaceChildren();
-  err.hidden = true;
-  $(id).removeAttribute('aria-invalid');
-}
-
-/** Mark a field invalid with a German message; the icon replaces the old CSS '⚠' glyph. */
-function showFieldError(id, message) {
-  setText(`${id}-echo`, '');
-  const err = $(`${id}-err`);
-  if (err.textContent !== message) err.replaceChildren(icon('error'), message);
-  err.hidden = false;
-  $(id).setAttribute('aria-invalid', 'true');
-}
-
-/** Parse one field, show echo or error at once; returns the value or null. Frame fields only. */
-function readField(id, parse, format) {
-  const r = parse(input(id).value);
-  if (r.ok) {
-    showFieldOk(id, format(r.value));
-    return r.value;
-  }
-  showFieldError(id, t('parse.' + r.code));
-  return null;
-}
-
-/** A/B/DBL in mm (frame fields keep the immediate phase-1 messages until 02-04). */
-export const readMmField = (id) => readField(id, parseMm, fmtMm);
-
-/** German text of a field message; params are formatted numbers only (T-02-09). */
-function messageText(m, field) {
+/**
+ * German text of a field message; params are formatted numbers or fixed terms only (T-02-09).
+ * @param {{ code: string, data: Record<string, any> }} m @param {'dpt'|'mm'} kind
+ */
+function messageText(m, kind) {
   const d = m.data;
+  if (m.code === VAL_CODES.VAL_PD_QUESTION) {
+    const params = Number.isFinite(d.value) ? { value: fmtMm(d.value) } : {};
+    return t('pd.' + d.question, params) + ' ' + t('val.' + m.code);
+  }
   if (Object.hasOwn(VAL_CODES, m.code)) {
-    const fmt = field === 'pd' ? fmtMm : fmtDiopter;
+    const fmt = kind === 'mm' ? fmtMm : fmtDiopter;
     const params = {};
     if (Number.isFinite(d.suggestion)) params.suggestion = fmtDiopter(d.suggestion);
     for (const k of ['value', 'min', 'max']) if (Number.isFinite(d[k])) params[k] = fmt(d[k]);
     if (Number.isFinite(d.typed)) params.typed = fmtDiopter(d.typed);
+    if (FRAME_TERMS.includes(d.field)) params.field = d.field;
     let text = t('val.' + m.code, params);
     // Plus cylinder: the Sph range was checked on the minus form, so name what was typed.
     if (m.code === VAL_CODES.VAL_SPH_OUT_OF_MODEL && d.typed && d.typed.cyl > 0) {
@@ -81,11 +61,17 @@ function messageText(m, field) {
     return text;
   }
   if (Object.hasOwn(RX_CODES, m.code)) return t('rx.' + m.code);
+  if (Object.hasOwn(STAMP_CODES, m.code)) {
+    return t('stamp.' + m.code, Number.isInteger(d?.A) ? { A: String(d.A), DBL: String(d.DBL) } : {});
+  }
   return t('parse.' + m.code);
 }
 
-/** Write one field's message slot: tier label + icon, text, and the "übernehmen" button. */
-function paintMessage(id, m, field) {
+/**
+ * Write one field's message slot: tier label + icon, text, and the "übernehmen" button.
+ * @param {string} id @param {object|null} m @param {{ kind: 'dpt'|'mm', apply: string|null }} opts
+ */
+function paintMessage(id, m, { kind, apply }) {
   const err = $(`${id}-err`);
   const el = input(id);
   if (m === null) {
@@ -99,33 +85,33 @@ function paintMessage(id, m, field) {
   label.className = 'msg-label';
   label.append(icon(TIER_ICON[m.tier]), t('val.tier.' + m.tier));
   const text = document.createElement('span');
-  text.textContent = ' ' + messageText(m, field);
+  text.textContent = ' ' + messageText(m, kind);
   const parts = [label, text];
-  // "Meinten Sie …?": writes the suggestion only after a click (T-02-10); not into a mirrored field.
-  if (m.tier === TIERS.HINT && Number.isFinite(m.data.suggestion) && !el.readOnly) {
-    const value = bare(m.data.suggestion);
-    const apply = document.createElement('button');
-    apply.type = 'button';
-    apply.className = 'apply';
-    apply.textContent = t('val.apply', { suggestion: value });
-    apply.addEventListener('click', () => {
-      el.value = value;
+  // "Meinten Sie …?": writes the value only after a click (T-02-10); not into a mirrored field.
+  if (apply !== null && !el.readOnly) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'apply';
+    btn.textContent = t('val.apply', { suggestion: apply });
+    btn.addEventListener('click', () => {
+      el.value = apply;
       el.focus();
       el.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    parts.push(apply);
+    parts.push(btn);
   }
   err.className = 'msg ' + TIER_CLASS[m.tier];
   err.replaceChildren(...parts);
   err.hidden = false;
-  if (blocking(m)) el.setAttribute('aria-invalid', 'true');
+  // A blocking question (Hinweis) is not marked invalid: the value is not wrong, only unclear.
+  if (m.tier !== TIERS.HINT) el.setAttribute('aria-invalid', 'true');
   else el.removeAttribute('aria-invalid');
 }
 
 /**
- * Per Rx field: the message wanted now (want/wantSig), the one on screen (shownSig, '' = none)
- * and the pause timer. key = sig + raw text, so a keystroke restarts the pause but an unrelated
- * input frame (material, frame) does not.
+ * Per field: the message wanted now (want/wantSig), whether it blocks, the one on screen
+ * (shownSig, '' = none) and the pause timer. key = sig + raw text, so a keystroke restarts the
+ * pause but an unrelated input frame (material, frame) does not.
  */
 const state = new Map();
 /** @type {(eye: 'OD' | 'OS') => void} */
@@ -134,28 +120,44 @@ let onShown = () => {};
 function stateOf(id) {
   let s = state.get(id);
   if (!s) {
-    s = { want: null, wantSig: '', key: '', shownSig: '', deb: createDebouncer((fn, ms) => setTimeout(fn, ms), clearTimeout) };
+    s = {
+      want: null,
+      wantSig: '',
+      blocks: false,
+      key: '',
+      shownSig: '',
+      deb: createDebouncer((fn, ms) => setTimeout(fn, ms), clearTimeout),
+    };
     state.set(id, s);
   }
   return s;
 }
 
-function wantMessage(eye, field, m) {
-  const id = fieldId(eye, field);
+/**
+ * Want message m in field id (null = none). It is painted after the pause or on blur; a message
+ * on screen that no longer fits is removed at once. Shared by the Rx and frame fields.
+ * @param {string} id
+ * @param {object|null} m FieldMsg
+ * @param {{ kind?: 'dpt'|'mm', blocks?: boolean, apply?: string|null, shown?: () => void }} [opts]
+ *   blocks defaults to "not a Hinweis"; apply = text the "übernehmen" button writes (default: the
+ *   suggestion of a Hinweis, "Meinten Sie −2,25?").
+ */
+export function showFieldMessage(id, m, { kind = 'dpt', blocks, apply, shown = () => {} } = {}) {
   const s = stateOf(id);
+  if (apply === undefined) apply = m?.tier === TIERS.HINT && Number.isFinite(m.data.suggestion) ? bare(m.data.suggestion) : null;
   const sig = m ? `${m.tier}|${m.code}|${JSON.stringify(m.data)}` : '';
   const key = sig + '\u0000' + input(id).value;
   s.want = m;
   s.wantSig = sig;
+  s.blocks = m !== null && (blocks ?? m.tier !== TIERS.HINT);
   if (sig === s.shownSig) {
     // Already on screen: no rewrite, so the live region is not announced again.
     s.deb.cancel();
     s.key = key;
     return;
   }
-  // The message on screen no longer fits the value: remove it at once, never show a stale one.
   if (s.shownSig !== '') {
-    paintMessage(id, null, field);
+    paintMessage(id, null, { kind, apply });
     s.shownSig = '';
   }
   if (m === null) {
@@ -166,25 +168,42 @@ function wantMessage(eye, field, m) {
   if (key === s.key && s.deb.isPending()) return;
   s.key = key;
   s.deb.call(() => {
-    paintMessage(id, m, field);
+    paintMessage(id, m, { kind, apply });
     s.shownSig = sig;
-    onShown(eye);
+    shown();
   });
 }
 
+/** Whether field id's wanted message blocks, and whether it is not on screen yet. */
+export function messageStatus(id) {
+  const s = stateOf(id);
+  return { blocks: s.blocks, pending: s.blocks && s.shownSig !== s.wantSig };
+}
+
+/** Show a due message at once when the field loses focus. */
+export function flushOnBlur(id) {
+  input(id).addEventListener('blur', () => stateOf(id).deb.flush());
+}
+
+/** PD fields whose message blocks each eye (resolvePd blockedBy), from the last read. */
+let pdBlockedBy = { OD: null, OS: null };
+
 /**
  * Blocked-eye status from the field states: the first field that blocks, and whether a blocking
- * message is not on screen yet (then the card says "Eingabe unvollständig …").
+ * message is not on screen yet (then the card says "Eingabe unvollständig …"). The PD field that
+ * blocks an eye may be the other eye's field ("20/33" typed on the left).
  * @param {'OD'|'OS'} eye
  */
 export function eyeStatus(eye) {
   let firstBlockedFieldId = null;
   let pendingMessage = false;
-  for (const f of FIELDS) {
-    const s = stateOf(fieldId(eye, f));
-    if (!blocking(s.want)) continue;
-    firstBlockedFieldId ??= fieldId(eye, f);
-    if (s.shownSig !== s.wantSig) pendingMessage = true;
+  const ids = RX_FIELDS.map((f) => fieldId(eye, f));
+  if (pdBlockedBy[eye] !== null) ids.push(`rx-${pdBlockedBy[eye]}-pd`);
+  for (const id of ids) {
+    const st = messageStatus(id);
+    if (!st.blocks) continue;
+    firstBlockedFieldId ??= id;
+    if (st.pending) pendingMessage = true;
   }
   return { firstBlockedFieldId, pendingMessage };
 }
@@ -241,6 +260,21 @@ function echo(id, parse, format) {
   setText(`${id}-echo`, r.ok ? format(r.value) : '');
 }
 
+/**
+ * PD echo: the per-eye value, the binocular note or the pair note. An empty field that gets its
+ * value from the other field shows that value; the default is stated in #pd-note instead.
+ */
+function echoPd(eye, pd) {
+  const f = eye.toLowerCase();
+  const p = pd.parsed[f];
+  let text = '';
+  if (p.ok && p.kind === 'mono') text = fmtMm(p.value);
+  else if (p.ok && p.kind === 'binocular') text = t('pd.binocularNote', { total: fmtMm(p.total), half: fmtMm(p.OD) });
+  else if (p.ok) text = t('pd.pairNote', { od: fmtMm(p.OD), os: fmtMm(p.OS) });
+  else if (isBlank(fieldId(eye, 'pd')) && pd[eye].value !== null && pd[eye].source !== 'default') text = fmtMm(pd[eye].value);
+  setText(`${fieldId(eye, 'pd')}-echo`, text);
+}
+
 /** Both cylinder forms under the table (RX-03), from the typed values. */
 function showForms(eye, typed) {
   const formsId = `rx-${eye.toLowerCase()}-forms`;
@@ -260,33 +294,50 @@ function showForms(eye, typed) {
 }
 
 /**
- * Read one eye: echo now, messages after the pause. rx is the minus-cylinder form for the engine
- * (T-01-25), null when the eye is blocked; pd null when the PD blocks.
- * @param {'OD'|'OS'} eye
+ * Read both eyes: echo now, messages after the pause. rx is the minus-cylinder form for the
+ * engine (T-01-25), null when the eye is blocked; pd null when the PD blocks; pdSource 'typed',
+ * 'pair', 'binocular' or 'default' (shown in #pd-note).
  */
-export function readRxEye(eye) {
-  if (eye === 'OS') syncMirror();
-  const raw = {};
-  for (const f of FIELDS) raw[f] = input(fieldId(eye, f)).value;
-  const v = validateRxEye(raw);
-  // Bridge until the smart PD UI (02-04 Task 2): PD resolved over both fields.
+export function readRx() {
+  syncMirror();
   const pd = resolvePd({ od: input('rx-od-pd').value, os: input('rx-os-pd').value });
-  v.fields.pd = pd.messages[eye.toLowerCase()];
-  v.pd = pd[eye].value;
-  v.blocked.pd = pd.blocked[eye];
-  echo(fieldId(eye, 'sph'), parseDiopter, fmtDiopter);
-  echo(fieldId(eye, 'cyl'), parseDiopter, fmtDiopter);
-  echo(fieldId(eye, 'axis'), parseAxis, fmtAxis);
-  echo(fieldId(eye, 'pd'), parseMm, fmtMm);
-  showForms(eye, v.typed);
-  for (const f of FIELDS) wantMessage(eye, f, v.fields[f]);
-  return {
-    rx: v.rx,
-    pd: v.pd,
-    blocked: v.blocked.rx || v.blocked.pd,
-    sphEmpty: raw.sph.trim() === '',
-    ...eyeStatus(eye),
-  };
+  pdBlockedBy = pd.blockedBy;
+  const out = {};
+  for (const eye of EYES) {
+    const raw = {};
+    for (const f of RX_FIELDS) raw[f] = input(fieldId(eye, f)).value;
+    const v = validateRxEye(raw);
+    echo(fieldId(eye, 'sph'), parseDiopter, fmtDiopter);
+    echo(fieldId(eye, 'cyl'), parseDiopter, fmtDiopter);
+    echo(fieldId(eye, 'axis'), parseAxis, fmtAxis);
+    echoPd(eye, pd);
+    showForms(eye, v.typed);
+    const shown = () => onShown(eye);
+    for (const f of RX_FIELDS) showFieldMessage(fieldId(eye, f), v.fields[f], { shown });
+    out[eye] = { v, raw };
+  }
+  // PD messages after both eyes: a PD message may block either eye, so both cards repaint.
+  for (const eye of EYES) {
+    const blocks = pd.blockedBy.OD === eye.toLowerCase() || pd.blockedBy.OS === eye.toLowerCase();
+    showFieldMessage(fieldId(eye, 'pd'), pd.messages[eye.toLowerCase()], {
+      kind: 'mm',
+      blocks,
+      shown: () => EYES.forEach((e) => onShown(e)),
+    });
+  }
+  const result = {};
+  for (const eye of EYES) {
+    const { v, raw } = out[eye];
+    result[eye] = {
+      rx: v.rx,
+      pd: pd[eye].value,
+      pdSource: pd[eye].source,
+      blocked: v.blocked.rx || pd.blocked[eye],
+      sphEmpty: raw.sph.trim() === '',
+      ...eyeStatus(eye),
+    };
+  }
+  return result;
 }
 
 /**
@@ -296,12 +347,7 @@ export function readRxEye(eye) {
  */
 export function initRxInput({ onInput, onMessageShown }) {
   onShown = onMessageShown;
-  for (const eye of EYES) {
-    for (const f of FIELDS) {
-      const id = fieldId(eye, f);
-      input(id).addEventListener('blur', () => stateOf(id).deb.flush());
-    }
-  }
+  for (const eye of EYES) for (const f of FIELDS) flushOnBlur(fieldId(eye, f));
   for (const b of document.querySelectorAll('button.sign[data-for]')) {
     b.addEventListener('click', () => flipSign(input(b.dataset.for)));
   }

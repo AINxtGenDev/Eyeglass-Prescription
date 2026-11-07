@@ -338,8 +338,142 @@ legend {
   font-weight: 600;
 }
 
-#frame-hint {
+/* 02-04 frame section (UI-SPEC "Frame section"): container queries decide the card and field rows. */
+#frame-section {
+  container: frame / inline-size;
+}
+
+.term {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.field .term label {
+  display: inline;
+}
+
+.field-hint {
+  margin: 0;
   color: var(--muted);
+  font-size: 0.875rem;
+}
+
+#frame-stamp {
+  max-width: 16rem;
+}
+
+#frame-stamp-figure {
+  margin: var(--space-2) 0 0;
+  max-width: 30rem;
+}
+
+#frame-stamp-figure svg {
+  display: block;
+  height: auto;
+}
+
+#frame-stamp-figure figcaption {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+#frame-shape {
+  margin-inline: 0;
+  padding: var(--space-2);
+}
+
+.shape-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+@container frame (width >= 440px) {
+  .shape-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.radio-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.radio-card-name {
+  font-weight: 600;
+}
+
+/* The native radio covers the whole card, transparent: the card is one hit target and the radio
+   keeps its native keyboard and screen-reader behaviour. */
+.radio-card input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Selected: 3 px accent border + tint + check icon; border width and icon carry the state. */
+.radio-card:has(:checked) {
+  padding: calc(var(--space-2) - 2px);
+  border: 3px solid var(--accent);
+  background: var(--accent-tint);
+}
+
+.radio-card .icon {
+  position: absolute;
+  top: var(--space-1);
+  inset-inline-end: var(--space-1);
+  margin: 0;
+  visibility: hidden;
+}
+
+.radio-card:has(:checked) .icon {
+  visibility: visible;
+}
+
+.radio-card:has(:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.frame-dims {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@container frame (width >= 400px) {
+  .frame-dims {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+#frame-section output:empty {
+  display: none;
+}
+
+/* The stamp and B echoes are sentences: they wrap (the number chips stay on one line). */
+#frame-section #frame-stamp-echo,
+#frame-section #frame-b-echo {
+  white-space: normal;
+}
+
+#pd-note,
+#b-note {
+  font-size: 1rem;
 }
 
 /* 02-03 Rx table (UI-SPEC "Rx table"): a real table from 560 px container width, one card per eye
@@ -411,7 +545,8 @@ form#rx {
 }
 
 /* Echo chip: the parsed value, large and readable (D-01). Hidden while empty. */
-.rx-table output {
+.rx-table output,
+#frame-section output {
   display: inline-block;
   margin-top: var(--space-1);
   padding: var(--space-1) var(--space-2);

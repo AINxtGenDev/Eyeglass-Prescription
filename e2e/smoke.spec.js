@@ -92,7 +92,7 @@ test('frame shape and PD change the edge', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-6,00');
   await page.locator('#rx-os-sph').fill('-6,00');
   await settled(page);
-  await expect(page.locator('#frame-shape')).toHaveValue('rechteckig');
+  await expect(page.locator('input[name=frame-shape][value=rechteckig]')).toBeChecked();
   await expect(page.locator('#frame-a')).toHaveValue('52');
   await expect(page.locator('#rx-od-pd')).toHaveValue('32');
   // 02-01 lay words: −6,00 / −0,50 × 180 (example cylinder kept), PD 32 → 8,0 mm 'außen oben'.
@@ -106,7 +106,7 @@ test('frame shape and PD change the edge', async ({ page }) => {
   await settled(page);
   await expect(page.locator('#result-od-dec')).toHaveText(/^7,0\smm$/);
   expect(await thickOf(page, 'od')).toBeGreaterThan(before);
-  await page.locator('#frame-shape').selectOption('pilot');
+  await page.locator('input[name=frame-shape][value=pilot]').check();
   await settled(page);
   await expect(page.locator('#frame-a')).toHaveValue('58');
   await expect(page.locator('#frame-b')).toHaveValue('50');
@@ -161,7 +161,7 @@ test('cylinder without axis', async ({ page }) => {
 
 /** Fill the frame fieldset (shape first: it pre-fills A/B/DBL). */
 async function setFrame(page, shape, A, B, DBL) {
-  await page.locator('#frame-shape').selectOption(shape);
+  await page.locator(`input[name=frame-shape][value=${shape}]`).check();
   await page.locator('#frame-a').fill(String(A));
   await page.locator('#frame-b').fill(String(B));
   await page.locator('#frame-dbl').fill(String(DBL));

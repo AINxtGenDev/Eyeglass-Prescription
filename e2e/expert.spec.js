@@ -88,7 +88,7 @@ test('plus lens: thickest in the middle (optischer Mittelpunkt), Dickster Rand 2
 test('uniform edge keeps "am ganzen Rand" with the Expert suffix', async ({ page }) => {
   // rund 50/50/18, PD 34, −3,00 both eyes: etMax = etMin = 3,692 mm (02-01 uniform-edge setup)
   await page.locator('#example-clear').click();
-  await page.locator('#frame-shape').selectOption('rund');
+  await page.locator('input[name=frame-shape][value=rund]').check();
   await page.locator('#frame-a').fill('50');
   await page.locator('#frame-b').fill('50');
   await page.locator('#frame-dbl').fill('18');

@@ -5,7 +5,6 @@ import { createFrameScheduler } from '../state/frame-scheduler.js';
 import { createComputeClient, TAIL_PCT } from '../state/compute-client.js';
 import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR } from '../state/bench-cases.js';
 import { MATERIALS } from '../engine/materials.js';
-import { SHAPES } from '../engine/frame/shapes.js';
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtMs } from '../i18n/format.js';
 import { $, setText, applyDictionary } from './dom.js';
@@ -16,10 +15,13 @@ import {
   renderResult,
   renderFailed,
   renderLrCallout,
+  renderPdNote,
+  renderBNote,
   setStale,
   repaintFromLast,
 } from './results.js';
-import { initRxInput, readRxEye, readMmField, eyeStatus, fmtForm } from './rx-input.js';
+import { initRxInput, readRx, eyeStatus, fmtForm } from './rx-input.js';
+import { initFrameInput, readFrame, frameStatus } from './frame-input.js';
 import { initToggletips } from './toggletip.js';
 import { initExpert } from './expert.js';
 import { initSummaryBar } from './summary-bar.js';
@@ -28,8 +30,8 @@ const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
 
 // Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material select since
-// 01-06; frame shape/size and PD per eye since 01-07. Fitting height is supported by the engine but omitted here (D-04).
-const DEFAULT_SHAPE = 'rechteckig';
+// 01-06; frame shape/size and PD per eye since 01-07 (frame section and smart PD since 02-04, in
+// frame-input.js and rx-input.js). Fitting height is supported by the engine but omitted here (D-04).
 const DEFAULT_MATERIAL = 'cr39';
 // Example at load (UI-SPEC "Preset data", D-26): a moderate myope with a small cylinder.
 const EXAMPLE = {
@@ -78,34 +80,6 @@ function renderMaterialLine(eye, materialId) {
       abbe: abbeNf.format(m.ve),
     }),
   );
-}
-
-const shapeSelect = () => /** @type {HTMLSelectElement} */ ($('frame-shape'));
-
-/** Options from SHAPES ids only; labels from the dictionary. */
-function buildShapeOptions() {
-  const select = shapeSelect();
-  for (const id of Object.keys(SHAPES)) {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = t('frame.shape.' + id);
-    select.append(opt);
-  }
-  select.value = DEFAULT_SHAPE;
-}
-
-/** Selected id, guarded to a SHAPES key. */
-function currentShape() {
-  const id = shapeSelect().value;
-  return Object.hasOwn(SHAPES, id) ? id : DEFAULT_SHAPE;
-}
-
-/** Pre-fill A/B/DBL with the shape's typical values (editable afterwards). */
-function prefillFrame(shape) {
-  const d = SHAPES[shape].defaults;
-  for (const [k, v] of [['a', d.A], ['b', d.B], ['dbl', d.DBL]]) {
-    /** @type {HTMLInputElement} */ ($(`frame-${k}`)).value = String(v);
-  }
 }
 
 // Settled signal (01-15): #result[data-pending] is a space-separated token set, '' when nothing
@@ -328,6 +302,18 @@ let requested = { OD: null, OS: null };
 
 /** The last Rx read per eye, for repainting a not-ready card when its field message appears. */
 const lastRead = { OD: null, OS: null };
+/** The last frame read (blocked state of the frame fields, which block both eyes). */
+let lastFrame = null;
+
+/**
+ * Not-ready status of an eye: its own Rx/PD fields first; when they do not block, a blocking
+ * frame field blocks it (both cards point to the frame field).
+ */
+function notReadyStatus(eye) {
+  const read = { ...lastRead[eye], ...eyeStatus(eye) };
+  if (read.blocked || !lastFrame?.blocked) return read;
+  return { ...read, blocked: true, ...frameStatus() };
+}
 
 /**
  * Card of an eye that is not computed: empty state (no Sph), "Eingabe unvollständig …" while the
@@ -336,7 +322,7 @@ const lastRead = { OD: null, OS: null };
  */
 function paintNotReady(eye, read) {
   if (read.sphEmpty) renderEmpty(eye, t('result.inputMissing'), true);
-  else if (!read.blocked) renderEmpty(eye, t('result.inputInvalid'));
+  else if (!read.blocked || read.firstBlockedFieldId === null) renderEmpty(eye, t('result.inputInvalid'));
   else if (read.pendingMessage) renderEmpty(eye, t('result.incomplete'));
   else renderBlocked(eye, read.firstBlockedFieldId);
 }
@@ -344,26 +330,29 @@ function paintNotReady(eye, read) {
 /** A field message appeared after the pause or on blur: repaint that eye's card if it is not computed. */
 function onMessageShown(eye) {
   if (requested[eye] !== null || lastRead[eye] === null) return;
-  paintNotReady(eye, { ...lastRead[eye], ...eyeStatus(eye) });
+  paintNotReady(eye, notReadyStatus(eye));
 }
 
 function update(inputTs) {
-  const read = { OD: readRxEye('OD'), OS: readRxEye('OS') };
-  const dims = { A: readMmField('frame-a'), B: readMmField('frame-b'), DBL: readMmField('frame-dbl') };
-  const frameOk = dims.A !== null && dims.B !== null && dims.DBL !== null;
-  const frame = frameOk ? { shape: currentShape(), A: dims.A, B: dims.B, DBL: dims.DBL } : null;
+  const read = readRx();
+  const fr = readFrame();
+  lastFrame = fr;
   const materialId = currentMaterialId();
   for (const eye of EYES) renderMaterialLine(eye, materialId);
-  const ready = (eye) => frameOk && read[eye].rx !== null && read[eye].pd !== null;
+  const ready = (eye) => fr.frame !== null && read[eye].rx !== null && read[eye].pd !== null;
   const specs = { OD: null, OS: null };
   for (const eye of EYES) {
     lastRead[eye] = read[eye];
     if (ready(eye)) {
-      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, frame);
+      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, fr.frame);
       continue;
     }
-    paintNotReady(eye, read[eye]);
+    paintNotReady(eye, notReadyStatus(eye));
   }
+  // Assumed inputs are stated next to the result (D-06, lens-critic MINOR-6): only for eyes that
+  // are computed with them.
+  renderPdNote(EYES.filter((eye) => specs[eye] !== null && read[eye].pdSource === 'default'));
+  renderBNote(fr.frame !== null && fr.bEstimated && EYES.some((eye) => specs[eye] !== null) ? fr.B : null);
   requested = specs;
   client.request(specs, inputTs);
 }
@@ -531,14 +520,8 @@ function init() {
   setComputeMode('worker', 'tech.mode.worker');
   buildMaterialOptions();
   materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));
-  buildShapeOptions();
-  prefillFrame(DEFAULT_SHAPE);
-  shapeSelect().addEventListener('change', (e) => {
-    prefillFrame(currentShape());
-    schedule(e.timeStamp);
-  });
+  initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });
   const onInput = (e) => schedule(e.timeStamp);
-  for (const k of ['a', 'b', 'dbl']) $(`frame-${k}`).addEventListener('input', onInput);
   initExample(onInput);
   initRxInput({ onInput, onMessageShown });
   const tech = /** @type {HTMLDetailsElement} */ ($('tech'));
