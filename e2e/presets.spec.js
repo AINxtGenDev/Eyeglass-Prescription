@@ -190,11 +190,8 @@ test.describe('own values: inline confirm', () => {
 
   test('"Eigene Werte eingeben" (empty fields) applies without a question', async ({ page }) => {
     await page.locator('#example-clear').click();
-    // 02-14: the chips are below the Rx table now. The emptied R Sph shows its due message on blur
-    // (or after the 600 ms pause); let it appear first, as it would before a person's next click,
-    // so the click does not race the message pushing the chip down (finding in 02-14-SUMMARY).
-    await page.locator('#rx-od-sph').blur();
-    await expect(page.locator('#rx-od-sph-err')).toBeVisible();
+    // 02-18 (M3): no wait for a message before the click. The untouched empty R Sph shows none,
+    // and a due message waits for the click (rx-input.js afterGesture).
     await chip(page, 'Weitsichtig').click();
     await expect(confirmGroup(page)).toHaveCount(0);
     await settled(page);

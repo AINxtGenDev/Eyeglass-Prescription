@@ -4,7 +4,7 @@
 // 02-04: both PD fields are read together (resolvePd, RX-06): a pair or a binocular PD in one field
 // gives both eyes a value, a question blocks the eye, an empty field uses the stated default.
 // Every visible string comes from t() and is written as text, never as markup (T-02-09).
-import { parseDiopter, parseAxis, STAMP_CODES } from '../state/parse.js';
+import { parseDiopter, parseAxis, STAMP_CODES, PARSE_CODES } from '../state/parse.js';
 import { transpose, RX_CODES } from '../state/transpose.js';
 import { validateRxEye, resolvePd, TIERS, VAL_CODES } from '../state/validate.js';
 import { createDebouncer } from '../state/debounce.js';
@@ -99,6 +99,7 @@ function paintMessage(id, m, { kind, apply }) {
     btn.className = 'apply';
     btn.textContent = t('val.apply', { suggestion: apply });
     btn.addEventListener('click', () => {
+      dirty.add(id);
       el.value = apply;
       el.focus();
       el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -213,6 +214,24 @@ export function eyeStatus(eye) {
   return { firstBlockedFieldId, pendingMessage };
 }
 
+/**
+ * 02-18 (lens-critic M3): Rx fields the user has edited. A typed or pasted input (trusted event),
+ * "±" and "übernehmen" count; values the page writes (the example at load, "Eigene Werte
+ * eingeben", a preset, which dispatches a synthetic input) do not. So no clearDirty is needed: a
+ * page write never marks a field, and it never leaves an emptied Sph behind.
+ */
+const dirty = new Set();
+
+/**
+ * Whether the user has edited this eye's Sph, Zyl or Achse (eye rule, lens-critic m-e: with Zyl or
+ * Achse typed, an empty Sph is a real omission). A mirrored L takes R's state, since it shows R.
+ * @param {'OD'|'OS'} eye
+ */
+function eyeEdited(eye) {
+  const src = eye === 'OS' && sameBox().checked ? 'OD' : eye;
+  return RX_FIELDS.some((f) => dirty.has(fieldId(src, f)));
+}
+
 const sameBox = () => /** @type {HTMLInputElement} */ ($('rx-same'));
 
 /** Copy R Sph/Zyl/Achse into L while "gleich wie rechts" is on. */
@@ -246,6 +265,7 @@ function setMirror(on) {
 /** "±": flip the sign of the parsed value, or insert "−" into an empty field (RESEARCH Pitfall 3). */
 function flipSign(el) {
   if (el.readOnly) return;
+  dirty.add(el.id);
   const raw = el.value;
   if (raw.trim() === '') el.value = '−';
   else {
@@ -318,7 +338,14 @@ export function readRx() {
     echoPd(eye, pd);
     showForms(eye, v.typed);
     const shown = () => onShown(eye);
-    for (const f of RX_FIELDS) showFieldMessage(fieldId(eye, f), v.fields[f], { shown });
+    // M3: "Bitte einen Wert eingeben." only once the user has edited this eye. Only the message is
+    // held back: v.blocked.rx and sphEmpty are computed from the text, so the eye is still not
+    // computed and the card shows its empty state (paintNotReady checks sphEmpty first).
+    const edited = eyeEdited(eye);
+    for (const f of RX_FIELDS) {
+      const m = v.fields[f];
+      showFieldMessage(fieldId(eye, f), m?.code === PARSE_CODES.PARSE_EMPTY && !edited ? null : m, { shown });
+    }
     out[eye] = { v, raw };
   }
   // PD messages after both eyes: a PD message may block either eye, so both cards repaint.
@@ -353,6 +380,14 @@ export function readRx() {
 export function initRxInput({ onInput, onMessageShown }) {
   onShown = onMessageShown;
   for (const eye of EYES) for (const f of FIELDS) flushOnBlur(fieldId(eye, f));
+  for (const eye of EYES) {
+    for (const f of FIELDS) {
+      const id = fieldId(eye, f);
+      input(id).addEventListener('input', (e) => {
+        if (e.isTrusted) dirty.add(id);
+      });
+    }
+  }
   for (const b of document.querySelectorAll('button.sign[data-for]')) {
     b.addEventListener('click', () => flipSign(input(b.dataset.for)));
   }
