@@ -210,7 +210,7 @@ Plans:
 
 **Wave 21** *(blocked on Wave 20 completion)*
 
-- [ ] 02-21-PLAN.md — Post-gap gate, 24-row trace with value-asserting tests, finding crosswalk, hand-off to lens-critic re-review and 02-15 Tasks 2–3
+- [x] 02-21-PLAN.md — Post-gap gate, 24-row trace with value-asserting tests, finding crosswalk, hand-off to lens-critic re-review and 02-15 Tasks 2–3
 
 **UI hint**: yes
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 19/21 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 20/21 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
