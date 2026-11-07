@@ -39,7 +39,7 @@
 - [x] **MAT-03**: Expert user can override base curve manually (0,00…+10,00 dpt).
 - [x] **MAT-04**: Minimum centre and edge thickness default to sourced per-material values and are adjustable in Expert view; the result shows which constraint is binding.
 - [x] **MAT-05**: Expert user can switch the front surface between spherical and aspheric (conic constant k, with a documented default); aspheric is labelled as a generic model, not a specific manufacturer design.
-- [ ] **MAT-06**: Expert user can enter a custom material (refractive index plus density, optionally Abbe number) instead of a listed one; the result is labelled as based on user-supplied values, not a sourced material.
+- [x] **MAT-06**: Expert user can enter a custom material (refractive index plus density, optionally Abbe number) instead of a listed one; the result is labelled as based on user-supplied values, not a sourced material.
 
 ### Optics Engine (ENG)
 
@@ -168,7 +168,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MAT-03 | Phase 2 | Complete |
 | MAT-04 | Phase 2 | Complete |
 | MAT-05 | Phase 2 | Complete |
-| MAT-06 | Phase 2 | Pending |
+| MAT-06 | Phase 2 | Complete |
 | ENG-01 | Phase 1 | Complete |
 | ENG-02 | Phase 1 | Complete |
 | ENG-03 | Phase 1 | Complete |

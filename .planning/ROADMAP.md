@@ -174,7 +174,7 @@ Plans:
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 02-12-PLAN.md — Expert: user-supplied material, labelled, excluded from comparison rows (MAT-06)
+- [x] 02-12-PLAN.md — Expert: user-supplied material, labelled, excluded from comparison rows (MAT-06)
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 11/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 12/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

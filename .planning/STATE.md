@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-11-PLAN.md
-last_updated: "2026-11-07T15:09:09.851Z"
+stopped_at: Completed 02-12-PLAN.md
+last_updated: "2026-11-07T15:33:31.354Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 26
+  completed_plans: 27
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 12 of 15
+Plan: 13 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -76,6 +76,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P09 | 40 min | 4 tasks | 14 files |
 | Phase 02 P10 | 22min | 2 tasks | 18 files |
 | Phase 02 P11 | 35min | 2 tasks | 24 files |
+| Phase 02 P12 | 50min | 2 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-10: MANUAL_BACK_CONVEX is the only warning that shows its suggestion (results.js WARN_SUGGEST)
 - [Phase 02]: 02-11: automatic base curve stays chosen at k = 0; an aspheric front only raises D1 minimally (D1min(ct)) to keep the back non-convex
 - [Phase 02]: 02-11: rim depth is display-only (edgeBeyondRim on painted metrics), never in the LensSpec; empty field = 3,0 mm assumed, invalid = no line
+- [Phase 02]: 02-12: with Eigenes Material its own minimum fields replace the Glas-Einstellungen minimums (hidden); empty custom minimum = nearest listed material prefill; switch back on never re-selects custom
 
 ### Pending Todos
 
@@ -172,6 +174,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T15:09:09.846Z
-Stopped at: Completed 02-11-PLAN.md
+Last session: 2026-11-07T15:33:31.349Z
+Stopped at: Completed 02-12-PLAN.md
 Resume file: None
