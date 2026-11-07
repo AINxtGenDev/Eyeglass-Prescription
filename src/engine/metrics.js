@@ -1,8 +1,8 @@
 // ENG-06 metrics. Lens-local (boxing-centre) coordinates; surfaces are OC-relative internally.
 
-import { frontSagAt, backSagAt } from "./design.js";
-import { locationLabel, nasalSign } from "./conventions.js";
-import { GL24 } from "./quadrature.js";
+import { frontSagAt, backSagAt } from './design.js';
+import { locationLabel, nasalSign } from './conventions.js';
+import { GL24 } from './quadrature.js';
 
 const N_ANGLES = 128;
 
@@ -31,7 +31,7 @@ export function farthestIndexFromOC(outline, oc) {
     const dx = outline[i] - oc.x;
     const dy = outline[i + 1] - oc.y;
     const r2 = dx * dx + dy * dy;
-    if (r2 > m2) ((m2 = r2), (iMax = i / 2));
+    if (r2 > m2) (m2 = r2), (iMax = i / 2);
   }
   return iMax;
 }
@@ -143,25 +143,14 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
     // The reported index is chosen separately: ties within TIE_TOL_MM (mirrored points (x, ±y))
     // go to the larger y, so OD and OS pick the same location label although the OS outline runs
     // through the points in mirrored order, and Achse 0 and 180 pick the same corner.
-    if (
-      t > tSelMax + TIE_TOL_MM ||
-      (Math.abs(t - tSelMax) <= TIE_TOL_MM && y > outline[2 * iMax + 1])
-    )
-      ((tSelMax = t), (iMax = i));
-    if (
-      t < tSelMin - TIE_TOL_MM ||
-      (Math.abs(t - tSelMin) <= TIE_TOL_MM && y > outline[2 * iMin + 1])
-    )
-      ((tSelMin = t), (iMin = i));
+    if (t > tSelMax + TIE_TOL_MM || (Math.abs(t - tSelMax) <= TIE_TOL_MM && y > outline[2 * iMax + 1]))
+      (tSelMax = t), (iMax = i);
+    if (t < tSelMin - TIE_TOL_MM || (Math.abs(t - tSelMin) <= TIE_TOL_MM && y > outline[2 * iMin + 1]))
+      (tSelMin = t), (iMin = i);
     if (sF > fMax) fMax = sF;
     if (sF < fMin) fMin = sF;
   }
-  const {
-    nasal: iN,
-    temporal: iT,
-    superior: iS,
-    inferior: iI,
-  } = extremeIndices(outline, eye);
+  const { nasal: iN, temporal: iT, superior: iS, inferior: iI } = extremeIndices(outline, eye);
   const at = (i) => thicknessAt(s, outline[2 * i], outline[2 * i + 1]);
 
   // Polar quadrature about the boxing centre: 128 uniform angles × GL24 radial nodes.
@@ -185,12 +174,7 @@ export function computeMetrics({ surfaces, outline, density, eye }) {
     // value = exact max/min; the selected point's own thickness differs by at most TIE_TOL_MM.
     etMax: point(outline, iMax, tMax, eye),
     etMin: point(outline, iMin, tMin, eye),
-    etAt: {
-      nasal: at(iN),
-      temporal: at(iT),
-      superior: at(iS),
-      inferior: at(iI),
-    },
+    etAt: { nasal: at(iN), temporal: at(iT), superior: at(iS), inferior: at(iI) },
     volumeMm3: volume,
     weightG: (volume / 1000) * density,
     frontProtrusion: { max: fMax, min: fMin },
