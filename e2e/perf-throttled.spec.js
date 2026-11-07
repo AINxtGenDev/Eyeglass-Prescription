@@ -20,7 +20,7 @@ import { test, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { settled, etmaxOf } from './helpers.js';
+import { settled, settledCompare, etmaxOf } from './helpers.js';
 /* global document -- page.evaluate bodies run in the browser */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -93,6 +93,7 @@ const INPUT_RE =
 const RESULT_RE =
   /letzte (\d+) Ergebnisse\): Median ([\d,]+)\sms, längste ([\d,]+)\sms; Darstellung des Ergebnisses längstens ([\d,]+)\sms; davon Rechnen: Median ([\d,]+)\sms/;
 const BUSY_RE = /angezeigt seit dem Laden: ([\d.\s]+)-mal; längste Wartezeit auf ein Ergebnis: (?:([\d,]+)\sms|–)/;
+const COMPARE_RE = /\(letzte (\d+)\): Median ([\d,]+)\sms, längste ([\d,]+)\sms/;
 const EVENT_RE = /\(Event Timing, letzte (\d+)\): ([\d,]+)\sms/;
 const READOUT_IDS = { normal: 'timing', frameMiss: 'timing-frame', grenzfall: 'timing-worst', rescan: 'timing-rescan' };
 
@@ -121,6 +122,14 @@ async function readBusy(page) {
   const m = text.match(BUSY_RE);
   expect(m, text).not.toBeNull();
   return { count: num(m[1]), longest: m[2] ? num(m[2]) : null };
+}
+
+/** 02-07: the compare paint frame incl. paint (#timing-compare), measured on the main thread. */
+async function readCompare(page) {
+  const text = await textOf(page, 'timing-compare');
+  const m = text.match(COMPARE_RE);
+  expect(m, text).not.toBeNull();
+  return { measured: true, n: Number(m[1]), med: num(m[2]), max: num(m[3]) };
 }
 
 async function readEvent(page) {
@@ -217,6 +226,9 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     await typePair(page, CASE_A);
     const discA = await discriminator(page, ['-4,25', '-4,00']);
     row.caseA = { discriminator: discA, ...(await editRun(page, ['-4,25', '-4,00'])) };
+    // 02-07: the comparison lane ran behind every edit; its paint frames share the main thread.
+    await settledCompare(page, { timeout: 60_000 });
+    row.caseA.compareFrame = await readCompare(page);
 
     // (iii) case B: the Grenzfall typed (FH null), OD Sph +11,00 / +10,75
     await typePair(page, CASE_B);
@@ -256,7 +268,9 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     row.extreme.eventAfterBench = await readEvent(page);
 
     // Verdict (MINOR-10): (a)/(b) measured on the main thread; (c)/(d) estimated.
-    const mains = [row.caseA, row.caseB].flatMap((c) => [c.input.mainMax, c.result.renderMax]).concat([ext.mainMax, ext.renderMax]);
+    const mains = [row.caseA, row.caseB]
+      .flatMap((c) => [c.input.mainMax, c.result.renderMax])
+      .concat([ext.mainMax, ext.renderMax, row.caseA.compareFrame.max]);
     const reacts = [row.caseA.input.reactMax, row.caseB.input.reactMax, ext.reactMax];
     const overhead = row.caseA.result.max - row.caseA.result.computeMed;
     const estimateC = overhead + COMPUTE14_P95[rate].normal;

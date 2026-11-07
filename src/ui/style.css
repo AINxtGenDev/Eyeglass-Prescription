@@ -1026,3 +1026,175 @@ td:has(.msg-out) input[aria-invalid='true'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* 02-07 material comparison (UI-SPEC "Comparison #compare"): a container; real tables from a
+   480 px container, stacked rows with visible cell labels below. */
+#compare {
+  container: cmp / inline-size;
+}
+
+/* One line reserved, so "Vergleich rechnet …" never moves the table. */
+.calc-status.cmp-status {
+  min-height: 1.5em;
+  min-height: 1lh;
+}
+
+.cmp-table td,
+.cmp-table th {
+  padding: var(--space-2);
+  text-align: start;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-table thead th {
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-block-end: 1px solid var(--line);
+}
+
+.cmp-table tbody th {
+  font-weight: 600;
+}
+
+.cmp-table tbody tr + tr > * {
+  border-block-start: 1px solid var(--line);
+}
+
+.cmp-loc,
+.cmp-pct {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.cmp-text {
+  font-weight: 600;
+}
+
+.cmp-tag {
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--fg);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.cmp-tag[hidden] {
+  display: none;
+}
+
+/* Selected row: tint + 4 px accent bar; the "Ihre Auswahl" tag carries the meaning in text. */
+.cmp-table tr[data-selected] > * {
+  background: var(--accent-tint);
+}
+
+.cmp-table tr[data-selected] > :first-child {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+/* Same mark as [data-stale] (text decoration only): values of the previous input. */
+[data-cmp-stale] {
+  text-decoration: underline dotted;
+}
+
+#cmp-material-eyes summary {
+  min-height: 44px;
+}
+
+#cmp-assumed-note,
+#cmp-footnote {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+@container cmp (width < 480px) {
+  .cmp-table,
+  .cmp-table tbody,
+  .cmp-table tr,
+  .cmp-table th,
+  .cmp-table td {
+    display: block;
+  }
+
+  .cmp-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .cmp-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-block-end: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .cmp-table tbody tr + tr > * {
+    border-block-start: 0;
+  }
+
+  .cmp-table td,
+  .cmp-table th {
+    padding: 0;
+    min-width: 0;
+    border: 0;
+  }
+
+  /* First line: material + tag; second line: the difference sentence; then the values. */
+  .cmp-table th[data-col='material'],
+  .cmp-table td[data-col='diff'] {
+    grid-column: 1 / -1;
+  }
+
+  #cmp-material-table td[data-col='diff'] {
+    order: -1;
+    grid-row: 2;
+  }
+
+  .cmp-table td[data-col='diff'] .cell-label {
+    display: none;
+  }
+
+  .cmp-table tr[data-selected] {
+    background: var(--accent-tint);
+    border-inline-start: 4px solid var(--accent);
+  }
+
+  .cmp-table tr[data-selected] > * {
+    background: none;
+  }
+
+  .cmp-table tr[data-selected] > :first-child {
+    box-shadow: none;
+  }
+
+  .cmp-table .cell-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    display: block;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .cmp-eyes-table tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cmp-eyes-table td[data-col='eye'] .cell-label {
+    display: none;
+  }
+}

@@ -15,6 +15,7 @@ import {
 import { initRxInput, readRx, eyeStatus } from './rx-input.js';
 import { initFrameInput, readFrame, frameStatus } from './frame-input.js';
 import { initMaterialInput, currentMaterialId, renderMaterialLine } from './material-input.js';
+import { initCompareView } from './compare-view.js';
 import { initToggletips } from './toggletip.js';
 import { initExpert } from './expert.js';
 import { initSummaryBar } from './summary-bar.js';
@@ -32,6 +33,7 @@ import {
   onBench,
   runBench,
   timeResultFrame,
+  timeCompareFrame,
   timings,
   pushTiming,
   writeBusyTiming,
@@ -155,7 +157,13 @@ function init() {
   // Short disclaimer under the cards → the full Hinweis below (UI-SPEC "Disclaimer link").
   $('disclaimer-jump').addEventListener('click', () => $('disclaimer').focus());
   initTiming({ update });
-  initPipeline({ onBench, onPainted: timeResultFrame, onCompute: (ms) => pushTiming(timings.compute, ms) });
+  initCompareView();
+  initPipeline({
+    onBench,
+    onPainted: timeResultFrame,
+    onCompute: (ms) => pushTiming(timings.compute, ms),
+    onComparePainted: timeCompareFrame,
+  });
   setComputeMode('worker', 'tech.mode.worker');
   initMaterialInput({ schedule });
   initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });

@@ -286,3 +286,28 @@ describe('material cards (02-07)', () => {
     expect(dict['tip.index.text']).toContain('Brechungs­index');
   });
 });
+
+describe('material comparison (02-07)', () => {
+  const ph = (key) => [...dict[key].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  const diffKeys = Object.keys(dict).filter((k) => k.startsWith('cmp.diff.'));
+  test('the four mixed difference sentences have exactly {mm} and {g}', () => {
+    for (const k of ['thinnerLighter', 'thickerHeavier', 'thinnerHeavier', 'thickerLighter']) {
+      expect(ph(`cmp.diff.${k}`), k).toEqual(['g', 'mm']);
+    }
+  });
+  test('every cmp.diff.* uses only {mm} and {g}', () => {
+    expect(diffKeys.length).toBe(9);
+    for (const k of diffKeys) for (const p of ph(k)) expect(['g', 'mm'], k).toContain(p);
+  });
+  test('placeholders of the intro, the percentages and the assumed note', () => {
+    expect(ph('cmp.material.intro')).toEqual(['eye']);
+    expect(ph('cmp.pct')).toEqual(['pct']);
+    expect(ph('cmp.pctThicker')).toEqual(['pct']);
+    expect(ph('cmp.assumedNote')).toEqual(['materials']);
+    expect(ph('tech.timingCompare')).toEqual(['max', 'med', 'n']);
+  });
+  test.each(['ct', 'et'])('has tip.%s', (term) => {
+    expect(dict).toHaveProperty([`tip.${term}.name`]);
+    expect(dict).toHaveProperty([`tip.${term}.text`]);
+  });
+});

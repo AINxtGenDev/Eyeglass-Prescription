@@ -193,6 +193,47 @@ export default Object.freeze({
   'tip.abbe.name': 'Erklärung: Abbe-Zahl',
   'tip.abbe.text': 'Je höher die Abbe-Zahl, desto weniger Farbsäume sieht man am Glasrand.',
 
+  // Material comparison (02-07, RES-02, D-15, UI-SPEC Copywriting "Vergleich"). {mm}/{g} are
+  // fmtMm/fmtGramWhole strings of the absolute displayed differences; the words carry the sign.
+  'cmp.material.title': 'Was bringt ein anderes Material?',
+  'cmp.material.intro':
+    'Gleiches Rezept, gleiche Fassung. Dickste Stelle (Mitte oder Rand): {eye} (das dickere Glas). Gewicht: beide Gläser zusammen.',
+  'cmp.eye.od': 'das rechte Glas',
+  'cmp.eye.os': 'das linke Glas',
+  'cmp.col.material': 'Material',
+  'cmp.col.thick': 'Dickste Stelle',
+  'cmp.col.ct': 'Mitte',
+  'cmp.col.weight': 'Gewicht (beide)',
+  'cmp.col.diff': 'Unterschied zu Ihrer Auswahl',
+  'cmp.eyes.summary': 'Werte je Auge anzeigen',
+  'cmp.eyes.col.eye': 'Auge',
+  'cmp.eyes.col.edge': 'Dickster Rand',
+  'cmp.eyes.col.weight': 'Gewicht',
+  'cmp.selected': 'Ihre Auswahl',
+  'cmp.selectedSr': 'kein Unterschied, das ist Ihre Auswahl',
+  'cmp.diff.thinnerLighter': '{mm} dünner, {g} leichter',
+  'cmp.diff.thickerHeavier': '{mm} dicker, {g} schwerer',
+  'cmp.diff.thinnerHeavier': '{mm} dünner, aber {g} schwerer',
+  'cmp.diff.thickerLighter': '{mm} dicker, aber {g} leichter',
+  'cmp.diff.equal': 'gleich dick, gleich schwer',
+  'cmp.diff.equalThickLighter': 'gleich dick, {g} leichter',
+  'cmp.diff.equalThickHeavier': 'gleich dick, {g} schwerer',
+  'cmp.diff.equalWeightThinner': '{mm} dünner, gleich schwer',
+  'cmp.diff.equalWeightThicker': '{mm} dicker, gleich schwer',
+  'cmp.pct': '(≈ {pct}\u00A0% dünner)',
+  'cmp.pctThicker': '(≈ {pct}\u00A0% dicker)',
+  'cmp.run': 'Vergleich berechnen',
+  'cmp.pending': 'Vergleich rechnet …',
+  // Shown by 02-10 when Expert overrides are active (Research Pitfall 11).
+  'cmp.footnote':
+    'Die anderen Materialien sind mit ihren eigenen Mindestdicken gerechnet; Ihre Basiskurve und Vorderfläche gelten für alle.',
+  'cmp.assumedNote': 'Für {materials} ist die Mindest-Randdicke angenommen (keine Herstellerangabe).',
+  'tip.ct.name': 'Erklärung: Mittendicke',
+  'tip.ct.text': 'Mittendicke: die Dicke des Glases in der Mitte. Bei Plusgläsern ist sie meist die dickste Stelle.',
+  'tip.et.name': 'Erklärung: Randdicke',
+  'tip.et.text':
+    'Randdicke: die Dicke am Rand des Glases. Bei Minusgläsern ist der Rand meist am dicksten, besonders außen.',
+
   'result.title': 'Ergebnis je Glas',
   'result.ct': 'Mittendicke',
   'result.etmin': 'Dünnste Randdicke',
@@ -391,6 +432,8 @@ export default Object.freeze({
   // Main-thread timing (01-15): every frame an input causes, including style, layout and paint.
   'tech.inputRender':
     'Eingabe bis Reaktion (letzte {n} Eingaben): Median {reactMed}, längste {reactMax}; Hauptthread je Eingabe einschließlich Darstellung: Median {mainMed}, längste {mainMax}',
+  // 02-07: the frame that paints the material comparison, on the same main thread (T-02-50).
+  'tech.timingCompare': 'Vergleich-Frame einschließlich Darstellung (letzte {n}): Median {med}, längste {max}',
   'tech.result':
     'Eingabe bis Ergebnis sichtbar (letzte {n} Ergebnisse): Median {med}, längste {max}; Darstellung des Ergebnisses längstens {renderMax}; davon Rechnen: Median {compute}',
   'tech.busy': '„rechnet …“ angezeigt seit dem Laden: {count}-mal; längste Wartezeit auf ein Ergebnis: {longest}',

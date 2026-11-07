@@ -254,7 +254,8 @@
             <button type="button" id="result-od-jump" class="link-button" data-i18n="result.blockedJump" hidden></button>
             <dl id="result-od-grid" class="value-grid">
               <div>
-                <dt data-i18n="result.label.thick"></dt>
+                <dt><span class="term"><span data-i18n="result.label.thick"></span><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-et" data-i18n-aria-label="tip.et.name"></button></span></dt>
                 <dd><span id="result-od-thick" class="num-display"></span>
                   <span id="result-od-thick-loc" class="value-loc"></span></dd>
               </div>
@@ -264,7 +265,8 @@
                   <span id="result-od-etmin-loc" class="value-loc"></span></dd>
               </div>
               <div>
-                <dt data-i18n="result.label.ct"></dt>
+                <dt><span class="term"><span data-i18n="result.label.ct"></span><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-ct" data-i18n-aria-label="tip.ct.name"></button></span></dt>
                 <dd><span id="result-od-ct" class="num-display"></span></dd>
               </div>
               <div>
@@ -272,6 +274,8 @@
                 <dd><span id="result-od-weight" class="num-display"></span></dd>
               </div>
             </dl>
+            <p id="tip-et" class="tip" hidden data-i18n="tip.et.text"></p>
+            <p id="tip-ct" class="tip" hidden data-i18n="tip.ct.text"></p>
           </article>
           <article id="result-os-card" class="result-card" aria-labelledby="result-os-title">
             <h3 id="result-os-title" data-i18n="result.card.os"></h3>
@@ -311,7 +315,46 @@
           <p class="short-disclaimer"><span data-i18n="result.shortDisclaimer"></span>
             <button type="button" id="disclaimer-jump" class="link-button" data-i18n="result.disclaimerJump"></button></p>
         </section>
-        <div id="compare"></div>
+        <div id="compare">
+          <section id="cmp-material" aria-labelledby="cmp-material-title">
+            <h2 id="cmp-material-title" data-i18n="cmp.material.title"></h2>
+            <p id="cmp-material-intro"></p>
+            <p id="cmp-status" class="calc-status cmp-status"></p>
+            <button type="button" id="cmp-run" data-i18n="cmp.run" hidden></button>
+            <table id="cmp-material-table" class="cmp-table">
+              <caption class="visually-hidden" data-i18n="cmp.material.title"></caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="cmp.col.material"></th>
+                  <th scope="col" data-i18n="cmp.col.thick"></th>
+                  <th scope="col" data-i18n="cmp.col.ct"></th>
+                  <th scope="col" data-i18n="cmp.col.weight"></th>
+                  <th scope="col" data-i18n="cmp.col.diff"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <details id="cmp-material-eyes">
+              <summary data-i18n="cmp.eyes.summary"></summary>
+              <table id="cmp-material-eyes-table" class="cmp-table cmp-eyes-table">
+                <caption class="visually-hidden" data-i18n="cmp.eyes.summary"></caption>
+                <thead>
+                  <tr>
+                    <th scope="col" data-i18n="cmp.col.material"></th>
+                    <th scope="col" data-i18n="cmp.eyes.col.eye"></th>
+                    <th scope="col" data-i18n="cmp.col.thick"></th>
+                    <th scope="col" data-i18n="cmp.eyes.col.edge"></th>
+                    <th scope="col" data-i18n="cmp.col.ct"></th>
+                    <th scope="col" data-i18n="cmp.eyes.col.weight"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </details>
+            <p id="cmp-assumed-note" class="small"></p>
+            <p id="cmp-footnote" class="small" hidden></p>
+          </section>
+        </div>
       </div>
 
       <div class="col-full">
@@ -410,6 +453,7 @@
           <p id="timing-rescan"></p>
           <p id="timing-input"></p>
           <p id="timing-result"></p>
+          <p id="timing-compare"></p>
           <p id="timing-busy"></p>
           <p id="timing-event"></p>
           <button type="button" id="timing-rerun" data-i18n="tech.rerun"></button>

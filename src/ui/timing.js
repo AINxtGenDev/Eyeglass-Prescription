@@ -95,6 +95,19 @@ export function timeResultFrame(frameStart, openTs, openCount) {
   }, 0);
 }
 
+/**
+ * Timing of a painted compare frame (02-07, T-02-50): rAF start → after paint, into
+ * timings.compareFrame, shown as #timing-compare. So ENG-09 (a) can be read with the comparison
+ * active: this frame shares the main thread with the input frames.
+ */
+export function timeCompareFrame(frameStart) {
+  setTimeout(() => {
+    pushTiming(timings.compareFrame, performance.now() - frameStart);
+    const c = timings.compareFrame;
+    setText('timing-compare', t('tech.timingCompare', { n: c.length, med: medOf(c), max: maxOf(c) }));
+  }, 0);
+}
+
 const median = (sorted) => {
   const n = sorted.length;
   return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
@@ -108,9 +121,10 @@ const median = (sorted) => {
 // - reaction    = input event timeStamp → after paint of that frame (input to next paint);
 // - resultFrame = result frame (render the delivered result) incl. paint: rAF start → after paint;
 // - result      = earliest open input → result painted, only when no eye is still open;
-// - compute     = the worker's computeMs (information only).
+// - compute     = the worker's computeMs (information only);
+// - compareFrame = compare frame (paint the material table) incl. paint (02-07).
 // event.timeStamp and performance.now() share the same time origin.
-export const timings = { inputFrame: [], reaction: [], resultFrame: [], result: [], compute: [] };
+export const timings = { inputFrame: [], reaction: [], resultFrame: [], result: [], compute: [], compareFrame: [] };
 let longestResult = 0;
 let skipTiming = true; // the init() frame is not an input
 let initInputTs = Infinity;
