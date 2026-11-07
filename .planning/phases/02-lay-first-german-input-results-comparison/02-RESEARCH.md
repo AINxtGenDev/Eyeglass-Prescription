@@ -21,7 +21,7 @@ Performance has plenty of headroom if the comparison is scheduled correctly. Mea
 | One pair, automatic base curve | 1,67 ms | 10,4 ms |
 | All 6 materials × 2 eyes | 9,9 ms | 54,5 ms |
 
-The Pixel's worker bench in 01-11 measured 3,66 ms per normal pair and 17,4 ms per Grenzfall pair. If comparison work is queued as **one material pair per worker job, at lower priority than the main compute, cancelled on every new main request**, the main result waits for at most one small job. That is at most ≈ 17 ms on the phone in the worst case, which keeps ENG-09 (c) ≤ 100 ms intact.
+The Pixel's worker bench in 01-11 (01-11-SUMMARY Task 3 step 6, lines 119–126) measured 2,30 ms per normal pair, 9,95 ms per Grenzfall pair and 25,4 ms per rescan pair. (Correction 2026-11-07, lens-critic M3: an earlier version of this paragraph cited 3,66 / 17,4 ms as the Pixel; those are the 01-11 **desktop** Node bench, 01-11-SUMMARY lines 48–54.) If comparison work is queued as **one material pair per worker job, at lower priority than the main compute, cancelled on every new main request**, the main result waits for at most one job. The worst single job on the phone is a rescan pair, ≈ 25,4 ms; with 01-11's longest (c) of 27,3 ms that is ≈ 53 ms, which keeps ENG-09 (c) ≤ 100 ms intact. ENG-09 (a) is a main-thread budget and is affected only by the compare paint frame, which must be measured.
 
 The highest-risk platform items:
 
@@ -130,7 +130,7 @@ These are explicit proposals. Each one keeps or improves lay usability or correc
 | Decision | Proposed change | Why |
 |---|---|---|
 | D-35 | The automatic base curve for an aspheric front is chosen **on the spherical design** (k = 0). The conic is then applied at that D1. The free "thinnest" search must not run with k ≠ 0. | Measured: with k = −1 the search jumps a +4,00 CR-39 lens to D1 +14,00 with 13,5 mm front sag (see Pitfall 1). That is a model artefact, not a lens anyone makes. |
-| D-35 | Default k = −1 (paraboloid). UI range −5,0…0,0. | US4289387 (Jalie) claims a hyperboloidal front with p between 0 and −4. With p = 1 + k, that is k from −1 to −5. k = −1 is the mildest end of the cited range. |
+| D-35 | Default k = −1 (paraboloid). UI range −5,0…−1,0 (revised 2026-11-07, lens-critic MINOR-2: only the cited range; k = 0 is the 'sphärisch' option). | US4289387 (Jalie) claims a hyperboloidal front with p between 0 and −4. With p = 1 + k, that is k from −1 to −5. k = −1 is the mildest end of the cited range. |
 | D-13 | Rim depth does **not** go into LensSpec in phase 2. Use a pure engine helper `edgeBeyondRim(metrics, rimDepthMm)`: the edge-thickness excess over the rim depth, total front + back. The front/back split needs a bevel-position model, so it moves to phase 3 together with the 3D rim. | Rim depth does not change thickness or weight. Putting it in the spec would change the cache key and force a worker recompute for a number that is one subtraction on engine output. |
 | D-20 | Add `interactive-widget=resizes-content` to the viewport meta, and `scroll-padding-bottom` = bar height. A real-iPhone check is mandatory before the phase is signed off. | Chrome ≥ 108 on Android defaults to `resizes-visual`, so fixed elements "can be obscured by the OSK". `resizes-content` restores the bar above the keyboard on Chrome and Firefox. Safari does not support it. WCAG 2.2 SC 2.4.11 names sticky footers and lists technique C43 (scroll-padding). |
 | D-01 / D-07 | Add a "±" sign button next to Sph, Zyl (and k) on every platform. | The iOS decimal keypad has no minus key (WebKit bug 193825, UIKit limitation). Without the button, an iPhone user cannot type −2,25. |
@@ -303,7 +303,7 @@ src/
 
 **What:** A second request kind in `compute-client.js`, with lower priority than `compute` and higher than `bench`. One material pair (2 `evaluateLens`) per worker job, so a new main request waits for at most one small job. Each compare request carries a `generation` (incremented on every main `request()`). `requestCompare(jobs, generation)` replaces the whole queue. Results from an older generation are dropped. An LRU cache keyed by `JSON.stringify(spec)` (the same key rule as T-01-35) makes repeated material rows free.
 
-**Budget (measured):** Node desktop 1,67 ms per normal pair, 10,4 ms per Grenzfall pair. Pixel worker bench (01-11-SUMMARY:52–54): 3,66 ms normal, 17,4 ms Grenzfall. Worst main-result delay from a compare job in flight is therefore ≈ 17 ms. ENG-09 (c) was measured at 27,3 ms longest on the phone (01-11), so the sum stays far under 100 ms.
+**Budget (measured):** Node desktop today 1,67 ms per normal pair, 10,4 ms per Grenzfall pair. 01-11 desktop Node bench (01-11-SUMMARY:48–54, i7-8809G): 3,66 ms normal, 17,4 ms Grenzfall — desktop, not the phone (corrected 2026-11-07, lens-critic M3; this line previously called them the Pixel). Pixel worker bench (01-11-SUMMARY:119–126): 2,30 ms normal, 9,95 ms Grenzfall, 25,4 ms rescan pair. Worst main-result delay from a compare job in flight on the phone is therefore one rescan pair ≈ 25,4 ms. ENG-09 (c) was measured at 27,3 ms longest on the phone (01-11 run 2), so the sum (≈ 53 ms) stays under 100 ms. The compare paint frame runs on the main thread and is judged against (a) < 16,7 ms in 02-14 and 02-15.
 
 **The selected material row reuses the main result**, never recomputed. Per edit: 5 other materials × 2 eyes + configuration A (2 evaluations when its key changes) = at most 12 extra evaluations.
 
@@ -581,7 +581,7 @@ Local check (`axe.getRules`): `wcag2a` 62 rules, `wcag2aa` 3, `wcag21aa` 3, `wca
 
 1. **Adult PD default (D-06).** ANSUR 2012 (via [Wikipedia "Pupillary distance"](https://en.wikipedia.org/wiki/Pupillary_distance)): female mean 61,7 mm (SD 3,6, n 1986), male 64,0 mm (SD 3,4, n 4082). Dodgson 2004 (SPIE 5291) is quoted secondarily as "near 63 mm" (full text not accessed). → **Keep 64 mm / 32 mm per eye as a design default**, labelled "angenommen". It equals the male mean and is about 0,6 SD above the female mean. Caveat: the sample is the US Army, not DACH. Effect of 1 mm PD error: decentration changes by 1 mm (ENG-05 formula). Confidence MEDIUM.
 
-2. **Aspheric front (MAT-05).** Citable: Jalie US4289387, a hyperboloidal front for reduced thickness; the sag equation `y² = 2000(n′−n)x/F₀ − p·x²`; "p has a value ranging from 0 to −4"; examples +3,00 (front 8,50 → 4,75 D) and −4,00 (5,00 → 1,25 D) ([patents.google.com/patent/US4289387A](https://patents.google.com/patent/US4289387A/en)). US5083859 defines p = 1 − e² and uses back-surface p −1,5 / −0,6 for a −6/−7 atoroidal CR-39 back ([US5083859A](https://patents.google.com/patent/US5083859A/en)). Comparing with the standard conic `y² = 2Rx − (1+k)x²` gives p = 1 + k. That step is my derivation [ASSUMED, standard conic algebra]. → **Default k = −1 (p = 0), range −5…0.** For −1 < k < 0, `baseCurveAuto`'s conic-aware cap only widens, so the spherical D1 always stays in the domain. The optimiser treatment is in Pitfall 1. Confidence MEDIUM. lens-critic must review the "D1 at k = 0" rule.
+2. **Aspheric front (MAT-05).** Citable: Jalie US4289387, a hyperboloidal front for reduced thickness; the sag equation `y² = 2000(n′−n)x/F₀ − p·x²`; "p has a value ranging from 0 to −4"; examples +3,00 (front 8,50 → 4,75 D) and −4,00 (5,00 → 1,25 D) ([patents.google.com/patent/US4289387A](https://patents.google.com/patent/US4289387A/en)). US5083859 defines p = 1 − e² and uses back-surface p −1,5 / −0,6 for a −6/−7 atoroidal CR-39 back ([US5083859A](https://patents.google.com/patent/US5083859A/en)). Comparing with the standard conic `y² = 2Rx − (1+k)x²` gives p = 1 + k. That step is my derivation [ASSUMED, standard conic algebra]. → **Default k = −1 (p = 0), range −5…−1** (revised 2026-11-07, lens-critic MINOR-2: −1 < k < 0 is not covered by the source and is not offered; k = 0 is the sphere). Scope (verified 2026-11-07 on the patent page): the patent makes the **front** hyperboloidal only for plus lenses; for minus lenses it makes the **back** hyperboloidal. The model's front conic on a minus lens is therefore a generic surface, not the patent's design. The automatic D1 stays the k = 0 value unless the thinner CT would make the back convex; then D1 is raised minimally (lens-critic M2, see 02-11). For −1 < k < 0, `baseCurveAuto`'s conic-aware cap only widens, so the spherical D1 always stays in the domain. The optimiser treatment is in Pitfall 1. Confidence MEDIUM. lens-critic must review the "D1 at k = 0" rule.
 
 3. **Custom material ranges (MAT-06).** All are design constants; anchors come from verified data. ne − nd in `materials.js` is 0,001 (CR-39) to 0,007 (1.74); users will often type a nominal or nd value, so the toggletip explains "ne liegt meist 0,001–0,007 über nd". Crown glass reference: nd ≈ 1,523, density 2,54–2,55 g/cm³, Abbe ≈ 56–59 (US4508834 and a slideshare deck; MEDIUM, sources differ on Abbe).
 
@@ -598,14 +598,18 @@ Local check (`axe.getRules`): `wcag2a` 62 rules, `wcag2aa` 3, `wcag21aa` 3, `wca
 
 5. **RES-04 thresholds.** Measured (CR-39, rechteckig 52×38/18, PD 32, spherical):
 
-   | Pair | Δ thickest point | Δ weight |
+   | Pair | Δ thickest point = max(CT, etMax) | Δ weight |
    |---|---|---|
    | −4/−5 | 1,04 mm | 0,85 g |
    | −4/−5,25 | 1,31 mm | 1,06 g |
    | −2/−3 | 0,99 mm | 0,83 g |
-   | +2/+3 | 0,61 mm | 1,59 g |
+   | +1/+2 | 0,97 mm | 1,58 g |
+   | +2/+3 | 0,97 mm | 1,59 g |
+   | +4/+5 | 0,98 mm | 1,63 g |
 
-   → **1,0 mm** fires at about 1 dpt of anisometropia. It is ≈ 3× the ±0,3 mm Zeiss CT tolerance already used for τ, and 10× the 0,1 mm display step. It stays a design constant. **3 g** rarely fires before the mm rule, so keep it as a secondary trigger for plus pairs. Both go into code with this rationale. No medical claim.
+   Correction 2026-11-07 (lens-critic B1): the first version measured the "thickest point" as etMax (thickest edge) and gave +2/+3 0,61 mm. For plus lenses the centre is thicker than any edge (R +3,00: CT 3,902 vs etMax 2,824), so the thickest point is max(CT, etMax); re-measured values above (scratchpad node script, CR-39, rechteckig 52×38/18, spherical, PD 32 / 31,5).
+
+   → **1,0 mm** fires at about 1 dpt of anisometropia, for minus and plus alike. It is ≈ 3× the ±0,3 mm Zeiss CT tolerance already used for τ, and 10× the 0,1 mm display step. It stays a design constant. **3 g**: on the canonical frame a 1 dpt difference moves at most 2 displayed g, and a sweep (sph −8…+5, 1/1,5/2/3 dpt differences) found no pair where the 3 g rule fires while the 1,0 mm rule does not. The earlier "secondary trigger for plus pairs" reasoning came from the etMax metric and is withdrawn; 3 g stays only because D-24 states it, as a guard for large or dense configurations. A PD difference alone can also fire the rule (−4/−4 with PD 29 / 34: Δ 1,2 mm), so the sentence names the cause (Rx, PD or both). No medical claim.
 
 6. **Performance.** See Pattern 1. Measure in the existing perf proxy with the comparison active. Add a Node bench `test/bench/compare.test.js` reporting "6 materials × 2 eyes" for NORMAL and GRENZFALL: 9,9 ms and 54,5 ms on this machine today.
 

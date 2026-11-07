@@ -49,14 +49,14 @@ Task IDs are filled in by the planner. The requirement → test mapping is fixed
 | RX-08 | `<details>` with Add/Prisma/HSA/F/N, "nicht berechnet" | e2e + dict unit | `e2e/rx.spec.js`; `src/i18n/dictionary.test.js` | ✅ extend | ⬜ pending |
 | FRAME-02 | A/B/DBL ranges, rim depth + edge beyond rim | unit + e2e | `npx vitest run src/engine/rim.test.js src/state/validate.test.js` | ❌ W0 | ⬜ pending |
 | FRAME-03 | Stamp variants, B "geschätzt" | unit (property) + e2e | `npx vitest run src/state/parse.test.js` | ✅ extend | ⬜ pending |
-| MAT-03 | baseCurve 0 accepted; manual 0…10; convex-back warning | unit | `npx vitest run src/engine/evaluate.test.js` | ✅ extend | ⬜ pending |
+| MAT-03 | baseCurve 0 accepted; manual 0…10; convex-back warning; steeper base curve clears it | unit | `npx vitest run src/engine/evaluate.test.js` | ✅ extend | ⬜ pending |
 | MAT-04 | Defaults from materials.js, re-fill unless edited, binding constraint text | unit + e2e | `evaluate.test.js`; `e2e/expert.spec.js` | ❌ W0 (e2e) | ⬜ pending |
-| MAT-05 | k = 0 unchanged (golden); auto D1 with k = spherical D1; monotone CT | unit + property | `npx vitest run src/engine/evaluate.test.js src/engine/properties.test.js` | ✅ extend | ⬜ pending |
+| MAT-05 | k = 0 unchanged (golden); auto D1 with k = spherical D1 unless raised minimally to keep max(D2a, D2b) ≤ 0; monotone CT; UI range −5…−1 | unit + property | `npx vitest run src/engine/evaluate.test.js src/engine/properties.test.js` | ✅ extend | ⬜ pending |
 | MAT-06 | customMaterial = cr39 constants → equal metrics; INVALID_SPEC; label | unit + e2e | `evaluate.test.js` | ✅ extend | ⬜ pending |
-| RES-01 | Headline per eye, 0,1 mm / 1 g, "unter 1 g" | unit + e2e | `npx vitest run src/i18n/format.test.js` | ✅ extend | ⬜ pending |
-| RES-02 | 6 rows, selected = main, signed differences, custom excluded | unit + e2e | `npx vitest run src/state/compare.test.js src/state/compute-client.test.js` | ❌ W0 | ⬜ pending |
+| RES-01 | Headline per eye, thickest = max(CT, edge) ('in der Mitte' for plus), 0,1 mm / 1 g, "unter 1 g" | unit + e2e | `npx vitest run src/i18n/format.test.js src/state/compare.test.js`; `e2e/results.spec.js` | ✅ extend | ⬜ pending |
+| RES-02 | 6 rows on max(CT, edge) of one fixed eye, selected = main, signed differences, per-eye 'Dickster Rand', custom excluded | unit + e2e | `npx vitest run src/state/compare.test.js src/state/compute-client.test.js` | ❌ W0 | ⬜ pending |
 | RES-03 | Freeze A, change B, difference row; phone toggle | e2e | `e2e/compare.spec.js` | ❌ W0 | ⬜ pending |
-| RES-04 | Callout at ≥ 1,0 mm or ≥ 3 g | unit | `src/state/compare.test.js` | ❌ W0 | ⬜ pending |
+| RES-04 | Callout at ≥ 1,0 mm or ≥ 3 g on max(CT, edge); cause Rx / PD / both | unit | `src/state/compare.test.js` | ❌ W0 | ⬜ pending |
 | RES-05 | Example banner; preset → inline confirm, Esc | e2e | `e2e/presets.spec.js` | ❌ W0 | ⬜ pending |
 | UX-01 | Every term has tip button + dict key; Enter/Space/Esc | unit + e2e | `dictionary.test.js`; `e2e/a11y.spec.js` | ❌ W0 | ⬜ pending |
 | UX-02 | Expert hidden by default, switch reveals, not persisted | e2e | `e2e/expert.spec.js` | ❌ W0 | ⬜ pending |
@@ -65,7 +65,7 @@ Task IDs are filled in by the planner. The requirement → test mapping is fixed
 | UX-05 | No "Stärke" | unit | `src/i18n/dictionary.test.js` | ✅ | ⬜ pending |
 | ANA-01 | meridianProfile invariants; SVG title/desc + text table; A/B dashed vs solid | unit (property) + e2e | `npx vitest run src/engine/profile.test.js`; `e2e/expert.spec.js` | ❌ W0 | ⬜ pending |
 | ANA-02 | Decentration sign per eye; binding constraint wording | unit + e2e | `evaluate.test.js`; `e2e/expert.spec.js` | ✅ / ❌ | ⬜ pending |
-| ENG-09 (regression) | Main before compare, latest-wins, ≤ 1 compare job ahead | unit + e2e | `compute-client.test.js`; `e2e/worker.spec.js` | ✅ extend | ⬜ pending |
+| ENG-09 (regression) | Main before compare, latest-wins, ≤ 1 compare job ahead; proxy finding for any input/compare frame ≥ 16,7 ms (02-14); phone (a)/(c) fail → ENG-09 back to Pending (02-15) | unit + e2e | `compute-client.test.js`; `e2e/worker.spec.js` | ✅ extend | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

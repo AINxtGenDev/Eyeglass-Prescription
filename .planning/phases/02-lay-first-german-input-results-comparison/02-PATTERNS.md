@@ -97,7 +97,7 @@ const optPositive = (v) => v == null || (fin(v) && v > 0);
 ```
 - MAT-03: add `const optNonNeg = (v) => v == null || (fin(v) && v >= 0);` and use it for `baseCurve` only. `minCT`/`minET` stay `optPositive`.
 - MAT-06: replace the `material` check with `spec.materialId === 'custom' ? customInvalid(spec.customMaterial) : !Object.hasOwn(MATERIALS, …)`. A custom material also requires non-null `minCT`/`minET`, because the engine does not invent defaults.
-- MAT-05: `frontConic` must be null or finite and ≤ 0. The k range is −5…0, but the engine guards only that the value is finite and the UI enforces the range.
+- MAT-05: `frontConic` must be null or finite and ≤ 0. The UI range is −5…−1 (cited; revised 2026-11-07), but the engine guards only that the value is finite and ≤ 0 and the UI enforces the range.
 - Each new reason string follows the existing kebab style: `'custom-material'`, `'front-conic'`.
 
 **Material lookup and conic insertion point** (lines 119-123, 134-148):

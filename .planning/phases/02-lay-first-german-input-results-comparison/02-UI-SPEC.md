@@ -270,7 +270,7 @@ Preset data (`src/state/presets.js`; planner verifies each in the engine and rec
 - **[Expert] "Glas-Einstellungen"** block below the material cards:
   - Basiskurve `#expert-basecurve` (empty = automatic) with a permanent read-only line "Automatisch: …" + rule + Vogel reference (content moved from the phase-1 table, ids `#result-od-basecurve`/`#result-os-basecurve` move to Zwischenwerte).
   - Mindest-Mittendicke / Mindest-Randdicke with one "Standardwerte setzen" button (secondary).
-  - Vorderfläche: two radios "sphärisch" / "asphärisch"; the k field (sign button + input, default −1, range −5,0…0,0) appears only for asphärisch, with the fixed label "allgemeines Modell, kein bestimmtes Herstellerdesign" and the plus-lens note (Research D-35 changes, adopted).
+  - Vorderfläche: two radios "sphärisch" / "asphärisch"; the k field (sign button + input, default −1, range −5,0…−1,0, the cited range; k = 0 is 'sphärisch') appears only for asphärisch, with the fixed label "allgemeines Modell, kein bestimmtes Herstellerdesign" and the plus-lens note (Research D-35 changes, adopted).
 
 ### Results `#result` (RES-01, RES-04, D-22..D-24)
 
@@ -278,13 +278,14 @@ Preset data (`src/state/presets.js`; planner verifies each in the engine and rec
 - **Per-eye card** `#result-od-card`, `#result-os-card` (OD first): `--surface`, 1 px `--line` border, 8 px radius, 16 px padding, 16 px gap between cards. On desktop the two cards stack in the 400 px column.
   1. `h3` "Rechtes Glas (R)" (Body 600).
   2. Headline sentence `#result-od-headline` (Body 400), `aria-live="polite"` on the card's status region only, not on every value.
-  3. Value grid 2×2 (`grid-template-columns: repeat(2, minmax(0, 1fr))`, 16 px gap): each cell = label (14 px muted) + value (Display 28 px 600, tabular, `white-space: nowrap`) + location line (14 px) for the two edge values. Value ids keep phase-1 names: `#result-od-etmax`, `#result-od-etmin`, `#result-od-ct`, `#result-od-weight`; location ids `#result-od-etmax-loc`, `#result-od-etmin-loc`.
+  3. Value grid 2×2 (`grid-template-columns: repeat(2, minmax(0, 1fr))`, 16 px gap): each cell = label (14 px muted) + value (Display 28 px 600, tabular, `white-space: nowrap`) + location line (14 px) for the two edge values. Value ids: `#result-od-thick`, `#result-od-etmin`, `#result-od-ct`, `#result-od-weight`; location ids `#result-od-thick-loc`, `#result-od-etmin-loc`. **Dickste Stelle = thickest(m) = max(Mittendicke, dickster Rand)** (lens-critic B1, revision 2026-11-07): for a plus lens it is the centre and its location reads 'in der Mitte' (R +3,00: 3,9 mm in der Mitte); for minus lenses the edge; for mixed cylinder usually the edge. The phase-1 id `#result-od-etmax` moves to Zwischenwerte as the 'Dickster Rand' row.
   4. Diagnostics `#diag-od` (existing pattern, text label first).
   5. Material line `#result-od-material` (14 px muted), plus "beruht auf Ihren Angaben, kein geprüftes Material" when custom.
 - Rounding: 0,1 mm; weight whole grams with "unter 1 g" below 0,5 g (new `fmtGramWhole`; Expert Zwischenwerte keep 0,1 g, Research Pitfall 10).
 - No orientation sketch in phase 2 (D-23 left it optional): the location words carry the meaning, and phase 3's 3D view and heatmap show position. Avoids a second drawing that would need its own tests.
-- **L/R callout** `#lr-callout`: shown when the displayed thickest points differ by ≥ 1,0 mm or weights by ≥ 3 g (Research RES-04, constants unchanged). Box: `--surface`, 4 px `--fg` left border, `info` icon, Body text. Not a warning colour: no medical judgement.
+- **L/R callout** `#lr-callout`: shown when the displayed thickest points (thickest(m)) differ by ≥ 1,0 mm or weights by ≥ 3 g (Research RES-04, constants kept; re-derived on thickest(m): 1 dpt ≈ 1,0 mm for minus and plus; the 3 g rule does not fire first on the canonical frame). The sentence names the cause: different prescription values, different PD, or both (lens-critic MINOR-5). Box: `--surface`, 4 px `--fg` left border, `info` icon, Body text. Not a warning colour: no medical judgement.
 - **PD note** `#pd-note`: Hinweis styling (`--hint-tint`, `hint` icon) whenever a default PD is used for at least one eye; names the eye(s).
+- **B note** `#b-note`: same styling, whenever B is estimated from the shape (not typed), including the example (lens-critic MINOR-6).
 - **Short disclaimer line** (14 px muted) under the cards with a link-style button "Zum Hinweis unten" that moves focus to `#disclaimer`. The full `#disclaimer` text stays at the page bottom, always visible.
 - **Empty state per card**: when an eye has no Sph yet, the card shows its `h3`, the empty heading and body (Copywriting), and no value grid (grid hidden, not filled with dashes).
 - **Blocked eye** (Fehler or Außerhalb des Modells): card shows "Für dieses Glas wird nichts berechnet." plus a link-style button "Zum markierten Feld" that focuses the first blocking field. While the field message is still debounced, the neutral "Eingabe unvollständig …" text is shown instead (Research Pitfall 5).
@@ -295,11 +296,12 @@ Preset data (`src/state/presets.js`; planner verifies each in the engine and rec
 
 **Material comparison `#cmp-material`** (always visible in Simple view):
 
-- `h2` + one-line intro naming which eye's thickest point is shown and that weight is both lenses.
+- `h2` + one-line intro naming which eye's thickest point is shown and that weight is both lenses. The eye is fixed for all rows: the thicker eye of the selected material (lens-critic MINOR-4). The thickest point is thickest(m) = max(centre, edge), with its lay location under the value ('in der Mitte', 'außen oben').
 - `<table id="cmp-material-table">`: caption (visually hidden, same as h2), columns: Material | Dickste Stelle | Mitte | Gewicht (beide) | Unterschied zu Ihrer Auswahl. One row per sourced material, ascending index. Values Body 16 px tabular; difference cell Body 600 ("1,7 mm dünner, 2 g leichter"), percentage after it in 14 px muted "(≈ 18 % dünner)".
 - Selected row: tag "Ihre Auswahl" (14 px 600, 1 px `--fg` border pill) in the material cell, row `--accent-tint` background, 4 px accent left border; difference cell "—" with visually hidden "kein Unterschied, das ist Ihre Auswahl". Its numbers are the main result, never recomputed.
 - Stacked mode (< 480 px container): each `tr` becomes a block (8 px radius, 1 px `--line` border, 16 px padding, 8 px gap); first line = material name + tag; second line = the difference sentence (600); third line = the three values with visible cell labels (`<span class="cell-label">` in each cell, visually hidden in table mode).
-- `<details>` "Werte je Auge anzeigen" under the table with a per-eye table (same columns, two rows per material).
+- `<details>` "Werte je Auge anzeigen" under the table with a per-eye table (columns Material · Auge · Dickste Stelle · Dickster Rand · Mitte · Gewicht, two rows per material; 'Dickster Rand' carries RES-02's max edge).
+- Assumed-constant footnote `#cmp-assumed-note` (14 px muted, always visible): names the materials whose minimum edge thickness is assumed (materials.js `assumed`: 1,67 and 1,74; lens-critic MINOR-3).
 - Pending: caption area shows "rechnet …"; old values stay with dotted underline (phase-1 stale style). Sync fallback: rows are not auto-computed; a secondary button "Vergleich berechnen" appears instead (Research Pattern 1).
 - Footnote (14 px muted) only when Expert overrides are active (Research Pitfall 11).
 
@@ -420,6 +422,7 @@ Other actions that discard state, and why they get no confirm: "Eigene Werte ein
 | PD two values ≥ 50 | Hinweis: Zwei Werte über 50 mm sind meist die PD für die Ferne und für die Nähe. Bitte nur die PD für die Ferne eintragen (die größere Zahl). |
 | PD looks like HSA | Hinweis: Ist das der HSA (Hornhautscheitelabstand)? Die PD liegt meist bei 25 bis 35 mm je Auge. |
 | PD assumed (result) | PD angenommen: {pd} je Auge ({eyes}) – fragen Sie Ihren Optiker nach Ihrem Wert. |
+| B estimated (result) | Glashöhe B geschätzt: {B} aus der Form – für genauere Werte B messen oder beim Optiker erfragen. |
 | Fehler: not a number (existing) | Das ist keine gültige Zahl. Erlaubt sind Ziffern, ein Vorzeichen und ein Komma, z. B. −2,25. |
 | Fehler: Zyl without Achse (existing) | Zu einem Zyl-Wert gehört eine Achse. Bitte die Achse vom Brillenpass eintragen (0 bis 180). |
 | Fehler: Achse out of range (existing) | Die Achse muss eine ganze Zahl zwischen 0° und 180° sein. |
@@ -461,7 +464,7 @@ The trade term "Einstärkenglas" (single vision) is deliberately avoided: the UX
 | A/B/DBL out of range | Außerhalb des Modells: {field} {value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). |
 | [Expert] Rim label | Randtiefe der Fassung (mm) |
 | [Expert] Rim note | Standard {value} (angenommener Wert, keine Herstellerangabe). Die Randtiefe ändert Dicke und Gewicht nicht. |
-| [Expert] Rim result > 0 | Der Glasrand ist an der dicksten Stelle {excess} dicker als die Fassung tief ist (vorne und hinten zusammen). |
+| [Expert] Rim result > 0 | Der Glasrand ist an seiner dicksten Stelle {excess} dicker als die Fassung tief ist (vorne und hinten zusammen). (Uses the thickest edge etMax, not the centre: the centre never sits in the rim.) |
 | [Expert] Rim result ≤ 0 | Der Glasrand passt in die Tiefe der Fassung. |
 
 ### Material
@@ -485,11 +488,14 @@ The trade term "Einstärkenglas" (single vision) is deliberately avoided: the UX
 | [Expert] Base curve label | Basiskurve (dpt) – leer lassen für automatisch |
 | [Expert] Base curve auto line | Automatisch: {value} – dünnstes Glas, flachste Vorderfläche innerhalb 0,1 mm. {vogelRef} |
 | [Expert] Min CT / ET | Mindest-Mittendicke (mm) · Mindest-Randdicke (mm) · button "Standardwerte setzen" |
+| [Expert] Min source echo | Herstellerangabe (Zeiss-Datenblatt) · angenommen (keine Herstellerangabe) · von Ihnen vorgegeben |
+| [Expert] Manual back convex | Title: Rückfläche zum Auge hin gewölbt (konvex). Suggest: Eine stärker gewölbte (höhere) Basiskurve wählen oder das Feld leer lassen. |
+| [Expert] Spherical basis | (für sphärische Vorderfläche bestimmt) — after the rule and the Vogel thickness while asphärisch is active |
 | [Expert] Binding CT | Die Mittendicke ist durch den Mindestwert festgelegt. |
 | [Expert] Binding ET | Die Mittendicke ergibt sich aus der Mindest-Randdicke. |
 | [Expert] Front legend | Vorderfläche |
 | [Expert] Front options | sphärisch · asphärisch (allgemeines Modell, kein bestimmtes Herstellerdesign) |
-| [Expert] k label | Konische Konstante k (Standard −1, erlaubt −5,0 bis 0,0) |
+| [Expert] k label | Konische Konstante k (Standard −1, erlaubt −5,0 bis −1,0) |
 | [Expert] Asphere note | In diesem Modell ändert die asphärische Vorderfläche vor allem Plusgläser. |
 
 ### Ergebnis (results)
@@ -498,13 +504,14 @@ The trade term "Einstärkenglas" (single vision) is deliberately avoided: the UX
 |----------|------|
 | Section h2 | Ergebnis |
 | Card titles | Rechtes Glas (R) · Linkes Glas (L) |
-| Headline | {Rechtes/Linkes} Glas: am dicksten {etmax} {etmaxLoc}, am dünnsten {etmin} {etminLoc}. Mitte {ct}, Gewicht {weight}. |
+| Headline | {Rechtes/Linkes} Glas: am dicksten {thick} {thickLoc}, am dünnsten {etmin} {etminLoc}. Mitte {ct}, Gewicht {weight}. (plus example: Rechtes Glas: am dicksten 3,9 mm in der Mitte, am dünnsten 1,0 mm außen oben. Mitte 3,9 mm, Gewicht 7 g.) |
 | Value labels | Dickste Stelle · Dünnste Stelle · Mitte (Mittendicke) · Gewicht |
-| Location words (Simple) | außen (zur Schläfe) · innen (zur Nase) · oben · unten · außen oben · außen unten · innen oben · innen unten |
-| Location words (Expert suffix) | temporal · nasal · superior · inferior (in parentheses after the lay word) |
+| Location words (Simple) | in der Mitte · außen (zur Schläfe) · innen (zur Nase) · oben · unten · außen oben · außen unten · innen oben · innen unten |
+| Location words (Expert suffix) | optischer Mittelpunkt · temporal · nasal · superior · inferior (in parentheses after the lay word) |
 | Weight below 0,5 g | unter 1 g |
-| L/R callout | Das {linke/rechte} Glas ist an der dicksten Stelle {diff} dicker als das {rechte/linke} – weil die Werte der beiden Augen verschieden sind. |
-| L/R callout (weight only) | Das {linke/rechte} Glas ist {diff} schwerer als das {rechte/linke} – weil die Werte der beiden Augen verschieden sind. |
+| L/R callout | Das {linke/rechte} Glas ist an der dicksten Stelle {diff} dicker als das {rechte/linke} {cause} |
+| L/R callout (weight only) | Das {linke/rechte} Glas ist {diff} schwerer als das {rechte/linke} {cause} |
+| L/R cause | rx: – weil die Rezeptwerte der beiden Augen verschieden sind. · pd: – weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung. · rx-pd: – weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind. |
 | Short disclaimer | Modellwerte – kein Ersatz für die Messung und Beratung beim Optiker. |
 | Disclaimer link | Zum Hinweis unten |
 | Computing (existing) | rechnet … / rechnet … Die Werte gehören noch zur vorigen Eingabe. |
@@ -517,7 +524,8 @@ The existing `disclaimer.body` says "Das Modell rechnet mit einer sphärischen V
 | Key area | Copy |
 |----------|------|
 | Material h2 | Was bringt ein anderes Material? |
-| Material intro | Gleiches Rezept, gleiche Fassung. Dickste Stelle: {eye} (das dickere Glas). Gewicht: beide Gläser zusammen. |
+| Material intro | Gleiches Rezept, gleiche Fassung. Dickste Stelle (Mitte oder Rand): {eye} (das dickere Glas). Gewicht: beide Gläser zusammen. |
+| Assumed note | Für {materials} ist die Mindest-Randdicke angenommen (keine Herstellerangabe). |
 | Columns | Material · Dickste Stelle · Mitte · Gewicht (beide) · Unterschied zu Ihrer Auswahl |
 | Selected tag | Ihre Auswahl |
 | Diff thinner/lighter | {mm} dünner, {g} leichter |
@@ -547,14 +555,14 @@ The existing `disclaimer.body` says "Das Modell rechnet mit einer sphärischen V
 |----------|------|
 | h2 | Experten-Analyse |
 | Zwischenwerte h3 | Zwischenwerte |
-| Rows | Dezentration (zur Nase) · Basiskurve D1 · Rückfläche D2 (Hauptschnitte) · Radien · Pfeilhöhen · Festlegende Mindestdicke · Gewicht (0,1 g) |
+| Rows | Dezentration (zur Nase) · Dickster Rand · Basiskurve D1 · Rückfläche D2 (Hauptschnitte) · Radien · Pfeilhöhen · Festlegende Mindestdicke · Gewicht (0,1 g) |
 | Querschnitt h3 | Querschnitt |
 | Eye picker | Rechtes Glas · Linkes Glas |
 | Meridian label | Schnitt |
 | Meridian options | waagrecht (0°) · Hauptschnitt {axis}° ({power}) · Hauptschnitt {axis2}° ({power2}) |
 | SVG title | Querschnitt {eye}, Schnitt {angle}° |
 | SVG desc | Mittendicke {ct}; Rand {endA} ({locA}) und {endB} ({locB}). |
-| End labels | Nase · Schläfe · oben · unten |
+| End labels | Nase · Schläfe (within 15° of horizontal) · oben · unten (within 15° of vertical) · Nase oben · Nase unten · Schläfe oben · Schläfe unten (oblique principal meridians, from the meridian direction) |
 | Legend | A (Vorher) — durchgezogen · B (Nachher) — gestrichelt |
 | Text table caption | Werte im Querschnitt |
 | No chord | Für diesen Schnitt lässt sich kein Querschnitt zeichnen: der optische Mittelpunkt liegt außerhalb der Fassung. |
@@ -610,10 +618,11 @@ CONTEXT.md allows revision when lay usability is kept or improved. RESEARCH.md p
 | D-14 | Lay names index-first and neutral ("1,60 · Höherbrechend"), not "Dünner / Am dünnsten" | this spec | Higher index is not always thinner with per-material min thicknesses (PITFALLS 8); the comparison shows the real effect |
 | D-20 | `interactive-widget=resizes-content`, scroll padding, bar hidden while results visible | RESEARCH (adopted) + this spec | Keyboard overlap on Chrome Android; avoid duplicate numbers |
 | D-23 | No orientation sketch in phase 2 | this spec (option declined) | Words suffice; phase 3 shows position in 3D |
-| D-24 | Thresholds 1,0 mm / 3 g kept | RESEARCH (adopted) | Measured |
+| D-22 / RES-01 | 'Dickste Stelle' = max(Mittendicke, dickster Rand), location 'in der Mitte' when the centre wins | lens-critic B1 (revision 2026-11-07) | For plus lenses the centre is thickest; the edge-only value gave contradictory headlines and understated material savings |
+| D-24 | Thresholds 1,0 mm / 3 g kept; cause named (Rx, PD or both) | RESEARCH (adopted), re-derived on max(CT, edge) in revision | Measured: 1 dpt ≈ 1,0 mm for minus and plus; 3 g kept per D-24 but does not fire first on the canonical frame |
 | D-26 | "Eigene Werte eingeben" button and select-on-focus while the example is untouched | this spec | Removes the chore of deleting eight example values |
 | D-29 | A/B numbers side by side on every width; toggle switches only the full result cards | this spec | Side by side never hides a number; difference line stays visible as required |
-| D-35 | Default k = −1, range −5…0, auto D1 chosen at k = 0 | RESEARCH (adopted) | Avoids bowl-shaped lenses (Pitfall 1) |
+| D-35 | Default k = −1, range −5…−1 (cited only), auto D1 chosen at k = 0 and raised only minimally if the back would turn convex | RESEARCH (adopted), lens-critic M2/MINOR-2 | Avoids bowl-shaped lenses (Pitfall 1) and convex backs (MAT-02) |
 | UX-05 | No "Einstärkenglas" wording | this spec | The strict "Stärke" substring test stays simple |
 
 Open items for a human (carried from RESEARCH, unchanged): iPhone check (± button, bar behind keyboard, hyphenation), rim-depth default 3,0 mm, "Basiskurve/Durchbiegung" wording.
