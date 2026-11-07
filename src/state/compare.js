@@ -1,4 +1,4 @@
-// Thickest point, display rounding and the left/right difference rule (02-01, RES-01, RES-04).
+// Thickest and thinnest point, display rounding and the left/right difference rule (02-01, RES-01, RES-04).
 // Pure: no DOM, no i18n text. Returns codes; src/ui turns them into German.
 // Material rows (02-06, RES-02): materialRows / thickerEye.
 import { MATERIALS } from '../engine/materials.js';
@@ -18,6 +18,20 @@ export function thickest(m) {
   return { value: centre ? m.ct : m.etMax.value, where: centre ? 'centre' : m.etMax.location };
 }
 
+/**
+ * Thinnest point of the whole glass: the smaller of the centre and the thinnest edge (lens-critic
+ * B1, RES-01). Minus lenses: the centre; plus lenses: the thinnest edge; mixed cylinder: usually
+ * an edge. Tie → centre, mirroring thickest. This is the only place where "Dünnste Stelle" is
+ * derived; no card code reads `etMin.value` for it (the thinnest EDGE is the separate
+ * "Dünnster Rand" Zwischenwert).
+ * @param {{ ct: number, etMin: { value: number, location: string } }} m LensResult.metrics
+ * @returns {{ value: number, where: string }} where = 'centre' or an etMin location code
+ */
+export function thinnest(m) {
+  const centre = m.ct <= m.etMin.value;
+  return { value: centre ? m.ct : m.etMin.value, where: centre ? 'centre' : m.etMin.location };
+}
+
 // Display rules: differences are computed from the displayed values, so the arithmetic on screen
 // adds up (RESEARCH Pitfall 10). Values are ≥ 0, so Math.round equals Intl's half-expand rounding
 // (proven by the sweep in compare.test.js).
@@ -34,6 +48,14 @@ export const roundG = (v) => Math.round(v);
  * @param {{ etMax: { value: number }, etMin: { value: number } }} m LensResult.metrics
  */
 export const uniformEdge = (m) => roundMm(m.etMax.value) === roundMm(m.etMin.value);
+
+/**
+ * Even thickness (02-16 display rule, like uniformEdge): the displayed thickest and thinnest point
+ * are the same 0,1 mm value, so no location is named ('überall gleich'). Implies uniformEdge,
+ * because thinnest ≤ etMin ≤ etMax ≤ thickest.
+ * @param {{ ct: number, etMax: { value: number, location: string }, etMin: { value: number, location: string } }} m
+ */
+export const evenThickness = (m) => roundMm(thickest(m).value) === roundMm(thinnest(m).value);
 
 /**
  * L/R thickness threshold, mm on the displayed thickest point (thickest(m)). Measured on the
