@@ -36,8 +36,8 @@
 
 - [x] **MAT-01**: User chooses a material — CR-39 1,50, Trivex 1,53, Polycarbonat 1,59, 1,60, 1,67, 1,74 — and the engine uses the sourced true refractive index (ne) and density and exposes the sourced Abbe number (νe) for each, with sources recorded in code. (wording 2026-11-06, gap plan 01-13: chromatic effects are not modelled in v1)
 - [x] **MAT-02**: Base curve (front surface power) is chosen automatically in +0,50…+14,00 dpt (automatic range; per lens also limited so the front radius exceeds the outline by 2 mm, i.e. at least 2 mm more than the largest outline distance from the optical centre, FRONT_RADIUS_MARGIN_MM) as the flattest value whose maximum thickness is within 0,10 mm of the thinnest possible lens (the thinnest within 0,10 mm, flattest front among those) for the given Rx, frame and material; it never produces a flat/concave front or a convex back surface (every back principal power ≤ 0, plano allowed), and an error appears only if no value in that range gives a computable lens with such a back. The sourced Vogel rule is shown as a reference value. (2026-11-06, user decision D-A: industry high-plus base-curve series of 12–16 D per US4185897; the earlier +10 came from idea.md:48, the manual range; manual override stays 0,00…+10,00, MAT-03.) (2026-11-06, D-01 amendment D-C, orchestrator per the user's best-practice instruction; τ = 0,10 mm design constant, one third of the ±0,3 mm accuracy and the Zeiss ±0,30 mm CT tolerance; preferring the flattest front among those is an unsourced cosmetic design choice, not an optical one.) (2026-11-06: Expert-view display moved to UX-02, phase 2, user-approved 'Gap plan, then push'; back-surface rule added by gap plan 01-12.)
-- [ ] **MAT-03**: Expert user can override base curve manually (0,00…+10,00 dpt).
-- [ ] **MAT-04**: Minimum centre and edge thickness default to sourced per-material values and are adjustable in Expert view; the result shows which constraint is binding.
+- [x] **MAT-03**: Expert user can override base curve manually (0,00…+10,00 dpt).
+- [x] **MAT-04**: Minimum centre and edge thickness default to sourced per-material values and are adjustable in Expert view; the result shows which constraint is binding.
 - [ ] **MAT-05**: Expert user can switch the front surface between spherical and aspheric (conic constant k, with a documented default); aspheric is labelled as a generic model, not a specific manufacturer design.
 - [ ] **MAT-06**: Expert user can enter a custom material (refractive index plus density, optionally Abbe number) instead of a listed one; the result is labelled as based on user-supplied values, not a sourced material.
 
@@ -70,7 +70,7 @@
 
 ### Explanations & Usability (UX)
 
-- [ ] **UX-01**: Every technical term (Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration) has a one- or two-sentence German explanation that opens by tap (not hover-only) and by keyboard.
+- [x] **UX-01**: Every technical term (Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration) has a one- or two-sentence German explanation that opens by tap (not hover-only) and by keyboard.
 - [ ] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06).
 - [ ] **UX-03**: Layout works on phone (from 320 px width), tablet and desktop; on phones the lens view stays visible while editing inputs; long German compound words never overflow.
 - [ ] **UX-04**: Fully keyboard operable; all inputs labelled; WCAG AA contrast; no information conveyed by colour alone; automated accessibility checks pass in CI.
@@ -165,8 +165,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FRAME-03 | Phase 2 | Complete |
 | MAT-01 | Phase 1 | Complete |
 | MAT-02 | Phase 1 | Complete |
-| MAT-03 | Phase 2 | Pending |
-| MAT-04 | Phase 2 | Pending |
+| MAT-03 | Phase 2 | Complete |
+| MAT-04 | Phase 2 | Complete |
 | MAT-05 | Phase 2 | Pending |
 | MAT-06 | Phase 2 | Pending |
 | ENG-01 | Phase 1 | Complete |
@@ -184,7 +184,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-04 | Phase 2 | Complete |
 | RES-05 | Phase 2 | Complete |
 | RES-06 | Phase 1 | Complete |
-| UX-01 | Phase 2 | Pending |
+| UX-01 | Phase 2 | Complete |
 | UX-02 | Phase 2 | Pending |
 | UX-03 | Phase 2 | Pending |
 | UX-04 | Phase 2 | Pending |

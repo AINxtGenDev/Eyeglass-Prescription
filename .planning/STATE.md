@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-11-07T14:16:18.018Z"
+stopped_at: Completed 02-10-PLAN.md
+last_updated: "2026-11-07T14:41:00.957Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 24
+  completed_plans: 25
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 10 of 15
+Plan: 11 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -74,6 +74,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P07 | 45min | 3 tasks | 16 files |
 | Phase 02 P08 | 80 min | 3 tasks | 14 files |
 | Phase 02 P09 | 40 min | 4 tasks | 14 files |
+| Phase 02 P10 | 22min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-09]: The two-column grid lives in .layout-cols; .col-full sits outside it so the sticky results column cannot cover the disclaimer (a sticky box is held inside its parent)
 - [Phase 02]: [02-09]: Preset 'own values' = non-empty fields that differ from what the page wrote last (example or preset); for frame chips typed A/B/DBL not set by a preset. Presets in a row never ask
 - [Phase 02]: [02-09]: MAT-02 monotonicity split into 12 per-case tests with per-case observed sample floors (sum 3188); same sweeps and assertion
+- [Phase 02]: 02-10: the automatic base curve next to a manual one comes from one autoBc compare-lane job (same specs, baseCurve null)
+- [Phase 02]: 02-10: MANUAL_BACK_CONVEX is the only warning that shows its suggestion (results.js WARN_SUGGEST)
 
 ### Pending Todos
 
@@ -166,6 +169,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T14:16:04.074Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-11-07T14:41:00.952Z
+Stopped at: Completed 02-10-PLAN.md
 Resume file: None
