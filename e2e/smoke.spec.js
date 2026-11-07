@@ -3,7 +3,7 @@
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, etmaxOf } from './helpers.js';
+import { settled, thickOf, sphOnly } from './helpers.js';
 /* global document, window, MutationObserver -- page.evaluate bodies run in the browser */
 
 /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
@@ -50,9 +50,11 @@ test('both eyes show thickness, weight and base curve', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-2,25');
   await page.locator('#rx-os-sph').fill('+1 dpt');
   await settled(page);
-  for (const id of ['#result-od-ct', '#result-od-etmax', '#result-od-weight', '#result-os-ct']) {
-    await expect(page.locator(id)).toHaveText(/^\d+,\d\s(mm|g)/);
+  // 02-01: card ids; the thickest point is #result-<eye>-thick, the weight is in whole grams.
+  for (const id of ['#result-od-ct', '#result-od-thick', '#result-os-ct']) {
+    await expect(page.locator(id)).toHaveText(/^\d+,\d\smm$/);
   }
+  await expect(page.locator('#result-od-weight')).toHaveText(/^\d+\sg$/);
   await expect(page.locator('#result-od-basecurve')).toContainText('Vogel');
 });
 
@@ -72,12 +74,12 @@ test('material choice changes thickness', async ({ page }) => {
   await expect(select.locator('option')).toHaveCount(6);
   await expect(select.locator('option', { hasText: 'Trivex 1,53' })).toHaveCount(1);
   await expect(select).toHaveValue('cr39');
-  await expect(page.locator('#result-od-etmax')).toHaveText(/^\d+,\d/);
-  const cr39 = await etmaxOf(page, 'od');
+  await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d/);
+  const cr39 = await thickOf(page, 'od');
   await select.selectOption('idx167');
   await settled(page);
   await expect(page.locator('#result-od-material')).toContainText('1,67');
-  expect(await etmaxOf(page, 'od')).toBeLessThan(cr39);
+  expect(await thickOf(page, 'od')).toBeLessThan(cr39);
 });
 
 test('frame shape and PD change the edge', async ({ page }) => {
@@ -87,13 +89,14 @@ test('frame shape and PD change the edge', async ({ page }) => {
   await expect(page.locator('#frame-shape')).toHaveValue('rechteckig');
   await expect(page.locator('#frame-a')).toHaveValue('52');
   await expect(page.locator('#rx-od-pd')).toHaveValue('32');
-  await expect(page.locator('#result-od-etmax')).toContainText('schläfenseitig');
-  const before = await etmaxOf(page, 'od');
+  // 02-01 lay words: −6,00 / −0,50 × 180 (example cylinder kept), PD 32 → 8,0 mm 'außen oben'.
+  await expect(page.locator('#result-od-thick-loc')).toContainText('außen');
+  const before = await thickOf(page, 'od');
   await expect(page.locator('#result-od-dec')).toHaveText(/^3,0\smm$/);
   await page.locator('#rx-od-pd').fill('28');
   await settled(page);
   await expect(page.locator('#result-od-dec')).toHaveText(/^7,0\smm$/);
-  expect(await etmaxOf(page, 'od')).toBeGreaterThan(before);
+  expect(await thickOf(page, 'od')).toBeGreaterThan(before);
   await page.locator('#frame-shape').selectOption('pilot');
   await settled(page);
   await expect(page.locator('#frame-a')).toHaveValue('58');
@@ -102,18 +105,19 @@ test('frame shape and PD change the edge', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 
-// evaluateLens of +3,00 −2,00 × 180 (OD, Rechteckig 52×38/18, PD 32, CR-39), formatted with
-// fmtMm/fmtGram; the −2,00 default shows 1,8 / 3,7 / 2,5 mm and 6,1 g.
+// evaluateLens of +3,00 −2,00 × 180 (OD, Rechteckig 52×38/18, PD 32, CR-39), 02-01 node re-check:
+// CT 3,589, etMax 3,234 superior, etMin 1,000 temporal, 7,01 g → thickest(m) = CT 3,6 mm 'in der
+// Mitte', fmtGramWhole 7 g. The −2,00 start (sphOnly) shows 1,8 / 3,7 / 2,5 mm and 6 g.
 const PLUS_CYL_VALUES = [
   ['#result-od-ct', /^3,6\smm$/],
-  ['#result-od-etmax', /^3,2\smm – /],
-  ['#result-od-etmin', /^1,0\smm – /],
-  ['#result-od-weight', /^7,0\sg$/],
+  ['#result-od-thick', /^3,6\smm$/],
+  ['#result-od-etmin', /^1,0\smm$/],
+  ['#result-od-weight', /^7\sg$/],
 ];
 
 test('plus cylinder shows both forms', async ({ page }) => {
-  await settled(page);
-  const CELLS = ['#result-od-ct', '#result-od-etmax', '#result-od-etmin', '#result-od-weight'];
+  await sphOnly(page);
+  const CELLS = ['#result-od-ct', '#result-od-thick', '#result-od-etmin', '#result-od-weight'];
   const before = await Promise.all(CELLS.map((id) => page.locator(id).textContent()));
   await page.locator('#rx-od-sph').fill('+1,00');
   await page.locator('#rx-od-cyl').fill('+2,00');
@@ -128,6 +132,7 @@ test('plus cylinder shows both forms', async ({ page }) => {
     await expect(page.locator(id)).toHaveText(re);
   }
   expect(PLUS_CYL_VALUES.map(([id]) => id)).toEqual(CELLS);
+  await expect(page.locator('#result-od-thick-loc')).toHaveText('in der Mitte');
   await expect(page.locator('#result-od-status')).toBeEmpty();
   await expect(page.locator('body')).not.toContainText('NaN');
 });
@@ -185,7 +190,7 @@ test('oversized lens warns', async ({ page }) => {
   await settled(page);
   await expect(page.locator('#material')).toHaveValue('cr39');
   await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
-  await expect(page.locator('#result-od-weight')).toHaveText(/^\d+,\d\sg$/);
+  await expect(page.locator('#result-od-weight')).toHaveText(/^\d+\sg$/);
   await expect(page.locator('#diag-od')).toContainText('Großes Rohglas nötig');
   await expect(page.locator('#result-od-status')).toHaveText('Hinweis');
   const bc = page.locator('#result-od-basecurve');
@@ -313,8 +318,9 @@ test('technical details show four readouts', async ({ page }) => {
 
 test('bench re-entry is ignored; compute goes first', async ({ page }) => {
   test.setTimeout(90_000);
-  await settled(page);
-  const et2 = await etmaxOf(page, 'od');
+  // 02-01: start from Sph −2,00 without the example cylinder, so −3 gives the pinned 4,7 mm.
+  await sphOnly(page);
+  const et2 = await thickOf(page, 'od');
   const tech = page.locator('#tech');
   await page.locator('details#tech > summary').click();
   await expect(tech).toHaveAttribute('data-bench-runs', '1', { timeout: 60_000 });
@@ -337,7 +343,7 @@ test('bench re-entry is ignored; compute goes first', async ({ page }) => {
   expect(r.afterSecond).toBe(0);
   await page.locator('#rx-od-sph').fill('-3');
   await settled(page, { timeout: 2000 });
-  const et3 = await etmaxOf(page, 'od');
+  const et3 = await thickOf(page, 'od');
   expect(et3).not.toBe(et2);
   expect(et3).toBe(4.7);
   // Compute went ahead of the remaining bench runs: the bench is still running.
@@ -379,8 +385,8 @@ test('event timing readout is filled', async ({ page }) => {
 
 test('one recompute per frame (01-14)', async ({ page }) => {
   await settled(page);
-  // etmax, not CT: CT is 1,8 mm for every minus lens here (discrimination rule, lens-critic MAJOR-1).
-  const etmax = page.locator('#result-od-etmax');
+  // thickest point, not CT: CT is 1,8 mm for every minus lens here (discrimination rule, lens-critic MAJOR-1).
+  const etmax = page.locator('#result-od-thick');
   const echo = page.locator('#rx-od-sph-echo');
   await page.locator('#rx-od-sph').fill('-3');
   await settled(page);
@@ -395,7 +401,7 @@ test('one recompute per frame (01-14)', async ({ page }) => {
       new MutationObserver((recs) => {
         window.__mut[k] += recs.length;
       }).observe(document.getElementById(id), { childList: true, characterData: true, subtree: true });
-    count('result-od-etmax', 'etmax');
+    count('result-od-thick', 'etmax');
     count('rx-od-sph-echo', 'echo');
     const input = /** @type {HTMLInputElement} */ (document.getElementById('rx-od-sph'));
     for (const v of ['-1', '-2', '-3']) {
@@ -404,7 +410,7 @@ test('one recompute per frame (01-14)', async ({ page }) => {
     }
   });
   await settled(page);
-  const r = await page.evaluate(() => ({ ...window.__mut, text: document.getElementById('result-od-etmax').textContent }));
+  const r = await page.evaluate(() => ({ ...window.__mut, text: document.getElementById('result-od-thick').textContent }));
   // update() writes the echo once per run: without coalescing it would be 3 (lens-critic r3 M1).
   // The etmax count alone cannot fail: latest-wins drops −1 and −2 even without coalescing.
   expect(r.echo).toBe(1);

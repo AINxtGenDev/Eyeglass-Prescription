@@ -1,11 +1,11 @@
 // Worker e2e (01-15, ENG-09): module worker under the exact CSP and the sub-path, sync fallback,
 // watchdog, slow-worker latest-wins, per-eye "rechnet …" without layout shift (360 px mobile
 // project) and axe in the busy state, cache restore, German worker error.
-// Discrimination rule (lens-critic MAJOR-1): compare etmax (CT is 1,8 mm for every minus lens
+// Discrimination rule (lens-critic MAJOR-1): compare the thickest point #result-*-thick (CT is 1,8 mm for every minus lens
 // here), and assert the stored pair differs before the main assertion.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, etmaxOf, slowWorker, WORKER_URL } from './helpers.js';
+import { settled, thickOf, sphOnly, slowWorker, WORKER_URL } from './helpers.js';
 /* global window, document, MutationObserver -- page.evaluate bodies run in the browser */
 
 // Must equal vite.config.js CSP exactly (T-01-39).
@@ -31,11 +31,11 @@ test.beforeEach(async ({ page }) => {
 const sph = (page) => page.locator('#rx-od-sph');
 const mmText = (v) => String(v).replace('.', ',');
 
-/** Type an OD Sph value, wait until settled, return the OD etmax. */
+/** Type an OD Sph value, wait until settled, return the OD thickest point. */
 async function etAt(page, value) {
   await sph(page).fill(value);
   await settled(page);
-  return etmaxOf(page, 'od');
+  return thickOf(page, 'od');
 }
 
 test('engine runs in a module worker under the sub-path (ENG-09)', async ({ page }) => {
@@ -48,7 +48,7 @@ test('engine runs in a module worker under the sub-path (ENG-09)', async ({ page
   expect(resp.headers()['content-type']).toMatch(/javascript/);
   await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
   await settled(page);
-  await expect(page.locator('#result-od-etmax')).toHaveText(/^\d+,\d\smm/);
+  await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d\smm/);
   await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
   expect(await page.evaluate(() => window.__csp)).toEqual([]);
   expect(consoleErrors).toEqual([]);
@@ -61,10 +61,11 @@ test('falls back to direct computation when the worker cannot load', async ({ pa
   const mode = page.locator('#compute-mode');
   await expect(mode).toHaveAttribute('data-mode', 'sync');
   await expect(mode).toContainText('direkt');
-  await settled(page);
-  for (const eye of ['od', 'os']) await expect(page.locator(`#result-${eye}-etmax`)).toHaveText(/^\d+,\d\smm/);
+  // 02-01: Sph −2,00 without the example cylinder, so −3 gives the pinned 4,7 mm.
+  await sphOnly(page);
+  for (const eye of ['od', 'os']) await expect(page.locator(`#result-${eye}-thick`)).toHaveText(/^\d+,\d\smm/);
   await expect(page.locator('body')).not.toContainText('NaN');
-  const et2 = await etmaxOf(page, 'od');
+  const et2 = await thickOf(page, 'od');
   const et3 = await etAt(page, '-3');
   expect(et3).not.toBe(et2);
   expect(et3).toBe(4.7);
@@ -87,7 +88,7 @@ test('watchdog falls back when the worker never answers', async ({ page }) => {
   await expect(mode).toHaveAttribute('data-mode', 'sync', { timeout: 15_000 });
   await expect(mode).toContainText('nicht geantwortet');
   await settled(page);
-  await expect(page.locator('#result-od-etmax')).toHaveText(/^\d+,\d\smm/);
+  await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d\smm/);
 });
 
 test('latest input wins (slow worker)', async ({ page }) => {
@@ -102,7 +103,7 @@ test('latest input wins (slow worker)', async ({ page }) => {
   await etAt(page, '-2');
   await page.evaluate(() => {
     window.__etSeq = [];
-    const el = document.getElementById('result-od-etmax');
+    const el = document.getElementById('result-od-thick');
     new MutationObserver(() => window.__etSeq.push(el.textContent)).observe(el, {
       childList: true,
       characterData: true,
@@ -113,7 +114,7 @@ test('latest input wins (slow worker)', async ({ page }) => {
   await expect(page.locator('#result-od-status')).toHaveText('rechnet …');
   await sph(page).fill('-3');
   await settled(page);
-  expect(await etmaxOf(page, 'od')).toBe(et['-3']);
+  expect(await thickOf(page, 'od')).toBe(et['-3']);
   const seq = await page.evaluate(() => window.__etSeq);
   console.info(`etmax sequence after −2 → −1 → −3: ${JSON.stringify(seq)}`);
   expect(seq.some((s) => s.startsWith(mmText(et['-1'])))).toBe(false);
@@ -151,7 +152,7 @@ test('result frame re-checks isCurrent (input between message and frame)', async
   await etAt(page, '-2');
   await page.evaluate(() => {
     window.__etSeq = [];
-    const el = document.getElementById('result-od-etmax');
+    const el = document.getElementById('result-od-thick');
     new MutationObserver(() => window.__etSeq.push(el.textContent)).observe(el, {
       childList: true,
       characterData: true,
@@ -166,7 +167,7 @@ test('result frame re-checks isCurrent (input between message and frame)', async
   await sph(page).fill('-1');
   await settled(page);
   expect(await page.evaluate(() => window.__beforeResult), 'hook did not run').toBeNull();
-  expect(await etmaxOf(page, 'od')).toBe(et3);
+  expect(await thickOf(page, 'od')).toBe(et3);
   const seq = await page.evaluate(() => window.__etSeq);
   console.info(`etmax sequence, input inside the result task: ${JSON.stringify(seq)}`);
   expect(seq.some((s) => s.startsWith(mmText(et1)))).toBe(false);
@@ -176,6 +177,8 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
   await slowWorker(page, 2000);
   await page.goto('./');
   await settled(page);
+  // 02-01: the first Rx input removes the example banner; remove it before the baseline boxes.
+  await sphOnly(page);
   const SELECTORS = ['.result-table', '#calc-status', '#disclaimer'];
   const boxes = async () => [
     await page.locator('.result-table').boundingBox(),
@@ -190,13 +193,15 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
     }
   };
   const b0 = await boxes();
-  await sph(page).fill('-3');
+  // 02-01: −2,50 against L −2,00 (3,7 → 4,2 mm vs 3,7 mm) stays below the 1,0 mm L/R rule, so
+  // the #lr-callout does not appear; −3 (4,7 mm) would add the sentence and move the table.
+  await sph(page).fill('-2,5');
   const quick = { timeout: 300 };
-  await expect(page.locator('#rx-od-sph-echo')).toContainText('−3,00', quick);
+  await expect(page.locator('#rx-od-sph-echo')).toContainText('−2,50', quick);
   await expect(page.locator('#result')).toHaveAttribute('aria-busy', 'true', quick);
   await expect(page.locator('#result-od-status')).toHaveText('rechnet …', quick);
-  await expect(page.locator('#result-od-etmax')).toHaveAttribute('data-stale', 'true', quick);
-  await expect(page.locator('#result-os-etmax')).not.toHaveAttribute('data-stale', /.*/);
+  await expect(page.locator('#result-od-thick')).toHaveAttribute('data-stale', 'true', quick);
+  await expect(page.locator('#result-os-thick')).not.toHaveAttribute('data-stale', /.*/);
   await expect(page.locator('#result-os-status')).not.toHaveText('rechnet …');
   await expect(page.locator('#calc-status')).toContainText('vorigen Eingabe', quick);
   expectSame(b0, await boxes(), 'while busy');
@@ -218,17 +223,17 @@ test('retyping the previous value while busy restores the result (MINOR-3)', asy
   const et3 = await etAt(page, '-3');
   const et2 = await etAt(page, '-2');
   expect(et2).not.toBe(et3);
-  const et2Text = await page.locator('#result-od-etmax').textContent();
+  const et2Text = await page.locator('#result-od-thick').textContent();
   await sph(page).fill('-3');
   await expect(page.locator('#result-od-status')).toHaveText('rechnet …');
   await sph(page).fill('-2');
   const quick = { timeout: 300 };
   await expect(page.locator('#result-od-status')).not.toHaveText('rechnet …', quick);
-  await expect(page.locator('#result-od-etmax')).toHaveText(et2Text, quick);
-  await expect(page.locator('#result-od-etmax')).not.toHaveAttribute('data-stale', /.*/, quick);
+  await expect(page.locator('#result-od-thick')).toHaveText(et2Text, quick);
+  await expect(page.locator('#result-od-thick')).not.toHaveAttribute('data-stale', /.*/, quick);
   await page.waitForTimeout(2500);
-  expect(await etmaxOf(page, 'od')).toBe(et2);
-  expect(await etmaxOf(page, 'od')).not.toBe(et3);
+  expect(await thickOf(page, 'od')).toBe(et2);
+  expect(await thickOf(page, 'od')).not.toBe(et3);
 });
 
 test('no "rechnet …" for a normal edit', async ({ page }) => {
@@ -257,7 +262,7 @@ test('worker failure shows a German message, never NaN', async ({ page }) => {
   await settled(page);
   for (const eye of ['od', 'os']) {
     await expect(page.locator(`#result-${eye}-status`)).toHaveText('Berechnung abgebrochen');
-    await expect(page.locator(`#result-${eye}-etmax`)).toHaveText('–');
+    await expect(page.locator(`#result-${eye}-thick`)).toHaveText('–');
   }
   await expect(page.locator('body')).not.toContainText('NaN');
   await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');

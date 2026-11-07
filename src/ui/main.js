@@ -8,9 +8,10 @@ import { createComputeClient, TAIL_PCT } from '../state/compute-client.js';
 import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR } from '../state/bench-cases.js';
 import { MATERIALS } from '../engine/materials.js';
 import { SHAPES } from '../engine/frame/shapes.js';
-import { nasalSign } from '../engine/conventions.js';
 import { t } from '../i18n/t.js';
-import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtMs } from '../i18n/format.js';
+import { fmtDiopter, fmtAxis, fmtMm, fmtMs } from '../i18n/format.js';
+import { $, setText, applyDictionary } from './dom.js';
+import { renderEmpty, renderResult, renderFailed, renderLrCallout, setStale } from './results.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
@@ -18,8 +19,13 @@ const DASH = '–';
 // Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material select since
 // 01-06; frame shape/size and PD per eye since 01-07. Fitting height is supported by the engine but omitted here (D-04).
 const DEFAULT_SHAPE = 'rechteckig';
-const DEFAULT_PD = '32';
 const DEFAULT_MATERIAL = 'cr39';
+// Example at load (UI-SPEC "Preset data", D-26): a moderate myope with a small cylinder.
+const EXAMPLE = {
+  od: { sph: '-2,75', cyl: '-0,50', axis: '180', pd: '32' },
+  os: { sph: '-2,50', cyl: '-0,75', axis: '170', pd: '31,5' },
+};
+const RX_FIELDS = ['sph', 'cyl', 'axis', 'pd'];
 const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
 // Abbe number νe = (ne − 1)/(nF′ − nC′): higher means less dispersion, hence fewer colour fringes.
 // That meaning is textbook knowledge, not from a fetched document; the νe values are the cited
@@ -28,11 +34,6 @@ const abbeNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1 });
 
 // Ring-buffer length for the input timing medians (ENG-09, lens-critic MAJOR-2).
 const TIMING_WINDOW = 10;
-
-const $ = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
-const setText = (id, text) => {
-  $(id).textContent = text;
-};
 
 const materialSelect = () => /** @type {HTMLSelectElement} */ ($('material'));
 
@@ -66,15 +67,6 @@ function renderMaterialLine(eye, materialId) {
       abbe: abbeNf.format(m.ve),
     }),
   );
-}
-
-function applyDictionary() {
-  for (const el of document.querySelectorAll('[data-i18n]')) {
-    el.textContent = t(el.getAttribute('data-i18n'));
-  }
-  for (const el of document.querySelectorAll('[data-i18n-title]')) {
-    el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
-  }
 }
 
 const shapeSelect = () => /** @type {HTMLSelectElement} */ ($('frame-shape'));
@@ -196,117 +188,6 @@ function readRx(eye) {
   return { sph, rx: r.minus };
 }
 
-const CELLS = ['ct', 'etmax', 'etmin', 'dec', 'weight', 'basecurve'];
-
-function renderEmpty(eye, statusText) {
-  const p = `result-${eye.toLowerCase()}`;
-  for (const c of CELLS) setText(`${p}-${c}`, DASH);
-  setText(`${p}-status`, statusText);
-  // Clear only when not already empty, so the role=status box is not touched (MINOR-11).
-  const box = $(`diag-${eye.toLowerCase()}`);
-  if (box.childElementCount > 0 || box.dataset.sig) {
-    box.replaceChildren();
-    box.dataset.sig = '';
-  }
-}
-
-// Diagnostic data fields that are lengths in mm; every other field is never shown.
-const MM_PARAMS = ['R1', 'rhoMax', 'mbsMm', 'stockMm'];
-// Codes that mean "this lens cannot exist in the model" (others are internal limits).
-const IMPOSSIBLE = ['FRONT_SAG_UNDEFINED', 'BACK_SAG_UNDEFINED'];
-
-/** Engine numbers → German mm text for the {param} placeholders of diag.* texts. */
-function diagParams(data) {
-  const params = {};
-  for (const k of MM_PARAMS) if (Number.isFinite(data[k])) params[k] = fmtMm(data[k]);
-  return params;
-}
-
-const para = (text) => {
-  const el = document.createElement('p');
-  el.textContent = text;
-  return el;
-};
-
-/** Error: title, explanation, suggestion. Warnings: title and explanation. Info is not shown. */
-function renderDiagnostics(eye, diagnostics) {
-  const box = $(`diag-${eye.toLowerCase()}`);
-  const items = [];
-  for (const d of diagnostics) {
-    if (d.severity === 'info') continue;
-    const params = diagParams(d.data);
-    const head = document.createElement('p');
-    const strong = document.createElement('strong');
-    strong.textContent = t(eye === 'OD' ? 'rx.od' : 'rx.os') + ': ' + t(`diag.${d.code}.title`);
-    head.append(strong);
-    const block = document.createElement('div');
-    block.className = d.severity === 'error' ? 'diag-error' : 'diag-warn';
-    block.append(head, para(t(`diag.${d.code}.explain`, params)));
-    if (d.severity === 'error') block.append(para(t(`diag.${d.code}.suggest`, params)));
-    items.push(block);
-  }
-  // Rewrite the role=status box only when its content changes, so an eye that recomputes with
-  // the same diagnostic text is not announced again (MINOR-11).
-  const sig = items.map((el) => el.className + '|' + el.textContent).join('\n');
-  if (sig === (box.dataset.sig ?? '')) return;
-  box.replaceChildren(...items);
-  box.dataset.sig = sig;
-}
-
-/** Text label for the status cell (never colour alone). */
-function statusLabel(diagnostics) {
-  const err = diagnostics.find((d) => d.severity === 'error');
-  if (err) return t(IMPOSSIBLE.includes(err.code) ? 'result.diagLabel.impossible' : 'result.diagLabel.failed');
-  return diagnostics.some((d) => d.severity === 'warn') ? t('result.diagLabel.warn') : '';
-}
-
-/** Base-curve cell: thinnest rule plus the Vogel reference (D-01 final, lens-critic MAJOR-2). */
-function baseCurveText(m, im) {
-  const bc = fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule);
-  if (im.baseCurveRule !== 'thinnest') return bc;
-  // Raw Vogel value; when the rule leaves +0,50…+14,00 (D-A) the clamp is named, and any
-  // thickness in the sentence refers to the clamped lens (01-13, MINOR-1).
-  let vogel = fmtDiopter(im.vogelD1);
-  if (im.vogelD1 !== im.vogelClampedD1) {
-    vogel += t('basecurve.vogelClamped', { clamped: fmtDiopter(im.vogelClampedD1) });
-  }
-  const v = im.vogelMaxThickness;
-  const j = Math.max(m.ct, m.etMax.value);
-  if (v === null) return bc + ' ' + t('basecurve.vogelRefImpossible', { vogel });
-  if (v - j >= 0.05) return bc + ' ' + t('basecurve.vogelRefThicker', { vogel, thickness: fmtMm(v) });
-  return bc + ' ' + t('basecurve.vogelRef', { vogel });
-}
-
-/** Dotted underline on an eye's value cells while its values belong to the previous input. */
-function setStale(eye, on) {
-  for (const c of CELLS) {
-    const el = $(`result-${eye.toLowerCase()}-${c}`);
-    if (on) el.dataset.stale = 'true';
-    else delete el.dataset.stale;
-  }
-}
-
-function renderResult(eye, res) {
-  const p = `result-${eye.toLowerCase()}`;
-  setStale(eye, false);
-  if (!res.ok) {
-    renderEmpty(eye, statusLabel(res.diagnostics));
-    renderDiagnostics(eye, res.diagnostics);
-    return;
-  }
-  const m = res.metrics;
-  const im = res.intermediates;
-  setText(`${p}-ct`, fmtMm(m.ct));
-  setText(`${p}-etmax`, fmtMm(m.etMax.value) + ' – ' + t('loc.' + m.etMax.location));
-  setText(`${p}-etmin`, fmtMm(m.etMin.value) + ' – ' + t('loc.' + m.etMin.location));
-  // display only: the engine's signed x offset turned into "toward the nose" for this eye
-  setText(`${p}-dec`, fmtMm(nasalSign(eye) * m.decentration.x));
-  setText(`${p}-weight`, fmtGram(m.weightG));
-  setText(`${p}-basecurve`, baseCurveText(m, im));
-  setText(`${p}-status`, statusLabel(res.diagnostics));
-  renderDiagnostics(eye, res.diagnostics);
-}
-
 // Settled signal (01-15): #result[data-pending] is a space-separated token set, '' when nothing
 // is pending. 'input' = an input frame is scheduled; OD/OS = the eye is open in the client or
 // delivered but not yet painted. e2e/helpers.js settled() waits for ''.
@@ -349,18 +230,7 @@ function onBusy(eye, on) {
 }
 
 function onFailed(eyes) {
-  for (const eye of eyes) {
-    const e = eye.toLowerCase();
-    for (const c of CELLS) setText(`result-${e}-${c}`, DASH);
-    setStale(eye, false);
-    setText(`result-${e}-status`, t('compute.failed.title'));
-    const box = $(`diag-${e}`);
-    const text = t('compute.failed.explain');
-    if (box.dataset.sig !== text) {
-      box.replaceChildren(para(text));
-      box.dataset.sig = text;
-    }
-  }
+  for (const eye of eyes) renderFailed(eye);
 }
 
 // Deliveries are painted in the next frame; an eye is painted only if its seq is still current
@@ -385,12 +255,16 @@ function paintDeliveries() {
     // settled signal cannot hang on them.
     pending.delivered.delete(eye);
     if (client.isCurrent(eye, d.seq)) {
-      renderResult(eye, d.result);
+      // isCurrent: the result belongs to the latest request, so requested[eye] is its spec.
+      renderResult(eye, d.result, requested[eye]);
       painted++;
     }
   }
   writePending();
   if (painted === 0) return;
+  // After renderResult: reads the values just painted (T-02-02). Cache-restored deliveries come
+  // through this path too.
+  renderLrCallout();
   // 'result' is recorded only when no eye is still open; the start-up result is not an input.
   const complete = openTs !== null && openTs > initInputTs && pending.open.size === 0;
   setTimeout(() => {
@@ -529,6 +403,9 @@ function startWorker() {
   worker.addEventListener('messageerror', () => client.workerError());
 }
 
+/** Specs of the latest request per eye (the spec of any result that passes isCurrent). */
+let requested = { OD: null, OS: null };
+
 function update(inputTs) {
   const read = { OD: readRx('OD'), OS: readRx('OS') };
   const pd = { OD: readMm('rx-od-pd'), OS: readMm('rx-os-pd') };
@@ -544,8 +421,10 @@ function update(inputTs) {
       specs[eye] = specFor(eye, read[eye].rx, pd[eye], materialId, frame);
       continue;
     }
-    renderEmpty(eye, t(read[eye].sph === null ? 'result.inputMissing' : 'result.inputInvalid'));
+    const empty = isBlank(`rx-${eye.toLowerCase()}-sph`);
+    renderEmpty(eye, t(read[eye].sph === null ? 'result.inputMissing' : 'result.inputInvalid'), empty);
   }
+  requested = specs;
   client.request(specs, inputTs);
 }
 
@@ -663,6 +542,42 @@ function schedule(timeStamp) {
   scheduleFrame(timeStamp);
 }
 
+/**
+ * Example at load (D-26, UI-SPEC "Example banner"): fill the eight Rx fields. While untouched,
+ * focusing an Rx field selects its content; the first input removes the banner.
+ */
+function initExample(onInput) {
+  let untouched = true;
+  const fields = [];
+  for (const eye of EYES) {
+    const e = eye.toLowerCase();
+    for (const f of RX_FIELDS) {
+      const input = /** @type {HTMLInputElement} */ ($(`rx-${e}-${f}`));
+      input.value = EXAMPLE[e][f];
+      fields.push(input);
+    }
+  }
+  const leave = () => {
+    untouched = false;
+    $('example-banner')?.remove();
+  };
+  for (const input of fields) {
+    input.addEventListener('focus', () => {
+      if (untouched) input.select();
+    });
+    input.addEventListener('input', (e) => {
+      if (untouched) leave();
+      onInput(e);
+    });
+  }
+  $('example-clear').addEventListener('click', () => {
+    for (const input of fields) input.value = '';
+    leave();
+    $('rx-od-sph').focus();
+    schedule(performance.now());
+  });
+}
+
 function init() {
   applyDictionary();
   setComputeMode('worker', 'tech.mode.worker');
@@ -676,17 +591,7 @@ function init() {
   });
   const onInput = (e) => schedule(e.timeStamp);
   for (const k of ['a', 'b', 'dbl']) $(`frame-${k}`).addEventListener('input', onInput);
-  for (const eye of EYES) {
-    const e = eye.toLowerCase();
-    const input = /** @type {HTMLInputElement} */ ($(`rx-${e}-sph`));
-    input.value = '-2,00';
-    input.addEventListener('input', onInput);
-    // Zyl and Achse start empty (sphere-only until the user types a cylinder).
-    for (const f of ['cyl', 'axis']) $(`rx-${e}-${f}`).addEventListener('input', onInput);
-    const pdInput = /** @type {HTMLInputElement} */ ($(`rx-${e}-pd`));
-    pdInput.value = DEFAULT_PD;
-    pdInput.addEventListener('input', onInput);
-  }
+  initExample(onInput);
   const tech = /** @type {HTMLDetailsElement} */ ($('tech'));
   // Sync fallback: the bench would block the page, so only the button starts it (MINOR-6).
   tech.addEventListener('toggle', () => {

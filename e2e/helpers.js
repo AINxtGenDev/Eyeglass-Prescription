@@ -15,7 +15,9 @@ export async function settled(page, { timeout = 10_000 } = {}) {
 }
 
 /**
- * Numeric value of #result-<eye>-etmax ("2,8 mm – …" → 2.8); NaN when the cell shows no number.
+ * Numeric value of #result-<eye>-etmax ("2,8 mm" → 2.8); NaN when the cell shows no number.
+ * Since 02-01 this is the 'Dickster Rand' technical row (the edge value). Callers that mean the
+ * shown thickest point use thickOf; perf-throttled discriminator() stays on the edge on purpose.
  * @param {import('@playwright/test').Page} page @param {'od'|'os'} eye
  */
 export async function etmaxOf(page, eye) {
@@ -80,4 +82,30 @@ export function guardPage(test) {
     expect(seen.foreign, 'requests to other origins').toEqual([]);
     expect(seen.csp, 'CSP violations').toEqual([]);
   });
+}
+
+/**
+ * Numeric value of the card's thickest point #result-<eye>-thick ("4,6 mm" → 4.6; thickest(m) =
+ * max(CT, edge)); NaN when it shows no number. etmaxOf above reads the 'Dickster Rand' edge row.
+ * @param {import('@playwright/test').Page} page @param {'od'|'os'} eye
+ */
+export async function thickOf(page, eye) {
+  const text = (await page.locator(`#result-${eye}-thick`).textContent()) ?? '';
+  const m = text.match(/^(\d+,\d)/);
+  return m ? Number(m[1].replace(',', '.')) : Number.NaN;
+}
+
+/**
+ * Replace the 02-01 example with the phase-1 start values the older specs were pinned on: Sph
+ * '-2,00' both eyes, Zyl/Achse empty, PD 32 both eyes (Rechteckig 52×38/18, CR-39 unchanged).
+ * Removes the example banner, so it cannot shift the layout later. Waits until settled.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function sphOnly(page) {
+  await page.locator('#example-clear').click();
+  for (const eye of ['od', 'os']) {
+    await page.locator(`#rx-${eye}-pd`).fill('32');
+    await page.locator(`#rx-${eye}-sph`).fill('-2,00');
+  }
+  await settled(page);
 }

@@ -156,3 +156,20 @@ describe('diagnostic texts are geometrically true (lens-critic M1/m6, iteration-
     (key) => expect(dict[key]).toContain('Faustregel nach Vogel'),
   );
 });
+
+describe('result cards (02-01)', () => {
+  const placeholders = (key) => [...dict[key].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  test('result.headline placeholders', () => {
+    expect(placeholders('result.headline')).toEqual(['ct', 'etmin', 'etminLoc', 'glass', 'thick', 'thickLoc', 'weight']);
+  });
+  test('result.headline.uniformEdge placeholders', () => {
+    expect(placeholders('result.headline.uniformEdge')).toEqual(['ct', 'etmin', 'glass', 'weight']);
+  });
+  test.each(['rx', 'pd', 'rx-pd'])('has result.lr.cause.%s', (cause) => {
+    expect(dict).toHaveProperty([`result.lr.cause.${cause}`]);
+  });
+  test('has loc.uniform and loc.centre', () => {
+    expect(dict['loc.uniform']).toBe('am ganzen Rand');
+    expect(dict['loc.centre']).toBe('in der Mitte');
+  });
+});

@@ -70,7 +70,7 @@ export default Object.freeze({
 
   'result.title': 'Ergebnis je Glas',
   'result.ct': 'Mittendicke',
-  'result.etmax': 'Dickste Randdicke',
+  'result.etmax': 'Dickster Rand',
   'result.etmin': 'Dünnste Randdicke',
   'result.weight': 'Gewicht (pro Glas)',
   'result.basecurve': 'Basiskurve (Vorderfläche)',
@@ -86,18 +86,47 @@ export default Object.freeze({
   // 01-15: a result not painted 50 ms after the input (RAIL feedback rule, ENG-09 (d)).
   'result.computing': 'rechnet …',
   'result.computingNote': 'rechnet … Die Werte gehören noch zur vorigen Eingabe.',
+  // 02-01 result cards (RES-01, UI-SPEC Copywriting "Ergebnis").
+  'result.card.od': 'Rechtes Glas (R)',
+  'result.card.os': 'Linkes Glas (L)',
+  'result.glass.od': 'Rechtes Glas',
+  'result.glass.os': 'Linkes Glas',
+  'result.side.od': 'rechte',
+  'result.side.os': 'linke',
+  'result.headline':
+    '{glass}: am dicksten {thick} {thickLoc}, am dünnsten {etmin} {etminLoc}. Mitte {ct}, Gewicht {weight}.',
+  'result.headline.uniformEdge': '{glass}: Rand ringsum {etmin} dick, Mitte {ct}. Gewicht {weight}.',
+  'result.label.thick': 'Dickste Stelle',
+  'result.label.etmin': 'Dünnste Stelle',
+  'result.label.ct': 'Mitte (Mittendicke)',
+  'result.label.weight': 'Gewicht',
+  'result.weightUnder1': 'unter 1 g',
+  'result.empty.heading': 'Noch kein Ergebnis für das {glass} Glas',
+  'result.empty.body': 'Tragen Sie den Sph-Wert von Ihrem Brillenpass ein – das Ergebnis erscheint sofort.',
+  // RES-04: {glass} is the thicker/heavier side, {other} the other one; the cause sentence follows.
+  'result.lr.thicker': 'Das {glass} Glas ist an der dicksten Stelle {diff} dicker als das {other}',
+  'result.lr.heavier': 'Das {glass} Glas ist {diff} schwerer als das {other}',
+  'result.lr.cause.rx': '– weil die Rezeptwerte der beiden Augen verschieden sind.',
+  'result.lr.cause.pd':
+    '– weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung.',
+  'result.lr.cause.rx-pd': '– weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind.',
+  'example.banner': 'Beispiel — ersetzen Sie die Werte durch Ihre eigenen.',
+  'example.clear': 'Eigene Werte eingeben',
   'compute.failed.title': 'Berechnung abgebrochen',
   'compute.failed.explain':
     'Die Berechnung im Hintergrund ist fehlgeschlagen. Bitte einen Wert erneut ändern; hilft das nicht, die Seite neu laden.',
 
-  'loc.nasal': 'nasal (zur Nase)',
-  'loc.temporal': 'schläfenseitig (außen)',
+  // Lay location words (D-23); 'centre' = thickest point of a plus lens (B1).
+  'loc.centre': 'in der Mitte',
+  'loc.uniform': 'am ganzen Rand',
+  'loc.nasal': 'innen (zur Nase)',
+  'loc.temporal': 'außen (zur Schläfe)',
   'loc.superior': 'oben',
   'loc.inferior': 'unten',
-  'loc.nasal-superior': 'oben, zur Nase',
-  'loc.nasal-inferior': 'unten, zur Nase',
-  'loc.temporal-superior': 'oben, schläfenseitig',
-  'loc.temporal-inferior': 'unten, schläfenseitig',
+  'loc.nasal-superior': 'innen oben',
+  'loc.nasal-inferior': 'innen unten',
+  'loc.temporal-superior': 'außen oben',
+  'loc.temporal-inferior': 'außen unten',
 
   // D-01 final + D-C (01-12): the flattest front within τ = 0,1 mm of the thinnest; Vogel is a reference only.
   'basecurve.rule.thinnest':

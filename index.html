@@ -13,6 +13,10 @@
       <h1 data-i18n="app.title">Brillenglas-Rechner</h1>
     </header>
     <main>
+      <div id="example-banner">
+        <p data-i18n="example.banner"></p>
+        <button type="button" id="example-clear" data-i18n="example.clear"></button>
+      </div>
       <form id="rx" novalidate>
         <table class="rx-table">
           <caption data-i18n="rx.caption"></caption>
@@ -142,6 +146,59 @@
 
       <section id="result" aria-labelledby="result-title">
         <h2 id="result-title" data-i18n="result.title"></h2>
+        <article id="result-od-card" class="result-card" aria-labelledby="result-od-title">
+          <h3 id="result-od-title" data-i18n="result.card.od"></h3>
+          <p id="result-od-headline" class="result-headline"></p>
+          <p id="result-od-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
+          <p id="result-od-status" class="result-status"></p>
+          <dl id="result-od-grid" class="value-grid">
+            <div>
+              <dt data-i18n="result.label.thick"></dt>
+              <dd><span id="result-od-thick" class="num-display"></span>
+                <span id="result-od-thick-loc" class="value-loc"></span></dd>
+            </div>
+            <div>
+              <dt data-i18n="result.label.etmin"></dt>
+              <dd><span id="result-od-etmin" class="num-display"></span>
+                <span id="result-od-etmin-loc" class="value-loc"></span></dd>
+            </div>
+            <div>
+              <dt data-i18n="result.label.ct"></dt>
+              <dd><span id="result-od-ct" class="num-display"></span></dd>
+            </div>
+            <div>
+              <dt data-i18n="result.label.weight"></dt>
+              <dd><span id="result-od-weight" class="num-display"></span></dd>
+            </div>
+          </dl>
+        </article>
+        <article id="result-os-card" class="result-card" aria-labelledby="result-os-title">
+          <h3 id="result-os-title" data-i18n="result.card.os"></h3>
+          <p id="result-os-headline" class="result-headline"></p>
+          <p id="result-os-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
+          <p id="result-os-status" class="result-status"></p>
+          <dl id="result-os-grid" class="value-grid">
+            <div>
+              <dt data-i18n="result.label.thick"></dt>
+              <dd><span id="result-os-thick" class="num-display"></span>
+                <span id="result-os-thick-loc" class="value-loc"></span></dd>
+            </div>
+            <div>
+              <dt data-i18n="result.label.etmin"></dt>
+              <dd><span id="result-os-etmin" class="num-display"></span>
+                <span id="result-os-etmin-loc" class="value-loc"></span></dd>
+            </div>
+            <div>
+              <dt data-i18n="result.label.ct"></dt>
+              <dd><span id="result-os-ct" class="num-display"></span></dd>
+            </div>
+            <div>
+              <dt data-i18n="result.label.weight"></dt>
+              <dd><span id="result-os-weight" class="num-display"></span></dd>
+            </div>
+          </dl>
+        </article>
+        <p id="lr-callout" class="callout" hidden></p>
         <table class="result-table">
           <thead>
             <tr>
@@ -152,39 +209,19 @@
           </thead>
           <tbody>
             <tr>
-              <th scope="row" data-i18n="result.ct"></th>
-              <td id="result-od-ct"></td>
-              <td id="result-os-ct"></td>
-            </tr>
-            <tr>
-              <th scope="row" data-i18n="result.etmax"></th>
-              <td id="result-od-etmax"></td>
-              <td id="result-os-etmax"></td>
-            </tr>
-            <tr>
-              <th scope="row" data-i18n="result.etmin"></th>
-              <td id="result-od-etmin"></td>
-              <td id="result-os-etmin"></td>
-            </tr>
-            <tr>
               <th scope="row" data-i18n="result.dec"></th>
               <td id="result-od-dec"></td>
               <td id="result-os-dec"></td>
             </tr>
             <tr>
-              <th scope="row" data-i18n="result.weight"></th>
-              <td id="result-od-weight"></td>
-              <td id="result-os-weight"></td>
+              <th scope="row" data-i18n="result.etmax"></th>
+              <td><span id="result-od-etmax"></span> <span id="result-od-etmax-loc"></span></td>
+              <td><span id="result-os-etmax"></span> <span id="result-os-etmax-loc"></span></td>
             </tr>
             <tr>
               <th scope="row" data-i18n="result.basecurve"></th>
               <td id="result-od-basecurve"></td>
               <td id="result-os-basecurve"></td>
-            </tr>
-            <tr>
-              <th scope="row" data-i18n="result.status"></th>
-              <td id="result-od-status"></td>
-              <td id="result-os-status"></td>
             </tr>
           </tbody>
         </table>

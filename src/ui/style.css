@@ -6,6 +6,22 @@
   --line: #6b6b6b;
   --focus: #0b57d0;
   --error: #a50e0e;
+  /* 02 UI-SPEC tokens (Color, Spacing Scale). */
+  --surface: #f3f4f6;
+  --accent: #0b57d0;
+  --accent-tint: #e8f0fe;
+  --error-tint: #fdecec;
+  --hint: #7a4b00;
+  --hint-tint: #fff4de;
+  --bar-bg: #1a1a1a;
+  --bar-focus: #8ab4f8;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
   color: var(--fg);
   background: var(--bg);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
@@ -229,6 +245,79 @@ legend {
 
 /* Values that still belong to the previous input: text decoration only. No slanted font style, which
    changes glyph widths and re-wrapped the base-curve cell at 360 px. */
-td[data-stale] {
+[data-stale] {
   text-decoration: underline dotted;
+}
+
+/* 02-01 result cards (UI-SPEC Results): one per eye, OD first. */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+.result-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-block: 0 var(--space-2);
+}
+
+.result-headline,
+.result-empty {
+  margin-block: 0 var(--space-2);
+}
+
+/* One line always reserved, so "rechnet …" never moves the page (worker.spec layout check). */
+.result-status {
+  min-height: 1.5em;
+  margin-block: 0 var(--space-2);
+  font-weight: 600;
+}
+
+.value-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.value-grid[hidden] {
+  display: none;
+}
+
+.value-grid dt {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.value-grid dd {
+  margin: 0;
+}
+
+.num-display {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.value-loc {
+  display: block;
+  font-size: 0.875rem;
+}
+
+.callout,
+#example-banner {
+  background: var(--surface);
+  border-inline-start: 4px solid var(--fg);
+  padding: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+#example-banner p {
+  margin-block: 0 var(--space-2);
 }

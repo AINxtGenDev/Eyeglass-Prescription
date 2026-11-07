@@ -47,3 +47,8 @@ export function fmtGram(v) {
 export function fmtMs(v) {
   return msNf.format(v) + NBSP + 'ms';
 }
+
+/** Whole grams: 6.86 → "7 g"; null below 0,5 g (the caller shows t('result.weightUnder1')). */
+export function fmtGramWhole(v) {
+  return v < 0.5 ? null : intNf.format(v) + NBSP + 'g';
+}
