@@ -18,6 +18,7 @@
 //   supported on Chromium-based browsers" (node_modules/playwright-core/types/types.d.ts, 1.65.0).
 import { test, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
+import { setTimeout as sleep } from 'node:timers/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { settled, settledCompare, etmaxOf } from './helpers.js';
@@ -45,6 +46,30 @@ const TRACE_CATEGORIES = [
   'v8',
 ];
 const TRACED = { 4: ['caseA', 'caseB'], 1: ['extreme'] };
+// 02-22 (user decision 2026-11-07, "Fix the measurement"): how the case A / B edit runs are
+// driven. 'quiet' (default): per edit locator.selectText() (outside the measured frame), then
+// page.keyboard.insertText(value) = one CDP command, Input.insertText, which dispatches the input,
+// then a Node-side timer of QUIET_MS with NO browser command, then the reads. So no page.evaluate,
+// expect polling, locator call or CDP command lands between the input and its frame-end stamp
+// (02-20 trace: a blink.mojom.DevToolsSession task of 10–16 ms sat inside every measured 4× frame).
+// Same input path as fill(): for a text input Playwright 1.65's fill runs the injected
+// selectText(element) (input.select(); input.focus()), returns 'needsinput' and then sends
+// Input.insertText (node_modules/playwright-core/lib/coreBundle.js: _fill, injected fill,
+// crInput sendText). fill() itself is not used because it releases its element handle
+// (Runtime.releaseObject, fire-and-forget in a finally) after Input.insertText, and a first quiet
+// trace showed that 248-byte DevToolsSession task inside 3 of 10 measured 4× case A frames.
+// selectText() releases its handles the same way, and a second trace showed one such release
+// processed by the renderer after the input (4× case B, 1 of 10 frames), so before the input the
+// spec flushes the DevTools session: one page.evaluate round trip (commands of one session are
+// handled in order, so the release is done when it answers), then 50 ms of Node-side quiet.
+// 'legacy': fill then settled() at once, i.e. the 02-14 / 02-20 method, kept so the before/after
+// comparison can be reproduced. The extreme run (keystrokes while the bench runs; its keys are
+// the input) is the same in both methods.
+const METHOD = process.env.PERF_METHOD ?? 'quiet';
+if (!['quiet', 'legacy'].includes(METHOD)) throw new Error(`PERF_METHOD must be quiet or legacy, not ${METHOD}`);
+// 02-20 untraced runs: input → frame end ≤ 37,4 ms at 4× and ≤ 60,6 ms at 6×; input → result
+// painted ≤ 61,2 ms at 4× and ≤ 99,5 ms at 6×. 500 ms is ≥ 5× the 6× worst case.
+const QUIET_MS = Number(process.env.PERF_QUIET_MS ?? 500);
 // 1× is the harness baseline; 4× and 6× are required by D-B, 2× is context for weaker hosts.
 const RATES = [1, 2, 4, 6];
 const EDITS = 10;
@@ -318,6 +343,7 @@ function attribute(buf) {
       (e) => e.name === 'Receive mojo message' && e.args?.chrome_mojo_event_info?.mojo_interface_tag === 'blink.mojom.DevToolsSession',
     );
     b.devtoolsInFrame = covered(devtools, f.ts, f.end) / 1000;
+    b.devtoolsTasksInFrame = devtools.filter((e) => e.end > f.ts && e.ts < f.end).length;
     b.tasksInFrame = frameTasks.length;
     b.longestTaskInFrame = Math.max(0, ...frameTasks.map((t) => t.dur)) / 1000;
     // Work an input causes outside its measured frame (the deferred compare start, paints).
@@ -384,17 +410,34 @@ async function discriminator(page, [a, b]) {
   return { by: 'OD column text', values: [ca, cb] };
 }
 
-/** EDITS fills of OD Sph alternating between two values, each followed by settled. */
+/**
+ * EDITS fills of OD Sph alternating between two values, each followed by settled. Quiet method
+ * (02-22): between fill() and the reads only a Node timer runs, so the measured input frame, its
+ * result frame and the compare start contain no harness work; the first read after the window
+ * records whether the result was already painted (quietSettled = edits where it was).
+ */
 async function editRun(page, values) {
   const sph = page.locator('#rx-od-sph');
+  let quietSettled = 0;
   for (let i = 0; i < EDITS; i++) {
-    await sph.fill(values[i % 2]);
+    if (METHOD === 'quiet') {
+      await sph.selectText();
+      await page.evaluate(() => 0); // flush the handle releases of selectText (see METHOD)
+      await sleep(50);
+      await page.keyboard.insertText(values[i % 2]);
+      // ---- quiet window: no browser command until the timer fires ----
+      await sleep(QUIET_MS);
+      const done = await page.evaluate(() => document.getElementById('result').dataset.pending === '');
+      if (done) quietSettled++;
+    } else {
+      await sph.fill(values[i % 2]);
+    }
     await settled(page);
   }
   const input = await readInput(page);
   const result = await readResult(page);
   expect(input.n).toBe(EDITS);
-  return { input, result };
+  return METHOD === 'quiet' ? { input, result, quietSettled } : { input, result };
 }
 
 test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browser, browserName }) => {
@@ -484,7 +527,17 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     const overhead = row.caseA.result.max - row.caseA.result.computeMed;
     const estimateC = overhead + COMPUTE14_P95[rate].normal;
     const predictedRescanWait = overhead + COMPUTE14_P95[rate].rescan;
+    // The ENG-09 (a) pass rule of 02-20 / 02-22, unchanged: every case A / B input frame and every
+    // deferred compare start < 16,7 ms (the plan-level rule; verdict.a below also counts the extreme
+    // run and the result / compare paint frames, as before).
+    const ruleA = {
+      caseAInputMax: row.caseA.input.mainMax,
+      caseBInputMax: row.caseB.input.mainMax,
+      compareStartMax: Math.max(row.caseA.compareStart.max, row.caseB.compareStart.max),
+    };
+    ruleA.pass = Math.max(ruleA.caseAInputMax, ruleA.caseBInputMax, ruleA.compareStartMax) < 16.7;
     row.verdict = {
+      ruleA,
       a: { measured: true, worstMs: Math.max(...mains), pass: Math.max(...mains) < 16.7 },
       b: { measured: true, worstMs: Math.max(...reacts), pass: Math.max(...reacts) <= 200 },
       c: { estimated: true, overheadMs: overhead, estimateMs: estimateC, pass: estimateC <= 100 },
@@ -502,7 +555,7 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     results.push(row);
     console.info(JSON.stringify(row));
   }
-  const host = { userAgent: await page.evaluate(() => navigator.userAgent) };
+  const host = { userAgent: await page.evaluate(() => navigator.userAgent), method: METHOD, quietMs: METHOD === 'quiet' ? QUIET_MS : null };
   writeFileSync(OUT, JSON.stringify({ host, results }, null, 2));
   console.info(`perf-throttled results written to ${OUT}`);
   if (TRACE_OUT) {
@@ -512,6 +565,11 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
       console.info(`trace ${tr.rate}× ${tr.run} (n ${tr.n}) bucket: median / max ms`);
       for (const [k, v] of Object.entries(tr.summary)) console.info(`  ${k.padEnd(20)} ${v.median} / ${v.max}`);
       console.info(`  longest frame: ${JSON.stringify(tr.longest)}`);
+      // 02-22 trace proof: with the quiet method no DevTools-session task overlaps a measured
+      // case A / B input frame (the extreme run's keys are themselves DevTools commands).
+      if (METHOD === 'quiet' && tr.run !== 'extreme') {
+        expect(tr.summary.devtoolsTasksInFrame.max, `${tr.rate}× ${tr.run}: DevToolsSession tasks in a measured frame`).toBe(0);
+      }
     }
     console.info(`perf-throttled trace attribution written to ${TRACE_OUT}`);
   }
