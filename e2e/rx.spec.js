@@ -216,3 +216,72 @@ for (const vp of [
     });
   });
 }
+
+// 02-18 (lens-critic M3, part 1): the empty-field Fehler only for a field the user has edited.
+// An empty Sph is still blocked and the card still shows its empty state (sphEmpty).
+test.describe('RX-05 M3: empty-field message only after the field was edited', () => {
+  const rxChip = (page, name) => page.locator('#rx-presets .chip', { hasText: name });
+
+  test('untouched: "Eigene Werte eingeben", Tab out of the empty R Sph shows no Fehler', async ({ page }) => {
+    await page.locator('#example-clear').click();
+    await expect(sph(page)).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(sph(page)).not.toBeFocused();
+    // longer than the 600 ms pause: nothing is due later either
+    await page.waitForTimeout(900);
+    await expect(err(page)).toBeHidden();
+    await expect(sph(page)).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#result-od-empty')).toBeVisible();
+    await expect(status(page)).toHaveText('Bitte zuerst einen gültigen Sph-Wert eingeben.');
+  });
+
+  test('edited: type "1", clear it, Tab: the empty-field Fehler appears on blur', async ({ page }) => {
+    await page.locator('#example-clear').click();
+    await page.keyboard.type('1');
+    await page.keyboard.press('Backspace');
+    await expect(sph(page)).toHaveValue('');
+    await page.keyboard.press('Tab');
+    await expect(err(page)).toBeVisible();
+    await expect(err(page)).toContainText('Bitte einen Wert eingeben.');
+    await expect(sph(page)).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#result-od-empty')).toBeVisible();
+  });
+
+  test('after a preset, clearing R Sph by typing is an edit: Fehler on blur', async ({ page }) => {
+    await page.locator('#example-clear').click();
+    await rxChip(page, 'Weitsichtig').click();
+    await settled(page);
+    await sph(page).click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Backspace');
+    await expect(sph(page)).toHaveValue('');
+    await sph(page).blur();
+    await expect(err(page)).toBeVisible();
+    await expect(err(page)).toContainText('Bitte einen Wert eingeben.');
+  });
+
+  test('a preset replaces an edited empty field: no empty-field message remains', async ({ page }) => {
+    await page.locator('#example-clear').click();
+    await page.keyboard.type('1');
+    await page.keyboard.press('Backspace');
+    await sph(page).blur();
+    await expect(err(page)).toContainText('Bitte einen Wert eingeben.');
+    await rxChip(page, 'Weitsichtig').click();
+    await expect(sph(page)).toHaveValue('+3,00');
+    await settled(page);
+    await page.waitForTimeout(900);
+    await expect(err(page)).toBeHidden();
+    await expect(sph(page)).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('eye rule: an edited Zyl of that eye makes the empty Sph show its Fehler', async ({ page }) => {
+    await page.locator('#example-clear').click();
+    await page.locator('#rx-od-cyl').fill('-1,00');
+    await page.locator('#rx-od-axis').fill('90');
+    await page.locator('#rx-od-axis').blur();
+    await expect(err(page)).toBeVisible();
+    await expect(err(page)).toContainText('Bitte einen Wert eingeben.');
+    // the other eye was not edited: no message there
+    await expect(page.locator('#rx-os-sph-err')).toBeHidden();
+  });
+});
