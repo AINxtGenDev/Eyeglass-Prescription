@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-18-PLAN.md
-last_updated: "2026-11-07T18:11:45.020Z"
+stopped_at: Completed 02-19-PLAN.md
+last_updated: "2026-11-07T18:37:42.125Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 36
-  completed_plans: 32
+  completed_plans: 33
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 18 of 21 (gap closure; next 02-19; 02-15 Tasks 2–3 resume after 02-21 and the lens-critic re-review)
+Plan: 19 of 21 (gap closure; next 02-20; 02-15 Tasks 2–3 resume after 02-21 and the lens-critic re-review)
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -81,6 +81,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P14 | 24min | 2 tasks | 11 files |
 | Phase 02 P16 | 14min | 2 tasks | 12 files |
 | Phase 02 P17 | 20min | 2 tasks | 9 files |
+| Phase 02 P19 | ~70 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,7 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-16: lay 'Dünnste Stelle' = thinnest(m) = min(CT, etMin), tie → centre; thinnest edge kept as Zwischenwert 'Dünnster Rand' plus a 'Rand ab …' card line (lens-critic B1)
 - [Phase 02]: 02-17 M2: summary bar shows a 'Vorher (A):' prefix instead of auto-switching the toggle (WCAG 3.2.2 spirit)
 - [Phase 02]: 02-18 M3: empty-Sph message only after the user edited that eye (trusted input, '±', 'übernehmen'; no clearDirty); field-message paints wait for the click of the current pointer gesture (afterGesture), keyboard blur paints at once
+- [Phase 02]: 02-19: long property tests split via deterministic fc.sample chunks (seed kept); material intro tie wording via shownEye; RES-03/UX-02/UX-03 Pending as Phase 2 + 3
 
 ### Pending Todos
 
@@ -186,6 +188,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T18:11:45.015Z
-Stopped at: Completed 02-18-PLAN.md
+Last session: 2026-11-07T18:37:42.120Z
+Stopped at: Completed 02-19-PLAN.md
 Resume file: None

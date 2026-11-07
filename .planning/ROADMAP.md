@@ -202,7 +202,7 @@ Plans:
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
-- [ ] 02-19-PLAN.md — m2 split property tests; m3/m4 material-intro wording; m8 Simple-view hidden test; m1 traceability (RES-03, UX-02, UX-03 → Phase 2 + 3); m5–m7 accepted for later (RES-02, RES-03, UX-02, UX-03)
+- [x] 02-19-PLAN.md — m2 split property tests; m3/m4 material-intro wording; m8 Simple-view hidden test; m1 traceability (RES-03, UX-02, UX-03 → Phase 2 + 3); m5–m7 accepted for later (RES-02, RES-03, UX-02, UX-03)
 
 **Wave 20** *(blocked on Wave 19 completion)*
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 17/21 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 18/21 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
