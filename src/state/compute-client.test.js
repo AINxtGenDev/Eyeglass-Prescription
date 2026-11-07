@@ -56,6 +56,7 @@ function setup({ ready = true, hidden = false } = {}) {
     onFailed: vi.fn(),
     onFallback: vi.fn(),
     onOpenChange: vi.fn(),
+    onCompare: vi.fn(),
   };
   const state = { hidden };
   const client = createComputeClient({
@@ -442,5 +443,189 @@ describe('compute client (01-15, ENG-09 main side)', () => {
     b.ft.fireLateAt(WATCHDOG_MS + 5000);
     b.client.resume();
     expect(b.cb.onFallback).not.toHaveBeenCalled();
+  });
+});
+
+// Compare lane (02-06, RES-02): low priority, latest wins, one material pair per job.
+describe('compare lane (02-06)', () => {
+  const pairJob = (key) => ({ key, specs: { OD: spec('OD', -2), OS: spec('OS', -2) } });
+  const answerCompare = (client, job, tag) =>
+    client.receive({ type: 'compare', id: job.id, eyes: { OD: res(tag), OS: res(tag) }, computeMs: 1 });
+
+  test('an idle client sends one compare job at a time, in queue order', () => {
+    const { client, sent, cb } = setup();
+    const gen = client.requestCompare([pairJob('a'), pairJob('b')]);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ type: 'compare', eyes: { OD: spec('OD', -2), OS: spec('OS', -2) } });
+    answerCompare(client, sent[0], 'a');
+    expect(cb.onCompare).toHaveBeenCalledWith({ gen, key: 'a', results: { OD: res('a'), OS: res('a') } });
+    expect(sent).toHaveLength(2);
+    expect(sent[1].type).toBe('compare');
+    answerCompare(client, sent[1], 'b');
+    expect(cb.onCompare).toHaveBeenCalledTimes(2);
+    expect(sent).toHaveLength(2);
+  });
+
+  test('main before compare, at most one compare job ahead (dispatch order compute → compare → compute)', () => {
+    const { client, sent, cb, answer } = setup();
+    client.request({ OD: spec('OD', -2), OS: spec('OS', -2) }, 0);
+    client.requestCompare([pairJob('a'), pairJob('b')]);
+    expect(sent.map((m) => m.type)).toEqual(['compute']);
+    answer(sent[0]);
+    expect(sent.map((m) => m.type)).toEqual(['compute', 'compare']);
+    // a changed main request while the compare job is in flight waits for that one job only
+    client.request({ OD: spec('OD', -3), OS: spec('OS', -2) }, 1);
+    expect(sent).toHaveLength(2);
+    answerCompare(client, sent[1], 'a');
+    expect(sent.map((m) => m.type)).toEqual(['compute', 'compare', 'compute']);
+    // the answer belonged to the old generation: dropped; the queue was cleared ('b' never sent)
+    expect(cb.onCompare).not.toHaveBeenCalled();
+    answer(sent[2]);
+    expect(sent).toHaveLength(3);
+  });
+
+  test('a changed request bumps the generation; isCompareCurrent follows it', () => {
+    const { client } = setup();
+    client.request({ OD: spec('OD', -2) }, 0);
+    const g1 = client.requestCompare([pairJob('a')]);
+    expect(client.isCompareCurrent(g1)).toBe(true);
+    client.request({ OD: spec('OD', -3) }, 1);
+    expect(client.isCompareCurrent(g1)).toBe(false);
+    const g2 = client.requestCompare([]);
+    expect(g2).toBe(g1 + 1);
+    client.request({ OD: null }, 2); // a cancel is a change too
+    expect(client.isCompareCurrent(g2)).toBe(false);
+  });
+
+  test('identical request keeps the compare queue and the generation', () => {
+    const { client, sent, cb } = setup();
+    client.request({ OD: spec('OD', -2) }, 0);
+    const gen = client.requestCompare([pairJob('a'), pairJob('b')]);
+    client.request({ OD: spec('OD', -2) }, 1);
+    expect(client.isCompareCurrent(gen)).toBe(true);
+    client.receive({ type: 'result', id: sent[0].id, eyes: { OD: { seq: 1, result: res(-2) } }, computeMs: 1 });
+    answerCompare(client, sent[1], 'a');
+    answerCompare(client, sent[2], 'b');
+    expect(cb.onCompare.mock.calls.map(([d]) => d.key)).toEqual(['a', 'b']);
+  });
+
+  test('cached compare keys resolve synchronously without dispatch', () => {
+    const { client, sent, cb } = setup();
+    client.requestCompare([pairJob('a')]);
+    answerCompare(client, sent[0], 'a');
+    client.request({ OD: spec('OD', -5) }, 0); // new generation
+    client.receive({ type: 'result', id: sent[1].id, eyes: { OD: { seq: 1, result: res(-5) } }, computeMs: 1 });
+    const gen = client.requestCompare([pairJob('a')]);
+    expect(sent).toHaveLength(2);
+    expect(cb.onCompare).toHaveBeenLastCalledWith({ gen, key: 'a', results: { OD: res('a'), OS: res('a') } });
+  });
+
+  test('the compare cache keeps the 64 most recent keys (LRU)', () => {
+    const { client, sent } = setup();
+    for (let i = 0; i < 65; i++) {
+      client.requestCompare([pairJob('k' + i)]);
+      answerCompare(client, sent.at(-1), i);
+    }
+    const n = sent.length;
+    client.requestCompare([pairJob('k64'), pairJob('k1')]);
+    expect(sent).toHaveLength(n);
+    client.requestCompare([pairJob('k0')]); // evicted
+    expect(sent).toHaveLength(n + 1);
+  });
+
+  test('compare error never calls onFailed and never touches main eyes', () => {
+    const { client, sent, cb, answer } = setup();
+    client.request({ OD: spec('OD', -2) }, 0);
+    answer(sent[0]);
+    const gen = client.requestCompare([pairJob('a'), pairJob('b')]);
+    client.receive({ type: 'error', id: sent[1].id, eyes: [], message: 'x' });
+    expect(cb.onFailed).not.toHaveBeenCalled();
+    expect(cb.onCompare).toHaveBeenCalledWith({ gen, key: 'a', results: null, error: true });
+    expect(client.isCurrent('OD', 1)).toBe(true);
+    expect(sent[2]).toMatchObject({ type: 'compare' }); // 'b' goes on
+    // an error is not cached: the same key is sent again
+    answerCompare(client, sent[2], 'b');
+    client.requestCompare([pairJob('a')]);
+    expect(sent).toHaveLength(4);
+  });
+
+  test('a compare error of an old generation is not reported', () => {
+    const { client, sent, cb } = setup();
+    client.requestCompare([pairJob('a')]);
+    client.request({ OD: spec('OD', -2) }, 0);
+    client.receive({ type: 'error', id: sent[0].id, eyes: [], message: 'x' });
+    expect(cb.onCompare).not.toHaveBeenCalled();
+    expect(sent[1].type).toBe('compute');
+  });
+
+  test('workerError with a compare job in flight: main is sent, onFailed not called, compare queue kept', () => {
+    const { client, sent, cb, answer } = setup();
+    const gen = client.requestCompare([pairJob('a'), pairJob('b')]);
+    client.request({ OD: spec('OD', -2) }, 0); // changed: clears the queue
+    client.requestCompare([pairJob('c'), pairJob('d')]);
+    client.workerError();
+    expect(cb.onFailed).not.toHaveBeenCalled();
+    expect(cb.onCompare).not.toHaveBeenCalledWith(expect.objectContaining({ gen }));
+    expect(sent.map((m) => m.type)).toEqual(['compare', 'compute']);
+    answer(sent[1]);
+    expect(sent[2]).toMatchObject({ type: 'compare' });
+    answerCompare(client, sent[2], 'c');
+    answerCompare(client, sent[3], 'd');
+    expect(cb.onCompare.mock.calls.map(([d]) => d.key)).toEqual(['c', 'd']);
+  });
+
+  test('bench runs only after the compare queue is empty', () => {
+    const { client, sent } = setup();
+    client.requestCompare([pairJob('a')]);
+    client.bench(['normal']);
+    expect(sent.map((m) => m.type)).toEqual(['compare']);
+    answerCompare(client, sent[0], 'a');
+    expect(sent.map((m) => m.type)).toEqual(['compare', 'bench']);
+  });
+
+  test('cancelCompare empties the queue; the job in flight still answers', () => {
+    const { client, sent, cb } = setup();
+    client.requestCompare([pairJob('a'), pairJob('b')]);
+    client.cancelCompare();
+    answerCompare(client, sent[0], 'a');
+    expect(sent).toHaveLength(1);
+    expect(cb.onCompare).toHaveBeenCalledTimes(1);
+  });
+
+  test('timeout fallback with a compare job in flight: the job goes back to the queue', () => {
+    const { client, sent, cb, ft } = setup();
+    client.requestCompare([pairJob('a')]);
+    ft.advance(WATCHDOG_MS);
+    expect(cb.onFallback).toHaveBeenCalledWith('timeout');
+    const sync = [];
+    client.useTransport((m) => sync.push(m));
+    expect(sync).toHaveLength(0);
+    client.runCompareNow();
+    expect(sync).toEqual([{ type: 'compare', id: expect.any(Number), eyes: pairJob('a').specs }]);
+    expect(sent).toHaveLength(1);
+  });
+
+  test('sync mode: compare waits for runCompareNow(), main does not; runCompareNow lasts until the queue drains', () => {
+    const { client, cb } = setup({ ready: false });
+    client.workerError();
+    const sync = [];
+    client.useTransport((m) => sync.push(m));
+    client.requestCompare([pairJob('a'), pairJob('b')]);
+    expect(sync).toHaveLength(0);
+    client.request({ OD: spec('OD', -2) }, 0);
+    client.requestCompare([pairJob('a'), pairJob('b')]);
+    expect(sync.map((m) => m.type)).toEqual(['compute']);
+    client.receive({ type: 'result', id: sync[0].id, eyes: { OD: { seq: 1, result: res(-2) } }, computeMs: 1 });
+    expect(sync).toHaveLength(1);
+    client.runCompareNow();
+    expect(sync.map((m) => m.type)).toEqual(['compute', 'compare']);
+    answerCompare(client, sync[1], 'a');
+    answerCompare(client, sync[2], 'b');
+    expect(cb.onCompare).toHaveBeenCalledTimes(2);
+    // drained: a new compare request waits again
+    client.request({ OD: spec('OD', -3) }, 1);
+    client.receive({ type: 'result', id: sync[3].id, eyes: { OD: { seq: 2, result: res(-3) } }, computeMs: 1 });
+    client.requestCompare([pairJob('c')]);
+    expect(sync).toHaveLength(4);
   });
 });

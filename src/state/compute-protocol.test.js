@@ -93,4 +93,30 @@ describe('compute protocol (01-15, ENG-09 worker side)', () => {
     const fifty = Array.from({ length: 50 }, (_, i) => i + 1);
     expect(tailOf(fifty, 95)).toBe(48);
   });
+
+  describe('compare (02-06)', () => {
+    test('compare OD+OS: same id, plain LensResults equal evaluateLens, computeMs ≥ 0', () => {
+      const res = createHandler()({ type: 'compare', id: 11, eyes: { OD: NORMAL_PAIR.OD, OS: NORMAL_PAIR.OS } });
+      expect(res.type).toBe('compare');
+      expect(res.id).toBe(11);
+      expect(res.eyes.OD).toEqual(evaluateLens(NORMAL_PAIR.OD));
+      expect(res.eyes.OS).toEqual(evaluateLens(NORMAL_PAIR.OS));
+      expect(res.computeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    test('structuredClone round trip keeps the compare response', () => {
+      const res = createHandler()({ type: 'compare', id: 1, eyes: { OD: GRENZFALL_PAIR.OD, OS: NAN_SPEC } });
+      expect(structuredClone(res)).toEqual(res);
+    });
+
+    test('a throwing evaluate gives an error with no eyes (never a main-eye failure)', () => {
+      const handle = createHandler({
+        evaluate: () => {
+          throw new Error('boom');
+        },
+      });
+      const res = handle({ type: 'compare', id: 5, eyes: { OD: NORMAL_PAIR.OD, OS: NORMAL_PAIR.OS } });
+      expect(res).toEqual({ type: 'error', id: 5, eyes: [], message: 'boom' });
+    });
+  });
 });
