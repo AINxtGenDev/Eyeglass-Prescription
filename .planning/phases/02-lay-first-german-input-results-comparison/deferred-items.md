@@ -59,3 +59,8 @@ The plan for 02-19 asked to mark these as "accepted for later, needs user confir
 - **m6 (lay note for very thick results, +12 → 13,1 mm; −12/−6 → 18,6 mm).** Rationale: it needs a design threshold with no cited source and wording that must not read as medical advice; the always-visible material comparison already shows how to get thinner; revisit with the phase-3 3D view, where thickness is visible. Status: accepted for later (user confirmed 2026-11-07).
 - **m7 (Simple view ≈ 7850 px tall at 360 px; transposition line and Expert hint always shown).** Rationale: a layout restructuring (collapsing sections) that interacts with the phase-3 lens view slot (#bar-view-slot, UX-03); planned with the phase-3 UI work. Status: accepted for later (user confirmed 2026-11-07).
 - **m1** is closed in 02-19 by the traceability change (RES-03, UX-02, UX-03 → "Phase 2 + 3", Pending), not deferred.
+
+## User decision 2026-11-07 — ENG-09 (a) measurement (lens-critic M4)
+
+- Asked in chat after 02-20 (proxy FAIL; trace: 10–16 ms of each measured 4× frame is Playwright's DevToolsSession task, app work ≤ 9,7–11,8 ms). Options: fix the measurement / accept the gap / optimise paint.
+- **Chosen: "Fix the measurement (Recommended)".** Plan 02-22 makes the harness quiet during measured frames, proves it by trace, and re-measures with the unchanged 16,7 ms rule. The real Pixel check in 02-15 is still required.
