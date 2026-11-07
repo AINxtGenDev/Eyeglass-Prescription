@@ -54,6 +54,15 @@ import {
 } from './timing.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
+// Test-only user timings (?perfmarks, 02-20): update() segments as 'u:*' measures for the perf
+// spec's Chromium trace. Every mark is behind this constant, so nothing runs without the flag.
+const PERF_MARKS = location.search.includes('perfmarks');
+/** Measure name from start to now; returns now (the next segment's start). */
+const lap = (name, start) => {
+  const end = performance.now();
+  performance.measure(name, { start, end });
+  return end;
+};
 
 // Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material since 01-06
 // (radio cards since 02-07, in material-input.js); frame shape/size and PD per eye since 01-07
@@ -104,9 +113,13 @@ function onMessageShown(eye) {
 }
 
 function update(inputTs) {
+  let t0 = PERF_MARKS ? performance.now() : 0;
+  const tUpdate = t0;
   const read = readRx();
+  if (PERF_MARKS) t0 = lap('u:readRx', t0);
   const fr = readFrame();
   lastFrame = fr;
+  if (PERF_MARKS) t0 = lap('u:readFrame', t0);
   const materialId = currentMaterialId();
   // 02-10: Expert overrides (all null while the switch is off).
   const overrides = readExpertOverrides(materialId);
@@ -117,8 +130,10 @@ function update(inputTs) {
   const specOverrides = custom.active
     ? { ...overrides, minCT: custom.minCT, minET: custom.minET, customMaterial: custom.customMaterial }
     : overrides;
+  if (PERF_MARKS) t0 = lap('u:material', t0);
   // 02-08: while Vorher (A) is shown, the cards name A's material.
   for (const eye of EYES) renderMaterialLine(eye, ...cardMaterial(materialId));
+  if (PERF_MARKS) t0 = lap('u:materialLine', t0);
   const ready = (eye) =>
     fr.frame !== null && !overrides.blocked && !custom.blocked && read[eye].rx !== null && read[eye].pd !== null;
   const specs = { OD: null, OS: null };
@@ -130,11 +145,17 @@ function update(inputTs) {
     }
     paintNotReady(eye, notReadyStatus(eye));
   }
+  if (PERF_MARKS) t0 = lap('u:specs', t0);
   // Assumed inputs are stated next to the result (D-06, lens-critic MINOR-6): only for eyes that
   // are computed with them.
   renderPdNote(EYES.filter((eye) => specs[eye] !== null && read[eye].pdSource === 'default'));
   renderBNote(fr.frame !== null && fr.bEstimated && EYES.some((eye) => specs[eye] !== null) ? fr.B : null);
+  if (PERF_MARKS) t0 = lap('u:notes', t0);
   requestMain(specs, inputTs);
+  if (PERF_MARKS) {
+    lap('u:requestMain', t0);
+    lap('u:update', tUpdate);
+  }
 }
 
 /** The six Sph/Zyl/Achse field texts, R then L. */

@@ -38,6 +38,16 @@ const EYES = /** @type {const} */ (['OD', 'OS']);
 
 const MATERIAL_IDS = Object.keys(MATERIALS);
 
+// Test-only user timings (?perfmarks, 02-20): requestMain / startCompare segments as 'u:*'
+// measures for the perf spec's Chromium trace. Every mark is behind this constant.
+const PERF_MARKS = location.search.includes('perfmarks');
+/** Measure name from start to now; returns now (the next segment's start). */
+const lap = (name, start) => {
+  const end = performance.now();
+  performance.measure(name, { start, end });
+  return end;
+};
+
 // Timing hooks, injected by initPipeline (the ENG-09 readouts own them; no import cycle).
 // currentConfig (02-08): the frame and material of the last input frame, from main.js.
 let onBench, onPainted, onCompute, onComparePainted, currentConfig;
@@ -234,14 +244,19 @@ const shown = { OD: null, OS: null };
 
 /** Request the main result: remember the specs (for isCurrent deliveries), then send them. */
 export function requestMain(specs, inputTs) {
+  let t0 = PERF_MARKS ? performance.now() : 0;
   requested = specs;
   requestedKeys = { OD: specs.OD ? JSON.stringify(specs.OD) : null, OS: specs.OS ? JSON.stringify(specs.OS) : null };
+  if (PERF_MARKS) t0 = lap('u:rm.keys', t0);
   client.request(specs, inputTs);
+  if (PERF_MARKS) t0 = lap('u:rm.request', t0);
   for (const eye of EYES) if (specs[eye] === null) renderRim(eye, null);
   $('cmp-footnote').hidden = !hasOverrides(specs);
+  if (PERF_MARKS) t0 = lap('u:rm.rimFootnote', t0);
   // A changed main request starts a new compare generation in the client (and drops its queue);
   // an identical one keeps it, so the comparison is only requested when a main key changed.
   if (!client.isCompareCurrent(compareGen)) startCompare(specs);
+  if (PERF_MARKS) lap('u:rm.startCompare', t0);
 }
 
 /**
@@ -372,13 +387,16 @@ function buildCompareJobs(specs) {
 }
 
 function startCompare(specs) {
+  let t0 = PERF_MARKS ? performance.now() : 0;
   markOutdated();
+  if (PERF_MARKS) t0 = lap('u:sc.markOutdated', t0);
   others = {};
   resultA = undefined;
   resultAuto = undefined;
   compareDelivered.clear();
   compareJobs = buildCompareJobs(specs);
   $('cmp-run').hidden = true;
+  if (PERF_MARKS) t0 = lap('u:sc.buildJobs', t0);
   if (computeMode === 'sync') {
     // Sync fallback (T-02-18): the jobs would run on the main thread, so only the button runs them.
     compareGen = client.requestCompare([]);
@@ -386,7 +404,9 @@ function startCompare(specs) {
   } else {
     sendCompare();
   }
+  if (PERF_MARKS) t0 = lap('u:sc.sendCompare', t0);
   scheduleComparePaint();
+  if (PERF_MARKS) lap('u:sc.schedulePaint', t0);
 }
 
 function sendCompare() {

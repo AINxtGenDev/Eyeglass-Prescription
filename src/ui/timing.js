@@ -19,6 +19,10 @@ export function initTiming(deps) {
 
 const DASH = '–';
 
+// Test-only user timings (?perfmarks, 02-20): the measured input frame as a 'u:inputFrame'
+// measure, so the perf spec's trace uses exactly the ring's frame window.
+const PERF_MARKS = location.search.includes('perfmarks');
+
 // Ring-buffer length for the input timing medians (ENG-09, lens-critic MAJOR-2).
 const TIMING_WINDOW = 10;
 
@@ -173,6 +177,7 @@ function runFrame({ inputTs, frameStart }) {
   if (!timed) return;
   setTimeout(() => {
     const end = performance.now();
+    if (PERF_MARKS) performance.measure('u:inputFrame', { start: frameStart, end });
     pushTiming(timings.inputFrame, end - frameStart);
     pushTiming(timings.reaction, end - inputTs);
     setText(

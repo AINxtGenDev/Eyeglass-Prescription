@@ -25,6 +25,26 @@ import { settled, settledCompare, etmaxOf } from './helpers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.PERF_OUT ?? path.join(ROOT, 'test-results', 'perf-throttled.json');
+// 02-20 attribution mode: with PERF_TRACE=<file.json> the page opens with ?perfmarks (user timings
+// 'u:*' around the update() / requestMain / startCompare segments and 'u:inputFrame' = the
+// ring's measured frame window), and the 4× case A / B edit runs and the 1× extreme run are
+// wrapped in a Chromium trace. Without PERF_TRACE the spec runs exactly as before.
+// Verified API: browser.startTracing(page?, { categories?, path?, screenshots? }) and
+// browser.stopTracing(): Promise<Buffer> (node_modules/playwright-core/types/types.d.ts, 1.65.0).
+const TRACE_OUT = process.env.PERF_TRACE ?? null;
+// Categories checked by a trial trace (2026-11-07, Chromium of Playwright 1.65): RunTask in
+// disabled-by-default-devtools.timeline; UpdateLayoutTree, Layout, PrePaint, Paint, Layerize,
+// Commit, FireAnimationFrame, TimerFire, HandlePostMessage in devtools.timeline; MinorGC /
+// MajorGC in devtools.timeline,v8; measures as nestable async b/e (zero length: 'n') in
+// blink.user_timing.
+const TRACE_CATEGORIES = [
+  'devtools.timeline',
+  'disabled-by-default-devtools.timeline',
+  'blink.user_timing',
+  'toplevel',
+  'v8',
+];
+const TRACED = { 4: ['caseA', 'caseB'], 1: ['extreme'] };
 // 1× is the harness baseline; 4× and 6× are required by D-B, 2× is context for weaker hosts.
 const RATES = [1, 2, 4, 6];
 const EDITS = 10;
@@ -161,6 +181,168 @@ async function typePair(page, { sph, cyl, axis, pd, material, shape, A, B, DBL }
   await settled(page);
 }
 
+// ---- Trace attribution (02-20) ----
+
+// Leaf JS segments of the input frame (src/ui/main.js update, src/ui/pipeline.js requestMain /
+// startCompare). u:rm.startCompare is the sum of the u:sc.* leaves.
+const JS_LEAVES = [
+  'u:readRx',
+  'u:readFrame',
+  'u:material',
+  'u:materialLine',
+  'u:specs',
+  'u:notes',
+  'u:rm.keys',
+  'u:rm.request',
+  'u:rm.rimFootnote',
+  'u:sc.markOutdated',
+  'u:sc.buildJobs',
+  'u:sc.sendCompare',
+  'u:sc.schedulePaint',
+];
+const RENDER = { style: ['UpdateLayoutTree'], layout: ['Layout'], paint: ['PrePaint', 'Paint', 'Layerize', 'Commit'] };
+const GC = ['MinorGC', 'MajorGC'];
+const r1 = (v) => Math.round(v * 100) / 100;
+
+/** Pair the user-timing b/e events (n = zero length) into intervals in µs. */
+function measures(events, tid) {
+  const open = new Map();
+  const out = [];
+  for (const e of events) {
+    if (e.tid !== tid || !e.cat?.includes('blink.user_timing') || !e.name?.startsWith('u:')) continue;
+    const id = e.name + '|' + (e.id2?.local ?? e.id);
+    if (e.ph === 'n') out.push({ name: e.name, ts: e.ts, end: e.ts });
+    else if (e.ph === 'b') open.set(id, e.ts);
+    else if (e.ph === 'e' && open.has(id)) {
+      out.push({ name: e.name, ts: open.get(id), end: e.ts });
+      open.delete(id);
+    }
+  }
+  return out;
+}
+
+/** Length of the part of [a, b] covered by the union of intervals (µs). */
+function covered(intervals, a, b) {
+  const xs = intervals
+    .map((x) => [Math.max(a, x.ts), Math.min(b, x.end)])
+    .filter(([s, e]) => e > s)
+    .sort((p, q) => p[0] - q[0]);
+  let sum = 0;
+  let cur = null;
+  for (const [s, e] of xs) {
+    if (!cur || s > cur[1]) {
+      if (cur) sum += cur[1] - cur[0];
+      cur = [s, e];
+    } else cur[1] = Math.max(cur[1], e);
+  }
+  if (cur) sum += cur[1] - cur[0];
+  return sum;
+}
+
+/**
+ * Per measured input frame (window = the 'u:inputFrame' measure, i.e. exactly the ring's
+ * rAF start → after-paint timeout): ms per bucket. JS = the u:* leaves; style / layout / paint
+ * and GC are counted outside u:update (inside it they are forced work and listed as
+ * forcedInJs); idle = window minus RunTask coverage; other = busy minus every named bucket.
+ * Plus every main-thread task > 4 ms that starts within 100 ms after the frame start but
+ * outside the frame window.
+ */
+function attribute(buf) {
+  const json = JSON.parse(buf.toString());
+  const events = json.traceEvents ?? json;
+  const tid = events.find((e) => e.name === 'u:inputFrame')?.tid;
+  if (tid === undefined) return { frames: [], note: 'no u:inputFrame measure in the trace' };
+  const ms = measures(events, tid);
+  const x = events.filter((e) => e.tid === tid && e.ph === 'X' && e.dur > 0).map((e) => ({ ...e, end: e.ts + e.dur }));
+  const tasks = x.filter((e) => e.name === 'RunTask');
+  const frames = [];
+  for (const f of ms.filter((m) => m.name === 'u:inputFrame')) {
+    const inside = (e) => e.ts >= f.ts && e.ts < f.end;
+    const updates = ms.filter((m) => m.name === 'u:update' && inside(m));
+    const b = { frameMs: (f.end - f.ts) / 1000 };
+    for (const name of JS_LEAVES) b[name] = ms.filter((m) => m.name === name && inside(m)).reduce((s, m) => s + m.end - m.ts, 0) / 1000;
+    b['u:update'] = updates.reduce((s, m) => s + m.end - m.ts, 0) / 1000;
+    for (const name of ['u:requestMain', 'u:rm.startCompare']) {
+      b[name] = ms.filter((m) => m.name === name && inside(m)).reduce((s, m) => s + m.end - m.ts, 0) / 1000;
+    }
+    const outsideJs = (e) => covered(updates, e.ts, e.end) === 0;
+    let forced = 0;
+    for (const [bucket, names] of Object.entries({ ...RENDER, gc: GC })) {
+      const evs = x.filter((e) => names.includes(e.name) && inside(e));
+      b[bucket] = evs.filter(outsideJs).reduce((s, e) => s + e.dur, 0) / 1000;
+      forced += evs.filter((e) => !outsideJs(e)).reduce((s, e) => s + e.dur, 0) / 1000;
+    }
+    b.forcedInJs = forced;
+    const busy = covered(tasks, f.ts, f.end) / 1000;
+    b.idle = b.frameMs - busy;
+    b.other = busy - b['u:update'] - b.style - b.layout - b.paint - b.gc;
+    const frameTasks = tasks.filter((t) => t.end > f.ts && t.ts < f.end);
+    // 'other' by trace event name: self time (own duration minus nested events) of the X events
+    // in the frame window outside u:update and outside the named buckets.
+    const named = new Set([...Object.values(RENDER).flat(), ...GC]);
+    const win = x.filter((e) => e.ts >= f.ts && e.end <= f.end).sort((p, q) => p.ts - q.ts || q.dur - p.dur);
+    const selfBy = {};
+    const stack = [];
+    for (const e of win) {
+      while (stack.length && stack.at(-1).end <= e.ts) stack.pop();
+      const parent = stack.at(-1);
+      e.self = e.dur;
+      e.skip = (parent?.skip ?? false) || named.has(e.name) || covered(updates, e.ts, e.end) > 0;
+      if (parent) parent.self -= e.dur;
+      stack.push(e);
+    }
+    for (const e of win) if (!e.skip) selfBy[e.name] = (selfBy[e.name] ?? 0) + e.self / 1000;
+    b.otherTop = Object.entries(selfBy)
+      .filter(([, v]) => v >= 0.2)
+      .sort((p, q) => q[1] - p[1])
+      .slice(0, 8)
+      .map(([name, v]) => [name, r1(v)]);
+    // DevTools-protocol tasks (the Playwright harness's commands: fill, expect polling, tracing)
+    // that run inside the window; a phone without DevTools has none of them.
+    const devtools = x.filter(
+      (e) => e.name === 'Receive mojo message' && e.args?.chrome_mojo_event_info?.mojo_interface_tag === 'blink.mojom.DevToolsSession',
+    );
+    b.devtoolsInFrame = covered(devtools, f.ts, f.end) / 1000;
+    b.tasksInFrame = frameTasks.length;
+    b.longestTaskInFrame = Math.max(0, ...frameTasks.map((t) => t.dur)) / 1000;
+    // Work an input causes outside its measured frame (the deferred compare start, paints).
+    b.tasksAfter = tasks
+      .filter((t) => t.ts >= f.end && t.ts - f.ts <= 100_000 && t.dur > 4000)
+      .map((t) => ({
+        startAfterFrameStartMs: r1((t.ts - f.ts) / 1000),
+        durMs: r1(t.dur / 1000),
+        top: [...new Set(x.filter((e) => e !== t && e.ts >= t.ts && e.end <= t.end && e.dur > 1000).map((e) => e.name))].slice(0, 6),
+      }));
+    for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r1(b[k]);
+    frames.push(b);
+  }
+  const summary = {};
+  for (const k of Object.keys(frames[0] ?? {})) {
+    if (typeof frames[0][k] !== 'number') continue;
+    const v = frames.map((f) => f[k]).sort((p, q) => p - q);
+    summary[k] = { median: r1(v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2), max: v.at(-1) };
+  }
+  const longest = frames.reduce((m, f) => (f.frameMs > (m?.frameMs ?? -1) ? f : m), null);
+  return { n: frames.length, summary, longest, frames };
+}
+
+/** Run fn inside a Chromium trace when this rate/run is traced; returns [fn result, attribution]. */
+async function traced(browser, page, rate, run, fn) {
+  if (!TRACE_OUT || !TRACED[rate]?.includes(run)) return [await fn(), null];
+  await browser.startTracing(page, { categories: TRACE_CATEGORIES });
+  let out;
+  try {
+    out = await fn();
+  } catch (err) {
+    await browser.stopTracing();
+    throw err;
+  }
+  const buf = await browser.stopTracing();
+  // The raw trace next to the attribution, for DevTools (Performance panel → Load profile).
+  writeFileSync(`${TRACE_OUT.replace(/\.json$/, '')}.${rate}x-${run}.trace.json`, buf);
+  return [out, attribute(buf)];
+}
+
 const CASE_A = { sph: '-4', cyl: '-2', axis: '30', pd: '32', material: 'cr39', shape: 'rechteckig', A: '52', B: '38', DBL: '18' };
 // The 01-12 Grenzfall typed in. The page has no fitting-height field (D-04), so it computes FH
 // null, not FH 0; the exact FH-0 Grenzfall is the #timing-worst worker readout.
@@ -200,12 +382,13 @@ async function editRun(page, values) {
   return { input, result };
 }
 
-test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browserName }) => {
+test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browser, browserName }) => {
   test.skip(browserName !== 'chromium', 'CDP sessions are Chromium-only');
   test.setTimeout(30 * 60_000);
   const results = [];
+  const traces = [];
   for (const rate of RATES) {
-    await page.goto('./');
+    await page.goto(TRACE_OUT ? './?perfmarks' : './');
     await settled(page);
     await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
     const cdp = await page.context().newCDPSession(page);
@@ -225,7 +408,9 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     // (ii) case A: the canonical normal pair, OD Sph −4,25 / −4,00
     await typePair(page, CASE_A);
     const discA = await discriminator(page, ['-4,25', '-4,00']);
-    row.caseA = { discriminator: discA, ...(await editRun(page, ['-4,25', '-4,00'])) };
+    const [runA, traceA] = await traced(browser, page, rate, 'caseA', () => editRun(page, ['-4,25', '-4,00']));
+    row.caseA = { discriminator: discA, ...runA };
+    if (traceA) traces.push({ rate, run: 'caseA', ...traceA });
     // 02-07: the comparison lane ran behind every edit; its paint frames share the main thread.
     await settledCompare(page, { timeout: 60_000 });
     row.caseA.compareFrame = await readCompare(page);
@@ -233,7 +418,9 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     // (iii) case B: the Grenzfall typed (FH null), OD Sph +11,00 / +10,75
     await typePair(page, CASE_B);
     const discB = await discriminator(page, ['+11,00', '+10,75']);
-    row.caseB = { discriminator: discB, ...(await editRun(page, ['+11,00', '+10,75'])) };
+    const [runB, traceB] = await traced(browser, page, rate, 'caseB', () => editRun(page, ['+11,00', '+10,75']));
+    row.caseB = { discriminator: discB, ...runB };
+    if (traceB) traces.push({ rate, run: 'caseB', ...traceB });
 
     // (iv) extreme run: case A edits typed key by key while the worker runs the rescan bench
     await typePair(page, CASE_A);
@@ -243,16 +430,19 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     const sph = page.locator('#rx-od-sph');
     // The ring keeps 10 frames and one edit here is up to 6 inputs, so the maxima are read after every edit.
     const ext = { reactMax: 0, mainMax: 0, renderMax: 0 };
-    for (let i = 0; i < EDITS; i++) {
-      await sph.fill('');
-      await sph.pressSequentially(i % 2 ? '-4,00' : '-4,25');
-      await settled(page);
-      const inp = await readInput(page);
-      const res = await readResult(page);
-      ext.reactMax = Math.max(ext.reactMax, inp.reactMax);
-      ext.mainMax = Math.max(ext.mainMax, inp.mainMax);
-      ext.renderMax = Math.max(ext.renderMax, res.renderMax);
-    }
+    const [, traceExt] = await traced(browser, page, rate, 'extreme', async () => {
+      for (let i = 0; i < EDITS; i++) {
+        await sph.fill('');
+        await sph.pressSequentially(i % 2 ? '-4,00' : '-4,25');
+        await settled(page);
+        const inp = await readInput(page);
+        const res = await readResult(page);
+        ext.reactMax = Math.max(ext.reactMax, inp.reactMax);
+        ext.mainMax = Math.max(ext.mainMax, inp.mainMax);
+        ext.renderMax = Math.max(ext.renderMax, res.renderMax);
+      }
+    });
+    if (traceExt) traces.push({ rate, run: 'extreme', ...traceExt });
     row.extreme = {
       rescanRunningAtStart,
       ...ext,
@@ -296,4 +486,14 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
   const host = { userAgent: await page.evaluate(() => navigator.userAgent) };
   writeFileSync(OUT, JSON.stringify({ host, results }, null, 2));
   console.info(`perf-throttled results written to ${OUT}`);
+  if (TRACE_OUT) {
+    writeFileSync(TRACE_OUT, JSON.stringify({ host, categories: TRACE_CATEGORIES, traces }, null, 2));
+    for (const tr of traces) {
+      expect(tr.n, `${tr.rate}× ${tr.run}: traced input frames`).toBeGreaterThan(0);
+      console.info(`trace ${tr.rate}× ${tr.run} (n ${tr.n}) bucket: median / max ms`);
+      for (const [k, v] of Object.entries(tr.summary)) console.info(`  ${k.padEnd(20)} ${v.median} / ${v.max}`);
+      console.info(`  longest frame: ${JSON.stringify(tr.longest)}`);
+    }
+    console.info(`perf-throttled trace attribution written to ${TRACE_OUT}`);
+  }
 });
