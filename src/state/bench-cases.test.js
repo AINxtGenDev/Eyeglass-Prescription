@@ -82,4 +82,25 @@ describe('shared ENG-09 bench cases (01-14)', () => {
     expect(benchPair('frameMiss', 3)).toEqual(frameMissPair(3));
     expect(() => benchPair('nope', 0)).toThrow(/nope/);
   });
+
+  test('specFor overrides (02-10): same key order, missing overrides are null', () => {
+    const rx = { sph: -4, cyl: -2, axisDeg: 30 };
+    const frame = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+    const s = specFor('OD', rx, 32, 'cr39', frame, null, { baseCurve: 6, minCT: 2 });
+    expect(Object.keys(s)).toEqual(Object.keys(NORMAL_PAIR.OD));
+    expect(s).toEqual({ ...NORMAL_PAIR.OD, baseCurve: 6, minCT: 2, minET: null });
+    expect(specFor('OD', rx, 32, 'cr39', frame, null, { baseCurve: 0 }).baseCurve).toBe(0);
+  });
+
+  test('specFor without overrides is unchanged (identical JSON, the cache key)', () => {
+    const rx = { sph: -4, cyl: -2, axisDeg: 30 };
+    const frame = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+    const s = specFor('OD', rx, 32, 'cr39', frame);
+    expect(s).toEqual(NORMAL_PAIR.OD);
+    // Recorded before the 02-10 change.
+    expect(JSON.stringify(NORMAL_PAIR.OD)).toBe(
+      '{"eye":"OD","sph":-4,"cyl":-2,"axisDeg":30,"materialId":"cr39","frame":{"shape":"rechteckig","A":52,"B":38,"DBL":18},"monoPD":32,"fittingHeight":null,"baseCurve":null,"minCT":null,"minET":null}',
+    );
+    expect(JSON.stringify(specFor('OD', rx, 32, 'cr39', frame, null, {}))).toBe(JSON.stringify(NORMAL_PAIR.OD));
+  });
 });

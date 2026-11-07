@@ -607,3 +607,62 @@ describe('MAT-01 the engine exposes the sourced Abbe number νe (01-13)', () => 
     expect(r.intermediates.abbe).toBe(MATERIALS[materialId].ve);
   });
 });
+
+describe('MAT-03 manual base curve 0,00…+10,00 and MANUAL_BACK_CONVEX (02-10)', () => {
+  // Canonical frame (bench NORMAL_FRAME): rechteckig 52 × 38, DBL 18, PD 32, CR-39.
+  const FRAME = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+  const plus = (o = {}) => spec({ sph: 2, frame: FRAME, ...o });
+  const codes = (r) => r.diagnostics.map((d) => d.code);
+  const d2max = (r) => Math.max(r.intermediates.D2a, r.intermediates.D2b);
+
+  it('baseCurve 0 computes for −4,00: D1 0, R1 null, rule manual', () => {
+    const r = evaluateLens(spec({ sph: -4, baseCurve: 0 }));
+    expect(r.ok).toBe(true);
+    expect(r.intermediates.D1).toBe(0);
+    expect(r.intermediates.R1).toBe(null);
+    expect(r.intermediates.baseCurveRule).toBe('manual');
+    expect(codes(r)).not.toContain('MANUAL_BACK_CONVEX');
+  });
+
+  it('baseCurve −0,25 is INVALID_SPEC base-curve; minCT/minET 0 stay invalid', () => {
+    expect(evaluateLens(spec({ baseCurve: -0.25 })).diagnostics).toEqual([
+      { code: 'INVALID_SPEC', severity: 'error', data: { reason: 'base-curve' } },
+    ]);
+    expect(evaluateLens(spec({ minET: 0 })).diagnostics[0].data.reason).toBe('min-thickness');
+  });
+
+  it('+2,00 with manual 0,50 (pinned): ok with MANUAL_BACK_CONVEX warn, D2max +1,4995', () => {
+    const r = evaluateLens(plus({ baseCurve: 0.5 }));
+    expect(r.ok).toBe(true);
+    const w = r.diagnostics.find((d) => d.code === 'MANUAL_BACK_CONVEX');
+    expect(w.severity).toBe('warn');
+    expect(Number.isFinite(w.data.D2max)).toBe(true);
+    expect(w.data.D2max).toBe(d2max(r));
+    expect(w.data.D2max).toBeCloseTo(1.4995, 4);
+    expect(codes(evaluateLens(plus()))).not.toContain('MANUAL_BACK_CONVEX');
+  });
+
+  it('steeper base curve clears the convex back (D2 = Sph − D1v), flatter keeps it', () => {
+    const steep = evaluateLens(plus({ baseCurve: 3 }));
+    expect(steep.ok).toBe(true);
+    expect(d2max(steep)).toBeLessThan(0);
+    expect(codes(steep)).not.toContain('MANUAL_BACK_CONVEX');
+    const flat = evaluateLens(plus({ baseCurve: 0 }));
+    expect(flat.ok).toBe(true);
+    expect(flat.intermediates.D1v).toBe(0);
+    expect(d2max(flat)).toBeCloseTo(2, 12);
+    expect(codes(flat)).toContain('MANUAL_BACK_CONVEX');
+  });
+
+  it.each([
+    [0.25, 0],
+    [1, -2],
+    [-1, 2],
+    [-2, -1],
+    [0, 0],
+  ])('baseCurve 0 with sph %s cyl %s: warning iff max(sph, sph + cyl) > 0', (sph, cyl) => {
+    const r = evaluateLens(spec({ sph, cyl, axisDeg: 30, frame: FRAME, baseCurve: 0 }));
+    expect(r.ok).toBe(true);
+    expect(codes(r).includes('MANUAL_BACK_CONVEX')).toBe(Math.max(sph, sph + cyl) > 0);
+  });
+});

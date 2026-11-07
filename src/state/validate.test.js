@@ -1,6 +1,18 @@
 import { describe, test, expect } from 'vitest';
 import fc from 'fast-check';
-import { validateRxEye, resolvePd, validateFrame, VAL_CODES, TIERS, RX_RANGES, STEP_DPT } from './validate.js';
+import {
+  validateRxEye,
+  resolvePd,
+  validateFrame,
+  validateBaseCurve,
+  validateMinThickness,
+  BASE_CURVE_MANUAL,
+  MIN_THICKNESS_RANGE,
+  VAL_CODES,
+  TIERS,
+  RX_RANGES,
+  STEP_DPT,
+} from './validate.js';
 import { PARSE_CODES } from './parse.js';
 import { RX_CODES } from './transpose.js';
 
@@ -291,3 +303,44 @@ describe('robustness (T-02-08)', () => {
     );
   });
 });
+
+describe('Expert fields (02-10, MAT-03, MAT-04)', () => {
+  test('ranges: base curve 0…10 dpt (MAT-03), minimum thickness 0,5…5 mm', () => {
+    expect(BASE_CURVE_MANUAL).toEqual([0, 10]);
+    expect(MIN_THICKNESS_RANGE).toEqual([0.5, 5]);
+  });
+  test('base curve: empty is automatic, 0 and 10 accepted', () => {
+    expect(validateBaseCurve('')).toEqual({ value: null, msg: null });
+    expect(validateBaseCurve('  ')).toEqual({ value: null, msg: null });
+    expect(validateBaseCurve('0')).toEqual({ value: 0, msg: null });
+    expect(validateBaseCurve('4,5')).toEqual({ value: 4.5, msg: null });
+    expect(validateBaseCurve('10')).toEqual({ value: 10, msg: null });
+  });
+  test.each([
+    ['10,25', 10.25],
+    ['-1', -1],
+    ['12', 12],
+  ])('base curve %s is out of model, never clamped', (raw, value) => {
+    expect(validateBaseCurve(raw)).toEqual({
+      value: null,
+      msg: { tier: TIERS.OUT, code: VAL_CODES.VAL_BASECURVE_OUT_OF_MODEL, data: { value, min: 0, max: 10 } },
+    });
+  });
+  test('base curve: not a number is a Fehler', () => {
+    const r = validateBaseCurve('abc');
+    expect(r.value).toBe(null);
+    expect(r.msg.tier).toBe(TIERS.ERROR);
+    expect(r.msg.code).toBe(PARSE_CODES.PARSE_NOT_A_NUMBER);
+  });
+  test('minimum thickness: 1,8 accepted, empty is the default, 0,4 out of model', () => {
+    expect(validateMinThickness('1,8')).toEqual({ value: 1.8, msg: null });
+    expect(validateMinThickness('')).toEqual({ value: null, msg: null });
+    expect(validateMinThickness('0,4')).toEqual({
+      value: null,
+      msg: { tier: TIERS.OUT, code: VAL_CODES.VAL_MINTHICKNESS_OUT_OF_MODEL, data: { value: 0.4, min: 0.5, max: 5 } },
+    });
+    expect(validateMinThickness('5,1').msg.code).toBe(VAL_CODES.VAL_MINTHICKNESS_OUT_OF_MODEL);
+    expect(validateMinThickness('x').msg.tier).toBe(TIERS.ERROR);
+  });
+});
+

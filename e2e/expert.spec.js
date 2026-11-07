@@ -161,3 +161,69 @@ test('the stale mark survives the toggle', async ({ page }) => {
   await settled(page);
   await expect(page.locator('[data-stale]')).toHaveCount(0);
 });
+
+// ---- Glas-Einstellungen (02-10, MAT-03, MAT-04) ----
+const bcField = (page) => page.locator('#expert-basecurve');
+const material = (page, id) => page.locator(`input[name=material][value=${id}]`);
+
+test('manual base curve: 6 is used, 0 computes, 12 is Außerhalb des Modells', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await bcField(page).fill('6');
+  await settled(page);
+  await expect(page.locator('#result-od-basecurve')).toContainText('von Ihnen vorgegeben');
+  await expect(page.locator('#result-od-basecurve')).toContainText('+6,00');
+  await bcField(page).fill('0');
+  await settled(page);
+  await expect(page.locator('#result-od-basecurve')).toContainText('von Ihnen vorgegeben');
+  await expect(page.locator('#result-od-basecurve')).toContainText('0,00');
+  await expect(page.locator('#expert-basecurve-err')).not.toContainText('Außerhalb');
+  await bcField(page).fill('12');
+  await bcField(page).blur();
+  await expect(page.locator('#expert-basecurve-err')).toContainText('Außerhalb des Modells');
+  await settled(page);
+  // never clamped: both eyes are blocked, no numbers
+  await expect(page.locator('#result-od-ct')).toHaveText('–');
+  await expect(page.locator('#result-os-ct')).toHaveText('–');
+  await bcField(page).fill('');
+  await settled(page);
+  await expect(page.locator('#result-od-basecurve')).toContainText('nahezu so dünn wie möglich');
+});
+
+test('minimum thicknesses: pre-filled per material, typed value kept, Standardwerte setzen, switch off', async ({ page }) => {
+  await settled(page);
+  const autoCt = await text(page, '#result-od-ct');
+  expect(autoCt).toBe('1,8 mm');
+  await sw(page).check();
+  const minCt = page.locator('#expert-min-ct');
+  await expect(minCt).toHaveValue('1,8');
+  await material(page, 'idx174').check();
+  await settled(page);
+  await expect(minCt).toHaveValue('1,1');
+  await minCt.fill('2,5');
+  await settled(page);
+  await expect(page.locator('#result-od-ct')).toHaveText('2,5 mm');
+  await material(page, 'idx160').check();
+  await settled(page);
+  await expect(minCt).toHaveValue('2,5');
+  await material(page, 'idx174').check();
+  await settled(page);
+  await page.locator('#expert-min-reset').click();
+  await settled(page);
+  await expect(minCt).toHaveValue('1,1');
+  await minCt.fill('2,5');
+  await settled(page);
+  await expect(page.locator('#result-od-ct')).toHaveText('2,5 mm');
+  await sw(page).uncheck();
+  await settled(page);
+  // overrides stop applying; 1,74 minimum CT 1,1 mm
+  await expect(page.locator('#result-od-ct')).not.toHaveText('2,5 mm');
+  await material(page, 'cr39').check();
+  await settled(page);
+  await expect(page.locator('#result-od-ct')).toHaveText(autoCt);
+  // the typed value is kept for later
+  await sw(page).check();
+  await expect(minCt).toHaveValue('2,5');
+  await settled(page);
+  await expect(page.locator('#result-od-ct')).toHaveText('2,5 mm');
+});

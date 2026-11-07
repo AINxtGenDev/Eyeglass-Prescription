@@ -171,6 +171,21 @@ describe('ENG-07 diagnostics', () => {
     expect(evaluateLens({ ...s, baseCurve: 6 }).ok).toBe(true);
   });
 
+  it('ENG-07 MANUAL_BACK_CONVEX (02-10): a warning, and both suggestions clear it', () => {
+    expect(DIAGNOSTICS.MANUAL_BACK_CONVEX.severity).toBe('warn');
+    const s = lens({ sph: 2, frame: frame('rechteckig', 52, 38, 18), monoPD: 32, baseCurve: 0.5 });
+    const r = evaluateLens(s);
+    expect(r.ok).toBe(true);
+    expect(codes(r)).toContain('MANUAL_BACK_CONVEX');
+    // Suggestion 1: a steeper (higher) base curve. Suggestion 2: leave the field empty (automatic).
+    const steeper = evaluateLens({ ...s, baseCurve: 3 });
+    expect(steeper.ok).toBe(true);
+    expect(codes(steeper)).not.toContain('MANUAL_BACK_CONVEX');
+    const auto = evaluateLens({ ...s, baseCurve: null });
+    expect(auto.ok).toBe(true);
+    expect(codes(auto)).not.toContain('MANUAL_BACK_CONVEX');
+  });
+
   it('ENG-07 OC_OUTSIDE_OUTLINE: fitting height above the box is a warning, numbers stay', () => {
     const r = evaluateLens(lens({ sph: -2, frame: frame('rechteckig', 52, 30, 18), monoPD: 32, fittingHeight: 40 }));
     expect(r.ok).toBe(true);

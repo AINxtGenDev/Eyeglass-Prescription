@@ -87,6 +87,7 @@ const DIAG_DATA = {
   BLANK_EXCEEDS_STOCK: ['mbsMm', 'stockMm'],
   CT_SET_BY_MIN_CT: [],
   CT_SET_BY_MIN_ET: [],
+  MANUAL_BACK_CONVEX: ['D2max'],
 };
 const placeholders = (v) => [...v.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
 
@@ -172,6 +173,12 @@ describe('diagnostic texts are geometrically true (lens-critic M1/m6, iteration-
     expect(v).toContain('0,50');
     expect(v).toContain('+14,00');
     expect(v).not.toContain('{meridian}');
+  });
+  test('MANUAL_BACK_CONVEX advises a steeper (higher) base curve, never a flatter one (D2 = Sph − D1v)', () => {
+    expect(dict['diag.MANUAL_BACK_CONVEX.title']).toBe('Rückfläche zum Auge hin gewölbt (konvex)');
+    expect(dict['diag.MANUAL_BACK_CONVEX.suggest']).toContain('stärker gewölbte (höhere) Basiskurve');
+    expect(dict['diag.MANUAL_BACK_CONVEX.suggest']).toContain('leer lassen');
+    expect(dict['diag.MANUAL_BACK_CONVEX.suggest']).not.toContain('flacher');
   });
   test('BASE_CURVE_CLAMPED keys are removed (D-01 final)', () => {
     expect(Object.keys(dict).filter((k) => k.startsWith('diag.BASE_CURVE_CLAMPED'))).toEqual([]);
