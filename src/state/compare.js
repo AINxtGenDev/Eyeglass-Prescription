@@ -1,5 +1,9 @@
 // Thickest point, display rounding and the left/right difference rule (02-01, RES-01, RES-04).
 // Pure: no DOM, no i18n text. Returns codes; src/ui turns them into German.
+// Material rows (02-06, RES-02): materialRows / thickerEye.
+import { MATERIALS } from '../engine/materials.js';
+
+const EYES = /** @type {const} */ (['OD', 'OS']);
 
 /**
  * Thickest point of the whole glass: the larger of the centre and the thickest edge (lens-critic
@@ -98,4 +102,79 @@ export function lrDifference(od, os, cause) {
   const diffG = roundG(Math.abs(od.weight - os.weight));
   if (diffG >= LR_DIFF_G) return { kind: 'weight', heavier: od.weight > os.weight ? 'OD' : 'OS', diffG, cause };
   return null;
+}
+
+/**
+ * The eye whose displayed thickest point is larger; tie → OD. A null value (eye not computed)
+ * loses.
+ * @param {{ OD: number|null, OS: number|null }} thickByEye displayed (roundMm) thickest values
+ * @returns {'OD'|'OS'}
+ */
+export function thickerEye({ OD, OS }) {
+  if (OD === null || OD === undefined) return 'OS';
+  if (OS === null || OS === undefined) return 'OD';
+  return OS > OD ? 'OS' : 'OD';
+}
+
+const okLens = (r) => r?.ok === true;
+
+/**
+ * Rows of the material comparison (D-15, D-16), in MATERIALS order, codes only.
+ *
+ * - Thickness is thickest(m) = max(CT, etMax) (lens-critic B1, the same rule as the result card),
+ *   so a plus lens's thickest point is its centre. Every difference is computed from the
+ *   displayed (rounded) values, so 4,6 − 3,0 reads 1,6 mm (RESEARCH Pitfall 10).
+ * - One eye for all rows: the thicker eye of the selected material on displayed values, tie → OD
+ *   (lens-critic MINOR-4), so no row compares R against L. If one selected eye is not computed,
+ *   the other is used.
+ * - Weight is the sum of the displayed per-eye grams of the computed selected eyes.
+ * - Every row uses its own material's sourced minCT/minET (RESEARCH Pitfall 11), so a higher
+ *   index is not always much thinner. Expert overrides (02-10) apply as specified there. The minET
+ *   of 1,67 and 1,74 is assumed (materials.js `assumed`); 02-07 footnotes it.
+ *
+ * @param {object} o
+ * @param {string} o.selectedId the user's material; its row comes from the main result (never
+ *   recomputed, D-15)
+ * @param {{ OD?: object|null, OS?: object|null }} o.selected main LensResult pair
+ * @param {Record<string, { OD?: object|null, OS?: object|null } | undefined>} o.others compare results
+ * @returns {object[]} [] when no selected eye is computed. Row: { id, eye, thickMm, thickWhere,
+ *   ctMm, weightG, diffMm, diffG, pct, selected } (diffMm/diffG/pct positive = this row thinner
+ *   or lighter; null on the selected row; pct null when diffMm is 0), or { id, failed: true }, or
+ *   { id, pending: true } while the material is still computing.
+ */
+export function materialRows({ selectedId, selected, others }) {
+  const eyes = EYES.filter((e) => okLens(selected?.[e]));
+  if (eyes.length === 0) return [];
+  const shown = (r) => (okLens(r) ? roundMm(thickest(r.metrics).value) : null);
+  const eye = thickerEye({ OD: shown(selected.OD), OS: shown(selected.OS) });
+
+  const rowOf = (id, pair, isSelected) => {
+    if (!isSelected && pair === undefined) return { id, pending: true };
+    if (!eyes.every((e) => okLens(pair?.[e]))) return { id, failed: true };
+    const m = pair[eye].metrics;
+    const t = thickest(m);
+    return {
+      id,
+      eye,
+      thickMm: roundMm(t.value),
+      thickWhere: t.where,
+      ctMm: roundMm(m.ct),
+      weightG: eyes.reduce((sum, e) => sum + roundG(pair[e].metrics.weightG), 0),
+      selected: isSelected,
+    };
+  };
+
+  const sel = rowOf(selectedId, selected, true);
+  return Object.keys(MATERIALS).map((id) => {
+    if (id === selectedId) return { ...sel, diffMm: null, diffG: null, pct: null };
+    const row = rowOf(id, others?.[id], false);
+    if (row.failed || row.pending) return row;
+    const diffMm = roundMm(sel.thickMm - row.thickMm);
+    return {
+      ...row,
+      diffMm,
+      diffG: sel.weightG - row.weightG,
+      pct: diffMm === 0 ? null : Math.round((diffMm / sel.thickMm) * 100),
+    };
+  });
 }
