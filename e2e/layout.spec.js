@@ -3,7 +3,7 @@
 // Pinned values: 02-01-SUMMARY Task 2 table (example 4,597 / 4,597 mm, 6,86 / 6,75 g; R +3,00 CT
 // 3,902, 7,23 g; L +2,75 CT 3,737, 7,00 g; CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
-import { settled, plain, guardPage } from './helpers.js';
+import { settled, settledXsec, plain, guardPage } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 guardPage(test);
@@ -157,7 +157,11 @@ for (const width of [1280, 900]) {
         page,
       }) => {
         await settled(page);
-        if (expert) await page.locator('#expert').check();
+        if (expert) {
+          await page.locator('#expert').check();
+          // 02-13: the Querschnitt is drawn after its worker job; scroll once the page is complete.
+          await settledXsec(page);
+        }
         await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
         await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
         const hit = await page.evaluate(() => {

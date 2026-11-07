@@ -80,6 +80,22 @@ test('falls back to direct computation when the worker cannot load', async ({ pa
   await expect(page.locator('#tech')).not.toHaveAttribute('aria-busy', /.*/);
 });
 
+test('sync fallback: the Querschnitt waits for "Vergleich berechnen" (02-13, T-02-18)', async ({ page }) => {
+  await page.route(WORKER_URL, (route) => route.abort());
+  await page.goto('./');
+  await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'sync');
+  await settled(page);
+  await page.locator('#expert').check();
+  await settled(page);
+  await expect(page.locator('#xsec')).toHaveAttribute('data-pending', '');
+  await expect(page.locator('#xsec-figure svg')).toHaveCount(0);
+  await expect(page.locator('#cmp-run')).toBeVisible();
+  await page.locator('#cmp-run').click();
+  await expect(page.locator('#xsec-figure svg[role=img]')).toHaveCount(1);
+  await expect(page.locator('#xsec')).toHaveAttribute('data-pending', '');
+  await expect(page.locator('#xsec-table td[data-row=ct]')).toHaveText(/^1,8\smm$/);
+});
+
 test('watchdog falls back when the worker never answers', async ({ page }) => {
   test.setTimeout(30_000);
   await page.route(WORKER_URL, (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* silent */' }));

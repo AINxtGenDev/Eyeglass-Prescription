@@ -425,3 +425,42 @@ describe('02-12 custom material copy (MAT-06, D-17)', () => {
     expect(ph('val.VAL_CUSTOM_IMPLAUSIBLE')).toEqual(['field', 'max', 'min', 'value']);
   });
 });
+
+describe('02-13 Querschnitt copy (ANA-01, D-30, D-37)', () => {
+  const ph = (k) => [...dict[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  const ALLOWED = {
+    'xs.svgTitle': ['angle', 'eye'],
+    'xs.desc': ['ct', 'endA', 'endB', 'locA', 'locB'],
+    'xs.descA': ['ct', 'endA', 'endB', 'locA', 'locB'],
+    'xs.descB': ['ct', 'endA', 'endB', 'locA', 'locB'],
+    'xs.row.end': ['loc'],
+    'xs.meridian.hPrincipal': ['power'],
+    'xs.meridian.principal': ['axis', 'power'],
+  };
+  test('placeholder whitelist for xs.*: exactly the listed params, none elsewhere', () => {
+    const keys = Object.keys(dict).filter((k) => k.startsWith('xs.'));
+    expect(keys.length).toBeGreaterThanOrEqual(25);
+    for (const k of keys) expect(ph(k), k).toEqual(ALLOWED[k] ?? []);
+  });
+  test('the UI-SPEC sentences and an end label for every location code', () => {
+    expect(dict['xs.title']).toBe('Querschnitt');
+    expect(dict['xs.svgTitle']).toBe('Querschnitt {eye}, Schnitt {angle}°');
+    expect(dict['xs.desc']).toBe('Mittendicke {ct}; Rand {endA} ({locA}) und {endB} ({locB}).');
+    expect(dict['xs.legend']).toBe('A (Vorher) — durchgezogen · B (Nachher) — gestrichelt');
+    expect(dict['xs.table.caption']).toBe('Werte im Querschnitt');
+    expect(dict['xs.meridian.label']).toBe('Schnitt');
+    expect(dict['xs.meridian.h']).toBe('waagrecht (0°)');
+    expect(dict['xs.meridian.principal']).toBe('Hauptschnitt {axis}° ({power})');
+    expect(dict['xs.eye.od']).toBe('Rechtes Glas');
+    expect(dict['xs.eye.os']).toBe('Linkes Glas');
+    expect(dict['xs.noChord']).toBe(
+      'Für diesen Schnitt lässt sich kein Querschnitt zeichnen: der optische Mittelpunkt liegt außerhalb der Fassung.',
+    );
+    const words = { nasal: 'Nase', temporal: 'Schläfe', superior: 'oben', inferior: 'unten' };
+    for (const h of ['nasal', 'temporal']) {
+      expect(dict[`xs.end.${h}`]).toBe(words[h]);
+      for (const v of ['superior', 'inferior']) expect(dict[`xs.end.${h}-${v}`]).toBe(`${words[h]} ${words[v]}`);
+    }
+    for (const v of ['superior', 'inferior']) expect(dict[`xs.end.${v}`]).toBe(words[v]);
+  });
+});

@@ -12,10 +12,15 @@
 // curve adds one more job with the automatic curve for the Glas-Einstellungen line.
 // 02-12 (D-17): with 'Eigenes Material' selected all six sourced materials are compared jobs; a
 // listed job never carries customMaterial (the engine rejects it with a listed materialId).
+// 02-13 (ANA-01, D-30, D-37): the Querschnitt. While the Experten-Ansicht is on, the selected
+// eye's profile (and A's, with a configuration comparison) is one profile job, last on the compare
+// lane, requested after the compare paint (so never before the main result); #xsec[data-pending]
+// signals it. In sync mode it waits for 'Vergleich berechnen', like the comparison.
 import { createComputeClient, BUSY_AFTER_MS } from '../state/compute-client.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
 import { $, setText } from './dom.js';
+import { icon } from './icons.js';
 import { renderResult, renderFailed, renderLrCallout, setStale } from './results.js';
 import {
   renderMaterialTable,
@@ -25,7 +30,8 @@ import {
   setConfigActive,
 } from './compare-view.js';
 import { renderMaterialLine } from './material-input.js';
-import { renderGlassSettings } from './expert.js';
+import { renderGlassSettings, isExpert } from './expert.js';
+import { renderCrossSection, renderCrossSectionEmpty, renderMeridianOptions } from './cross-section.js';
 import { renderRim } from './frame-input.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
@@ -48,6 +54,11 @@ export function initPipeline(hooks) {
     paintCards();
   });
   writeComparePending();
+  for (const radio of document.querySelectorAll('#xsec-eye input')) {
+    radio.after(icon('check'));
+    radio.addEventListener('change', updateXsec);
+  }
+  $('xsec-meridian').addEventListener('change', updateXsec);
 }
 
 // Settled signal (01-15): #result[data-pending] is a space-separated token set, '' when nothing
@@ -190,6 +201,7 @@ export const client = createComputeClient({
     writePending();
   },
   onCompare,
+  onProfile,
   isHidden: () => document.hidden,
 });
 
@@ -397,6 +409,11 @@ function holdCompareForButton() {
 function runCompareFromButton() {
   $('cmp-run').hidden = true;
   sendCompare();
+  if (xsec.held) {
+    xsec.held = false;
+    xsec.gen = client.requestProfiles(xsec.heldItems);
+    writeXsecPending(true);
+  }
   client.runCompareNow();
 }
 
@@ -444,8 +461,127 @@ function paintCompare() {
   }
   for (const id of compareDelivered) comparePending.delete(id);
   compareDelivered.clear();
+  // Before #compare[data-pending] clears, so settledXsec sees a needed profile as pending.
+  updateXsec();
   writeComparePending();
   onComparePainted(frameStart);
+}
+
+// ---- Querschnitt (02-13) ----
+
+const xsec = {
+  /** Key of the profile items requested last (JSON of the items) and its compare generation. */
+  key: null,
+  gen: -1,
+  /** Key of the painted drawing. */
+  painted: null,
+  /** Sync mode: items waiting for 'Vergleich berechnen'. */
+  held: false,
+  heldItems: null,
+  /** @type {{ gen: number, key: string, items: object[] | null } | null} */
+  delivery: null,
+  frame: null,
+  /** Eye and meridian of the requested items. */
+  eye: 'OD',
+  thetaDeg: 0,
+  labels: [],
+};
+
+function writeXsecPending(on) {
+  const el = $('xsec');
+  const value = on ? 'profile' : '';
+  if (el.dataset.pending !== value) el.dataset.pending = value;
+}
+
+const xsecEye = () =>
+  /** @type {'OD'|'OS'} */ (/** @type {HTMLInputElement|null} */ (document.querySelector('input[name=xsec-eye]:checked'))?.value ?? 'OD');
+
+/**
+ * Request (or reuse) the profile of the selected eye and meridian. Runs after the compare paint
+ * and on the eye / meridian controls; only while the Experten-Ansicht is on.
+ */
+export function updateXsec() {
+  if (!isExpert() || $('expert-analysis').hidden) {
+    writeXsecPending(false);
+    return;
+  }
+  const eye = xsecEye();
+  const spec = requested[eye];
+  const thetaDeg = renderMeridianOptions(spec);
+  // Main result of this input not painted yet: the next compare paint calls again.
+  if (spec && shown[eye]?.key !== requestedKeys[eye]) return;
+  const B = spec ? shown[eye].result : null;
+  if (!B?.ok) {
+    xsec.key = xsec.painted = null;
+    xsec.held = false;
+    renderCrossSectionEmpty();
+    writeXsecPending(false);
+    return;
+  }
+  const items = [];
+  const labels = [];
+  if (configA) {
+    // A still computing: its delivery repaints the comparison, which calls again.
+    if (resultA === undefined) {
+      writeXsecPending(true);
+      return;
+    }
+    const A = resultA?.[eye];
+    if (A?.ok) {
+      items.push({ surfaces: A.surfaces, frame: specA[eye].frame, eye, thetaDeg });
+      labels.push('A');
+    }
+  }
+  items.push({ surfaces: B.surfaces, frame: spec.frame, eye, thetaDeg });
+  labels.push(configA ? 'B' : null);
+  const key = JSON.stringify(items);
+  if (key === xsec.painted) {
+    xsec.key = key;
+    xsec.held = false;
+    writeXsecPending(false);
+    return;
+  }
+  // The same job is already on its way (same generation): wait for it.
+  if (key === xsec.key && client.isCompareCurrent(xsec.gen) && !xsec.held) return;
+  xsec.key = key;
+  xsec.eye = eye;
+  xsec.thetaDeg = thetaDeg;
+  xsec.labels = labels;
+  if (computeMode === 'sync') {
+    // Not on the main thread automatically (T-02-18): 'Vergleich berechnen' runs it.
+    xsec.held = true;
+    xsec.heldItems = items;
+    $('cmp-run').hidden = false;
+    writeXsecPending(false);
+    return;
+  }
+  xsec.held = false;
+  writeXsecPending(true);
+  xsec.gen = client.requestProfiles(items);
+}
+
+function onProfile(d) {
+  if (!client.isCompareCurrent(d.gen) || d.key !== xsec.key) return;
+  xsec.delivery = d;
+  xsec.frame ??= requestAnimationFrame(paintXsec);
+}
+
+/** Paint frame: second generation and key check (T-02-37), then the SVG and the table. */
+function paintXsec() {
+  xsec.frame = null;
+  const d = xsec.delivery;
+  xsec.delivery = null;
+  if (!d || !client.isCompareCurrent(d.gen) || d.key !== xsec.key) return;
+  if (d.items === null) renderCrossSectionEmpty();
+  else {
+    renderCrossSection({
+      profiles: d.items.map((profile, i) => ({ label: xsec.labels[i], profile })),
+      eye: xsec.eye,
+      thetaDeg: xsec.thetaDeg,
+    });
+  }
+  xsec.painted = d.key;
+  writeXsecPending(false);
 }
 
 // ---- Configuration comparison (02-08) ----
@@ -524,5 +660,6 @@ function endConfigCompare() {
   resultA = undefined;
   setConfigActive(false);
   paintCards();
+  updateXsec();
   $('cmp-start').focus();
 }

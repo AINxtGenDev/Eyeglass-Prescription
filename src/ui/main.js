@@ -37,6 +37,7 @@ import {
   initPipeline,
   requestMain,
   cardMaterial,
+  updateXsec,
 } from './pipeline.js';
 import {
   initTiming,
@@ -203,6 +204,8 @@ function init() {
       paintRim();
       // 02-12: off while 'Eigenes Material' is checked → back to the last listed material.
       onExpertToggle();
+      // 02-13: the Querschnitt is requested only while the switch is on.
+      updateXsec();
       schedule(ts);
     },
     { schedule, onMessageShown: () => EYES.forEach(onMessageShown), materialId: currentMaterialId() },
