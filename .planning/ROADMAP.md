@@ -125,7 +125,22 @@ Plans:
   5. The page works from 320 px width to desktop without overflowing German compound words, every technical term opens a German explanation by tap and by keyboard, the whole flow is keyboard operable, no information relies on colour alone, and automated axe checks pass in CI.
   6. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
-**Plans**: TBD
+**Plans**: 13 plans (13 sequential waves: every slice touches index.html, de-AT.js and style.css; MVP vertical slices, each usable on the page; push only in 02-13 after lens-critic and explicit approval)
+
+Plans:
+- [ ] 02-01-PLAN.md — Plain-German result cards per eye, example banner, L/R callout, Experten-Ansicht switch with Zwischenwerte (RES-01, RES-04, UX-02, UX-05, ANA-02)
+- [ ] 02-02-PLAN.md — Layout 320 px → desktop: two columns with sticky results, phone summary bar, no overflow (UX-03)
+- [ ] 02-03-PLAN.md — Paper-shaped Rx table: three message tiers, "Meinten Sie …?", ± sign, mirror, RX-08 details, toggletips (RX-01, RX-04, RX-05, RX-07, RX-08)
+- [ ] 02-04-PLAN.md — Smart PD, temple stamp with own SVG help, shape cards, frame ranges (RX-06, FRAME-02, FRAME-03)
+- [ ] 02-05-PLAN.md — Material cards and always-visible material comparison on a low-priority worker lane (RES-02)
+- [ ] 02-06-PLAN.md — Two-configuration comparison with Vorher/Nachher toggle (RES-03)
+- [ ] 02-07-PLAN.md — Rx and frame presets with inline confirm (RES-05)
+- [ ] 02-08-PLAN.md — Expert: manual base curve (0,00…+10,00), minimum thicknesses, binding constraint, Vogel follow-ups (MAT-03, MAT-04)
+- [ ] 02-09-PLAN.md — Expert: generic aspheric front (D1 chosen at k = 0) and rim depth (MAT-05, FRAME-02)
+- [ ] 02-10-PLAN.md — Expert: user-supplied material, labelled, excluded from comparison rows (MAT-06)
+- [ ] 02-11-PLAN.md — Cross-section SVG of selectable meridians with A/B overlay (ANA-01)
+- [ ] 02-12-PLAN.md — Whole-page WCAG 2.2 AA matrix, keyboard flow, ENG-09 proxy record with the comparison lane (UX-01, UX-03, UX-04)
+- [ ] 02-13-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live and real-phone checks
 **UI hint**: yes
 
 ### Phase 3: 3D Lenses & Frame
@@ -169,6 +184,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
+| 2. Lay-First German Input, Results & Comparison | 0/13 | Planned | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
