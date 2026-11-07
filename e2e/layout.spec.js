@@ -35,10 +35,18 @@ test.describe('320 × 640', () => {
     await page.locator('#rx-od-sph').fill('-12,00');
     await settled(page);
     await expectNoHorizontalScroll(page, "after '-12,00'");
-    // Hyphenation is never relied on: a test-only stylesheet (Playwright, not the app CSP) turns
-    // automatic hyphenation off; overflow-wrap: anywhere must still keep the page inside.
-    await page.addStyleTag({ content: 'body{-webkit-hyphens:manual;hyphens:manual}' });
-    expect(await page.evaluate(() => getComputedStyle(document.body).hyphens)).toBe('manual');
+    // Hyphenation is never relied on: turn automatic hyphenation off and overflow-wrap: anywhere
+    // must still keep the page inside. page.addStyleTag is blocked by the app CSP (style-src
+    // 'self'); setting single element.style properties from script is allowed (RESEARCH Pitfall 7).
+    await page.evaluate(() => {
+      document.body.style.hyphens = 'manual';
+      document.body.style.webkitHyphens = 'manual';
+    });
+    const body = await page.evaluate(() => {
+      const cs = getComputedStyle(document.body);
+      return { hyphens: cs.hyphens, overflowWrap: cs.overflowWrap };
+    });
+    expect(body).toEqual({ hyphens: 'manual', overflowWrap: 'anywhere' });
     await expectNoHorizontalScroll(page, 'with hyphens: manual');
     await page.locator('#expert').check();
     await expectNoHorizontalScroll(page, 'with the Experten-Ansicht on');
@@ -61,7 +69,9 @@ test.describe('360 × 780', () => {
     const card = plain(await page.locator('#result-od-thick').textContent());
     expect(await barValues(page)).toContain(`R ${card} · `);
     await expect(bar).not.toHaveAttribute('aria-live', /.*/);
-    await expect(bar).toHaveAttribute('aria-label', /^Zum Ergebnis: rechts dickste Stelle 4,6\smm, 7\sg; links dickste Stelle 4,6\smm, 7\sg$/);
+    // name = hidden "Zum Ergebnis:" + the visible text (WCAG 2.5.3 Label in Name)
+    await expect(bar).not.toHaveAttribute('aria-label', /.*/);
+    await expect(bar).toHaveAccessibleName(/^Zum Ergebnis: Dickste Stelle · Gewicht R 4,6\smm · 7\sg \| L 4,6\smm · 7\sg$/);
   });
 
   test('plus lenses: the bar shows the centre as the thickest point', async ({ page }) => {

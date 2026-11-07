@@ -2,7 +2,7 @@
 <html lang="de-AT">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
     <meta name="app-commit" content="%APP_COMMIT%">
     <link rel="icon" href="data:,">
     <title data-i18n="app.title">Brillenglas-Rechner</title>
@@ -17,303 +17,319 @@
         <p id="expert-hint" data-i18n="expert.hint"></p>
       </div>
     </header>
-    <main>
-      <div id="example-banner">
-        <p data-i18n="example.banner"></p>
-        <button type="button" id="example-clear" data-i18n="example.clear"></button>
-      </div>
-      <form id="rx" novalidate>
-        <table class="rx-table">
-          <caption data-i18n="rx.caption"></caption>
-          <thead>
-            <tr>
-              <th scope="col" data-i18n="rx.eye"></th>
-              <th scope="col">
-                <abbr data-i18n="rx.sph.abbr" data-i18n-title="rx.sph.title"></abbr>
-                <span data-i18n="rx.sph.unit"></span>
-              </th>
-              <th scope="col">
-                <abbr data-i18n="rx.cyl.abbr" data-i18n-title="rx.cyl.title"></abbr>
-                <span data-i18n="rx.sph.unit"></span>
-              </th>
-              <th scope="col">
-                <abbr data-i18n="rx.axis.abbr" data-i18n-title="rx.axis.title"></abbr>
-                <span data-i18n="rx.axis.unit"></span>
-              </th>
-              <th scope="col" data-i18n="rx.pd.header"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row" data-i18n="rx.od"></th>
-              <td>
-                <label for="rx-od-sph" class="visually-hidden" data-i18n="rx.od.sph.label"></label>
-                <input id="rx-od-sph" name="od-sph" type="text" inputmode="decimal" autocomplete="off"
-                  aria-describedby="rx-od-sph-echo rx-od-sph-err">
-                <output id="rx-od-sph-echo" for="rx-od-sph"></output>
-                <p id="rx-od-sph-err" class="error" aria-live="polite" hidden></p>
-              </td>
-              <td>
-                <label for="rx-od-cyl" class="visually-hidden" data-i18n="rx.od.cyl.label"></label>
-                <input id="rx-od-cyl" name="od-cyl" type="text" inputmode="decimal" autocomplete="off"
-                  aria-describedby="rx-od-cyl-echo rx-od-cyl-err">
-                <output id="rx-od-cyl-echo" for="rx-od-cyl"></output>
-                <p id="rx-od-cyl-err" class="error" aria-live="polite" hidden></p>
-              </td>
-              <td>
-                <label for="rx-od-axis" class="visually-hidden" data-i18n="rx.od.axis.label"></label>
-                <input id="rx-od-axis" name="od-axis" type="text" inputmode="numeric" autocomplete="off"
-                  aria-describedby="rx-od-axis-echo rx-od-axis-err">
-                <output id="rx-od-axis-echo" for="rx-od-axis"></output>
-                <p id="rx-od-axis-err" class="error" aria-live="polite" hidden></p>
-              </td>
-              <td>
-                <label for="rx-od-pd" class="visually-hidden" data-i18n="rx.od.pd.label"></label>
-                <input id="rx-od-pd" name="od-pd" type="text" inputmode="decimal" autocomplete="off"
-                  aria-describedby="rx-od-pd-echo rx-od-pd-err">
-                <output id="rx-od-pd-echo" for="rx-od-pd"></output>
-                <p id="rx-od-pd-err" class="error" aria-live="polite" hidden></p>
-              </td>
-            </tr>
-            <tr>
-              <th scope="row" data-i18n="rx.os"></th>
-              <td>
-                <label for="rx-os-sph" class="visually-hidden" data-i18n="rx.os.sph.label"></label>
-                <input id="rx-os-sph" name="os-sph" type="text" inputmode="decimal" autocomplete="off"
-                  aria-describedby="rx-os-sph-echo rx-os-sph-err">
-                <output id="rx-os-sph-echo" for="rx-os-sph"></output>
-                <p id="rx-os-sph-err" class="error" aria-live="polite" hidden></p>
-              </td>
-              <td>
-                <label for="rx-os-cyl" class="visually-hidden" data-i18n="rx.os.cyl.label"></label>
-                <input id="rx-os-cyl" name="os-cyl" type="text" inputmode="decimal" autocomplete="off"
-                  aria-describedby="rx-os-cyl-echo rx-os-cyl-err">
-                <output id="rx-os-cyl-echo" for="rx-os-cyl"></output>
-                <p id="rx-os-cyl-err" class="error" aria-live="polite" hidden></p>
-              </td>
-              <td>
-                <label for="rx-os-axis" class="visually-hidden" data-i18n="rx.os.axis.label"></label>
-                <input id="rx-os-axis" name="os-axis" type="text" inputmode="numeric" autocomplete="off"
-                  aria-describedby="rx-os-axis-echo rx-os-axis-err">
-                <output id="rx-os-axis-echo" for="rx-os-axis"></output>
-                <p id="rx-os-axis-err" class="error" aria-live="polite" hidden></p>
-              </td>
-              <td>
-                <label for="rx-os-pd" class="visually-hidden" data-i18n="rx.os.pd.label"></label>
-                <input id="rx-os-pd" name="os-pd" type="text" inputmode="decimal" autocomplete="off"
-                  aria-describedby="rx-os-pd-echo rx-os-pd-err">
-                <output id="rx-os-pd-echo" for="rx-os-pd"></output>
-                <p id="rx-os-pd-err" class="error" aria-live="polite" hidden></p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p id="rx-hint" data-i18n="rx.sph.label"></p>
-        <p id="rx-cyl-hint" data-i18n="rx.cyl.label"></p>
-        <p id="rx-axis-hint" data-i18n="rx.axis.label"></p>
-        <p id="rx-od-forms" class="rx-forms" aria-live="polite" hidden></p>
-        <p id="rx-os-forms" class="rx-forms" aria-live="polite" hidden></p>
-        <div class="field">
-          <label for="material" data-i18n="material.label"></label>
-          <select id="material" name="material" aria-describedby="material-hint"></select>
-          <p id="material-hint" data-i18n="material.hint"></p>
+    <main class="layout">
+      <div class="col-inputs">
+        <div id="example-banner">
+          <p data-i18n="example.banner"></p>
+          <button type="button" id="example-clear" data-i18n="example.clear"></button>
         </div>
-        <fieldset id="frame">
-          <legend data-i18n="frame.legend"></legend>
+        <form id="rx" novalidate>
+          <table class="rx-table">
+            <caption data-i18n="rx.caption"></caption>
+            <thead>
+              <tr>
+                <th scope="col" data-i18n="rx.eye"></th>
+                <th scope="col">
+                  <abbr data-i18n="rx.sph.abbr" data-i18n-title="rx.sph.title"></abbr>
+                  <span data-i18n="rx.sph.unit"></span>
+                </th>
+                <th scope="col">
+                  <abbr data-i18n="rx.cyl.abbr" data-i18n-title="rx.cyl.title"></abbr>
+                  <span data-i18n="rx.sph.unit"></span>
+                </th>
+                <th scope="col">
+                  <abbr data-i18n="rx.axis.abbr" data-i18n-title="rx.axis.title"></abbr>
+                  <span data-i18n="rx.axis.unit"></span>
+                </th>
+                <th scope="col" data-i18n="rx.pd.header"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" data-i18n="rx.od"></th>
+                <td>
+                  <label for="rx-od-sph" class="visually-hidden" data-i18n="rx.od.sph.label"></label>
+                  <input id="rx-od-sph" name="od-sph" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="rx-od-sph-echo rx-od-sph-err">
+                  <output id="rx-od-sph-echo" for="rx-od-sph"></output>
+                  <p id="rx-od-sph-err" class="error" aria-live="polite" hidden></p>
+                </td>
+                <td>
+                  <label for="rx-od-cyl" class="visually-hidden" data-i18n="rx.od.cyl.label"></label>
+                  <input id="rx-od-cyl" name="od-cyl" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="rx-od-cyl-echo rx-od-cyl-err">
+                  <output id="rx-od-cyl-echo" for="rx-od-cyl"></output>
+                  <p id="rx-od-cyl-err" class="error" aria-live="polite" hidden></p>
+                </td>
+                <td>
+                  <label for="rx-od-axis" class="visually-hidden" data-i18n="rx.od.axis.label"></label>
+                  <input id="rx-od-axis" name="od-axis" type="text" inputmode="numeric" autocomplete="off"
+                    aria-describedby="rx-od-axis-echo rx-od-axis-err">
+                  <output id="rx-od-axis-echo" for="rx-od-axis"></output>
+                  <p id="rx-od-axis-err" class="error" aria-live="polite" hidden></p>
+                </td>
+                <td>
+                  <label for="rx-od-pd" class="visually-hidden" data-i18n="rx.od.pd.label"></label>
+                  <input id="rx-od-pd" name="od-pd" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="rx-od-pd-echo rx-od-pd-err">
+                  <output id="rx-od-pd-echo" for="rx-od-pd"></output>
+                  <p id="rx-od-pd-err" class="error" aria-live="polite" hidden></p>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="rx.os"></th>
+                <td>
+                  <label for="rx-os-sph" class="visually-hidden" data-i18n="rx.os.sph.label"></label>
+                  <input id="rx-os-sph" name="os-sph" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="rx-os-sph-echo rx-os-sph-err">
+                  <output id="rx-os-sph-echo" for="rx-os-sph"></output>
+                  <p id="rx-os-sph-err" class="error" aria-live="polite" hidden></p>
+                </td>
+                <td>
+                  <label for="rx-os-cyl" class="visually-hidden" data-i18n="rx.os.cyl.label"></label>
+                  <input id="rx-os-cyl" name="os-cyl" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="rx-os-cyl-echo rx-os-cyl-err">
+                  <output id="rx-os-cyl-echo" for="rx-os-cyl"></output>
+                  <p id="rx-os-cyl-err" class="error" aria-live="polite" hidden></p>
+                </td>
+                <td>
+                  <label for="rx-os-axis" class="visually-hidden" data-i18n="rx.os.axis.label"></label>
+                  <input id="rx-os-axis" name="os-axis" type="text" inputmode="numeric" autocomplete="off"
+                    aria-describedby="rx-os-axis-echo rx-os-axis-err">
+                  <output id="rx-os-axis-echo" for="rx-os-axis"></output>
+                  <p id="rx-os-axis-err" class="error" aria-live="polite" hidden></p>
+                </td>
+                <td>
+                  <label for="rx-os-pd" class="visually-hidden" data-i18n="rx.os.pd.label"></label>
+                  <input id="rx-os-pd" name="os-pd" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="rx-os-pd-echo rx-os-pd-err">
+                  <output id="rx-os-pd-echo" for="rx-os-pd"></output>
+                  <p id="rx-os-pd-err" class="error" aria-live="polite" hidden></p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p id="rx-hint" data-i18n="rx.sph.label"></p>
+          <p id="rx-cyl-hint" data-i18n="rx.cyl.label"></p>
+          <p id="rx-axis-hint" data-i18n="rx.axis.label"></p>
+          <p id="rx-od-forms" class="rx-forms" aria-live="polite" hidden></p>
+          <p id="rx-os-forms" class="rx-forms" aria-live="polite" hidden></p>
           <div class="field">
-            <label for="frame-shape" data-i18n="frame.shape.label"></label>
-            <select id="frame-shape" name="frame-shape" aria-describedby="frame-hint"></select>
+            <label for="material" data-i18n="material.label"></label>
+            <select id="material" name="material" aria-describedby="material-hint"></select>
+            <p id="material-hint" data-i18n="material.hint"></p>
           </div>
-          <div class="field">
-            <label for="frame-a" data-i18n="frame.a.label"></label>
-            <input id="frame-a" name="frame-a" type="text" inputmode="decimal" autocomplete="off"
-              aria-describedby="frame-a-echo frame-a-err">
-            <output id="frame-a-echo" for="frame-a"></output>
-            <p id="frame-a-err" class="error" aria-live="polite" hidden></p>
-          </div>
-          <div class="field">
-            <label for="frame-b" data-i18n="frame.b.label"></label>
-            <input id="frame-b" name="frame-b" type="text" inputmode="decimal" autocomplete="off"
-              aria-describedby="frame-b-echo frame-b-err">
-            <output id="frame-b-echo" for="frame-b"></output>
-            <p id="frame-b-err" class="error" aria-live="polite" hidden></p>
-          </div>
-          <div class="field">
-            <label for="frame-dbl" data-i18n="frame.dbl.label"></label>
-            <input id="frame-dbl" name="frame-dbl" type="text" inputmode="decimal" autocomplete="off"
-              aria-describedby="frame-dbl-echo frame-dbl-err">
-            <output id="frame-dbl-echo" for="frame-dbl"></output>
-            <p id="frame-dbl-err" class="error" aria-live="polite" hidden></p>
-          </div>
-          <p id="frame-hint" data-i18n="frame.hint"></p>
-        </fieldset>
-      </form>
+          <fieldset id="frame">
+            <legend data-i18n="frame.legend"></legend>
+            <div class="field">
+              <label for="frame-shape" data-i18n="frame.shape.label"></label>
+              <select id="frame-shape" name="frame-shape" aria-describedby="frame-hint"></select>
+            </div>
+            <div class="field">
+              <label for="frame-a" data-i18n="frame.a.label"></label>
+              <input id="frame-a" name="frame-a" type="text" inputmode="decimal" autocomplete="off"
+                aria-describedby="frame-a-echo frame-a-err">
+              <output id="frame-a-echo" for="frame-a"></output>
+              <p id="frame-a-err" class="error" aria-live="polite" hidden></p>
+            </div>
+            <div class="field">
+              <label for="frame-b" data-i18n="frame.b.label"></label>
+              <input id="frame-b" name="frame-b" type="text" inputmode="decimal" autocomplete="off"
+                aria-describedby="frame-b-echo frame-b-err">
+              <output id="frame-b-echo" for="frame-b"></output>
+              <p id="frame-b-err" class="error" aria-live="polite" hidden></p>
+            </div>
+            <div class="field">
+              <label for="frame-dbl" data-i18n="frame.dbl.label"></label>
+              <input id="frame-dbl" name="frame-dbl" type="text" inputmode="decimal" autocomplete="off"
+                aria-describedby="frame-dbl-echo frame-dbl-err">
+              <output id="frame-dbl-echo" for="frame-dbl"></output>
+              <p id="frame-dbl-err" class="error" aria-live="polite" hidden></p>
+            </div>
+            <p id="frame-hint" data-i18n="frame.hint"></p>
+          </fieldset>
+        </form>
+      </div>
 
-      <section id="result" aria-labelledby="result-title">
-        <h2 id="result-title" data-i18n="result.title"></h2>
-        <article id="result-od-card" class="result-card" aria-labelledby="result-od-title">
-          <h3 id="result-od-title" data-i18n="result.card.od"></h3>
-          <p id="result-od-headline" class="result-headline"></p>
-          <p id="result-od-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
-          <p id="result-od-status" class="result-status"></p>
-          <dl id="result-od-grid" class="value-grid">
-            <div>
-              <dt data-i18n="result.label.thick"></dt>
-              <dd><span id="result-od-thick" class="num-display"></span>
-                <span id="result-od-thick-loc" class="value-loc"></span></dd>
-            </div>
-            <div>
-              <dt data-i18n="result.label.etmin"></dt>
-              <dd><span id="result-od-etmin" class="num-display"></span>
-                <span id="result-od-etmin-loc" class="value-loc"></span></dd>
-            </div>
-            <div>
-              <dt data-i18n="result.label.ct"></dt>
-              <dd><span id="result-od-ct" class="num-display"></span></dd>
-            </div>
-            <div>
-              <dt data-i18n="result.label.weight"></dt>
-              <dd><span id="result-od-weight" class="num-display"></span></dd>
-            </div>
-          </dl>
-        </article>
-        <article id="result-os-card" class="result-card" aria-labelledby="result-os-title">
-          <h3 id="result-os-title" data-i18n="result.card.os"></h3>
-          <p id="result-os-headline" class="result-headline"></p>
-          <p id="result-os-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
-          <p id="result-os-status" class="result-status"></p>
-          <dl id="result-os-grid" class="value-grid">
-            <div>
-              <dt data-i18n="result.label.thick"></dt>
-              <dd><span id="result-os-thick" class="num-display"></span>
-                <span id="result-os-thick-loc" class="value-loc"></span></dd>
-            </div>
-            <div>
-              <dt data-i18n="result.label.etmin"></dt>
-              <dd><span id="result-os-etmin" class="num-display"></span>
-                <span id="result-os-etmin-loc" class="value-loc"></span></dd>
-            </div>
-            <div>
-              <dt data-i18n="result.label.ct"></dt>
-              <dd><span id="result-os-ct" class="num-display"></span></dd>
-            </div>
-            <div>
-              <dt data-i18n="result.label.weight"></dt>
-              <dd><span id="result-os-weight" class="num-display"></span></dd>
-            </div>
-          </dl>
-        </article>
-        <p id="lr-callout" class="callout" hidden></p>
-        <p id="calc-status" class="calc-status"></p>
-        <div id="diag-od" class="diag" role="status"></div>
-        <div id="diag-os" class="diag" role="status"></div>
-        <p id="result-od-material" class="material-line"></p>
-        <p id="result-os-material" class="material-line"></p>
-        <aside id="disclaimer" aria-labelledby="disclaimer-title">
+      <div class="col-results" tabindex="0" role="region" data-i18n-aria-label="layout.results.region">
+        <div id="view-slot" hidden></div>
+        <section id="result" aria-labelledby="result-title">
+          <h2 id="result-title" tabindex="-1" data-i18n="result.title"></h2>
+          <article id="result-od-card" class="result-card" aria-labelledby="result-od-title">
+            <h3 id="result-od-title" data-i18n="result.card.od"></h3>
+            <p id="result-od-headline" class="result-headline"></p>
+            <p id="result-od-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
+            <p id="result-od-status" class="result-status"></p>
+            <dl id="result-od-grid" class="value-grid">
+              <div>
+                <dt data-i18n="result.label.thick"></dt>
+                <dd><span id="result-od-thick" class="num-display"></span>
+                  <span id="result-od-thick-loc" class="value-loc"></span></dd>
+              </div>
+              <div>
+                <dt data-i18n="result.label.etmin"></dt>
+                <dd><span id="result-od-etmin" class="num-display"></span>
+                  <span id="result-od-etmin-loc" class="value-loc"></span></dd>
+              </div>
+              <div>
+                <dt data-i18n="result.label.ct"></dt>
+                <dd><span id="result-od-ct" class="num-display"></span></dd>
+              </div>
+              <div>
+                <dt data-i18n="result.label.weight"></dt>
+                <dd><span id="result-od-weight" class="num-display"></span></dd>
+              </div>
+            </dl>
+          </article>
+          <article id="result-os-card" class="result-card" aria-labelledby="result-os-title">
+            <h3 id="result-os-title" data-i18n="result.card.os"></h3>
+            <p id="result-os-headline" class="result-headline"></p>
+            <p id="result-os-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
+            <p id="result-os-status" class="result-status"></p>
+            <dl id="result-os-grid" class="value-grid">
+              <div>
+                <dt data-i18n="result.label.thick"></dt>
+                <dd><span id="result-os-thick" class="num-display"></span>
+                  <span id="result-os-thick-loc" class="value-loc"></span></dd>
+              </div>
+              <div>
+                <dt data-i18n="result.label.etmin"></dt>
+                <dd><span id="result-os-etmin" class="num-display"></span>
+                  <span id="result-os-etmin-loc" class="value-loc"></span></dd>
+              </div>
+              <div>
+                <dt data-i18n="result.label.ct"></dt>
+                <dd><span id="result-os-ct" class="num-display"></span></dd>
+              </div>
+              <div>
+                <dt data-i18n="result.label.weight"></dt>
+                <dd><span id="result-os-weight" class="num-display"></span></dd>
+              </div>
+            </dl>
+          </article>
+          <p id="lr-callout" class="callout" hidden></p>
+          <p id="calc-status" class="calc-status"></p>
+          <div id="diag-od" class="diag" role="status"></div>
+          <div id="diag-os" class="diag" role="status"></div>
+          <p id="result-od-material" class="material-line"></p>
+          <p id="result-os-material" class="material-line"></p>
+          <p class="short-disclaimer"><span data-i18n="result.shortDisclaimer"></span>
+            <button type="button" id="disclaimer-jump" class="link-button" data-i18n="result.disclaimerJump"></button></p>
+        </section>
+        <div id="compare"></div>
+      </div>
+
+      <div class="col-full">
+        <section id="expert-analysis" data-expert hidden aria-labelledby="expert-analysis-title">
+          <span class="expert-tag" data-i18n="expert.tag"></span>
+          <h2 id="expert-analysis-title" data-i18n="expert.analysis.title"></h2>
+          <h3 data-i18n="expert.zw.title"></h3>
+          <div class="zw-grid">
+            <table class="zw-table">
+              <caption data-i18n="result.card.od"></caption>
+              <tbody>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.dec"></th>
+                  <td id="result-od-dec"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.etmax"></th>
+                  <td><span id="result-od-etmax"></span> <span id="result-od-etmax-loc"></span></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.basecurve"></th>
+                  <td id="result-od-basecurve"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.d2"></th>
+                  <td id="result-od-d2"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.radii"></th>
+                  <td id="result-od-radii"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.sags"></th>
+                  <td id="result-od-sags"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.binding"></th>
+                  <td id="result-od-binding"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.weight"></th>
+                  <td id="result-od-weight-precise"></td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="zw-table">
+              <caption data-i18n="result.card.os"></caption>
+              <tbody>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.dec"></th>
+                  <td id="result-os-dec"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.etmax"></th>
+                  <td><span id="result-os-etmax"></span> <span id="result-os-etmax-loc"></span></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.basecurve"></th>
+                  <td id="result-os-basecurve"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.d2"></th>
+                  <td id="result-os-d2"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.radii"></th>
+                  <td id="result-os-radii"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.sags"></th>
+                  <td id="result-os-sags"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.binding"></th>
+                  <td id="result-os-binding"></td>
+                </tr>
+                <tr>
+                  <th scope="row" data-i18n="expert.zw.weight"></th>
+                  <td id="result-os-weight-precise"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <aside id="disclaimer" tabindex="-1" aria-labelledby="disclaimer-title">
           <h3 id="disclaimer-title" data-i18n="disclaimer.title"></h3>
           <p data-i18n="disclaimer.body"></p>
         </aside>
-      </section>
 
-      <section id="expert-analysis" data-expert hidden aria-labelledby="expert-analysis-title">
-        <span class="expert-tag" data-i18n="expert.tag"></span>
-        <h2 id="expert-analysis-title" data-i18n="expert.analysis.title"></h2>
-        <h3 data-i18n="expert.zw.title"></h3>
-        <div class="zw-grid">
-          <table class="zw-table">
-            <caption data-i18n="result.card.od"></caption>
-            <tbody>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.dec"></th>
-                <td id="result-od-dec"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.etmax"></th>
-                <td><span id="result-od-etmax"></span> <span id="result-od-etmax-loc"></span></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.basecurve"></th>
-                <td id="result-od-basecurve"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.d2"></th>
-                <td id="result-od-d2"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.radii"></th>
-                <td id="result-od-radii"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.sags"></th>
-                <td id="result-od-sags"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.binding"></th>
-                <td id="result-od-binding"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.weight"></th>
-                <td id="result-od-weight-precise"></td>
-              </tr>
-            </tbody>
-          </table>
-          <table class="zw-table">
-            <caption data-i18n="result.card.os"></caption>
-            <tbody>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.dec"></th>
-                <td id="result-os-dec"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.etmax"></th>
-                <td><span id="result-os-etmax"></span> <span id="result-os-etmax-loc"></span></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.basecurve"></th>
-                <td id="result-os-basecurve"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.d2"></th>
-                <td id="result-os-d2"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.radii"></th>
-                <td id="result-os-radii"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.sags"></th>
-                <td id="result-os-sags"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.binding"></th>
-                <td id="result-os-binding"></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="expert.zw.weight"></th>
-                <td id="result-os-weight-precise"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <details id="tech">
-        <summary data-i18n="tech.summary"></summary>
-        <p id="compute-mode"></p>
-        <p id="timing"></p>
-        <p id="timing-frame"></p>
-        <p id="timing-worst"></p>
-        <p id="timing-rescan"></p>
-        <p id="timing-input"></p>
-        <p id="timing-result"></p>
-        <p id="timing-busy"></p>
-        <p id="timing-event"></p>
-        <button type="button" id="timing-rerun" data-i18n="tech.rerun"></button>
-        <p id="ua"></p>
-      </details>
+        <details id="tech">
+          <summary data-i18n="tech.summary"></summary>
+          <p id="compute-mode"></p>
+          <p id="timing"></p>
+          <p id="timing-frame"></p>
+          <p id="timing-worst"></p>
+          <p id="timing-rescan"></p>
+          <p id="timing-input"></p>
+          <p id="timing-result"></p>
+          <p id="timing-busy"></p>
+          <p id="timing-event"></p>
+          <button type="button" id="timing-rerun" data-i18n="tech.rerun"></button>
+          <p id="ua"></p>
+        </details>
+      </div>
     </main>
     <footer>
       <span data-i18n="footer.version"></span> <span id="app-commit"></span>
     </footer>
+    <a id="summary-bar" href="#result" hidden>
+      <span id="bar-view-slot" hidden></span>
+      <span class="visually-hidden" data-i18n="bar.jump"></span>
+      <span id="summary-bar-label" class="bar-label"></span>
+      <span id="summary-bar-values" class="bar-values num"></span>
+    </a>
   </body>
 </html>

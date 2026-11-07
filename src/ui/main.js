@@ -13,6 +13,7 @@ import { fmtDiopter, fmtAxis, fmtMm, fmtMs } from '../i18n/format.js';
 import { $, setText, applyDictionary } from './dom.js';
 import { renderEmpty, renderResult, renderFailed, renderLrCallout, setStale, repaintFromLast } from './results.js';
 import { initExpert } from './expert.js';
+import { initSummaryBar } from './summary-bar.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
@@ -584,6 +585,9 @@ function init() {
   // Toggling only rewrites the location suffixes; it never goes through schedule()/the compute
   // client, which would skip the identical spec and paint nothing (lens-critic round 3 MAJOR-A).
   initExpert(repaintFromLast);
+  initSummaryBar();
+  // Short disclaimer under the cards → the full Hinweis below (UI-SPEC "Disclaimer link").
+  $('disclaimer-jump').addEventListener('click', () => $('disclaimer').focus());
   setComputeMode('worker', 'tech.mode.worker');
   buildMaterialOptions();
   materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));

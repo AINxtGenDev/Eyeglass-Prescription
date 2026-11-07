@@ -6,6 +6,7 @@ import { thickest, roundMm, roundG, uniformEdge, lrCause, lrDifference } from '.
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtGramWhole } from '../i18n/format.js';
 import { renderZwischenwerte, clearZwischenwerte, isExpert, EXPERT_CELLS } from './expert.js';
+import { updateSummaryBar } from './summary-bar.js';
 
 const DASH = '–';
 
@@ -18,11 +19,19 @@ const glass = (eye) => t(eye === 'OD' ? 'result.glass.od' : 'result.glass.os');
 const side = (eye) => t(eye === 'OD' ? 'result.side.od' : 'result.side.os');
 
 /**
- * Displayed (rounded) values and the spec of the painted result per eye, for the L/R callout;
- * null = no result shown. Written only by renderResult, which main.js calls under the
- * client.isCurrent re-check (T-02-02).
+ * Displayed (rounded) values, the painted card strings and the spec of the painted result per
+ * eye, for the L/R callout and the summary bar; null = no result shown. Written only by
+ * renderResult, which main.js calls under the client.isCurrent re-check (T-02-02).
  */
 const displayed = { OD: null, OS: null };
+/** Eyes whose values are marked stale ("rechnet …", set by main.js onBusy via setStale). */
+const staleEyes = new Set();
+
+/** Summary bar from the strings the cards were painted with (no second formatting pass, T-02-05). */
+function paintBar() {
+  const bar = (d) => (d ? { thick: d.thickText, weight: d.weightText } : null);
+  updateSummaryBar({ OD: bar(displayed.OD), OS: bar(displayed.OS), busy: staleEyes.size > 0, stale: staleEyes.size > 0 });
+}
 
 /**
  * Location codes painted per eye ({ thick, etmin, etmax }: 'centre', 'temporal-superior', …, and
@@ -49,6 +58,7 @@ function noResult(eye) {
   writeLocs(eye);
   $(`${p}-grid`).hidden = true;
   renderLrCallout();
+  paintBar();
 }
 
 /**
@@ -130,6 +140,10 @@ export function setStale(eye, on) {
     if (on) el.dataset.stale = 'true';
     else delete el.dataset.stale;
   }
+  const before = staleEyes.size;
+  if (on) staleEyes.add(eye);
+  else staleEyes.delete(eye);
+  if (staleEyes.size !== before) paintBar();
 }
 
 /** The compute itself failed (worker error): dashes, German message (01-15 onFailed). */
@@ -192,7 +206,8 @@ export function renderResult(eye, res, spec) {
   renderZwischenwerte(eye, res);
   setText(`${p}-status`, statusLabel(res.diagnostics));
   renderDiagnostics(eye, res.diagnostics);
-  displayed[eye] = { thick: roundMm(th.value), weight: roundG(m.weightG), spec };
+  displayed[eye] = { thick: roundMm(th.value), weight: roundG(m.weightG), spec, thickText: thick, weightText: weight };
+  paintBar();
 }
 
 /**

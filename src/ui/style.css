@@ -29,12 +29,148 @@
   line-height: 1.5;
 }
 
+/* German compounds must never cause horizontal scrolling (D-21). Sources as quoted in
+   02-RESEARCH.md Pitfall 6:
+   - MDN "hyphens": browsers "will only hyphenate if this attribute is present [lang] and the
+     appropriate hyphenation dictionary is available", so hyphens: auto is a nicety only
+     (-webkit- prefix for iOS Safari < 17).
+   - MDN "overflow-wrap": the break opportunities of `anywhere` "are considered when calculating
+     min-content intrinsic sizes", unlike break-word, so table and grid cells can shrink below the
+     longest word. This is the guarantee; e2e/layout.spec.js checks 320 px with hyphens off. */
 body {
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 1rem;
+  margin: 0;
+  padding: var(--space-4);
+  -webkit-hyphens: auto;
   hyphens: auto;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 600px) {
+  body {
+    padding: var(--space-6);
+  }
+}
+
+/* Numbers never break inside (de-AT "4,6 mm" with NBSP). */
+.num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Page layout (02-02, UI-SPEC "Layout and Breakpoints"): one column below 900 px, two columns
+   (inputs | results) from 900 px; the full-width block spans both. */
+header,
+.layout,
+footer {
+  max-width: 1152px;
+  margin-inline: auto;
+}
+
+.col-inputs {
+  max-width: 40rem;
+}
+
+.col-results {
+  min-width: 0;
+}
+
+.col-full {
+  margin-top: var(--space-16);
+}
+
+@media (min-width: 900px) {
+  body {
+    padding: var(--space-8);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    column-gap: var(--space-8);
+    align-items: start;
+  }
+
+  .col-full {
+    grid-column: 1 / -1;
+  }
+
+  #summary-bar {
+    display: none;
+  }
+}
+
+/* Sticky results only when the viewport is high enough to show a useful part of them. */
+@media (min-width: 900px) and (min-height: 600px) {
+  .col-results {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Phone and tablet: the fixed bar must never cover a focused control or the footer
+   (WCAG 2.4.11, technique C43): 72 px = 56 px bar + 16 px. */
+@media (max-width: 899.98px) {
+  html {
+    scroll-padding-bottom: 72px;
+  }
+
+  body {
+    padding-bottom: 80px;
+  }
+}
+
+#summary-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: var(--bar-bg);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+#summary-bar[hidden] {
+  display: none;
+}
+
+#summary-bar:focus-visible {
+  outline: 3px solid var(--bar-focus);
+  outline-offset: -3px;
+}
+
+.bar-label {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #d4d4d4;
+}
+
+.bar-values {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.short-disclaimer {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* Link-style button: the jump to the full Hinweis is an action on the page, not a navigation. */
+.link-button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 h1 {
@@ -60,11 +196,6 @@ td {
   vertical-align: top;
   padding: 0.5rem;
   border-bottom: 1px solid var(--line);
-}
-
-th {
-  overflow-wrap: break-word;
-  hyphens: auto;
 }
 
 /* Keep row labels readable on phones: 'anywhere' let the column collapse to single letters. */

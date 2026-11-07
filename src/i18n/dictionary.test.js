@@ -4,6 +4,7 @@ import { t } from './t.js';
 import { PARSE_CODES } from '../state/parse.js';
 import { RX_CODES } from '../state/transpose.js';
 import { DIAGNOSTICS } from '../engine/diagnostics.js';
+import { readFileSync } from 'node:fs';
 
 describe('t() (L10N-02)', () => {
   test('returns the German title', () => {
@@ -185,5 +186,17 @@ describe('Experten-Ansicht (02-02)', () => {
     const tech = keys.filter((k) => k.startsWith('loc.tech.')).map((k) => k.slice(9));
     expect(lay.length).toBeGreaterThan(0);
     expect(tech.sort()).toEqual(lay.sort());
+  });
+});
+
+describe('soft hyphens (02-02, UI-SPEC Typography)', () => {
+  // Written as the \u00AD escape only, so every break point is visible in review (PATTERNS de-AT).
+  test('de-AT.js source contains no raw U+00AD', () => {
+    const src = readFileSync(new URL('./de-AT.js', import.meta.url), 'utf8');
+    expect(src.includes('\u00AD')).toBe(false);
+  });
+  test('the escapes are in place for Pupillen·distanz and Dezen·tration', () => {
+    expect(dict['result.lr.cause.pd']).toContain('Pupillen\u00ADdistanz');
+    expect(dict['expert.zw.dec']).toContain('Dezen\u00ADtration');
   });
 });

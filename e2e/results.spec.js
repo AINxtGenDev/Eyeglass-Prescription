@@ -98,7 +98,8 @@ test.describe('L/R callout (RES-04)', () => {
     await expect(callout).toBeVisible();
     await expect(callout).toContainText('rechte');
     await expect(callout).toContainText('dicker');
-    await expect(callout).toContainText('Pupillendistanz');
+    // soft hyphen in Pupillen·distanz (02-02, UI-SPEC Typography): compare the plain text
+    expect(plain(await callout.textContent())).toContain('Pupillendistanz');
     await expect(callout).not.toContainText('Rezeptwerte');
   });
 
@@ -106,7 +107,7 @@ test.describe('L/R callout (RES-04)', () => {
     // thickest 12,866 / 14,028 mm → displayed Δ 1,1 mm, cause pd
     await sphPair(page, '-10,00', '-10,00', { pdOD: '32', pdOS: '30,5' });
     await expectThick(page, '12,9', '14,0');
-    await expect(page.locator('#lr-callout')).toContainText('Pupillendistanz');
+    expect(await text(page, '#lr-callout')).toContain('Pupillendistanz');
   });
 });
 

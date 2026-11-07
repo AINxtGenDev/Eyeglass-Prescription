@@ -98,6 +98,8 @@ export default Object.freeze({
   'result.label.ct': 'Mitte (Mittendicke)',
   'result.label.weight': 'Gewicht',
   'result.weightUnder1': 'unter 1 g',
+  'result.shortDisclaimer': 'Modellwerte – kein Ersatz für die Messung und Beratung beim Optiker.',
+  'result.disclaimerJump': 'Zum Hinweis unten',
   'result.empty.heading': 'Noch kein Ergebnis für das {glass} Glas',
   'result.empty.body': 'Tragen Sie den Sph-Wert von Ihrem Brillenpass ein – das Ergebnis erscheint sofort.',
   // RES-04: {glass} is the thicker/heavier side, {other} the other one; the cause sentence follows.
@@ -105,8 +107,8 @@ export default Object.freeze({
   'result.lr.heavier': 'Das {glass} Glas ist {diff} schwerer als das {other}',
   'result.lr.cause.rx': '– weil die Rezeptwerte der beiden Augen verschieden sind.',
   'result.lr.cause.pd':
-    '– weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung.',
-  'result.lr.cause.rx-pd': '– weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind.',
+    '– weil die Pupillen\u00ADdistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung.',
+  'result.lr.cause.rx-pd': '– weil Rezeptwerte und Pupillen\u00ADdistanz der beiden Augen verschieden sind.',
   'example.banner': 'Beispiel — ersetzen Sie die Werte durch Ihre eigenen.',
   'example.clear': 'Eigene Werte eingeben',
   'compute.failed.title': 'Berechnung abgebrochen',
@@ -124,6 +126,14 @@ export default Object.freeze({
   'loc.nasal-inferior': 'innen unten',
   'loc.temporal-superior': 'außen oben',
   'loc.temporal-inferior': 'außen unten',
+  // Page layout and the phone/tablet summary bar (02-02, D-19, D-20). {thick}/{weight} are the
+  // strings the result cards were painted with. bar.jump is the hidden start of the bar's name.
+  'layout.results.region': 'Ergebnis und Vergleich',
+  'bar.label': 'Dickste Stelle · Gewicht',
+  'bar.eye': '{thick} · {weight}',
+  'bar.values': 'R {od} | L {os}',
+  'bar.jump': 'Zum Ergebnis:',
+
   // Experten-Ansicht suffix after the lay word, in parentheses (UI-SPEC "Location words (Expert suffix)").
   'loc.tech.centre': 'optischer Mittelpunkt',
   'loc.tech.uniform': 'rundum gleich',
