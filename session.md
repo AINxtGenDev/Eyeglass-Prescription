@@ -130,3 +130,20 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 
 ### Next step
 `/clear`, then `/gsd-discuss-phase 2` (lay-first German input, results, comparison, Expert view). Phase-2 backlog from phase 1: RX-04 range checks, MAT-03 manual base curve (range and convexity), UX-02 Expert view with base curve, lens-critic MINORs 2/5 (Vogel comparison), pilot orientation, phone layout (UX-03).
+
+## 2026-11-07 — Phase 2 discuss, plan, execute (in progress)
+
+### Done
+- **Discuss:** user delegated all gray areas ("use best practices easy to use"); 02-CONTEXT.md D-01..D-39 (`eb47c8c`).
+- **Research** (`287fbca`), **UI-SPEC** approved 6/6 (`a4c35d3`), pattern map, validation strategy.
+- **Plans:** 15 plans; plan-checker PASS; **lens-critic plan gate PASS after 4 rounds** (`38dc549`). Key catches: "dickste Stelle" must be max(CT, edge) for plus lenses; manual-base-curve convex warning direction; aspheric re-solve must keep the back non-convex; axis 0/180 float tie in edge locations; L/R cause rule for strong myopes.
+- **Executed 02-01..02-08** (not pushed): tolerant edge tie rule (engine), lay result cards + example + L/R sentence, Experten-Ansicht + two-column/phone bar, paper-shaped Rx table with message tiers / ± / mirror / tips, smart PD + temple stamp + shape cards, pipeline move, compare lane, always-visible material comparison, Vorher/Nachher comparison. Last gate: 1337 unit, 220 e2e green.
+- ENG-09 4× proxy input frame max hovers at 16,4–17,5 ms vs 16,7 ms budget — judged in 02-14 (proxy) and 02-15 (real Pixel).
+
+### Open items
+- Desktop: sticky results column covers the disclaimer at page bottom (RES-06) — fixed in 02-09 extra task.
+- `properties.test.js` MAT-02 monotonicity near its 60 s timeout under coverage — 02-09 extra task.
+- Requirements still pending by design: RES-03 (cross-section overlay 02-13), UX-01 (remaining tips 02-10), FRAME-02 (rim depth 02-11), UX-02/UX-03 (later plans / real iPhone).
+
+### Next step
+Continue 02-09..02-14 automatically; 02-15 stops for push approval and the real-phone check.
