@@ -114,3 +114,123 @@ for (const vp of [
     });
   });
 }
+
+// ---- 02-08 configuration comparison (RES-03, D-28, D-29 as changed by the UI-SPEC) ----
+// Expected values: engine 2026-11-07 (02-08-SUMMARY). Example A = 1,50: R/L 4,6 mm, 1,8 mm,
+// 7 + 7 = 14 g; B = 1,74: 3,0 mm, 1,1 mm, 5 + 5 = 10 g. Plus case A 3,9 / 3,7 mm, B 3,0 / 2,9 mm,
+// 14 → 12 g. R −4,00 (cyl −0,50 × 180 kept): A 5,9 mm, B 3,8 mm.
+const cfgCell = (page, id, col) => page.locator(`#cmp-row-${id} td[data-col=${col}] .cmp-val`);
+const showRadio = (page, v) => page.locator(`#cmp-show input[name=cmp-show][value=${v}]`);
+
+/** Click 'Variante vergleichen', then choose 1,74 as Nachher (B). */
+async function compareWith174(page) {
+  await page.locator('#cmp-start').click();
+  await material(page, 'idx174').check();
+  await settledCompare(page);
+}
+
+test('configuration comparison: freeze A, change the material, read the difference', async ({ page }) => {
+  await settledCompare(page);
+  await expect(page.locator('#cmp-active')).toBeHidden();
+  await page.locator('#cmp-start').click();
+  await expect(page.locator('#cmp-active')).toBeVisible();
+  await expect(page.locator('#cmp-diff')).toBeFocused();
+  await settledCompare(page);
+  expect(await text(page.locator('#cmp-diff'))).toContain('Nachher ist noch gleich wie Vorher');
+  const status = await text(page.locator('#cmp-a-status'));
+  expect(status).toContain('Rechteckig 52□18');
+  expect(status).toContain('1,50');
+
+  await material(page, 'idx174').check();
+  await settledCompare(page);
+  const diff = await text(page.locator('#cmp-diff'));
+  expect(diff).toContain('Nachher (B) ist an der dicksten Stelle 1,6 mm dünner und insgesamt 4 g leichter als Vorher (A).');
+  expect(await text(cfgCell(page, 'thickOD', 'a'))).toBe('4,6 mm');
+  expect(await text(cfgCell(page, 'thickOD', 'b'))).toBe('3,0 mm');
+  expect(await text(cfgCell(page, 'thickOD', 'diff'))).toBe('1,6 mm dünner');
+  expect(await text(cfgCell(page, 'ctOS', 'a'))).toBe('1,8 mm');
+  expect(await text(cfgCell(page, 'ctOS', 'b'))).toBe('1,1 mm');
+  expect(await text(cfgCell(page, 'weightBoth', 'a'))).toBe('14 g');
+  expect(await text(cfgCell(page, 'weightBoth', 'b'))).toBe('10 g');
+  expect(await text(cfgCell(page, 'weightBoth', 'diff'))).toBe('4 g leichter');
+  // A's status names the frozen material, not the current one
+  expect(await text(page.locator('#cmp-a-status'))).toContain('1,50');
+});
+
+test('Vorher | Nachher toggle switches the result cards and the summary bar both ways', async ({ page }) => {
+  await settledCompare(page);
+  await compareWith174(page);
+  await expect(showRadio(page, 'b')).toBeChecked();
+  expect(await text(page.locator('#result-od-thick'))).toBe('3,0 mm');
+  await showRadio(page, 'a').check();
+  await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
+  await expect(page.locator('#result-os-thick')).toHaveText(/^4,6\smm$/);
+  expect(await text(page.locator('#result-od-title'))).toContain('Vorher (A)');
+  expect(await text(page.locator('#summary-bar-values'))).toContain('4,6 mm · 7 g');
+  expect(await text(page.locator('#result-od-material'))).toContain('CR-39');
+  await showRadio(page, 'b').check();
+  await expect(page.locator('#result-od-thick')).toHaveText(/^3,0\smm$/);
+  expect(await text(page.locator('#result-od-title'))).not.toContain('Vorher');
+  expect(await text(page.locator('#summary-bar-values'))).toContain('3,0 mm · 5 g');
+  expect(await text(page.locator('#result-od-material'))).toContain('1,74');
+});
+
+test('configuration comparison, plus case: the centre counts, 0,9 mm and 2 g', async ({ page }) => {
+  await plusCase(page);
+  await compareWith174(page);
+  const diff = await text(page.locator('#cmp-diff'));
+  expect(diff).toContain('0,9 mm dünner');
+  expect(diff).toContain('2 g leichter');
+  expect(await text(cfgCell(page, 'thickOD', 'a'))).toBe('3,9 mm');
+  expect(await text(cfgCell(page, 'thickOS', 'b'))).toBe('2,9 mm');
+});
+
+test('an Rx change recomputes A and B with the new Rx (D-28: the Rx is shared)', async ({ page }) => {
+  await settledCompare(page);
+  await compareWith174(page);
+  await page.locator('#rx-od-sph').fill('-4,00');
+  await settledCompare(page);
+  expect(await text(cfgCell(page, 'thickOD', 'a'))).toBe('5,9 mm');
+  expect(await text(cfgCell(page, 'thickOD', 'b'))).toBe('3,8 mm');
+  expect(await text(page.locator('#cmp-diff'))).toContain('2,1 mm dünner');
+  // while A is shown, an Rx change repaints the cards with the new A
+  await showRadio(page, 'a').check();
+  await expect(page.locator('#result-od-thick')).toHaveText(/^5,9\smm$/);
+  await page.locator('#rx-od-sph').fill('-2,75');
+  await settledCompare(page);
+  await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
+  expect(await text(cfgCell(page, 'thickOD', 'a'))).toBe('4,6 mm');
+});
+
+test("'Vergleich beenden' keeps B, hides the comparison and focuses 'Variante vergleichen'", async ({ page }) => {
+  await settledCompare(page);
+  await compareWith174(page);
+  await showRadio(page, 'a').check();
+  await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
+  await page.locator('#cmp-end').click();
+  await expect(page.locator('#cmp-active')).toBeHidden();
+  await expect(page.locator('#cmp-start')).toBeFocused();
+  await expect(page.locator('#result-od-thick')).toHaveText(/^3,0\smm$/);
+  expect(await text(page.locator('#result-od-title'))).not.toContain('Vorher');
+  await expect(material(page, 'idx174')).toBeChecked();
+  await expect(showRadio(page, 'b')).toBeChecked();
+});
+
+for (const vp of [
+  { width: 320, height: 640 },
+  { width: 1280, height: 800 },
+]) {
+  test.describe(`axe #compare with the configuration comparison active at ${vp.width} px`, () => {
+    test.use({ viewport: vp });
+    test('zero violations, no horizontal scroll, the difference sentence visible', async ({ page }) => {
+      await settledCompare(page);
+      await compareWith174(page);
+      await expect(page.locator('#cmp-diff')).toBeVisible();
+      await expect(page.locator('#cmp-config-table')).toBeVisible();
+      const { violations } = await new AxeBuilder({ page }).include('#compare').withTags(WCAG).analyze();
+      expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  });
+}

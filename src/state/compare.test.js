@@ -13,6 +13,8 @@ import {
   lrDifference,
   materialRows,
   thickerEye,
+  configDiff,
+  displayedValues,
 } from './compare.js';
 import { specFor } from './bench-cases.js';
 import { evaluateLens } from '../engine/evaluate.js';
@@ -329,5 +331,103 @@ describe('materialRows (02-06)', () => {
 
   test('no computed selected eye → no rows', () => {
     expect(materialRows({ selectedId: 'cr39', selected: { OD: { ok: false }, OS: null }, others: {} })).toEqual([]);
+  });
+});
+
+describe('configDiff (02-08, RES-03): Vorher (A) against Nachher (B) on displayed values', () => {
+  const FRAME = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+  const MINUS_RX = { OD: [{ sph: -2.75, cyl: -0.5, axisDeg: 180 }, 32], OS: [{ sph: -2.5, cyl: -0.75, axisDeg: 170 }, 31.5] };
+  const PLUS_RX = { OD: [{ sph: 3, cyl: 0, axisDeg: 0 }, 32], OS: [{ sph: 2.75, cyl: 0, axisDeg: 0 }, 31.5] };
+  /** Displayed values of both eyes for one Rx pair and material (the same frame for A and B). */
+  const config = (rx, id) =>
+    Object.fromEntries(['OD', 'OS'].map((e) => [e, displayedValues(evaluateLens(specFor(e, rx[e][0], rx[e][1], id, FRAME)))]));
+  const v = (thick, ct, weight) => ({ thick, ct, weight });
+
+  test('displayedValues: the card rounding of thickest(m), CT and grams; a failed lens → null', () => {
+    const res = { ok: true, metrics: { ct: 1.8, etMax: { value: 4.597, location: 'nasal' }, weightG: 6.86 } };
+    expect(displayedValues(res)).toEqual({ thick: 4.6, ct: 1.8, weight: 7 });
+    // plus lens: the centre is the thickest point, never the edge alone
+    expect(displayedValues({ ok: true, metrics: { ct: 3.902, etMax: { value: 2.824, location: 'superior' }, weightG: 7.23 } }).thick).toBe(3.9);
+    expect(displayedValues({ ok: false })).toBeNull();
+    expect(displayedValues(null)).toBeNull();
+  });
+
+  test('example, A = 1,50, B = 1,74: 1,6 mm thinner, 4 g lighter (engine values)', () => {
+    const d = configDiff(config(MINUS_RX, 'cr39'), config(MINUS_RX, 'idx174'));
+    expect(d.rows).toEqual([
+      { id: 'thickOD', a: 4.6, b: 3.0, diff: -1.6 },
+      { id: 'thickOS', a: 4.6, b: 3.0, diff: -1.6 },
+      { id: 'ctOD', a: 1.8, b: 1.1, diff: -0.7 },
+      { id: 'ctOS', a: 1.8, b: 1.1, diff: -0.7 },
+      { id: 'weightBoth', a: 14, b: 10, diff: -4 },
+    ]);
+    expect(d.summary).toEqual({ eye: 'OD', thickDiffMm: -1.6, weightDiffG: -4, same: false, partial: false });
+  });
+
+  test('plus case, A = 1,50, B = 1,74: the centre counts, −0,9 mm (an edge-only diff would read −0,6)', () => {
+    const d = configDiff(config(PLUS_RX, 'cr39'), config(PLUS_RX, 'idx174'));
+    expect(d.summary).toEqual({ eye: 'OD', thickDiffMm: -0.9, weightDiffG: -2, same: false, partial: false });
+    expect(d.rows[0]).toEqual({ id: 'thickOD', a: 3.9, b: 3.0, diff: -0.9 });
+    expect(d.rows[1]).toEqual({ id: 'thickOS', a: 3.7, b: 2.9, diff: -0.8 });
+    expect(d.rows[4]).toEqual({ id: 'weightBoth', a: 14, b: 12, diff: -2 });
+  });
+
+  test('B thicker and heavier: positive differences', () => {
+    const d = configDiff(config(MINUS_RX, 'idx174'), config(MINUS_RX, 'cr39'));
+    expect(d.summary).toMatchObject({ thickDiffMm: 1.6, weightDiffG: 4, same: false });
+  });
+
+  test('identical A and B → same, every difference 0', () => {
+    const a = config(MINUS_RX, 'cr39');
+    const d = configDiff(a, structuredClone(a));
+    expect(d.summary).toEqual({ eye: 'OD', thickDiffMm: 0, weightDiffG: 0, same: true, partial: false });
+    for (const r of d.rows) expect(r.diff).toBe(0);
+  });
+
+  test('same thickest point and weight but another centre → not same', () => {
+    const d = configDiff({ OD: v(4.6, 1.8, 7), OS: v(4.6, 1.8, 7) }, { OD: v(4.6, 1.9, 7), OS: v(4.6, 1.8, 7) });
+    expect(d.summary.same).toBe(false);
+    expect(d.summary).toMatchObject({ thickDiffMm: 0, weightDiffG: 0 });
+  });
+
+  test('the summary eye is the thicker eye of B; A and B compare that same eye (never R against L)', () => {
+    // A's thicker eye is OS, B's is OD: compare OD in A (4,0) with OD in B (3,0), not OS of A (5,0).
+    const d = configDiff({ OD: v(4.0, 1.8, 7), OS: v(5.0, 1.8, 8) }, { OD: v(3.0, 1.1, 5), OS: v(2.5, 1.1, 5) });
+    expect(d.summary).toMatchObject({ eye: 'OD', thickDiffMm: -1.0, weightDiffG: -5 });
+    const t = configDiff({ OD: v(4.0, 1.8, 7), OS: v(5.0, 1.8, 8) }, { OD: v(3.0, 1.1, 5), OS: v(3.4, 1.1, 5) });
+    expect(t.summary).toMatchObject({ eye: 'OS', thickDiffMm: -1.6 });
+    // tie in B → OD
+    expect(configDiff({ OD: v(4.0, 1.8, 7), OS: v(5.0, 1.8, 8) }, { OD: v(3.0, 1.1, 5), OS: v(3.0, 1.1, 5) }).summary.eye).toBe('OD');
+  });
+
+  test('differences of displayed values are rounded (3,0 − 4,6 is −1,6, not −1.5999999999999996)', () => {
+    const d = configDiff({ OD: v(4.6, 1.8, 7), OS: v(4.6, 1.8, 7) }, { OD: v(3.0, 1.1, 5), OS: v(3.0, 1.1, 5) });
+    expect(d.rows[0].diff).toBe(-1.6);
+    expect(d.summary.thickDiffMm).toBe(-1.6);
+  });
+
+  test('an eye failing in A or B: its rows fail, the summary uses the other eye only (partial)', () => {
+    for (const [A, B] of [
+      [{ OD: v(4.6, 1.8, 7), OS: null }, { OD: v(3.0, 1.1, 5), OS: v(3.0, 1.1, 5) }],
+      [{ OD: v(4.6, 1.8, 7), OS: v(4.6, 1.8, 7) }, { OD: v(3.0, 1.1, 5), OS: null }],
+    ]) {
+      const d = configDiff(A, B);
+      expect(d.rows.map((r) => r.id)).toEqual(['thickOD', 'thickOS', 'ctOD', 'ctOS', 'weightBoth']);
+      expect(d.rows[1]).toEqual({ id: 'thickOS', failed: true });
+      expect(d.rows[3]).toEqual({ id: 'ctOS', failed: true });
+      expect(d.rows[4]).toEqual({ id: 'weightBoth', a: 7, b: 5, diff: -2, partial: true });
+      expect(d.summary).toEqual({ eye: 'OD', thickDiffMm: -1.6, weightDiffG: -2, same: false, partial: true });
+    }
+  });
+
+  test('an eye failing in A, thicker in B: the summary still uses the computed eye', () => {
+    const d = configDiff({ OD: null, OS: v(4.6, 1.8, 7) }, { OD: v(9.9, 1.1, 9), OS: v(3.0, 1.1, 5) });
+    expect(d.summary).toMatchObject({ eye: 'OS', thickDiffMm: -1.6, partial: true });
+  });
+
+  test('no eye computed in both → every row failed, summary null', () => {
+    const d = configDiff({ OD: null, OS: v(4.6, 1.8, 7) }, { OD: v(3.0, 1.1, 5), OS: null });
+    for (const r of d.rows) expect(r).toEqual({ id: r.id, failed: true });
+    expect(d.summary).toBeNull();
   });
 });
