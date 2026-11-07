@@ -174,7 +174,7 @@ export default Object.freeze({
   'tech.timingFrame':
     'Rechenzeit {where}, Normalfall mit geänderter Fassungsbreite (Form neu berechnet): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.timingWorst':
-    'Rechenzeit {where}, Grenzfall ({case}; langsamster Fall unter den geprüften Zufallsfällen): Median {median}, p{pct} {tail} ({runs} Läufe)',
+    'Rechenzeit {where}, Grenzfall ({case}; langsamster Fall unter den 1000 geprüften Zufallspaaren): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.timingRescan':
     'Rechenzeit {where}, seltener Fall mit erweiterter Suche ({case}): Median {median}, p{pct} {tail} ({runs} Läufe)',
   'tech.measuring': 'wird gemessen …',

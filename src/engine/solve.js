@@ -127,8 +127,9 @@ const BRACKET_DPT = 0.05;
 const GOLDEN = (Math.sqrt(5) - 1) / 2;
 
 /**
- * D-01 final ("always pick the thinnest"): the D1 in [0.50, 14.00] with the smallest
- * J(D1) = maxThickness = max(CT, largest outline edge thickness) among fronts whose back surface
+ * D-01 as amended by D-C (flat-front tie-break, τ = FLAT_FRONT_TOLERANCE_MM): the search finds
+ * J_min, the smallest J(D1) = maxThickness = max(CT, largest outline edge thickness) for D1 in
+ * [0.50, 14.00], then step (5) picks the flattest front with J ≤ J_min + τ. Only fronts whose back surface
  * is not convex (every back principal power ≤ BACK_CONVEX_MAX_DPT = 0, GAP-1). A result with
  * max(D2a, D2b) > 0 counts as infeasible (code BACK_SURFACE_CONVEX). Lenses with
  * max(sph, sph + cyl) ≤ 0 are never affected: D2max = m − D1v < 0 for every D1 > 0.

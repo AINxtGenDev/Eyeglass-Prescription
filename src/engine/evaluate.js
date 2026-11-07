@@ -11,7 +11,7 @@
  * @property {{ shape: string, A: number, B: number, DBL: number }} frame mm
  * @property {number} monoPD mm
  * @property {number|null} fittingHeight mm from the bottom of the box (D-04), null = box centre
- * @property {number|null} baseCurve manual front power D1 (dpt), null = automatic (D-01 'thinnest')
+ * @property {number|null} baseCurve manual front power D1 (dpt), null = automatic (id 'thinnest': D-01 + D-C, flattest front within τ of the thinnest)
  * @property {number|null} minCT mm, null = material default
  * @property {number|null} minET mm, null = material default
  */

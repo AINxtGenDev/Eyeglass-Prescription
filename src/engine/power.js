@@ -1,8 +1,8 @@
 // MAT-02 base curve: Vogel reference value and the search bound for the automatic curve.
 //
-// D-01 final (user, 2026-11-06, "always pick the thinnest"): the automatic base curve is the
-// computable D1 in [BASE_CURVE_LIMITS.min, BASE_CURVE_LIMITS.max] with the smallest maximum
-// lens thickness (search in solve.js optimiseBaseCurve). Vogel's rule is NOT the chosen curve:
+// D-01 (user, 2026-11-06) as amended by D-C: the automatic base curve is the flattest computable
+// D1 in [BASE_CURVE_LIMITS.min, BASE_CURVE_LIMITS.max] whose maximum lens thickness is within
+// τ = 0,10 mm of the thinnest (search in solve.js optimiseBaseCurve). Vogel's rule is NOT the chosen curve:
 // it is the sourced reference value ("übliche Faustregel nach Vogel") and the search seed.
 //
 // Vogel's rule (form agreed across secondary sources): SE = S + C/2;

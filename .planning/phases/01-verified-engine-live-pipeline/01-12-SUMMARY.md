@@ -99,7 +99,7 @@ CR-39 unless stated otherwise. J = max(CT, ET_max).
 | pin (a) +12 rechteckig 62×55/24 PD 25 | D1 6,687, CT 33,34, D2 +4,15, Vogel 18→10, Vogel J null | D1 9,189, CT 38,31, D2 −0,007, Vogel 18→14, Vogel J null |
 | +12 rund 50/18/32 | D1 7,597, J 9,750, D2 +4,01, Vogel J 9,863 | D1 11,112, J 10,000, D2 −0,000, Vogel J 10,720 |
 | +12 rund 50/18/PD 10 | D1 6,784, CT 30,06, Vogel J 37,76 | D1 9,452, CT 33,92, Vogel J **null** (seed 14 > maxD1 9,80) |
-| +12 rechteckig 62×55/18/32 | D1 7,015, J 23,04, Vogel J 25,04 | D1 10,000 (maxD1 cap), J 25,04, Vogel J **null** |
+| +12 rechteckig 62×55/18/32 | D1 7,015, J 23,04, Vogel J 25,04 | D1 10,000 (non-convex-back limit: D1v 12 at CT 25 mm → D1 = 12/1,2 = 10; maxD1 ≈ 11,2; corrected after lens-critic result review), J 25,04, Vogel J **null** |
 | +4 62×55/24/25 | D1 2,597, J 11,680 | D1 3,882, J 11,803 |
 | +6 62×55/24/25 | D1 3,771, J 17,041 | D1 5,612, J 17,493 |
 | +6 −2×30 62×55/24/25 | D1 3,757, J 16,977 | D1 5,612, J 17,432 |
