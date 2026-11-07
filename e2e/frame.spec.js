@@ -200,3 +200,13 @@ for (const vp of [
     });
   });
 }
+
+// 02-18 (lens-critic M3): a frame field message due on blur waits for the click of the gesture.
+test('FRAME-03 M3: invalid stamp, then at once "Wo finde ich das?": the drawing opens', async ({ page, isMobile }) => {
+  await page.locator('#frame-stamp').fill('abc');
+  const help = page.locator('#frame-stamp-help');
+  await (isMobile ? help.tap() : help.click());
+  await expect(help).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#frame-stamp-figure')).toBeVisible();
+  await expect(page.locator('#frame-stamp-err')).toContainText('Fehler:');
+});

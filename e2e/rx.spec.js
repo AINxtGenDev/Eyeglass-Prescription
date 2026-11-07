@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { settled, plain, guardPage } from './helpers.js';
-/* global document */
+/* global document, window, MutationObserver, requestAnimationFrame */
 
 guardPage(test);
 
@@ -283,5 +283,88 @@ test.describe('RX-05 M3: empty-field message only after the field was edited', (
     await expect(err(page)).toContainText('Bitte einen Wert eingeben.');
     // the other eye was not edited: no message there
     await expect(page.locator('#rx-os-sph-err')).toBeHidden();
+  });
+});
+
+// 02-18 (lens-critic M3, part 2): a message that becomes due on blur is painted only after the
+// click of the current pointer gesture, so the tap or click lands on the control the user aimed
+// at (lost click found in 02-14). Mouse on 'desktop', touch tap on 'mobile' (isMobile, hasTouch).
+test.describe('RX-05 M3: a tap or click right after typing lands where it was aimed', () => {
+  const press = (isMobile, loc) => (isMobile ? loc.tap() : loc.click());
+  /** Count childList mutations of #rx-od-sph-err from now on (window.__errMut). */
+  const countMutations = (page) =>
+    page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      w.__errMut = 0;
+      new MutationObserver((recs) => {
+        w.__errMut += recs.filter((r) => r.type === 'childList').length;
+      }).observe(document.getElementById('rx-od-sph-err'), { childList: true });
+    });
+
+  test('"abc" in R Sph, then at once "Gleich für beide Augen": the box is checked, the Fehler follows', async ({ page, isMobile }) => {
+    await countMutations(page);
+    await sph(page).fill('abc');
+    await press(isMobile, page.locator('#rx-same'));
+    await expect(page.locator('#rx-same')).toBeChecked();
+    await expect(err(page)).toBeVisible();
+    await expect(err(page)).toContainText('Fehler:');
+    await page.waitForTimeout(1000);
+    // MJ-2: painted exactly once (no second paint from the input frame of the checkbox)
+    expect(await page.evaluate(() => /** @type {any} */ (window).__errMut)).toBe(1);
+  });
+
+  test('MJ-2: an input frame inside the press does not paint the queued message twice', async ({ page }) => {
+    await countMutations(page);
+    await sph(page).fill('abc');
+    const box = await page.locator('#rx-same').boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    // an input frame while the press is held (the message is queued, not on screen)
+    await page.evaluate(() => document.getElementById('rx-od-sph').dispatchEvent(new Event('input', { bubbles: true })));
+    await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+    await expect(err(page)).toBeHidden();
+    await page.mouse.up();
+    await expect(page.locator('#rx-same')).toBeChecked();
+    await expect(err(page)).toContainText('Fehler:');
+    await page.waitForTimeout(1000);
+    expect(await page.evaluate(() => /** @type {any} */ (window).__errMut)).toBe(1);
+  });
+
+  test('Hinweis "-2,30", then at once a frame chip: the chip is applied', async ({ page, isMobile }) => {
+    await sph(page).fill('-2,30');
+    await press(isMobile, page.locator('#frame-presets .chip', { hasText: 'Groß' }));
+    await expect(page.locator('#frame-a')).toHaveValue('56');
+    await expect(err(page)).toContainText('Hinweis:');
+  });
+
+  test('keyboard: Tab out of "abc" shows the Fehler within 200 ms', async ({ page }) => {
+    await sph(page).fill('abc');
+    await sph(page).press('Tab');
+    await expect(err(page)).toBeVisible({ timeout: 200 });
+  });
+
+  test('m-d: a press that is never released does not keep the message queued (1,5 s cap)', async ({ page }) => {
+    await sph(page).fill('abc');
+    const box = await page.locator('#rx-presets-label').boundingBox();
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(sph(page)).not.toBeFocused();
+    // held while the press lasts
+    expect(await err(page).isHidden()).toBe(true);
+    await expect(err(page)).toBeVisible({ timeout: 2500 });
+    await page.mouse.up();
+  });
+
+  test('m-d: the window losing focus during a press ends it (release outside the window)', async ({ page }) => {
+    await sph(page).fill('abc');
+    const box = await page.locator('#rx-presets-label').boundingBox();
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(sph(page)).not.toBeFocused();
+    // held while the press lasts
+    expect(await err(page).isHidden()).toBe(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await expect(err(page)).toBeVisible({ timeout: 400 });
+    await page.mouse.up();
   });
 });
