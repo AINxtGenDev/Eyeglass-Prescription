@@ -627,7 +627,6 @@ export default Object.freeze({
   'xs.end.temporal-superior': 'Schläfe oben',
   'xs.end.temporal-inferior': 'Schläfe unten',
   'xs.noChord': 'Für diesen Schnitt lässt sich kein Querschnitt zeichnen: der optische Mittelpunkt liegt außerhalb der Fassung.',
-  'xs.empty': 'Für dieses Glas gibt es noch kein Ergebnis.',
 
   'footer.version': 'Version',
 

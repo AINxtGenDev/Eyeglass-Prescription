@@ -20,7 +20,7 @@ const END_TOL = Math.sin((END_LABEL_TOL_DEG * Math.PI) / 180);
 
 // Distance d > 0 from (ox, oy) along (c, s) to edge i of the outline, or −1 if the ray misses it.
 // Same maths as metrics.js hitEdge (lines 61-74), translated to the ray origin (the OC, not the
-// boxing centre); outlineRadii is not used, it assumes rays from the boxing centre.
+// boxing centre); the radii helper in metrics.js assumes rays from the boxing centre, so not reused.
 function hitEdge(outline, n, i, ox, oy, c, s) {
   const k = i + 1 === n ? 0 : i + 1;
   const px = outline[2 * i] - ox;
