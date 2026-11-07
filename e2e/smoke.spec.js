@@ -6,6 +6,9 @@ import AxeBuilder from '@axe-core/playwright';
 import { settled, thickOf, sphOnly } from './helpers.js';
 /* global document, window, MutationObserver -- page.evaluate bodies run in the browser */
 
+/** Material radio card (02-07) by MATERIALS id. */
+const material = (page, id) => page.locator(`input[name=material][value=${id}]`);
+
 /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
 let seen;
 
@@ -76,13 +79,14 @@ test('material choice changes thickness', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-4,00');
   await page.locator('#rx-os-sph').fill('-4,00');
   await settled(page);
-  const select = page.locator('#material');
-  await expect(select.locator('option')).toHaveCount(6);
-  await expect(select.locator('option', { hasText: 'Trivex 1,53' })).toHaveCount(1);
-  await expect(select).toHaveValue('cr39');
+  // 02-07: six radio cards in MATERIALS order replace the select.
+  const cards = page.locator('input[name=material]');
+  await expect(cards).toHaveCount(6);
+  await expect(page.locator('#material label', { hasText: '1,53 · Trivex' })).toHaveCount(1);
+  await expect(material(page, 'cr39')).toBeChecked();
   await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d/);
   const cr39 = await thickOf(page, 'od');
-  await select.selectOption('idx167');
+  await material(page, 'idx167').check();
   await settled(page);
   await expect(page.locator('#result-od-material')).toContainText('1,67');
   expect(await thickOf(page, 'od')).toBeLessThan(cr39);
@@ -183,7 +187,7 @@ test('SC-4 impossible lens is explained', async ({ page }) => {
   await expect(page.locator('#result-od-ct')).toHaveText('–');
   await expect(page.locator('body')).not.toContainText('NaN');
   await expect(page.locator('body')).not.toContainText('Code ');
-  await page.locator('#material').selectOption('idx174');
+  await material(page, 'idx174').check();
   await settled(page);
   await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
   // 1,74 makes it computable; the 62×55 frame still needs a large blank (warning, numbers stay)
@@ -199,7 +203,7 @@ test('oversized lens warns', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('+12');
   await page.locator('#rx-od-cyl').fill('');
   await settled(page);
-  await expect(page.locator('#material')).toHaveValue('cr39');
+  await expect(material(page, 'cr39')).toBeChecked();
   await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d\smm$/);
   await expect(page.locator('#result-od-weight')).toHaveText(/^\d+\sg$/);
   await expect(page.locator('#diag-od')).toContainText('Großes Rohglas nötig');
@@ -222,7 +226,7 @@ test('very strong plus beyond the model range is explained (01-12, 02-03)', asyn
   await page.locator('#rx-od-cyl').fill('');
   await page.locator('#rx-od-sph').blur();
   await settled(page);
-  await expect(page.locator('#material')).toHaveValue('cr39');
+  await expect(material(page, 'cr39')).toBeChecked();
   const err = page.locator('#rx-od-sph-err');
   await expect(err).toContainText('Außerhalb des Modells:');
   await expect(err).toContainText('+12,00');
@@ -254,12 +258,40 @@ test('axis message is specific (MINOR-5)', async ({ page }) => {
   }
 });
 
+// 02-07: each card's second line names the Abbe number νe from materials.js.
+test('material cards show the Abbe number (MAT-01)', async ({ page }) => {
+  const want = { cr39: 56, trivex: 45, pc: 29, idx160: 40, idx167: 32, idx174: 32 };
+  for (const [id, abbe] of Object.entries(want)) {
+    const card = page.locator('#material label', { has: material(page, id) });
+    await expect(card.locator('.radio-card-sub')).toContainText(`Abbe-Zahl ${abbe}`);
+  }
+});
+
+test('Brechungsindex and Abbe tips open by click, Enter and Space, close by Esc (UX-01)', async ({ page }) => {
+  const names = { index: 'Erklärung: Brechungsindex', abbe: 'Erklärung: Abbe-Zahl' };
+  for (const [term, name] of Object.entries(names)) {
+    const btn = page.getByRole('button', { name });
+    const panel = page.locator(`#tip-${term}`);
+    await expect(btn).toHaveAttribute('aria-controls', `tip-${term}`);
+    await expect(panel).toBeHidden();
+    await btn.click();
+    await expect(panel).toBeVisible();
+    await btn.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect(btn).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(panel).toBeHidden();
+  }
+});
+
 test('material line shows the Abbe number (MAT-01)', async ({ page }) => {
   const line = page.locator('#result-od-material');
   await settled(page);
-  await expect(page.locator('#material')).toHaveValue('cr39');
+  await expect(material(page, 'cr39')).toBeChecked();
   await expect(line).toContainText('Abbe-Zahl 56');
-  await page.locator('#material').selectOption('pc');
+  await material(page, 'pc').check();
   await settled(page);
   await expect(line).toContainText('Abbe-Zahl 29');
 });

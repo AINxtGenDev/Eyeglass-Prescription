@@ -5,6 +5,7 @@ import { PARSE_CODES, PD_CODES, STAMP_CODES } from '../state/parse.js';
 import { RX_CODES } from '../state/transpose.js';
 import { VAL_CODES } from '../state/validate.js';
 import { DIAGNOSTICS } from '../engine/diagnostics.js';
+import { MATERIALS } from '../engine/materials.js';
 import { readFileSync } from 'node:fs';
 
 describe('t() (L10N-02)', () => {
@@ -266,5 +267,22 @@ describe('frame section and smart PD (02-04)', () => {
   test.each(['a', 'b', 'dbl', 'stamp'])('has tip.%s', (term) => {
     expect(dict).toHaveProperty([`tip.${term}.name`]);
     expect(dict).toHaveProperty([`tip.${term}.text`]);
+  });
+});
+
+describe('material cards (02-07)', () => {
+  const ph = (key) => [...dict[key].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  test.each(Object.keys(MATERIALS))('%s has a title and a sub line with {abbe}', (id) => {
+    expect(dict).toHaveProperty([`material.${id}.title`]);
+    expect(ph(`material.${id}.sub`)).toEqual(['abbe']);
+    // Index first (UI-SPEC "Material"): "1,50 · Standard".
+    expect(dict[`material.${id}.title`]).toMatch(/^1,\d\d · /);
+  });
+  test.each(['index', 'abbe'])('has tip.%s', (term) => {
+    expect(dict).toHaveProperty([`tip.${term}.name`]);
+    expect(dict).toHaveProperty([`tip.${term}.text`]);
+  });
+  test('the Brechungs·index escape is in place', () => {
+    expect(dict['tip.index.text']).toContain('Brechungs­index');
   });
 });

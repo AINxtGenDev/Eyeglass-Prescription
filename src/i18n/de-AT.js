@@ -161,16 +161,37 @@ export default Object.freeze({
   'tip.dbl.name': 'Erklärung: Stegbreite DBL',
   'tip.dbl.text': 'Stegbreite: der Abstand zwischen den beiden Gläsern über der Nase. Die zweite Zahl am Bügel.',
 
-  // Option labels per MATERIALS id. Never imply that 1,74 is always better (PITFALLS Pitfall 8).
-  'material.label': 'Material (Brechungsindex)',
+  // Material cards (02-07, D-14, UI-SPEC "Material"): index first, then a neutral descriptor.
+  // Never imply that 1,74 is always better (PITFALLS Pitfall 8). material.<id> is the short label
+  // used by the material line and the Technische Angaben case label.
+  'material.title': 'Glasmaterial',
+  'material.legend': 'Material nach Brechungs\u00ADindex',
   'material.hint':
-    'Ein höherer Brechungsindex macht Minusgläser am Rand dünner. Ob sich das lohnt, hängt von Ihren Werten und der Fassung ab – vergleichen Sie die Zahlen unten.',
+    'Ein höherer Brechungsindex macht Minusgläser am Rand meist dünner. Was das bei Ihren Werten bringt, zeigt der Vergleich beim Ergebnis.',
+  'material.abbeTerm': 'Was bedeutet die Abbe-Zahl?',
   'material.cr39': 'Kunststoff CR-39 (1,50)',
   'material.trivex': 'Trivex 1,53',
   'material.pc': 'Polycarbonat (1,59)',
   'material.idx160': 'Kunststoff 1,60',
   'material.idx167': 'Kunststoff 1,67',
   'material.idx174': 'Kunststoff 1,74',
+  'material.cr39.title': '1,50 · Standard',
+  'material.cr39.sub': 'Kunststoff CR-39 · Abbe-Zahl\u00A0{abbe}',
+  'material.trivex.title': '1,53 · Trivex',
+  'material.trivex.sub': 'leichtes Kunststoffmaterial · Abbe-Zahl\u00A0{abbe}',
+  'material.pc.title': '1,59 · Polycarbonat',
+  'material.pc.sub': 'Abbe-Zahl\u00A0{abbe}',
+  'material.idx160.title': '1,60 · Höherbrechend',
+  'material.idx160.sub': 'Kunststoff · Abbe-Zahl\u00A0{abbe}',
+  'material.idx167.title': '1,67 · Hochbrechend',
+  'material.idx167.sub': 'Kunststoff · Abbe-Zahl\u00A0{abbe}',
+  'material.idx174.title': '1,74 · Höchstbrechend',
+  'material.idx174.sub': 'Kunststoff · Abbe-Zahl\u00A0{abbe}',
+  'tip.index.name': 'Erklärung: Brechungsindex',
+  'tip.index.text':
+    'Brechungs\u00ADindex: wie stark das Material Licht bricht. Ein höherer Wert braucht für dieselben Dioptrien weniger Material.',
+  'tip.abbe.name': 'Erklärung: Abbe-Zahl',
+  'tip.abbe.text': 'Je höher die Abbe-Zahl, desto weniger Farbsäume sieht man am Glasrand.',
 
   'result.title': 'Ergebnis je Glas',
   'result.ct': 'Mittendicke',

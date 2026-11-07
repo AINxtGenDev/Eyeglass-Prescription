@@ -450,6 +450,44 @@ legend {
   outline-offset: 2px;
 }
 
+/* 02-07 material section (UI-SPEC "Material section"): six radio cards, 2 columns from a 360 px
+   container; the card rules are the shape cards' .radio-card rules above. */
+#material-section {
+  container: material / inline-size;
+}
+
+#material {
+  margin-inline: 0;
+  padding: var(--space-2);
+}
+
+.material-cards {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@container material (width >= 360px) {
+  .material-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.radio-card.material-card {
+  align-items: flex-start;
+  gap: 0;
+  padding-inline-end: calc(var(--space-2) + 20px);
+  text-align: start;
+}
+
+.radio-card.material-card:has(:checked) {
+  padding-inline-end: calc(var(--space-2) + 18px);
+}
+
+.radio-card-sub {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
 .frame-dims {
   display: grid;
   gap: var(--space-2);

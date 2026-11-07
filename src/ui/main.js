@@ -2,7 +2,6 @@
 // (01-15) → German render. Every visible string comes from t(); everything is written with textContent.
 import './style.css';
 import { specFor } from '../state/bench-cases.js';
-import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
 import { $, setText, applyDictionary } from './dom.js';
 import {
@@ -15,6 +14,7 @@ import {
 } from './results.js';
 import { initRxInput, readRx, eyeStatus } from './rx-input.js';
 import { initFrameInput, readFrame, frameStatus } from './frame-input.js';
+import { initMaterialInput, currentMaterialId, renderMaterialLine } from './material-input.js';
 import { initToggletips } from './toggletip.js';
 import { initExpert } from './expert.js';
 import { initSummaryBar } from './summary-bar.js';
@@ -42,56 +42,16 @@ import {
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
-// Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material select since
-// 01-06; frame shape/size and PD per eye since 01-07 (frame section and smart PD since 02-04, in
-// frame-input.js and rx-input.js). Fitting height is supported by the engine but omitted here (D-04).
-const DEFAULT_MATERIAL = 'cr39';
+// Phase-1 inputs: Sph/Zyl/Achse (cyl since 01-09, transposed to minus form). Material since 01-06
+// (radio cards since 02-07, in material-input.js); frame shape/size and PD per eye since 01-07
+// (frame section and smart PD since 02-04, in frame-input.js and rx-input.js). Fitting height is
+// supported by the engine but omitted here (D-04).
 // Example at load (UI-SPEC "Preset data", D-26): a moderate myope with a small cylinder.
 const EXAMPLE = {
   od: { sph: '-2,75', cyl: '-0,50', axis: '180', pd: '32' },
   os: { sph: '-2,50', cyl: '-0,75', axis: '170', pd: '31,5' },
 };
 const RX_FIELDS = ['sph', 'cyl', 'axis', 'pd'];
-const densityNf = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2 });
-// Abbe number νe = (ne − 1)/(nF′ − nC′): higher means less dispersion, hence fewer colour fringes.
-// That meaning is textbook knowledge, not from a fetched document; the νe values are the cited
-// Zeiss rows in materials.js, which list νe next to ne.
-const abbeNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1 });
-
-const materialSelect = () => /** @type {HTMLSelectElement} */ ($('material'));
-
-/** Options from MATERIALS ids only (T-01-21); labels from the dictionary. */
-function buildMaterialOptions() {
-  const select = materialSelect();
-  for (const id of Object.keys(MATERIALS)) {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = t('material.' + id);
-    select.append(opt);
-  }
-  select.value = DEFAULT_MATERIAL;
-}
-
-/** Selected id, guarded to a MATERIALS key. */
-function currentMaterialId() {
-  const id = materialSelect().value;
-  return Object.hasOwn(MATERIALS, id) ? id : DEFAULT_MATERIAL;
-}
-
-function renderMaterialLine(eye, materialId) {
-  const m = MATERIALS[materialId];
-  setText(
-    `result-${eye.toLowerCase()}-material`,
-    t('result.materialLine', {
-      eye: t(eye === 'OD' ? 'rx.od' : 'rx.os'),
-      label: t('material.' + materialId),
-      density: densityNf.format(m.density) + '\u00A0g/cm³',
-      // From the catalogue, not the result: the line renders even when the lens fails (MAT-01).
-      abbe: abbeNf.format(m.ve),
-    }),
-  );
-}
-
 /** The last Rx read per eye, for repainting a not-ready card when its field message appears. */
 const lastRead = { OD: null, OS: null };
 /** The last frame read (blocked state of the frame fields, which block both eyes). */
@@ -197,8 +157,7 @@ function init() {
   initTiming({ update });
   initPipeline({ onBench, onPainted: timeResultFrame, onCompute: (ms) => pushTiming(timings.compute, ms) });
   setComputeMode('worker', 'tech.mode.worker');
-  buildMaterialOptions();
-  materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));
+  initMaterialInput({ schedule });
   initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });
   const onInput = (e) => schedule(e.timeStamp);
   initExample(onInput);

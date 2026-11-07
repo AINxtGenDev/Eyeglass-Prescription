@@ -227,11 +227,19 @@
             </div>
           </div>
         </section>
-          <div class="field">
-            <label for="material" data-i18n="material.label"></label>
-            <select id="material" name="material" aria-describedby="material-hint"></select>
-            <p id="material-hint" data-i18n="material.hint"></p>
-          </div>
+        <section id="material-section" aria-labelledby="material-title">
+          <h2 id="material-title" data-i18n="material.title"></h2>
+          <fieldset id="material" aria-describedby="material-hint">
+            <legend><span class="term"><span data-i18n="material.legend"></span><button type="button" class="tip-btn"
+                  aria-expanded="false" aria-controls="tip-index" data-i18n-aria-label="tip.index.name"></button></span></legend>
+            <p id="tip-index" class="tip" hidden data-i18n="tip.index.text"></p>
+            <div class="material-cards"></div>
+          </fieldset>
+          <p id="material-hint" class="field-hint" data-i18n="material.hint"></p>
+          <p class="term"><span data-i18n="material.abbeTerm"></span><button type="button" class="tip-btn"
+              aria-expanded="false" aria-controls="tip-abbe" data-i18n-aria-label="tip.abbe.name"></button></p>
+          <p id="tip-abbe" class="tip" hidden data-i18n="tip.abbe.text"></p>
+        </section>
       </div>
 
       <div class="col-results" tabindex="0" role="region" data-i18n-aria-label="layout.results.region">
