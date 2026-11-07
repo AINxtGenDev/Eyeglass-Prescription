@@ -41,6 +41,25 @@ export default Object.freeze({
   'rx.CYL_TRANSPOSED': 'Ihr Pluszylinder wurde in die Minuszylinder-Schreibweise umgerechnet.',
   'rx.AXIS_MISSING_FOR_CYL': 'Zu einem Zyl-Wert gehört eine Achse. Bitte die Achse vom Brillenpass eintragen (0 bis 180).',
   'rx.pd.header': 'PD (mm, je Auge)',
+
+  // Field message tiers (02-03, RX-04, RX-05, D-07, D-08; UI-SPEC Copywriting "Rezept (Rx)").
+  // {value}/{typed}/{min}/{max}/{suggestion} are formatted by format.js (numbers never live here).
+  'val.tier.error': 'Fehler:',
+  'val.tier.hint': 'Hinweis:',
+  'val.tier.out-of-model': 'Außerhalb des Modells:',
+  'val.VAL_OFF_STEP': 'Brillenwerte gehen meist in 0,25-Schritten. Meinten Sie {suggestion}?',
+  'val.VAL_CONTACT_LENS':
+    'Das sieht nach einem Kontaktlinsen-Wert aus (BC oder DIA). Hier gehören die Werte vom Brillenpass hin, nicht die der Kontaktlinsen.',
+  'val.VAL_SPH_OUT_OF_MODEL':
+    '{value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für dieses Auge wird nichts berechnet.',
+  'val.VAL_CYL_OUT_OF_MODEL':
+    'Zyl {value} liegt außerhalb des berechneten Bereichs ({min} bis {max} in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}). Für dieses Auge wird nichts berechnet.',
+  'val.VAL_PD_OUT_OF_MODEL':
+    'PD {value} liegt außerhalb des berechneten Bereichs ({min} bis {max} je Auge). Für dieses Auge wird nichts berechnet.',
+  // Sph checked on the minus-cylinder form after a plus cylinder (RESEARCH Pitfall 8).
+  'val.transposedSuffix': 'Der Wert gilt in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}.',
+  'val.contactLensSuffix': 'Falls das der Durchmesser (DIA) einer Kontaktlinse ist: Hier gehören die Werte vom Brillenpass hin.',
+  'val.apply': '{suggestion} übernehmen',
   'rx.od.pd.label': 'PD rechtes Auge in Millimetern (Abstand Nasenmitte bis Pupille)',
   'rx.os.pd.label': 'PD linkes Auge in Millimetern (Abstand Nasenmitte bis Pupille)',
 
@@ -75,6 +94,8 @@ export default Object.freeze({
   'result.status': 'Hinweis',
   'result.inputMissing': 'Bitte zuerst einen gültigen Sph-Wert eingeben.',
   'result.inputInvalid': 'Bitte zuerst die markierten Felder korrigieren.',
+  // Blocked eye before its field message is due (RESEARCH Pitfall 5).
+  'result.incomplete': 'Eingabe unvollständig …',
   'result.materialLine': '{eye}: {label}, Dichte {density}, Abbe-Zahl {abbe} (je höher, desto weniger Farbsäume)',
   // Text labels next to diagnostics (never colour alone).
   'result.diagLabel.impossible': 'Nicht herstellbar',
