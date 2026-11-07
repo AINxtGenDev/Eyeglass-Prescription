@@ -125,7 +125,7 @@ Plans:
   5. The page works from 320 px width to desktop without overflowing German compound words, every technical term opens a German explanation by tap and by keyboard, the whole flow is keyboard operable, no information relies on colour alone, and automated axe checks pass in CI.
   6. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
-**Plans**: 21 plans (21 sequential waves: every slice touches index.html, de-AT.js and style.css; MVP vertical slices, each usable on the page; old 02-05 split into 02-05/02-06/02-07 after the lens-critic plan review (M4); push only in 02-15 after lens-critic and explicit approval; gap-closure plans 02-16..02-21 added 2026-11-07 after the lens-critic NEEDS WORK result review, run after 02-15 Task 1 and before 02-15 Tasks 2–3, followed by a lens-critic re-review)
+**Plans**: 22 plans (22 sequential waves: every slice touches index.html, de-AT.js and style.css; MVP vertical slices, each usable on the page; old 02-05 split into 02-05/02-06/02-07 after the lens-critic plan review (M4); push only in 02-15 after lens-critic and explicit approval; gap-closure plans 02-16..02-21 added 2026-11-07 (02-22 added 2026-11-07 after the user decision "Fix the measurement") after the lens-critic NEEDS WORK result review, run after 02-15 Task 1 and before 02-15 Tasks 2–3, followed by a lens-critic re-review)
 
 Plans:
 **Wave 1**
@@ -212,6 +212,10 @@ Plans:
 
 - [x] 02-21-PLAN.md — Post-gap gate, 24-row trace with value-asserting tests, finding crosswalk, hand-off to lens-critic re-review and 02-15 Tasks 2–3
 
+**Wave 22** *(gap closure; blocked on Wave 21 completion)*
+
+- [x] 02-22-PLAN.md — Quiet ENG-09 proxy measurement (user decision "Fix the measurement"): no DevTools command inside a measured frame, trace proof, re-measure ≥ 3 runs (ENG-09)
+
 **UI hint**: yes
 
 ### Phase 3: 3D Lenses & Frame
@@ -255,6 +259,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 20/21 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 21/22 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
