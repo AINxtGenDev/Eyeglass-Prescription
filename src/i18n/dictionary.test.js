@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import dict from './de-AT.js';
 import { t } from './t.js';
-import { PARSE_CODES } from '../state/parse.js';
+import { PARSE_CODES, PD_CODES, STAMP_CODES } from '../state/parse.js';
 import { RX_CODES } from '../state/transpose.js';
 import { VAL_CODES } from '../state/validate.js';
 import { DIAGNOSTICS } from '../engine/diagnostics.js';
@@ -37,6 +37,14 @@ describe('de-AT dictionary', () => {
 
   test.each(Object.keys(VAL_CODES))('has val.%s', (code) => {
     expect(dict).toHaveProperty([`val.${code}`]);
+  });
+
+  test.each(Object.keys(PD_CODES))('has pd.%s', (code) => {
+    expect(dict).toHaveProperty([`pd.${code}`]);
+  });
+
+  test.each(Object.keys(STAMP_CODES))('has stamp.%s', (code) => {
+    expect(dict).toHaveProperty([`stamp.${code}`]);
   });
 
   test('never uses "Stärke" (thickness is Mittendicke/Randdicke)', () => {
@@ -91,7 +99,7 @@ describe('L10N-02 completeness (codes ↔ dictionary, both ways)', () => {
     }
   });
 
-  test('no orphan diag.*, parse.*, rx.<CODE> or val.<CODE> keys', () => {
+  test('no orphan diag.*, parse.*, rx.<CODE>, val.<CODE>, pd.<CODE> or stamp.<CODE> keys', () => {
     for (const key of Object.keys(dict)) {
       let m;
       if ((m = key.match(/^diag\.([A-Z_]+)\.(title|explain|suggest)$/))) {
@@ -104,14 +112,20 @@ describe('L10N-02 completeness (codes ↔ dictionary, both ways)', () => {
         expect(Object.keys(RX_CODES), key).toContain(m[1]);
       } else if ((m = key.match(/^val\.([A-Z][A-Z_]*)$/))) {
         expect(Object.keys(VAL_CODES), key).toContain(m[1]);
+      } else if ((m = key.match(/^pd\.([A-Z][A-Z_]*)$/))) {
+        expect(Object.keys(PD_CODES), key).toContain(m[1]);
+      } else if ((m = key.match(/^stamp\.([A-Z][A-Z_]*)$/))) {
+        expect(Object.keys(STAMP_CODES), key).toContain(m[1]);
       }
     }
   });
 
-  test('every {param} in val.* is suggestion, value, typed, min or max', () => {
+  test('every {param} in val.* is suggestion, value, typed, min, max or field', () => {
     for (const [key, v] of Object.entries(dict)) {
       if (!key.startsWith('val.')) continue;
-      for (const p of placeholders(v)) expect(['suggestion', 'value', 'typed', 'min', 'max'], `${key} {${p}}`).toContain(p);
+      // field: the literal frame term A, B or DBL (VAL_FRAME_OUT_OF_MODEL, 02-04)
+      const allowed = ['suggestion', 'value', 'typed', 'min', 'max', 'field'];
+      for (const p of placeholders(v)) expect(allowed, `${key} {${p}}`).toContain(p);
     }
   });
 
@@ -225,5 +239,32 @@ describe('soft hyphens (02-02, UI-SPEC Typography)', () => {
   test('the escapes are in place for Pupillen·distanz and Dezen·tration', () => {
     expect(dict['result.lr.cause.pd']).toContain('Pupillen\u00ADdistanz');
     expect(dict['expert.zw.dec']).toContain('Dezen\u00ADtration');
+  });
+});
+
+describe('frame section and smart PD (02-04)', () => {
+  const ph = (key) => [...dict[key].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  test('the assumed PD and the estimated B are stated in the result (D-06, lens-critic MINOR-6)', () => {
+    expect(dict['pd.assumed']).toBe('PD angenommen: {pd} je Auge ({eyes}) – fragen Sie Ihren Optiker nach Ihrem Wert.');
+    expect(dict['frame.bAssumed']).toBe(
+      'Glashöhe B geschätzt: {B} aus der Form – für genauere Werte B messen oder beim Optiker erfragen.',
+    );
+  });
+  test('placeholders of the PD and stamp notes', () => {
+    expect(ph('pd.binocularNote')).toEqual(['half', 'total']);
+    expect(ph('pd.pairNote')).toEqual(['od', 'os']);
+    expect(ph('pd.PD_AMBIGUOUS')).toEqual(['value']);
+    expect(ph('stamp.echo')).toEqual(['A', 'DBL']);
+    expect(ph('stamp.echoTemple')).toEqual(['A', 'DBL', 'temple']);
+    expect(ph('stamp.STAMP_SWAPPED')).toEqual(['A', 'DBL']);
+    expect(ph('frame.defaults')).toEqual(['A', 'B', 'DBL']);
+    expect(ph('frame.bEstimated')).toEqual(['B']);
+  });
+  test('the SVG labels name the three stamp numbers', () => {
+    expect([dict['stamp.svg.a'], dict['stamp.svg.dbl'], dict['stamp.svg.temple']]).toEqual(['Glasbreite', 'Stegbreite', 'Bügellänge']);
+  });
+  test.each(['a', 'b', 'dbl', 'stamp'])('has tip.%s', (term) => {
+    expect(dict).toHaveProperty([`tip.${term}.name`]);
+    expect(dict).toHaveProperty([`tip.${term}.text`]);
   });
 });

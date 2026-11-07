@@ -1,10 +1,10 @@
 import { describe, test, expect } from 'vitest';
 import fc from 'fast-check';
-import { validateRxEye, VAL_CODES, TIERS, RX_RANGES, STEP_DPT } from './validate.js';
+import { validateRxEye, resolvePd, validateFrame, VAL_CODES, TIERS, RX_RANGES, STEP_DPT } from './validate.js';
 import { PARSE_CODES } from './parse.js';
 import { RX_CODES } from './transpose.js';
 
-const eye = (sph, cyl = '', axis = '', pd = '32') => validateRxEye({ sph, cyl, axis, pd });
+const eye = (sph, cyl = '', axis = '') => validateRxEye({ sph, cyl, axis });
 
 describe('constants (RX-04 verbatim)', () => {
   test('ranges and step', () => {
@@ -151,21 +151,114 @@ describe('contact-lens look-alikes (D-08)', () => {
   });
 });
 
-describe('PD per eye', () => {
-  test.each(['24,5', '40,5'])('%s → out of model', (pd) => {
-    const r = eye('-1', '', '', pd);
-    expect(r.fields.pd).toMatchObject({ tier: 'out-of-model', code: 'VAL_PD_OUT_OF_MODEL', data: { min: 25, max: 40 } });
-    expect(r.blocked.pd).toBe(true);
-    expect(r.pd).toBeNull();
-    expect(r.blocked.rx).toBe(false);
+describe('resolvePd (RX-06, D-05, D-06): both PD fields together', () => {
+  const pd = (od, os) => resolvePd({ od, os });
+  test('both empty → 32 mm assumed for both eyes', () => {
+    const r = pd('', '');
+    expect(r.OD).toEqual({ value: 32, source: 'default' });
+    expect(r.OS).toEqual({ value: 32, source: 'default' });
+    expect(r.messages).toEqual({ od: null, os: null });
+    expect(r.blocked).toEqual({ OD: false, OS: false });
   });
-  test.each([['25', 25], ['40', 40], ['31,5', 31.5]])('%s inside', (pd, v) => {
-    const r = eye('-1', '', '', pd);
-    expect(r.fields.pd).toBeNull();
-    expect(r.pd).toBe(v);
+  test('one mono value, the other empty → default for the empty eye only', () => {
+    const r = pd('32', '');
+    expect(r.OD).toEqual({ value: 32, source: 'typed' });
+    expect(r.OS).toEqual({ value: 32, source: 'default' });
   });
-  test('blank PD → PARSE_EMPTY error', () => {
-    expect(eye('-1', '', '', '').fields.pd).toMatchObject({ tier: 'error', code: 'PARSE_EMPTY' });
+  test('"64" in one field, other empty → 32/32 binocular', () => {
+    const r = pd('64', '');
+    expect(r.OD).toEqual({ value: 32, source: 'binocular' });
+    expect(r.OS).toEqual({ value: 32, source: 'binocular' });
+    expect(r.messages).toEqual({ od: null, os: null });
+  });
+  test('"32/33" in the left field fills R 32 and L 33', () => {
+    const r = pd('', '32/33');
+    expect(r.OD).toEqual({ value: 32, source: 'pair' });
+    expect(r.OS).toEqual({ value: 33, source: 'pair' });
+    expect(r.parsed.os).toMatchObject({ ok: true, kind: 'mono-pair' });
+  });
+  test('the same value in both fields is no conflict', () => {
+    expect(pd('64', '64').blocked).toEqual({ OD: false, OS: false });
+    expect(pd('64', '32').OS).toEqual({ value: 32, source: 'typed' });
+    expect(pd('32/33', '33').messages.os).toBeNull();
+  });
+  test('a different value next to a pair is a conflict hint and blocks that eye', () => {
+    const r = pd('64', '31,5');
+    expect(r.OD).toEqual({ value: 32, source: 'binocular' });
+    expect(r.messages.os).toEqual({ tier: 'hint', code: 'VAL_PD_CONFLICT', data: { value: 32 } });
+    expect(r.blocked).toEqual({ OD: false, OS: true });
+    expect(r.blockedBy.OS).toBe('os');
+    expect(r.OS.value).toBeNull();
+  });
+  test.each([
+    ['45', 'PD_AMBIGUOUS', { value: 45 }],
+    ['64/61', 'PD_DISTANCE_NEAR', { value: 64 }],
+    ['12', 'PD_LOOKS_LIKE_HSA', { value: 12 }],
+  ])('question %j is a blocking Hinweis, the other eye keeps its value', (raw, question, data) => {
+    const r = pd(raw, '31,5');
+    expect(r.messages.od).toEqual({ tier: 'hint', code: 'VAL_PD_QUESTION', data: { question, ...data } });
+    expect(r.blocked).toEqual({ OD: true, OS: false });
+    expect(r.blockedBy.OD).toBe('od');
+    expect(r.OD.value).toBeNull();
+    expect(r.OS).toEqual({ value: 31.5, source: 'typed' });
+  });
+  test('not a number is a Fehler', () => {
+    const r = pd('abc', '');
+    expect(r.messages.od).toEqual({ tier: 'error', code: 'PARSE_NOT_A_NUMBER', data: {} });
+    expect(r.blocked.OD).toBe(true);
+    expect(r.OS.source).toBe('default');
+  });
+  test.each(['24,5', '5', '22/40,5'])('%s: outside 25–40 mm per eye blocks, never clamped', (raw) => {
+    const r = pd(raw, '32');
+    expect(r.messages.od).toMatchObject({ tier: 'out-of-model', code: 'VAL_PD_OUT_OF_MODEL', data: { min: 25, max: 40 } });
+    expect(r.blocked.OD).toBe(true);
+  });
+  test('25 and 40 are inside', () => {
+    expect(pd('25', '40').blocked).toEqual({ OD: false, OS: false });
+  });
+  test('a pair out of range for the other eye: the message sits on the field that holds it', () => {
+    const r = pd('', '20/33');
+    expect(r.messages.os).toMatchObject({ code: 'VAL_PD_OUT_OF_MODEL', data: { value: 20 } });
+    expect(r.blocked).toEqual({ OD: true, OS: false });
+    expect(r.blockedBy.OD).toBe('os');
+    expect(r.OS).toEqual({ value: 33, source: 'pair' });
+  });
+  test('"90" (45 per eye) blocks both eyes from one field', () => {
+    const r = pd('90', '');
+    expect(r.messages.od).toMatchObject({ code: 'VAL_PD_OUT_OF_MODEL', data: { value: 45 } });
+    expect(r.blocked).toEqual({ OD: true, OS: true });
+    expect(r.blockedBy).toEqual({ OD: 'od', OS: 'od' });
+  });
+  test('random strings never throw', () => {
+    fc.assert(
+      fc.property(fc.string({ maxLength: 64 }), fc.string({ maxLength: 64 }), (od, os) => {
+        const r = resolvePd({ od, os });
+        for (const e of ['OD', 'OS']) expect(r[e].value === null).toBe(r.blocked[e]);
+      }),
+      { numRuns: 300 },
+    );
+  });
+});
+
+describe('validateFrame (FRAME-02): out of model, never clamped', () => {
+  test.each([
+    ['A', 39, 40, 62],
+    ['A', 63, 40, 62],
+    ['B', 56, 28, 55],
+    ['B', 27, 28, 55],
+    ['DBL', 13, 14, 24],
+    ['DBL', 25, 14, 24],
+  ])('%s %d', (field, value, min, max) => {
+    const dims = { A: 52, B: 38, DBL: 18, [field]: value };
+    const r = validateFrame(dims);
+    expect(r[field]).toEqual({ tier: 'out-of-model', code: 'VAL_FRAME_OUT_OF_MODEL', data: { field, value, min, max } });
+  });
+  test('52 / 38 / 18 and the range ends are inside', () => {
+    expect(validateFrame({ A: 52, B: 38, DBL: 18 })).toEqual({ A: null, B: null, DBL: null });
+    expect(validateFrame({ A: 40, B: 55, DBL: 24 })).toEqual({ A: null, B: null, DBL: null });
+  });
+  test('a missing value has no range message', () => {
+    expect(validateFrame({ A: null, B: 38, DBL: 18 }).A).toBeNull();
   });
 });
 
@@ -186,9 +279,8 @@ describe('robustness (T-02-08)', () => {
         fc.string({ maxLength: 64 }),
         fc.string({ maxLength: 64 }),
         fc.string({ maxLength: 64 }),
-        fc.string({ maxLength: 64 }),
-        (sph, cyl, axis, pd) => {
-          const r = validateRxEye({ sph, cyl, axis, pd });
+        (sph, cyl, axis) => {
+          const r = validateRxEye({ sph, cyl, axis });
           for (const f of Object.values(r.fields)) {
             if (f !== null) expect(TIER_VALUES).toContain(f.tier);
           }

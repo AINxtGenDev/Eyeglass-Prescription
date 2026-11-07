@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { parseDiopter, parseAxis, parseMm, PARSE_CODES } from './parse.js';
+import fc from 'fast-check';
+import { parseDiopter, parseAxis, parseMm, parsePd, parseStamp, PARSE_CODES, PD_CODES, STAMP_CODES } from './parse.js';
 
 const ok = (value) => ({ ok: true, value });
 const err = (code) => ({ ok: false, code });
@@ -86,4 +87,110 @@ describe('parseMm', () => {
 test('PARSE_CODES is frozen and keys equal values', () => {
   expect(Object.isFrozen(PARSE_CODES)).toBe(true);
   for (const [k, v] of Object.entries(PARSE_CODES)) expect(v).toBe(k);
+});
+
+describe('parsePd (RX-06, D-05): never guesses', () => {
+  test.each([
+    ['32/33', { ok: true, kind: 'mono-pair', OD: 32, OS: 33 }],
+    ['32,5/33', { ok: true, kind: 'mono-pair', OD: 32.5, OS: 33 }],
+    [' 31,5 / 32 ', { ok: true, kind: 'mono-pair', OD: 31.5, OS: 32 }],
+    ['64', { ok: true, kind: 'binocular', total: 64, OD: 32, OS: 32 }],
+    ['63', { ok: true, kind: 'binocular', total: 63, OD: 31.5, OS: 31.5 }],
+    ['64,5', { ok: true, kind: 'binocular', total: 64.5, OD: 32.5, OS: 32.5 }], // halves on 0,5 mm
+    ['50', { ok: true, kind: 'binocular', total: 50, OD: 25, OS: 25 }],
+    ['32,5', { ok: true, kind: 'mono', value: 32.5 }],
+    ['40', { ok: true, kind: 'mono', value: 40 }],
+    ['21', { ok: true, kind: 'mono', value: 21 }],
+    ['5', { ok: true, kind: 'mono', value: 5 }], // out of model, validate's job
+    ['32 mm', { ok: true, kind: 'mono', value: 32 }],
+  ])('%j', (raw, want) => {
+    expect(parsePd(raw)).toEqual(want);
+  });
+
+  test.each([
+    ['45', PD_CODES.PD_AMBIGUOUS, { value: 45 }],
+    ['40,5', PD_CODES.PD_AMBIGUOUS, { value: 40.5 }],
+    ['49,5', PD_CODES.PD_AMBIGUOUS, { value: 49.5 }],
+    ['64/61', PD_CODES.PD_DISTANCE_NEAR, { value: 64 }],
+    ['61/64', PD_CODES.PD_DISTANCE_NEAR, { value: 64 }],
+    ['64/32', PD_CODES.PD_AMBIGUOUS, { value: 64 }], // one value of each kind: ask
+    ['12', PD_CODES.PD_LOOKS_LIKE_HSA, { value: 12 }],
+    ['8', PD_CODES.PD_LOOKS_LIKE_HSA, { value: 8 }],
+    ['20', PD_CODES.PD_LOOKS_LIKE_HSA, { value: 20 }],
+  ])('%j -> %s', (raw, code, data) => {
+    expect(parsePd(raw)).toEqual({ ok: false, code, data });
+  });
+
+  test.each([
+    ['', PARSE_CODES.PARSE_EMPTY],
+    ['   ', PARSE_CODES.PARSE_EMPTY],
+    ['abc', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['32/', PARSE_CODES.PARSE_NOT_A_NUMBER], // a pair half that is empty is not an empty field
+    ['/33', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['32/33/34', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['32,55', PARSE_CODES.PARSE_TOO_MANY_DECIMALS],
+    ['3'.repeat(33), PARSE_CODES.PARSE_NOT_A_NUMBER], // length cap before any regex (T-02-12)
+  ])('%j -> %s', (raw, code) => {
+    expect(parsePd(raw)).toEqual(err(code));
+  });
+});
+
+describe('parseStamp (FRAME-03, D-11)', () => {
+  test.each([
+    ['52□18 140', 140],
+    ['52-18-140', 140],
+    ['52 18 140', 140],
+    ['52/18 145', 145],
+    ['52 [] 18', null],
+    ['52[]18', null],
+    ['52x18', null],
+    ['52X18', null],
+    ['52 □ 18', null],
+    ['52▢18', null],
+    ['52◻18', null],
+    ['52☐18', null],
+    ['52–18–140', 140], // en dash
+    [' 52□18  140 ', 140],
+  ])('%j -> A 52, DBL 18, temple %s', (raw, temple) => {
+    expect(parseStamp(raw)).toEqual({ ok: true, A: 52, DBL: 18, temple });
+  });
+
+  test('swapped numbers give the corrected values, never applied silently', () => {
+    expect(parseStamp('18□52')).toEqual({ ok: false, code: STAMP_CODES.STAMP_SWAPPED, data: { A: 52, DBL: 18, temple: null } });
+    expect(parseStamp('16□56 145')).toEqual({ ok: false, code: STAMP_CODES.STAMP_SWAPPED, data: { A: 56, DBL: 16, temple: 145 } });
+  });
+
+  test('numbers outside the model ranges still parse (the range check is validate\'s job)', () => {
+    expect(parseStamp('70□10')).toEqual({ ok: true, A: 70, DBL: 10, temple: null });
+  });
+
+  test.each([
+    ['', PARSE_CODES.PARSE_EMPTY],
+    ['52', STAMP_CODES.STAMP_INVALID],
+    ['52□', STAMP_CODES.STAMP_INVALID],
+    ['52,5□18', STAMP_CODES.STAMP_INVALID],
+    ['520□18', STAMP_CODES.STAMP_INVALID],
+    ['52□18 1400', STAMP_CODES.STAMP_INVALID],
+    ['abc', STAMP_CODES.STAMP_INVALID],
+    ['52 18 140 5', STAMP_CODES.STAMP_INVALID],
+    ['5'.repeat(33), STAMP_CODES.STAMP_INVALID], // length cap (T-02-12)
+  ])('%j -> %s', (raw, code) => {
+    expect(parseStamp(raw)).toEqual(err(code));
+  });
+});
+
+test('PD_CODES and STAMP_CODES are frozen and keys equal values', () => {
+  for (const codes of [PD_CODES, STAMP_CODES]) {
+    expect(Object.isFrozen(codes)).toBe(true);
+    for (const [k, v] of Object.entries(codes)) expect(v).toBe(k);
+  }
+});
+
+test('parsePd and parseStamp never throw on random strings (T-02-12)', () => {
+  fc.assert(
+    fc.property(fc.string({ maxLength: 64 }), (s) => {
+      for (const r of [parsePd(s), parseStamp(s)]) expect(typeof r.ok).toBe('boolean');
+    }),
+    { numRuns: 500 },
+  );
 });
