@@ -1,7 +1,8 @@
 ---
 phase: 2
 slug: lay-first-german-input-results-comparison
-status: draft
+status: approved
+reviewed_at: 2026-11-07
 shadcn_initialized: false
 preset: none
 created: 2026-11-07
@@ -138,6 +139,8 @@ Breakpoints (px, `min-width` media queries plus container queries):
 
 Why container queries: at 900–1100 px the input column is only about 400–600 px wide, so a viewport query would put the five-column Rx table into a too-narrow column. Each block decides from its own width.
 
+**Focal point:** the first thing the eye should land on is the four Display (28 px) numbers in the per-eye result cards (sticky results column on desktop, bottom bar on phone); everything else supports reading them.
+
 ### Page structure (DOM order = reading order = tab order)
 
 ```
@@ -218,7 +221,7 @@ Existing ids that e2e and ENG-09 tooling rely on keep their names (Research "Run
 - A labelled group (`role="group"` + `aria-labelledby` on the visible label) of `<button type="button" class="chip">`.
 - Chip: 44 px min height, 8 px × 16 px padding, 2 px `--line` border, pill radius (`border-radius: 999px`), Body 16 px weight 400, wraps with 8 px gap. Hover/active: border `--fg`. No selected state (presets are actions, not modes).
 - Rx presets set Sph/Zyl/Achse of both eyes and keep PD. Frame presets set A and DBL, keep the shape, B follows the shape ratio ("geschätzt aus der Form").
-- **Inline confirm** (Research Pattern 5): inserted directly after the chip row as `<div role="group" aria-labelledby="preset-confirm-q">` on `--surface` with 2 px `--fg` border, 16 px padding. Question (Body 600), one sentence naming what will be replaced, then two buttons: **"Ersetzen"** (filled `--error`, white text) and **"Abbrechen"** (outlined `--fg`). Focus moves to "Abbrechen". Esc = Abbrechen. After either, the group is removed and focus returns to the chip. Applying on an untouched example: no confirm.
+- **Inline confirm** (Research Pattern 5): inserted directly after the chip row as `<div role="group" aria-labelledby="preset-confirm-q">` on `--surface` with 2 px `--fg` border, 16 px padding. Question (Body 600), one sentence naming what will be replaced, then two buttons: **"Ersetzen"** (filled `--error`, white text) and **"Eingaben behalten"** (outlined `--fg`). Focus moves to "Eingaben behalten". Esc = Eingaben behalten. After either, the group is removed and focus returns to the chip. Applying on an untouched example: no confirm.
 
 Preset data (`src/state/presets.js`; planner verifies each in the engine and records the numbers in the plan):
 
@@ -266,7 +269,7 @@ Preset data (`src/state/presets.js`; planner verifies each in the engine and rec
 - **[Expert] "Eigenes Material"** is the seventh radio card (only rendered when the switch is on; if the switch is turned off while it is selected, selection falls back to the previously selected listed material, with the Hinweis "Eigenes Material gilt nur in der Experten-Ansicht."). Its fields (ne, Dichte, Abbe optional, Mindest-Mittendicke, Mindest-Randdicke) appear below the cards. Ranges per Research Open Q3.
 - **[Expert] "Glas-Einstellungen"** block below the material cards:
   - Basiskurve `#expert-basecurve` (empty = automatic) with a permanent read-only line "Automatisch: …" + rule + Vogel reference (content moved from the phase-1 table, ids `#result-od-basecurve`/`#result-os-basecurve` move to Zwischenwerte).
-  - Mindest-Mittendicke / Mindest-Randdicke with one "Standard" button (secondary).
+  - Mindest-Mittendicke / Mindest-Randdicke with one "Standardwerte setzen" button (secondary).
   - Vorderfläche: two radios "sphärisch" / "asphärisch"; the k field (sign button + input, default −1, range −5,0…0,0) appears only for asphärisch, with the fixed label "allgemeines Modell, kein bestimmtes Herstellerdesign" and the plus-lens note (Research D-35 changes, adopted).
 
 ### Results `#result` (RES-01, RES-04, D-22..D-24)
@@ -381,9 +384,9 @@ All strings German (de-AT), all through `src/i18n/de-AT.js`. Numbers are params 
 | Empty state body | **Tragen Sie den Sph-Wert von Ihrem Brillenpass ein – das Ergebnis erscheint sofort.** |
 | Error state (blocked eye) | **Für dieses Glas wird nichts berechnet. Bitte das markierte Feld korrigieren.** + button "Zum markierten Feld" |
 | Error state (worker failure, existing) | "Berechnung abgebrochen" / "Die Berechnung im Hintergrund ist fehlgeschlagen. Bitte einen Wert erneut ändern; hilft das nicht, die Seite neu laden." (unchanged) |
-| Destructive confirmation | **Preset über eigene Werte**: question "Ihre Eingaben ersetzen?", body "Ihre eingetippten Werte werden durch das Beispiel „{preset}“ ersetzt.", buttons "Ersetzen" / "Abbrechen" (focus on Abbrechen) |
+| Destructive confirmation | **Preset über eigene Werte**: question "Ihre Eingaben ersetzen?", body "Ihre eingetippten Werte werden durch das Beispiel „{preset}“ ersetzt.", buttons "Ersetzen" / "Eingaben behalten" (focus on Eingaben behalten) |
 
-Other actions that discard state, and why they get no confirm: "Eigene Werte eingeben" (only clears the untouched example), "Vergleich beenden" (A is one click to recreate; B stays), "Standard" for min thicknesses (only resets two Expert fields to sourced defaults).
+Other actions that discard state, and why they get no confirm: "Eigene Werte eingeben" (only clears the untouched example), "Vergleich beenden" (A is one click to recreate; B stays), "Standardwerte setzen" for min thicknesses (only resets two Expert fields to sourced defaults).
 
 ### Header, banner, presets
 
@@ -481,7 +484,7 @@ The trade term "Einstärkenglas" (single vision) is deliberately avoided: the UX
 | [Expert] Custom only in Expert | Hinweis: Eigenes Material gilt nur in der Experten-Ansicht. Es wird wieder {material} verwendet. |
 | [Expert] Base curve label | Basiskurve (dpt) – leer lassen für automatisch |
 | [Expert] Base curve auto line | Automatisch: {value} – dünnstes Glas, flachste Vorderfläche innerhalb 0,1 mm. {vogelRef} |
-| [Expert] Min CT / ET | Mindest-Mittendicke (mm) · Mindest-Randdicke (mm) · button "Standard" |
+| [Expert] Min CT / ET | Mindest-Mittendicke (mm) · Mindest-Randdicke (mm) · button "Standardwerte setzen" |
 | [Expert] Binding CT | Die Mittendicke ist durch den Mindestwert festgelegt. |
 | [Expert] Binding ET | Die Mittendicke ergibt sich aus der Mindest-Randdicke. |
 | [Expert] Front legend | Vorderfläche |
@@ -627,11 +630,11 @@ Open items for a human (carried from RESEARCH, unchanged): iPhone check (± butt
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-11-07 (gsd-ui-checker, 6/6; 3 non-blocking copy/focal-point recommendations applied)
