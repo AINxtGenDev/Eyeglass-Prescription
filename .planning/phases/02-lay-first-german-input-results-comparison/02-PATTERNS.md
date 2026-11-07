@@ -505,7 +505,7 @@ function prefillFrame(shape) { const d = SHAPES[shape].defaults; for (const [k, 
 - `setStale` (281-287, `dataset.stale`; CSS `td[data-stale]` at style.css:232 must be widened to `[data-stale]` because the values are no longer `td`);
 - `renderResult` (289-308).
 
-Keep the value ids `#result-{od,os}-{ct,etmax,etmin,weight,status}` (e2e contract). `etmax` text changes from "2,8 mm – loc" to the number only, with the location in `#result-od-etmax-loc`. `e2e/helpers.js:21-25 etmaxOf` parses `^(\d+,\d)` and still works. `smoke.spec.js:109-110` (`/^3,2\smm – /`) must be updated.
+Card value ids (revised after lens-critic B1 / round 2 MINOR-c): `#result-{od,os}-{ct,thick,etmin,weight,status}`. The card's thickest point is `#result-{eye}-thick` (+ `-thick-loc`) = thickest(m) = max(CT, etMax), not the edge. `#result-{eye}-etmax` (+ `-etmax-loc`) keeps its id but now means the Expert row 'Dickster Rand' (number only, edge value). `e2e/helpers.js`: `thickOf(page, eye)` reads `-thick` for every test that means the shown thickest point; `etmaxOf` is kept only for callers that mean the edge row. `smoke.spec.js:109-110` (`/^3,2\smm – /`) must be updated to the `-thick` number-only form.
 - Decentration and base curve move to Expert Zwischenwerte with the same ids: `#result-od-dec`, `#result-od-basecurve` (UI-SPEC). `CELLS` (line 199) is used by `renderEmpty`, `setStale` and `onFailed`. Keep it as the single list of value ids and add the new ids there.
 - Summary bar: read the same painted values; do not recompute. No analog exists. Use `IntersectionObserver` on `#result` to set `hidden` on the bar.
 
@@ -564,7 +564,7 @@ export async function settled(page, { timeout = 10_000 } = {}) {
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
 }
 ```
-→ `settledCompare(page)` is the same function on `#compare` (and `#xsec`). Add `const plain = (s) => s.replaceAll('­', '')` for text assertions (RESEARCH Pitfall 6). `etmaxOf` (lines 21-25) still works if `#result-*-etmax` starts with the number.
+→ `settledCompare(page)` is the same function on `#compare` (and `#xsec`). Add `const plain = (s) => s.replaceAll('­', '')` for text assertions (RESEARCH Pitfall 6). Use `thickOf` (reads `#result-*-thick`) for the shown thickest point; `etmaxOf` still parses `#result-*-etmax`, which is now the Expert 'Dickster Rand' edge row.
 
 ### New e2e specs: `rx`, `presets`, `compare`, `expert`, `layout`, `a11y`
 
@@ -605,9 +605,9 @@ test('no serious or critical accessibility violations', async ({ page }) => {
 |---|---|---|
 | `smoke.spec.js:56` | `#result-od-basecurve` contains 'Vogel' | Moves to Expert. Toggle `#expert` first |
 | `smoke.spec.js:71-77, 87, 97` | `#material`/`#frame-shape` `option` count, `selectOption` | Radio count, `.check()` |
-| `smoke.spec.js:90` | etmax contains 'schläfenseitig' | Lay location words (D-23), now in `#result-od-etmax-loc` |
+| `smoke.spec.js:90` | etmax contains 'schläfenseitig' | Lay location words (D-23), now on the card in `#result-od-thick-loc` ('außen …') |
 | `smoke.spec.js:92, 95` | `#result-od-dec` = "3,0 mm" / "7,0 mm" | Expert-only id. Toggle the switch |
-| `smoke.spec.js:109-111, 188` | etmax `/^3,2\smm – /`; weight `/^7,0\sg$/` | etmax number only; weight in whole grams (`7 g`), RES-01 |
+| `smoke.spec.js:109-111, 188` | etmax `/^3,2\smm – /`; weight `/^7,0\sg$/` | Card value `#result-od-thick` (thickest(m), number only; recompute: for plus lenses it is the CT); weight in whole grams (`7 g`), RES-01. `#result-od-etmax` is the Expert 'Dickster Rand' row |
 | `smoke.spec.js:88-89` | default A 52, PD 32, Sph −2,00 start value (main.js:682) | Example at load is now −2,75/−0,50×180 · PD 32 / 31,5 (UI-SPEC presets). **Every pinned default-value test must be rechecked** |
 | `perf-throttled.spec.js:141-142` | `selectOption(material/shape)` | Radio `.check()` |
 | `worker.spec.js:195-210` | `#result-od-status` 'rechnet …', `[data-stale]`, `#calc-status` | Ids kept; the `[data-stale]` count must exclude compare cells, or compare uses another attribute |

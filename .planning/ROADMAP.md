@@ -130,11 +130,11 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Plain-German result cards per eye, example banner, L/R callout, Experten-Ansicht switch with Zwischenwerte (RES-01, RES-04, UX-02, UX-05, ANA-02)
+- [ ] 02-01-PLAN.md — Engine tie tolerance for edge locations (Achse 0 ≡ 180), plain-German result cards per eye, example banner, L/R callout (RES-01, RES-04, RES-05, UX-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Layout 320 px → desktop: two columns with sticky results, phone summary bar, no overflow (UX-03)
+- [ ] 02-02-PLAN.md — Experten-Ansicht switch with Zwischenwerte; layout 320 px → desktop: two columns with sticky results, phone summary bar, no overflow (UX-02, UX-03, ANA-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
