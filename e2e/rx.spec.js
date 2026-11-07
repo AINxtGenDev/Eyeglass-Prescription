@@ -313,7 +313,10 @@ test.describe('RX-05 M3: a tap or click right after typing lands where it was ai
     expect(await page.evaluate(() => /** @type {any} */ (window).__errMut)).toBe(1);
   });
 
-  test('MJ-2: an input frame inside the press does not paint the queued message twice', async ({ page }) => {
+  test('MJ-2: an input frame inside the press does not paint the queued message twice', async ({ page, isMobile }) => {
+    // Mouse only: with touch the blur comes after the finger is lifted, so a test cannot place an
+    // input frame between it and the click. The tap case above counts the paints on 'mobile'.
+    test.skip(isMobile, 'mouse press sequence; touch is covered by the tap test');
     await countMutations(page);
     await sph(page).fill('abc');
     const box = await page.locator('#rx-same').boundingBox();
@@ -339,8 +342,22 @@ test.describe('RX-05 M3: a tap or click right after typing lands where it was ai
 
   test('keyboard: Tab out of "abc" shows the Fehler within 200 ms', async ({ page }) => {
     await sph(page).fill('abc');
+    // measured in the page (Tab keydown → paint), not with an expect timeout: the Playwright round
+    // trip alone can exceed 200 ms on a loaded machine
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      w.__t0 = 0;
+      w.__t1 = 0;
+      document.addEventListener('keydown', () => (w.__t0 ||= performance.now()), true);
+      new MutationObserver(() => (w.__t1 ||= performance.now())).observe(document.getElementById('rx-od-sph-err'), {
+        childList: true,
+      });
+    });
     await sph(page).press('Tab');
-    await expect(err(page)).toBeVisible({ timeout: 200 });
+    await expect(err(page)).toBeVisible();
+    const ms = await page.evaluate(() => /** @type {any} */ (window).__t1 - /** @type {any} */ (window).__t0);
+    expect(ms).toBeGreaterThanOrEqual(0);
+    expect(ms).toBeLessThan(200);
   });
 
   test('m-d: a press that is never released does not keep the message queued (1,5 s cap)', async ({ page }) => {

@@ -350,6 +350,8 @@ Message slot under the field, linked by `aria-describedby` (extends the existing
 - The existing `.error::before { content: '⚠ ' }` is replaced by the `error` SVG icon (CSS-generated content is read inconsistently; the text label carries the meaning).
 - "Meinten Sie …?" hints contain one secondary button "{value} übernehmen" that writes the suggestion into the field, dispatches `input`, and keeps focus in the field.
 - Timing: the message appears after **600 ms** without typing (Research A4, design constant) or on blur, and disappears immediately when the value becomes valid. The compute path is never debounced.
+- 02-18 (lens-critic M3): a message is never painted during a pointer gesture. When it becomes due on a blur caused by a tap or click (or its pause ends during a press), it is painted right after that gesture's click has been dispatched, so the tap lands on the control the user aimed at. A keyboard blur (Tab) paints at once. The gesture ends at the latest 1,5 s after the press, 700 ms after the release, or on window blur, tab switch or a key press. Removing a message stays immediate.
+- 02-18 (lens-critic M3): "Bitte einen Wert eingeben." (empty Sph) appears only after the user has edited that eye's Sph, Zyl or Achse (typing, pasting, "±", "übernehmen"). Values the page writes (example, "Eigene Werte eingeben", presets) do not count. An untouched empty Sph still blocks the eye; the card shows its empty state.
 - The `aria-live="polite"` on each `*-err` stays; the debounce keeps announcements from firing per keystroke.
 - Values are never clamped: the field and the echo keep exactly what the user typed.
 
@@ -359,7 +361,7 @@ Message slot under the field, linked by `aria-describedby` (extends the existing
 
 | Interaction | Behaviour |
 |-------------|-----------|
-| Typing in any field | Echo updates every input frame; compute request every input frame (ENG-09 unchanged); messages after 600 ms pause or blur |
+| Typing in any field | Echo updates every input frame; compute request every input frame (ENG-09 unchanged); messages after 600 ms pause or blur, never during a tap or click (02-18) |
 | Result pending > 50 ms | `#calc-status` "rechnet …", values dotted-underlined (phase-1 rule unchanged); the summary bar shows the same |
 | Comparison pending | Only `#compare` / `#xsec` show "rechnet …"; never delays the main result |
 | Shape change | Radio change → prefill A/B/DBL only if the user has not typed sizes; otherwise show "Standardmaße übernehmen" |

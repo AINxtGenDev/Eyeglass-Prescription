@@ -114,9 +114,88 @@ function paintMessage(id, m, { kind, apply }) {
   else el.removeAttribute('aria-invalid');
 }
 
+/*
+ * 02-18 (lens-critic M3): message paints wait until the click of the current pointer gesture has
+ * been dispatched. A message that appears on blur moves the controls below it; the blur comes
+ * from the pointerdown (mouse) or the compatibility mousedown (touch), the click is resolved
+ * afterwards at the same point, so it landed on whatever had moved there (lost click on
+ * '#rx-same' and the chips, found in 02-14). Reserving a message line was rejected: messages are
+ * one to three lines, so a one-line reserve still shifts, and three lines under every field make
+ * the phone page much longer (lens-critic m7).
+ * The gesture starts at pointerdown and ends after the document click (setTimeout 0, so the
+ * target's click handlers have run), on pointercancel, 700 ms after pointerup (a press that never
+ * becomes a click, e.g. a drag), on window blur, visibilitychange or keydown, and at the latest
+ * 1,5 s after pointerdown (a press released outside the window, m-d). Touch order is pointerdown
+ * → pointerup → mousedown → blur → click, so pointerup does not end it.
+ */
+const UP_FALLBACK_MS = 700;
+// A read this soon after a blur with nothing pending belongs to the keystroke before the blur.
+const BLUR_GRACE_MS = 250;
+const GESTURE_CAP_MS = 1500;
+let gestureActive = false;
+/** @type {(() => void)[]} */
+let gestureQueue = [];
+let upTimer = null;
+let capTimer = null;
+let trackerInstalled = false;
+
+function endGesture() {
+  if (!gestureActive) return;
+  gestureActive = false;
+  clearTimeout(upTimer);
+  clearTimeout(capTimer);
+  upTimer = capTimer = null;
+  const q = gestureQueue;
+  gestureQueue = [];
+  for (const fn of q) fn();
+}
+
+/** Install the gesture tracker once (idempotent). */
+function installGestureTracker() {
+  if (trackerInstalled) return;
+  trackerInstalled = true;
+  document.addEventListener(
+    'pointerdown',
+    () => {
+      gestureActive = true;
+      clearTimeout(upTimer);
+      upTimer = null;
+      clearTimeout(capTimer);
+      capTimer = setTimeout(endGesture, GESTURE_CAP_MS);
+    },
+    true,
+  );
+  document.addEventListener(
+    'pointerup',
+    () => {
+      if (!gestureActive) return;
+      clearTimeout(upTimer);
+      upTimer = setTimeout(endGesture, UP_FALLBACK_MS);
+    },
+    true,
+  );
+  document.addEventListener('click', () => {
+    if (gestureActive) setTimeout(endGesture, 0);
+  });
+  document.addEventListener('pointercancel', endGesture, true);
+  document.addEventListener('keydown', endGesture, true);
+  document.addEventListener('visibilitychange', endGesture);
+  // Element blur does not bubble, and this listener is not capturing: only the window's own blur.
+  window.addEventListener('blur', (e) => {
+    if (e.target === window) endGesture();
+  });
+}
+
+/** Run fn now, or once when the current pointer gesture ends (in order). */
+function afterGesture(fn) {
+  if (gestureActive) gestureQueue.push(fn);
+  else fn();
+}
+
 /**
  * Per field: the message wanted now (want/wantSig), whether it blocks, the one on screen
- * (shownSig, '' = none) and the pause timer. key = sig + raw text, so a keystroke restarts the
+ * (shownSig, '' = none), the one queued for the end of a gesture (queuedSig, MJ-2) and the pause
+ * timer. key = sig + raw text, so a keystroke restarts the
  * pause but an unrelated input frame (material, frame) does not.
  */
 const state = new Map();
@@ -132,6 +211,8 @@ function stateOf(id) {
       blocks: false,
       key: '',
       shownSig: '',
+      queuedSig: '',
+      blurAt: -Infinity,
       deb: createDebouncer((fn, ms) => setTimeout(fn, ms), clearTimeout),
     };
     state.set(id, s);
@@ -153,15 +234,22 @@ export function showFieldMessage(id, m, { kind = 'dpt', blocks, apply, shown = (
   if (apply === undefined) apply = m?.tier === TIERS.HINT && Number.isFinite(m.data.suggestion) ? bare(m.data.suggestion) : null;
   const sig = m ? `${m.tier}|${m.code}|${JSON.stringify(m.data)}` : '';
   const key = sig + '\u0000' + input(id).value;
+  // A blur just before this read (the input frame of the last keystroke had not run yet): the
+  // message is due now, not after a fresh pause (02-18, Tab right after typing).
+  const blurredJustNow = performance.now() - s.blurAt < BLUR_GRACE_MS && document.activeElement !== input(id);
+  s.blurAt = -Infinity;
   s.want = m;
   s.wantSig = sig;
   s.blocks = m !== null && (blocks ?? m.tier !== TIERS.HINT);
-  if (sig === s.shownSig) {
-    // Already on screen: no rewrite, so the live region is not announced again.
+  if (sig === s.shownSig || (sig !== '' && sig === s.queuedSig)) {
+    // Already on screen, or queued for the end of the gesture (MJ-2): no second paint, so the
+    // live region is not announced again.
     s.deb.cancel();
     s.key = key;
     return;
   }
+  // A different message is wanted: a queued paint is stale (the deferred paint checks wantSig).
+  s.queuedSig = '';
   if (s.shownSig !== '') {
     paintMessage(id, null, { kind, apply });
     s.shownSig = '';
@@ -174,10 +262,17 @@ export function showFieldMessage(id, m, { kind = 'dpt', blocks, apply, shown = (
   if (key === s.key && s.deb.isPending()) return;
   s.key = key;
   s.deb.call(() => {
-    paintMessage(id, m, { kind, apply });
-    s.shownSig = sig;
-    shown();
+    s.queuedSig = sig;
+    afterGesture(() => {
+      if (s.queuedSig === sig) s.queuedSig = '';
+      // Idempotent: skip a stale or already painted message.
+      if (s.wantSig !== sig || s.shownSig === sig) return;
+      paintMessage(id, m, { kind, apply });
+      s.shownSig = sig;
+      shown();
+    });
   });
+  if (blurredJustNow) s.deb.flush();
 }
 
 /** Whether field id's wanted message blocks, and whether it is not on screen yet. */
@@ -186,9 +281,14 @@ export function messageStatus(id) {
   return { blocks: s.blocks, pending: s.blocks && s.shownSig !== s.wantSig };
 }
 
-/** Show a due message at once when the field loses focus. */
+/** Show a due message when the field loses focus: at once by keyboard, after the click by pointer. */
 export function flushOnBlur(id) {
-  input(id).addEventListener('blur', () => stateOf(id).deb.flush());
+  input(id).addEventListener('blur', () => {
+    const s = stateOf(id);
+    // Nothing pending yet: the read of the last keystroke may still be due in this frame.
+    if (!s.deb.isPending()) s.blurAt = performance.now();
+    afterGesture(() => s.deb.flush());
+  });
 }
 
 /** PD fields whose message blocks each eye (resolvePd blockedBy), from the last read. */
@@ -379,6 +479,7 @@ export function readRx() {
  */
 export function initRxInput({ onInput, onMessageShown }) {
   onShown = onMessageShown;
+  installGestureTracker();
   for (const eye of EYES) for (const f of FIELDS) flushOnBlur(fieldId(eye, f));
   for (const eye of EYES) {
     for (const f of FIELDS) {
