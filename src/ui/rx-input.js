@@ -25,6 +25,10 @@ const TIER_CLASS = { [TIERS.ERROR]: 'msg-error', [TIERS.HINT]: 'msg-hint', [TIER
 const LEADING_MINUS = /^\s*[-−‒–‐﹣－]\s*/;
 // The literal frame terms a VAL_FRAME_OUT_OF_MODEL message may name.
 const FRAME_TERMS = ['A', 'B', 'DBL'];
+// 02-12: the custom material constants a VAL_CUSTOM_* message names (material.custom.field.*).
+const CUSTOM_TERMS = ['ne', 'density', 'abbe'];
+// Unit-less custom material numbers: up to three decimals as typed (nₑ 1,523; Dichte 2,54).
+const plainNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 3, useGrouping: false });
 
 const input = (id) => /** @type {HTMLInputElement} */ ($(id));
 const fieldId = (eye, f) => `rx-${eye.toLowerCase()}-${f}`;
@@ -37,7 +41,7 @@ export const fmtForm = (f) => `${fmtDiopter(f.sph)} / ${fmtDiopter(f.cyl)} × ${
 
 /**
  * German text of a field message; params are formatted numbers or fixed terms only (T-02-09).
- * @param {{ code: string, data: Record<string, any> }} m @param {'dpt'|'mm'|'k'} kind
+ * @param {{ code: string, data: Record<string, any> }} m @param {'dpt'|'mm'|'k'|'num'} kind
  */
 function messageText(m, kind) {
   const d = m.data;
@@ -46,12 +50,13 @@ function messageText(m, kind) {
     return t('pd.' + d.question, params) + ' ' + t('val.' + m.code);
   }
   if (Object.hasOwn(VAL_CODES, m.code)) {
-    const fmt = kind === 'mm' ? fmtMm : kind === 'k' ? fmtConic : fmtDiopter;
+    const fmt = kind === 'mm' ? fmtMm : kind === 'k' ? fmtConic : kind === 'num' ? (v) => plainNf.format(v) : fmtDiopter;
     const params = {};
     if (Number.isFinite(d.suggestion)) params.suggestion = fmtDiopter(d.suggestion);
     for (const k of ['value', 'min', 'max']) if (Number.isFinite(d[k])) params[k] = fmt(d[k]);
     if (Number.isFinite(d.typed)) params.typed = fmtDiopter(d.typed);
     if (FRAME_TERMS.includes(d.field)) params.field = d.field;
+    if (CUSTOM_TERMS.includes(d.field)) params.field = t('material.custom.field.' + d.field);
     let text = t('val.' + m.code, params);
     // Plus cylinder: the Sph range was checked on the minus form, so name what was typed.
     if (m.code === VAL_CODES.VAL_SPH_OUT_OF_MODEL && d.typed && d.typed.cyl > 0) {
@@ -138,7 +143,7 @@ function stateOf(id) {
  * on screen that no longer fits is removed at once. Shared by the Rx and frame fields.
  * @param {string} id
  * @param {object|null} m FieldMsg
- * @param {{ kind?: 'dpt'|'mm'|'k', blocks?: boolean, apply?: string|null, shown?: () => void }} [opts]
+ * @param {{ kind?: 'dpt'|'mm'|'k'|'num', blocks?: boolean, apply?: string|null, shown?: () => void }} [opts]
  *   blocks defaults to "not a Hinweis"; apply = text the "übernehmen" button writes (default: the
  *   suggestion of a Hinweis, "Meinten Sie −2,25?").
  */

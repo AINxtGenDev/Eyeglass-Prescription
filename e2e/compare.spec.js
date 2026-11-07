@@ -27,7 +27,7 @@ async function plusCase(page) {
 
 test('example: six rows, 1,74 saves 1,6 mm and 4 g; switching moves "Ihre Auswahl"', async ({ page }) => {
   await settledCompare(page);
-  await expect(page.locator('#cmp-material-table tbody tr')).toHaveCount(6);
+  await expect(page.locator('#cmp-material-table tbody tr:visible')).toHaveCount(6);
   await expect(row(page, 'cr39')).toContainText('Ihre Auswahl');
   expect(await text(row(page, 'cr39').locator('td[data-col=thick]'))).toContain('4,6 mm');
   expect(await text(row(page, 'cr39').locator('td[data-col=ct]'))).toContain('1,8 mm');
@@ -63,7 +63,7 @@ test('per-eye details carry the thickest edge (RES-02 max edge)', async ({ page 
   const details = page.locator('#cmp-material-eyes');
   await details.locator('summary').click();
   await expect(page.locator('#cmp-material-eyes-table thead')).toContainText('Dickster Rand');
-  await expect(page.locator('#cmp-material-eyes-table tbody tr')).toHaveCount(12);
+  await expect(page.locator('#cmp-material-eyes-table tbody tr:visible')).toHaveCount(12);
   expect(await text(eyeRow(page, 'cr39', 'OD').locator('td[data-col=edge]'))).toContain('2,8 mm');
   expect(await text(eyeRow(page, 'cr39', 'OS').locator('td[data-col=edge]'))).toContain('2,7 mm');
 });

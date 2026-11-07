@@ -80,7 +80,7 @@ test('material choice changes thickness', async ({ page }) => {
   await page.locator('#rx-os-sph').fill('-4,00');
   await settled(page);
   // 02-07: six radio cards in MATERIALS order replace the select.
-  const cards = page.locator('input[name=material]');
+  const cards = page.locator('input[name=material]:visible');
   await expect(cards).toHaveCount(6);
   await expect(page.locator('#material label', { hasText: '1,53 · Trivex' })).toHaveCount(1);
   await expect(material(page, 'cr39')).toBeChecked();

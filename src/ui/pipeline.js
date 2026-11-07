@@ -10,6 +10,8 @@
 // 02-10: with Expert overrides the material rows keep the manual base curve but use each
 // material's own minimum thicknesses (RESEARCH Pitfall 11, footnote #cmp-footnote); a manual base
 // curve adds one more job with the automatic curve for the Glas-Einstellungen line.
+// 02-12 (D-17): with 'Eigenes Material' selected all six sourced materials are compared jobs; a
+// listed job never carries customMaterial (the engine rejects it with a listed materialId).
 import { createComputeClient, BUSY_AFTER_MS } from '../state/compute-client.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
@@ -259,7 +261,7 @@ const CONFIG_A = 'configA';
 const AUTO_BC = 'autoBc';
 /** The automatic-curve results for the current input: pair, null = failed, undefined = computing / no job. */
 let resultAuto;
-/** @type {{ frame: object|null, materialId: string } | null} the frozen Vorher (A) */
+/** @type {{ frame: object|null, materialId: string, custom: object|null } | null} the frozen Vorher (A) */
 let configA = null;
 /** A's results for the current input: pair, null = failed, undefined = computing / no job. */
 let resultA;
@@ -299,6 +301,13 @@ function writeComparePending() {
   setCompareStale(compareHeld);
 }
 
+/** The spec with a listed material: no customMaterial key, the given minimums. */
+function listedSpec(spec, materialId, minCT, minET) {
+  const out = { ...spec, materialId, minCT, minET };
+  delete out.customMaterial;
+  return out;
+}
+
 /** One job per other sourced material; an eye without a main spec has no job (D-15). */
 function buildCompareJobs(specs) {
   jobMaterial.clear();
@@ -309,7 +318,7 @@ function buildCompareJobs(specs) {
     if (id === selectedId) continue;
     const job = {};
     // Same Rx, frame and base curve; the material's own sourced minimums (RESEARCH Pitfall 11).
-    for (const eye of EYES) if (specs[eye]) job[eye] = { ...specs[eye], materialId: id, minCT: null, minET: null };
+    for (const eye of EYES) if (specs[eye]) job[eye] = listedSpec(specs[eye], id, null, null);
     // The job key is the job's own spec pair: switching the selected material back and forth
     // finds the other rows in the client's compare cache.
     const key = JSON.stringify(job);
@@ -329,7 +338,19 @@ function buildCompareJobs(specs) {
   specA = { OD: null, OS: null };
   if (configA?.frame) {
     const job = {};
-    for (const eye of EYES) if (specs[eye]) job[eye] = { ...specs[eye], materialId: configA.materialId, frame: configA.frame };
+    for (const eye of EYES) {
+      if (!specs[eye]) continue;
+      const s = specs[eye];
+      // 02-12: a custom A uses its frozen constants; a listed A after a custom B goes back to the
+      // material's own minimums (B's custom minimums belong to B's material).
+      if (configA.custom) {
+        job[eye] = { ...s, materialId: 'custom', frame: configA.frame, ...configA.custom };
+      } else if (s.materialId === 'custom') {
+        job[eye] = { ...listedSpec(s, configA.materialId, null, null), frame: configA.frame };
+      } else {
+        job[eye] = { ...s, materialId: configA.materialId, frame: configA.frame };
+      }
+    }
     const key = CONFIG_A + ':' + JSON.stringify(job);
     jobMaterial.set(key, CONFIG_A);
     jobs.unshift({ key, specs: job });
@@ -432,12 +453,27 @@ function paintCompare() {
 /** The current input's frame and material equal A's (nothing changed yet). */
 function sameConfig() {
   const s = requested.OD ?? requested.OS;
-  return !!s && !!configA && s.materialId === configA.materialId && JSON.stringify(s.frame) === JSON.stringify(configA.frame);
+  return (
+    !!s &&
+    !!configA &&
+    s.materialId === configA.materialId &&
+    JSON.stringify(s.frame) === JSON.stringify(configA.frame) &&
+    // 02-12: a custom material is the same only with the same constants and minimums.
+    (!configA.custom ||
+      JSON.stringify([s.customMaterial, s.minCT, s.minET]) ===
+        JSON.stringify([configA.custom.customMaterial, configA.custom.minCT, configA.custom.minET]))
+  );
 }
 
-/** Material named under the cards: A's while Vorher is shown (main.js update uses this too). */
-export function cardMaterialId(currentId) {
-  return showA && configA ? configA.materialId : currentId;
+/**
+ * Material named under the cards: A's while Vorher is shown (main.js update uses this too).
+ * Arguments for renderMaterialLine after the eye: [materialId] or, for a custom A, [materialId,
+ * A's frozen constants] (02-12).
+ * @returns {[string] | [string, object|null]}
+ */
+export function cardMaterial(currentId) {
+  if (!(showA && configA)) return [currentId];
+  return configA.custom ? [configA.materialId, configA.custom.customMaterial] : [configA.materialId];
 }
 
 /**
@@ -465,10 +501,10 @@ function paintCards() {
     }
   }
   renderLrCallout();
-  const materialId = cardMaterialId(currentConfig().materialId);
+  const material = cardMaterial(currentConfig().materialId);
   for (const eye of EYES) {
     setText(`result-${eye.toLowerCase()}-suffix`, showA ? t('cmp.show.suffix.a') : '');
-    renderMaterialLine(eye, materialId);
+    renderMaterialLine(eye, ...material);
   }
 }
 

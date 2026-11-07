@@ -64,8 +64,13 @@ function fillMinDefaults(materialId, { reset = false } = {}) {
   }
 }
 
-/** Material change hook (material-input.js): re-fill the defaults unless the field was edited. */
-export const onMaterialChange = (materialId) => fillMinDefaults(materialId);
+/**
+ * Material change hook (material-input.js): re-fill the defaults unless the field was edited.
+ * 'custom' (02-12) has no defaults here: its own fields carry the minimums, the fields keep theirs.
+ */
+export const onMaterialChange = (materialId) => {
+  if (Object.hasOwn(MATERIALS, materialId)) fillMinDefaults(materialId);
+};
 
 /**
  * Wire the switch and the Glas-Einstellungen. Off on every load: the checkbox is reset here, so a
@@ -158,12 +163,21 @@ function minSource(k, m, value) {
  */
 export function readExpertOverrides(materialId) {
   if (!expert) return NO_OVERRIDES;
-  const m = MATERIALS[materialId];
+  // 02-12: with 'Eigenes Material' its own minimum fields (#custom-material) replace these two, so
+  // they are hidden and send nothing (one minimum per spec, no competing fields).
+  const custom = !Object.hasOwn(MATERIALS, materialId);
+  $('expert-min').hidden = custom;
+  $('expert-min-reset').hidden = custom;
+  const m = MATERIALS[custom ? fieldMaterial : materialId];
   const bc = validateBaseCurve(field(BC_ID).value);
   showFieldMessage(BC_ID, bc.msg, { kind: 'dpt', apply: null, shown: onShown });
   setText(`${BC_ID}-echo`, bc.value === null ? (bc.msg ? '' : t('expert.bc.echoAuto')) : fmtDiopter(bc.value) + ' – ' + t('expert.bc.echoManual'));
   const out = { baseCurve: bc.value, minCT: null, minET: null, active: true };
   for (const k of /** @type {const} */ (['minCT', 'minET'])) {
+    if (custom) {
+      showFieldMessage(MIN_ID[k], null, { kind: 'mm', apply: null });
+      continue;
+    }
     const r = validateMinThickness(field(MIN_ID[k]).value);
     showFieldMessage(MIN_ID[k], r.msg, { kind: 'mm', apply: null, shown: onShown });
     setText(`${MIN_ID[k]}-echo`, r.msg ? '' : minSource(k, m, r.value));

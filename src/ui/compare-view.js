@@ -12,6 +12,10 @@ import { $, setText } from './dom.js';
 import { icon } from './icons.js';
 
 const IDS = Object.keys(MATERIALS);
+// 02-12 (D-17): 'Eigenes Material' has a row only as 'Ihre Auswahl' at the top; it is hidden unless
+// it is the selection and is never a compared row (materialRows).
+const CUSTOM = 'custom';
+const ROW_IDS = [CUSTOM, ...IDS];
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
 const EM_DASH = '—';
@@ -57,9 +61,10 @@ let cfgOutdated = false;
 function buildRows() {
   const body = /** @type {HTMLElement} */ (document.querySelector('#cmp-material-table tbody'));
   const eyeBody = /** @type {HTMLElement} */ (document.querySelector('#cmp-material-eyes-table tbody'));
-  for (const id of IDS) {
+  for (const id of ROW_IDS) {
     const tr = document.createElement('tr');
     tr.dataset.material = id;
+    tr.hidden = id === CUSTOM;
     const c = {
       material: cell('th', 'material', null, ['name', 'tag']),
       thick: cell('td', 'thick', 'cmp.col.thick', ['val', 'loc']),
@@ -80,6 +85,7 @@ function buildRows() {
       const etr = document.createElement('tr');
       etr.dataset.material = id;
       etr.dataset.eye = eye;
+      etr.hidden = id === CUSTOM;
       const e = {
         material: cell('th', 'material', null, ['name']),
         eye: cell('td', 'eye', 'cmp.eyes.col.eye', ['val']),
@@ -222,6 +228,15 @@ function paintEyeRow(r, res) {
  * @param {{ selectedId: string|null, selected: { OD?: object|null, OS?: object|null }, others: Record<string, object|null> }} o
  */
 export function renderMaterialTable({ selectedId, selected, others }) {
+  const custom = selectedId === CUSTOM;
+  for (const [key, r] of [...rows.entries(), ...eyeRows.entries()]) {
+    if (key.startsWith(CUSTOM) && r.tr.hidden === custom) r.tr.hidden = !custom;
+  }
+  const note = $('cmp-custom-note');
+  if (note.hidden === custom) {
+    setText('cmp-custom-note', custom ? t('cmp.customExcluded') : '');
+    note.hidden = !custom;
+  }
   const list = selectedId === null ? [] : materialRows({ selectedId, selected, others });
   if (list.length === 0) {
     setText('cmp-material-intro', '');
@@ -232,7 +247,7 @@ export function renderMaterialTable({ selectedId, selected, others }) {
   const eye = /** @type {{ eye: 'OD'|'OS' }} */ (list.find((row) => row.selected)).eye;
   setText('cmp-material-intro', t('cmp.material.intro', { eye: t(eye === 'OD' ? 'cmp.eye.od' : 'cmp.eye.os') }));
   for (const row of list) paintRow(/** @type {any} */ (rows.get(row.id)), row);
-  for (const id of IDS) {
+  for (const id of custom ? ROW_IDS : IDS) {
     const pair = id === selectedId ? selected : others[id];
     for (const e of EYES) {
       const r = /** @type {any} */ (eyeRows.get(`${id}-${e}`));

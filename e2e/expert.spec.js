@@ -431,3 +431,183 @@ test('Vorderfläche and Randtiefe: no WCAG violations with the switch on', async
     .analyze();
   expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
 });
+
+// ---- Eigenes Material (02-12, MAT-06, D-17) ----
+const customCard = (page) => page.locator('#material-custom-card');
+/** Select 'Eigenes Material' and type its five values (empty strings leave a field as it is). */
+async function customMaterial(page, { ne = '', density = '', abbe = '', minCT = '', minET = '' } = {}) {
+  await material(page, 'custom').check();
+  for (const [id, v] of Object.entries({ ne, density, abbe, 'min-ct': minCT, 'min-et': minET })) {
+    if (v !== '') await page.locator(`#custom-${id}`).fill(v);
+  }
+}
+const cardValues = async (page) => {
+  const out = [];
+  for (const e of ['od', 'os']) for (const c of ['thick', 'ct', 'etmin', 'weight']) out.push(await text(page, `#result-${e}-${c}`));
+  return out;
+};
+
+test('Eigenes Material: card only in the Experten-Ansicht; CR-39 constants give the 1,50 numbers, labelled', async ({ page }) => {
+  await settled(page);
+  await expect(customCard(page)).toBeHidden();
+  const cr39 = await cardValues(page);
+  await expect(page.locator('#result-od-custom')).toBeHidden();
+  await sw(page).check();
+  await expect(customCard(page)).toBeVisible();
+  await expect(customCard(page)).toContainText('Eigenes Material');
+  await expect(customCard(page)).toContainText('Werte selbst eingeben');
+  await expect(page.locator('#custom-material')).toBeHidden();
+  await material(page, 'custom').check();
+  await expect(page.locator('#custom-material')).toBeVisible();
+  // pre-filled from the listed material with the nearest nₑ (1,500 while nₑ is empty)
+  await expect(page.locator('#custom-min-ct')).toHaveValue('1,8');
+  await expect(page.locator('#custom-min-et')).toHaveValue('1,0');
+  // the Glas-Einstellungen minimums are replaced by the custom ones
+  await expect(page.locator('#expert-min')).toBeHidden();
+  await customMaterial(page, { ne: '1,5', density: '1,32', abbe: '56', minCT: '1,8', minET: '1,0' });
+  await settled(page);
+  expect(await cardValues(page)).toEqual(cr39);
+  for (const e of ['od', 'os']) {
+    await expect(page.locator(`#result-${e}-custom`)).toBeVisible();
+    await expect(page.locator(`#result-${e}-custom`)).toHaveText('beruht auf Ihren Angaben, kein geprüftes Material');
+    await expect(page.locator(`#result-${e}-material`)).toContainText('Eigenes Material');
+    await expect(page.locator(`#result-${e}-material`)).toContainText('beruht auf Ihren Angaben, kein geprüftes Material');
+  }
+  await expect(page.locator('#result-od-material')).toContainText('1,500');
+  await expect(page.locator('#result-od-material')).toContainText('Abbe-Zahl 56');
+});
+
+test('Eigenes Material: nₑ prefill follows the nearest listed material until a minimum is typed', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await customMaterial(page, { ne: '1,62', density: '1,3' });
+  // 1,62 is nearest to 1,60 (1,598): minus CT 1,2, plus ET 1,1
+  await expect(page.locator('#custom-min-ct')).toHaveValue('1,2');
+  await expect(page.locator('#custom-min-et')).toHaveValue('1,1');
+  await expect(page.locator('#custom-min-ct-echo')).toContainText('vorbelegt wie 1,60');
+  await page.locator('#custom-min-ct').fill('2,0');
+  await page.locator('#custom-ne').fill('1,74');
+  await settled(page);
+  await expect(page.locator('#custom-min-ct')).toHaveValue('2,0');
+  await expect(page.locator('#result-od-ct')).toHaveText('2,0 mm');
+  // no Abbe number: computes, the line says so
+  await expect(page.locator('#result-od-material')).toContainText('ohne Abbe-Zahl');
+});
+
+test('Eigenes Material: nₑ 2,1 is a Fehler and blocks; 1,95 is a Hinweis and computes', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await customMaterial(page, { ne: '2,1', density: '1,32', abbe: '56' });
+  await page.locator('#custom-ne').blur();
+  await expect(page.locator('#custom-ne-err')).toContainText('Fehler:');
+  await expect(page.locator('#custom-ne-err')).toContainText('Brechungsindex nₑ 2,1');
+  await settled(page);
+  for (const e of ['od', 'os']) {
+    await expect(page.locator(`#result-${e}-thick`)).toHaveText('–');
+    await expect(page.locator(`#result-${e}-jump`)).toBeVisible();
+  }
+  await page.locator('#result-od-jump').click();
+  await expect(page.locator('#custom-ne')).toBeFocused();
+  await page.locator('#custom-ne').fill('1,95');
+  await page.locator('#custom-ne').blur();
+  await expect(page.locator('#custom-ne-err')).toContainText('Hinweis:');
+  await settled(page);
+  await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d/);
+  await expect(page.locator('#result-od-custom')).toBeVisible();
+  // the tip explains ne against nd
+  await page.locator('[aria-controls=tip-ne]').click();
+  await expect(page.locator('#tip-ne')).toContainText('0,001 bis 0,007');
+});
+
+test('Eigenes Material: crown glass is heavier; the comparison has it on top and six sourced rows', async ({ page }) => {
+  await settledCompare(page);
+  const cr39Weight = await text(page, '#result-od-weight');
+  await sw(page).check();
+  await customMaterial(page, { ne: '1,523', density: '2,54', abbe: '58' });
+  await settledCompare(page);
+  const n = (s) => Number(s.replace(/[^\d,]/g, '').replace(',', '.'));
+  expect(n(await text(page, '#result-od-weight'))).toBeGreaterThan(n(cr39Weight));
+  const visibleRows = page.locator('#cmp-material-table tbody tr:visible');
+  await expect(visibleRows).toHaveCount(7);
+  await expect(visibleRows.first()).toHaveAttribute('data-material', 'custom');
+  await expect(visibleRows.first()).toContainText('Eigenes Material');
+  await expect(visibleRows.first()).toContainText('Ihre Auswahl');
+  await expect(page.locator('#cmp-material-table tbody tr[data-selected]')).toHaveCount(1);
+  // every sourced material is compared against it (lighter than crown glass)
+  for (const id of ['cr39', 'trivex', 'pc', 'idx160', 'idx167', 'idx174']) {
+    await expect(page.locator(`#cmp-material-table tbody tr[data-material=${id}]`)).toContainText('leichter');
+  }
+  await expect(page.locator('#cmp-custom-note')).toBeVisible();
+  await expect(page.locator('#cmp-custom-note')).toHaveText(
+    'Ihr eigenes Material ist hier nicht aufgeführt; verglichen werden nur geprüfte Materialien.',
+  );
+  // back to a listed material: six rows, no note
+  await material(page, 'idx160').check();
+  await settledCompare(page);
+  await expect(visibleRows).toHaveCount(6);
+  await expect(page.locator('#cmp-custom-note')).toBeHidden();
+});
+
+test('Eigenes Material: switching the Experten-Ansicht off falls back to the last listed material', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await material(page, 'idx167').check();
+  await settled(page);
+  const idx167 = await cardValues(page);
+  await customMaterial(page, { ne: '1,523', density: '2,54', abbe: '58' });
+  await settled(page);
+  await expect(page.locator('#result-od-custom')).toBeVisible();
+  await sw(page).uncheck();
+  await settled(page);
+  await expect(material(page, 'idx167')).toBeChecked();
+  await expect(customCard(page)).toBeHidden();
+  await expect(page.locator('#custom-material')).toBeHidden();
+  await expect(page.locator('#material-err')).toBeVisible();
+  await expect(page.locator('#material-err')).toHaveText(
+    'Hinweis: Eigenes Material gilt nur in der Experten-Ansicht. Es wird wieder 1,67 · Hochbrechend verwendet.',
+  );
+  for (const e of ['od', 'os']) await expect(page.locator(`#result-${e}-custom`)).toBeHidden();
+  await expect(page.locator('#result-od-material')).not.toContainText('Eigenes Material');
+  expect(await cardValues(page)).toEqual(idx167);
+  // switching on again keeps 1,67 selected and the typed values
+  await sw(page).check();
+  await expect(material(page, 'idx167')).toBeChecked();
+  await expect(page.locator('#material-err')).toBeHidden();
+  await material(page, 'custom').check();
+  await expect(page.locator('#custom-ne')).toHaveValue('1,523');
+});
+
+test('Eigenes Material: no WCAG violations in the material section with the fields open', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await customMaterial(page, { ne: '2,1', density: '1,32' });
+  await page.locator('#custom-ne').blur();
+  await expect(page.locator('#custom-ne-err')).toBeVisible();
+  await page.locator('[aria-controls=tip-ne]').click();
+  const { violations } = await new AxeBuilder({ page })
+    .include('#material-section')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+});
+
+test('Eigenes Material as Vorher (A): frozen constants, labelled when Vorher is shown', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await customMaterial(page, { ne: '1,523', density: '2,54', abbe: '58' });
+  await settledCompare(page);
+  const glassWeight = await text(page, '#result-od-weight');
+  await page.locator('#cmp-start').click();
+  await settledCompare(page);
+  await expect(page.locator('#cmp-a-status')).toContainText('Eigenes Material');
+  await expect(page.locator('#cmp-diff')).toContainText('noch gleich');
+  await material(page, 'cr39').check();
+  await settledCompare(page);
+  await expect(page.locator('#cmp-diff')).toContainText('leichter');
+  await expect(page.locator('#result-od-custom')).toBeHidden();
+  await page.locator('#cmp-show input[name=cmp-show][value=a]').check();
+  await settledCompare(page);
+  await expect(page.locator('#result-od-custom')).toBeVisible();
+  await expect(page.locator('#result-od-material')).toContainText('Eigenes Material, nₑ 1,523');
+  expect(await text(page, '#result-od-weight')).toBe(glassWeight);
+});

@@ -57,9 +57,16 @@ function hideJump(eye) {
   if (!jump.hidden) jump.hidden = true;
 }
 
+/** 'beruht auf Ihren Angaben, kein geprüftes Material' under the headline (02-12, T-02-32). */
+function customLabel(eye, on) {
+  const el = $(`result-${eye.toLowerCase()}-custom`);
+  if (el.hidden === on) el.hidden = !on;
+}
+
 function noResult(eye) {
   const p = `result-${eye.toLowerCase()}`;
   hideJump(eye);
+  customLabel(eye, false);
   displayed[eye] = null;
   lastLoc[eye] = null;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
@@ -240,6 +247,8 @@ export function renderResult(eye, res, spec) {
       ? t('result.headline.uniformEdge', { glass: glass(eye), etmin, ct, weight })
       : t('result.headline', { glass: glass(eye), thick, thickLoc, etmin, etminLoc, ct, weight }),
   );
+  // Every number on this card comes from the user's own material constants (02-12, D-17).
+  customLabel(eye, spec?.materialId === 'custom');
   renderZwischenwerte(eye, res);
   setText(`${p}-status`, statusLabel(res.diagnostics));
   renderDiagnostics(eye, res.diagnostics);

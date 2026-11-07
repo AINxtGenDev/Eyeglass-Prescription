@@ -261,7 +261,56 @@
               <legend><span class="term"><span data-i18n="material.legend"></span><button type="button" class="tip-btn"
                     aria-expanded="false" aria-controls="tip-index" data-i18n-aria-label="tip.index.name"></button></span></legend>
               <p id="tip-index" class="tip" hidden data-i18n="tip.index.text"></p>
-              <div class="material-cards"></div>
+              <div class="material-cards">
+                <label class="radio-card material-card" id="material-custom-card" data-expert hidden>
+                  <input type="radio" name="material" value="custom">
+                  <span class="radio-card-name" data-i18n="material.custom.title"></span>
+                  <span class="radio-card-sub" data-i18n="material.custom.sub"></span>
+                </label>
+              </div>
+            </fieldset>
+            <div id="material-err" class="msg msg-hint" aria-live="polite" hidden></div>
+            <fieldset id="custom-material" hidden>
+              <legend><span class="expert-tag" data-i18n="expert.tag"></span> <span data-i18n="material.custom.legend"></span></legend>
+              <div class="field">
+                <span class="term"><label for="custom-ne" data-i18n="material.custom.ne.label"></label><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-ne" data-i18n-aria-label="tip.ne.name"></button></span>
+                <p id="tip-ne" class="tip" hidden data-i18n="tip.ne.text"></p>
+                <input id="custom-ne" name="custom-ne" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="custom-ne-echo custom-ne-err">
+                <output id="custom-ne-echo" for="custom-ne"></output>
+                <div id="custom-ne-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+              <div class="field">
+                <span class="term"><label for="custom-density" data-i18n="material.custom.density.label"></label></span>
+                <input id="custom-density" name="custom-density" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="custom-density-echo custom-density-err">
+                <output id="custom-density-echo" for="custom-density"></output>
+                <div id="custom-density-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+              <div class="field">
+                <span class="term"><label for="custom-abbe" data-i18n="material.custom.abbe.label"></label></span>
+                <input id="custom-abbe" name="custom-abbe" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="custom-abbe-echo custom-abbe-err">
+                <output id="custom-abbe-echo" for="custom-abbe"></output>
+                <div id="custom-abbe-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+              <div class="gs-min">
+                <div class="field">
+                  <span class="term"><label for="custom-min-ct" data-i18n="material.custom.minCT.label"></label></span>
+                  <input id="custom-min-ct" name="custom-min-ct" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="custom-min-ct-echo custom-min-ct-err">
+                  <output id="custom-min-ct-echo" for="custom-min-ct"></output>
+                  <div id="custom-min-ct-err" class="msg" aria-live="polite" hidden></div>
+                </div>
+                <div class="field">
+                  <span class="term"><label for="custom-min-et" data-i18n="material.custom.minET.label"></label></span>
+                  <input id="custom-min-et" name="custom-min-et" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="custom-min-et-echo custom-min-et-err">
+                  <output id="custom-min-et-echo" for="custom-min-et"></output>
+                  <div id="custom-min-et-err" class="msg" aria-live="polite" hidden></div>
+                </div>
+              </div>
             </fieldset>
             <p id="material-hint" class="field-hint" data-i18n="material.hint"></p>
             <p class="term"><span data-i18n="material.abbeTerm"></span><button type="button" class="tip-btn"
@@ -285,7 +334,7 @@
               </div>
               <p id="expert-bc-minus-note" class="small" data-i18n="expert.bc.minusNote" hidden></p>
               <button type="button" id="expert-bc-vogel" data-i18n="expert.bc.vogelApply"></button>
-              <div class="gs-min">
+              <div class="gs-min" id="expert-min">
                 <div class="field">
                   <span class="term"><label for="expert-min-ct" data-i18n="expert.min.ct"></label><button type="button" class="tip-btn"
                       aria-expanded="false" aria-controls="tip-minct" data-i18n-aria-label="tip.minct.name"></button></span>
@@ -341,6 +390,7 @@
             <article id="result-od-card" class="result-card" aria-labelledby="result-od-title">
               <h3 id="result-od-title"><span data-i18n="result.card.od"></span><span id="result-od-suffix"></span></h3>
               <p id="result-od-headline" class="result-headline"></p>
+              <p id="result-od-custom" class="small custom-label" data-i18n="material.custom.label" hidden></p>
               <p id="result-od-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
               <p id="result-od-status" class="result-status"></p>
               <button type="button" id="result-od-jump" class="link-button" data-i18n="result.blockedJump" hidden></button>
@@ -372,6 +422,7 @@
             <article id="result-os-card" class="result-card" aria-labelledby="result-os-title">
               <h3 id="result-os-title"><span data-i18n="result.card.os"></span><span id="result-os-suffix"></span></h3>
               <p id="result-os-headline" class="result-headline"></p>
+              <p id="result-os-custom" class="small custom-label" data-i18n="material.custom.label" hidden></p>
               <p id="result-os-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
               <p id="result-os-status" class="result-status"></p>
               <button type="button" id="result-os-jump" class="link-button" data-i18n="result.blockedJump" hidden></button>
@@ -444,6 +495,7 @@
                 </table>
               </details>
               <p id="cmp-assumed-note" class="small"></p>
+              <p id="cmp-custom-note" class="small" hidden></p>
               <p id="cmp-footnote" class="small" hidden></p>
             </section>
             <section id="cmp-config" aria-labelledby="cmp-config-title">

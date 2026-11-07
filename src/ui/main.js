@@ -16,7 +16,14 @@ import { initRxInput, readRx, eyeStatus } from './rx-input.js';
 import { initFrameInput, readFrame, frameStatus, frameSizesTyped, applyFrameSizes, paintRim } from './frame-input.js';
 import { initPresets } from './presets.js';
 import { EXAMPLE } from '../state/presets.js';
-import { initMaterialInput, currentMaterialId, renderMaterialLine } from './material-input.js';
+import {
+  initMaterialInput,
+  currentMaterialId,
+  renderMaterialLine,
+  readCustomMaterial,
+  customStatus,
+  onExpertToggle,
+} from './material-input.js';
 import { initCompareView } from './compare-view.js';
 import { initToggletips } from './toggletip.js';
 import { initExpert, readExpertOverrides, expertStatus, onMaterialChange } from './expert.js';
@@ -29,7 +36,7 @@ import {
   requested,
   initPipeline,
   requestMain,
-  cardMaterialId,
+  cardMaterial,
 } from './pipeline.js';
 import {
   initTiming,
@@ -61,6 +68,8 @@ const lastRead = { OD: null, OS: null };
 let lastFrame = null;
 /** The last Expert overrides read (02-10: a blocking Expert field blocks both eyes too). */
 let lastExpert = null;
+/** The last custom material read (02-12: a blocking custom field blocks both eyes too). */
+let lastCustom = null;
 
 /**
  * Not-ready status of an eye: its own Rx/PD fields first; when they do not block, a blocking
@@ -71,6 +80,7 @@ function notReadyStatus(eye) {
   if (read.blocked) return read;
   if (lastFrame?.blocked) return { ...read, blocked: true, ...frameStatus() };
   if (lastExpert?.blocked) return { ...read, blocked: true, ...expertStatus() };
+  if (lastCustom?.blocked) return { ...read, blocked: true, ...customStatus() };
   return read;
 }
 
@@ -100,14 +110,21 @@ function update(inputTs) {
   // 02-10: Expert overrides (all null while the switch is off).
   const overrides = readExpertOverrides(materialId);
   lastExpert = overrides;
+  // 02-12: 'Eigenes Material' (Expert only) brings its constants and its own minimum thicknesses.
+  const custom = readCustomMaterial();
+  lastCustom = custom;
+  const specOverrides = custom.active
+    ? { ...overrides, minCT: custom.minCT, minET: custom.minET, customMaterial: custom.customMaterial }
+    : overrides;
   // 02-08: while Vorher (A) is shown, the cards name A's material.
-  for (const eye of EYES) renderMaterialLine(eye, cardMaterialId(materialId));
-  const ready = (eye) => fr.frame !== null && !overrides.blocked && read[eye].rx !== null && read[eye].pd !== null;
+  for (const eye of EYES) renderMaterialLine(eye, ...cardMaterial(materialId));
+  const ready = (eye) =>
+    fr.frame !== null && !overrides.blocked && !custom.blocked && read[eye].rx !== null && read[eye].pd !== null;
   const specs = { OD: null, OS: null };
   for (const eye of EYES) {
     lastRead[eye] = read[eye];
     if (ready(eye)) {
-      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, fr.frame, null, overrides);
+      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, fr.frame, null, specOverrides);
       continue;
     }
     paintNotReady(eye, notReadyStatus(eye));
@@ -184,6 +201,8 @@ function init() {
     (ts) => {
       repaintFromLast();
       paintRim();
+      // 02-12: off while 'Eigenes Material' is checked → back to the last listed material.
+      onExpertToggle();
       schedule(ts);
     },
     { schedule, onMessageShown: () => EYES.forEach(onMessageShown), materialId: currentMaterialId() },
@@ -198,10 +217,15 @@ function init() {
     onPainted: timeResultFrame,
     onCompute: (ms) => pushTiming(timings.compute, ms),
     onComparePainted: timeCompareFrame,
-    currentConfig: () => ({ frame: lastFrame?.frame ?? null, materialId: currentMaterialId() }),
+    // 02-12: a custom A keeps a copy of its constants and minimums (the fields may change later).
+    currentConfig: () => ({
+      frame: lastFrame?.frame ?? null,
+      materialId: currentMaterialId(),
+      custom: lastCustom?.active ? { customMaterial: lastCustom.customMaterial, minCT: lastCustom.minCT, minET: lastCustom.minET } : null,
+    }),
   });
   setComputeMode('worker', 'tech.mode.worker');
-  initMaterialInput({ schedule, onMaterialChange });
+  initMaterialInput({ schedule, onMaterialChange, onMessageShown: () => EYES.forEach(onMessageShown) });
   initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });
   const onInput = (e) => schedule(e.timeStamp);
   const example = initExample(onInput);
