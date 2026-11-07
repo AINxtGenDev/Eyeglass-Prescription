@@ -621,6 +621,11 @@ export default Object.freeze({
   'xs.meridian.label': 'Schnitt',
   'xs.meridian.h': 'waagrecht (0°)',
   'xs.meridian.hPrincipal': 'waagrecht (0°), Hauptschnitt ({power})',
+  // 02-17 (lens-critic M1): {power} = engine meridianPower D(0) = S + C·sin²(0 − α); used when 0° is
+  // neither α nor α + 90°, so it is not a principal meridian.
+  'xs.meridian.hOblique': 'waagrecht (0°), kein Hauptschnitt ({power})',
+  // 02-17 (gap-plan review): Zyl 0, the section power is Sph (engine meridianPower).
+  'xs.meridian.hSphere': 'waagrecht (0°), {power}',
   'xs.meridian.principal': 'Hauptschnitt {axis}° ({power})',
   'xs.end.nasal': 'Nase',
   'xs.end.temporal': 'Schläfe',

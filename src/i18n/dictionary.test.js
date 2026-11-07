@@ -442,6 +442,8 @@ describe('02-13 Querschnitt copy (ANA-01, D-30, D-37)', () => {
     'xs.descB': ['ct', 'endA', 'endB', 'locA', 'locB'],
     'xs.row.end': ['loc'],
     'xs.meridian.hPrincipal': ['power'],
+    'xs.meridian.hOblique': ['power'],
+    'xs.meridian.hSphere': ['power'],
     'xs.meridian.principal': ['axis', 'power'],
   };
   test('placeholder whitelist for xs.*: exactly the listed params, none elsewhere', () => {

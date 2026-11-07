@@ -8,6 +8,7 @@ import { $ } from './dom.js';
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtDiopter } from '../i18n/format.js';
 import { principalMeridians, meridianEndLabels } from '../engine/profile.js';
+import { meridianPower } from '../engine/power.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 /** Label text size and row height in CSS px (UI-SPEC: 14 px labels). */
@@ -45,7 +46,9 @@ const normAxis = (a) => ((a % 180) + 180) % 180;
 
 /**
  * Fill #xsec-meridian from the Rx (minus-cylinder engine form): 'waagrecht (0°)' plus the principal
- * meridians (axis α: Sph, α + 90°: Sph + Zyl). Keeps the selection when it is still offered.
+ * meridians (axis α: Sph, α + 90°: Sph + Zyl). Every power is the engine's meridianPower,
+ * D(θ) = S + C·sin²(θ − α) (lens-critic M1, 02-17); 0° is called "Hauptschnitt" only when it is α
+ * or α + 90°. Keeps the selection when it is still offered.
  * @param {{ sph: number, cyl: number, axisDeg: number } | null} rx
  * @returns {number} the selected meridian in degrees
  */
@@ -54,10 +57,13 @@ export function renderMeridianOptions(rx) {
   const prev = Number(sel.value);
   const list = rx ? principalMeridians(rx) : [0];
   const a = rx ? normAxis(rx.axisDeg) : 0;
-  const power = (th) => fmtDiopter(th === a ? rx.sph : rx.sph + rx.cyl);
+  const power = (th) => fmtDiopter(meridianPower(rx.sph, rx.cyl, rx.axisDeg, th));
+  const isPrincipal = (th) => th === a || th === (a + 90) % 180;
   const labels = list.map((th) => {
     if (th !== 0) return t('xs.meridian.principal', { axis: angleText(th), power: power(th) });
-    return rx && rx.cyl !== 0 ? t('xs.meridian.hPrincipal', { power: power(0) }) : t('xs.meridian.h');
+    if (!rx) return t('xs.meridian.h');
+    if (rx.cyl === 0) return t('xs.meridian.hSphere', { power: power(0) });
+    return t(isPrincipal(0) ? 'xs.meridian.hPrincipal' : 'xs.meridian.hOblique', { power: power(0) });
   });
   const sig = list.map((th, i) => th + ':' + labels[i]).join('|');
   if (sel.dataset.sig !== sig) {

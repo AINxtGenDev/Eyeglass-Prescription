@@ -563,7 +563,7 @@ The existing `disclaimer.body` says "Das Modell rechnet mit einer sphärischen V
 | Querschnitt h3 | Querschnitt |
 | Eye picker | Rechtes Glas · Linkes Glas |
 | Meridian label | Schnitt |
-| Meridian options | waagrecht (0°) · Hauptschnitt {axis}° ({power}) · Hauptschnitt {axis2}° ({power2}) |
+| Meridian options | 0° option: Zyl 0 → waagrecht (0°), {power} · 0° is α or α + 90° → waagrecht (0°), Hauptschnitt ({power}) · otherwise → waagrecht (0°), kein Hauptschnitt ({power}); then Hauptschnitt {axis}° ({power}) · Hauptschnitt {axis2}° ({power2}). Every {power} is the engine's meridianPower D(θ) = S + C·sin²(θ − α) (02-17, lens-critic M1) |
 | SVG title | Querschnitt {eye}, Schnitt {angle}° |
 | SVG desc | Mittendicke {ct}; Rand {endA} ({locA}) und {endB} ({locB}). |
 | End labels | Nase · Schläfe (within 15° of horizontal) · oben · unten (within 15° of vertical) · Nase oben · Nase unten · Schläfe oben · Schläfe unten (oblique principal meridians, from the meridian direction) |
