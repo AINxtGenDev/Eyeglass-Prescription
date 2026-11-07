@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-11-07T08:38:51.516Z"
-last_activity: 2026-11-07 -- Phase 2 planning complete
+last_updated: "2026-11-07T10:02:52.219Z"
+last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 28
-  completed_plans: 15
+  total_plans: 30
+  completed_plans: 16
   percent: 25
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-06)
 
 **Core value:** A non-expert can type in their paper prescription and, within a few minutes, see correctly computed lens thickness and weight for their frame — and how material or frame choice changes it.
-**Current focus:** Phase 01 — verified-engine-live-pipeline
+**Current focus:** Phase 02 — lay-first-german-input-results-comparison
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
+Plan: 2 of 15
 Status: Ready to execute
-Last activity: 2026-11-07 -- Phase 2 planning complete
+Last activity: 2026-11-07
 
 Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 
@@ -65,6 +65,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 01 P13 | 10min | 3 tasks | 15 files |
 | Phase 01 P14 | 15min | 4 tasks | 15 files |
 | Phase 01 P15 | 50min | 6 tasks | 21 files |
+| Phase 02 P01 | 25min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-14]: Proxy 4x FAIL (rescan pair 178 ms, Grenzfall 64 ms; host BenchmarkIndex 2221); user decision web-worker: Web Worker + RAIL-based ENG-09 restatement in gap plan 01-15
 - [Phase 01]: [01-15]: Engine in a module Web Worker (per-eye seq latest-wins plus isCurrent re-check in the paint frame, one job in flight with compute first, sync fallback, 10 s suspension-aware watchdog); #result[data-pending] settled signal; ENG-09 restated to RAIL/INP (a)-(d), still Pending
 - [Phase 01]: [01-15]: 4× proxy fails (a) as measured (54,8 ms extreme run); diagnostics: multi-task measurement artifact, no LoAF frame > 50 ms, real input frame 14,5/16,3 ms; Task 6 decision phone-decides, ENG-09 (a) open finding for 01-11
+- [Phase 02]: [02-01]: etMax/etMin location ties within TIE_TOL_MM = 1e-9 mm go to the larger y; values stay the exact running max/min (bitwise)
+- [Phase 02]: [02-01]: L/R callout reads the rounded values and the spec recorded with each painted result (under isCurrent); lrCause ignores the axis without cyl and treats 0 = 180
+- [Phase 02]: [02-01]: RES-05 left Pending (example done; Rx/frame presets and the overwrite confirm come later); RES-01, RES-04, UX-05 marked complete
 
 ### Pending Todos
 
@@ -131,6 +135,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T08:08:41.513Z
+Last session: 2026-11-07T10:02:32.077Z
 Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-lay-first-german-input-results-comparison/02-UI-SPEC.md
+Resume file: None

@@ -130,7 +130,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Engine tie tolerance for edge locations (Achse 0 ≡ 180), plain-German result cards per eye, example banner, L/R callout (RES-01, RES-04, RES-05, UX-05)
+- [x] 02-01-PLAN.md — Engine tie tolerance for edge locations (Achse 0 ≡ 180), plain-German result cards per eye, example banner, L/R callout (RES-01, RES-04, RES-05, UX-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 0/15 | Planned | - |
+| 2. Lay-First German Input, Results & Comparison | 1/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
