@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-12-PLAN.md
-last_updated: "2026-11-07T15:33:31.354Z"
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-11-07T16:02:45.563Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 27
+  completed_plans: 28
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 13 of 15
+Plan: 14 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -77,6 +77,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P10 | 22min | 2 tasks | 18 files |
 | Phase 02 P11 | 35min | 2 tasks | 24 files |
 | Phase 02 P12 | 50min | 2 tasks | 24 files |
+| Phase 02 P13 | 27min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,8 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-11: automatic base curve stays chosen at k = 0; an aspheric front only raises D1 minimally (D1min(ct)) to keep the back non-convex
 - [Phase 02]: 02-11: rim depth is display-only (edgeBeyondRim on painted metrics), never in the LensSpec; empty field = 3,0 mm assumed, invalid = no line
 - [Phase 02]: 02-12: with Eigenes Material its own minimum fields replace the Glas-Einstellungen minimums (hidden); empty custom minimum = nearest listed material prefill; switch back on never re-selects custom
+- [Phase 02]: 02-13: meridianProfile returns NO_CHORD whenever the OC is outside the outline; profile jobs run last on the compare lane, Expert-only, requested from the compare paint
+- [Phase 02]: 02-13: RES-03 marked complete (numbers 02-08 + cross-section A/B overlay); no VIZ requirement asks for a 3D A/B view
 
 ### Pending Todos
 
@@ -174,6 +177,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T15:33:31.349Z
-Stopped at: Completed 02-12-PLAN.md
+Last session: 2026-11-07T16:02:45.558Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None
