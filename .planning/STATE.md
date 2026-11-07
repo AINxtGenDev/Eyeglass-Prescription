@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-11-07T12:37:43.300Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-11-07T13:35:46.154Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 22
+  completed_plans: 23
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 8 of 15
+Plan: 9 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -72,6 +72,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P05 | 25min | 2 tasks | 3 files |
 | Phase 02 P06 | 16min | 2 tasks | 7 files |
 | Phase 02 P07 | 45min | 3 tasks | 16 files |
+| Phase 02 P08 | 80 min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,10 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-06]: materialRows uses one eye (thicker displayed thickest of the selected material, tie -> OD) and counts only computed selected eyes; no computed selected eye -> []
 - [Phase 02]: [02-07]: Compare table paints only after the main result for the current input is painted; compare job key = the job's own spec pair (cache reuse when switching material)
 - [Phase 02]: [02-07]: Page requests the comparison when !client.isCompareCurrent(compareGen) after client.request(); tip-ct/tip-et only in the right-eye card
+- [Phase 02]: [02-08]: Configuration-A job on the compare lane under its own 'configA:' key, queued first, current shared Rx; rebuilt on every changed main request and on start
+- [Phase 02]: [02-08]: While 'Vorher' is shown, main deliveries update shown[] but do not repaint the cards; cards stay stale-marked until A for the same input is painted (T-02-21)
+- [Phase 02]: [02-08]: A and B both converted with displayedValues (card rounding) from LensResults; results.js displayed cannot be B's source while A is shown
+- [Phase 02]: [02-08]: Test busy windows use holdWorker (test-held worker messages), not timers, when the test does unbounded work (axe) inside the window
 
 ### Pending Todos
 
@@ -157,6 +162,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T12:37:43.296Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-11-07T13:35:36.651Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
