@@ -4,9 +4,11 @@
 // Messages
 //   main → worker  { type: 'compute', id, eyes: { OD?: { seq, spec }, OS?: { seq, spec } } }
 //   main → worker  { type: 'bench', id, caseId, k }            one run per job; k = frame-miss counter
+//   main → worker  { type: 'compare', id, eyes: { OD?: spec, OS?: spec } }   one material pair (02-06)
 //   worker → main  { type: 'ready' }
 //   worker → main  { type: 'result', id, eyes: { OD?: { seq, result }, OS?: … }, computeMs }
 //   worker → main  { type: 'bench', id, caseId, ms, ok, evaluations }
+//   worker → main  { type: 'compare', id, eyes: { OD?: LensResult, OS?: LensResult }, computeMs }
 //   worker → main  { type: 'error', id, eyes: [...], message }
 //
 // No transferables: LensResult has no typed arrays, so structured cloning copies it whole
@@ -43,6 +45,15 @@ export function createHandler({
         }
         return { type: 'result', id, eyes, computeMs: now() - t0 };
       }
+      if (msg?.type === 'compare') {
+        const t0 = now();
+        const eyes = {};
+        for (const eye of EYES) {
+          const spec = msg.eyes?.[eye];
+          if (spec) eyes[eye] = evaluate(spec);
+        }
+        return { type: 'compare', id, eyes, computeMs: now() - t0 };
+      }
       if (msg?.type === 'bench') {
         const pair = benchPair(msg.caseId, msg.k);
         const t0 = now();
@@ -59,6 +70,7 @@ export function createHandler({
       }
       return { type: 'error', id, eyes: [], message: `unknown message type: ${String(msg?.type)}` };
     } catch (err) {
+      // Only a 'compute' error names eyes; a 'compare' error has none, so it never fails a main eye.
       const eyes = msg?.type === 'compute' ? EYES.filter((e) => msg.eyes?.[e]) : [];
       return { type: 'error', id, eyes, message: String(err?.message ?? err) };
     }

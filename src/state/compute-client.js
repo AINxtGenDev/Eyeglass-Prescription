@@ -12,6 +12,16 @@
 //   firing while the tab is hidden, or a late firing (timers were suspended), re-arms instead;
 //   resume() re-arms on visibilitychange. The order of the visibilitychange event and the resumed
 //   throttled timers is UNVERIFIED; the late-fire rule covers both orders (unit-tested).
+// - Compare lane (02-06, RES-02, D-15/D-16): the other materials run in the same worker, one
+//   material pair per job, only when no main eye is waiting to be sent; pump() order is main
+//   compute → one compare job → bench. A changed main request bumps `generation` and clears the
+//   queue; answers of an older generation are dropped (T-02-16). So the main result waits for at
+//   most one compare job (T-02-17). Worst case measured on the phone: one rescan pair ≈ 25,4 ms
+//   (Pixel worker bench, 01-11-SUMMARY Task 3 step 6, lines 119–126; normal pair 2,30 ms,
+//   Grenzfall 9,95 ms). Node desktop numbers, not the phone: 3,66 / 17,4 ms (01-11 desktop bench,
+//   i7-8809G) and 1,67 / 10,4 ms (02-RESEARCH Pattern 1). A compare error never fails a main eye
+//   (T-02-19). In sync mode (no worker) compare jobs run only after runCompareNow(), because they
+//   would run on the main thread.
 import { BENCH_RUNS, medianOf, tailOf } from './bench-cases.js';
 
 export const BUSY_AFTER_MS = 50;
@@ -20,6 +30,8 @@ export const WATCHDOG_MS = 10_000;
 export const TAIL_PCT = 95;
 // A watchdog that fires this much later than asked was suspended, not timed out.
 const LATE_MS = 1000;
+/** Compare results kept by job key (LRU). */
+export const COMPARE_CACHE_SIZE = 64;
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
@@ -33,6 +45,8 @@ const EYES = /** @type {const} */ (['OD', 'OS']);
  * @param {(eyes: string[]) => void} o.onFailed
  * @param {(reason: 'start'|'timeout') => void} o.onFallback
  * @param {(openEyes: string[]) => void} o.onOpenChange fires synchronously whenever the open set changes
+ * @param {(d: { gen: number, key: string, results: { OD: object, OS: object } | null, error?: true }) => void} [o.onCompare]
+ *   a compare job of the current generation finished (or failed: results null, error true)
  * @param {() => number} [o.now] @param {(fn: () => void, ms: number) => any} [o.setTimer]
  * @param {(h: any) => void} [o.clearTimer] @param {() => boolean} [o.isHidden]
  * @param {number} [o.busyAfterMs] @param {number} [o.watchdogMs]
@@ -45,6 +59,7 @@ export function createComputeClient({
   onFailed,
   onFallback,
   onOpenChange,
+  onCompare = () => {},
   now = () => globalThis.performance.now(),
   setTimer = (fn, ms) => globalThis.setTimeout(fn, ms),
   clearTimer = (h) => globalThis.clearTimeout(h),
@@ -69,11 +84,23 @@ export function createComputeClient({
   const busyTimer = { OD: null, OS: null };
   const busy = { OD: false, OS: false };
   let lastOpen = '';
-  /** @type {{ id: number, kind: 'compute', eyes: Record<string, number> } | { id: number, kind: 'bench', caseId: string } | null} */
+  /**
+   * @type {{ id: number, kind: 'compute', eyes: Record<string, number> }
+   *   | { id: number, kind: 'compare', gen: number, key: string, specs: object }
+   *   | { id: number, kind: 'bench', caseId: string } | null}
+   */
   let inFlight = null;
   /** @type {{ caseIds: string[], idx: number, times: number[] } | null} */
   let bench = null;
   let watch = null;
+  /** Bumped by every changed main request; compare answers of an older generation are dropped. */
+  let generation = 0;
+  /** @type {{ key: string, specs: object }[]} */
+  const compareQueue = [];
+  /** @type {Map<string, object>} */
+  const compareCache = new Map();
+  /** Sync mode only: run compare jobs on the main thread until the queue drains. */
+  let allowCompareInSync = false;
 
   const isOpen = (eye) => openSince[eye] !== null;
   const openEyes = () => EYES.filter(isOpen);
@@ -144,6 +171,10 @@ export function createComputeClient({
         if (w && w.seq === seq && !w.done) w.sent = false;
       }
     }
+    // A current compare job goes back to the queue (sync mode runs it after runCompareNow()).
+    if (inFlight?.kind === 'compare' && inFlight.gen === generation) {
+      compareQueue.unshift({ key: inFlight.key, specs: inFlight.specs });
+    }
     inFlight = null;
     onFallback(reason);
   }
@@ -165,6 +196,13 @@ export function createComputeClient({
       for (const eye of ids) wanted[eye].sent = true;
       inFlight = { id: nextId++, kind: 'compute', eyes: Object.fromEntries(ids.map((e) => [e, eyes[e].seq])) };
       dispatch({ type: 'compute', id: inFlight.id, eyes });
+      return;
+    }
+    if (compareQueue.length > 0 && (mode !== 'sync' || allowCompareInSync)) {
+      const job = /** @type {{ key: string, specs: object }} */ (compareQueue.shift());
+      if (compareQueue.length === 0) allowCompareInSync = false;
+      inFlight = { id: nextId++, kind: 'compare', gen: generation, key: job.key, specs: job.specs };
+      dispatch({ type: 'compare', id: inFlight.id, eyes: job.specs });
       return;
     }
     if (bench) {
@@ -195,25 +233,39 @@ export function createComputeClient({
     onBench(caseId, { error: true });
   }
 
+  /** @returns {boolean} true when an eye was cancelled */
   function cancel(eye) {
-    if (wanted[eye] === null) return;
+    if (wanted[eye] === null) return false;
     seqs[eye]++;
     wanted[eye] = null;
     close(eye);
+    return true;
+  }
+
+  function clearCompare() {
+    compareQueue.length = 0;
+    allowCompareInSync = false;
+  }
+
+  /** Drop a failed compare job; only the current generation hears about it. */
+  function dropCompare(job) {
+    if (job.gen === generation) onCompare({ gen: job.gen, key: job.key, results: null, error: true });
   }
 
   function request(specs, inputTs) {
     const fromCache = {};
     let cacheTs = Infinity;
+    let changed = false;
     for (const eye of EYES) {
       const spec = specs[eye] ?? null;
       if (spec === null) {
-        cancel(eye);
+        if (cancel(eye)) changed = true;
         continue;
       }
       // The full spec is the key (T-01-35): any nested field change gives a different key.
       const key = JSON.stringify(spec);
       if (wanted[eye]?.key === key) continue;
+      changed = true;
       const seq = ++seqs[eye];
       if (cache[eye]?.key === key) {
         wanted[eye] = { seq, key, spec, sent: true, done: true };
@@ -224,6 +276,11 @@ export function createComputeClient({
       }
       wanted[eye] = { seq, key, spec, sent: false, done: false };
       open(eye, inputTs);
+    }
+    // Only a change starts a new generation: an identical request keeps the compare queue.
+    if (changed) {
+      generation++;
+      clearCompare();
     }
     if (Object.keys(fromCache).length > 0) {
       onResults({ results: fromCache, openTs: cacheTs, computeMs: null, current: openEyes().length === 0 });
@@ -283,12 +340,26 @@ export function createComputeClient({
     pump();
   }
 
+  function onCompareMsg(msg) {
+    if (inFlight?.kind !== 'compare' || msg.id !== inFlight.id) return;
+    const job = inFlight;
+    inFlight = null;
+    disarm();
+    const results = msg.eyes;
+    compareCache.delete(job.key);
+    compareCache.set(job.key, results);
+    if (compareCache.size > COMPARE_CACHE_SIZE) compareCache.delete(compareCache.keys().next().value);
+    if (job.gen === generation) onCompare({ gen: job.gen, key: job.key, results });
+    pump();
+  }
+
   function onErrorMsg(msg) {
     if (inFlight === null || msg.id !== inFlight.id) return;
     const job = inFlight;
     inFlight = null;
     disarm();
     if (job.kind === 'bench') endBenchWithError(job.caseId);
+    else if (job.kind === 'compare') dropCompare(job);
     else failCurrent(job);
     pump();
   }
@@ -304,6 +375,35 @@ export function createComputeClient({
       pump();
       return true;
     },
+    /**
+     * Replace the compare queue with jobs (one material pair each). Cached keys resolve through
+     * onCompare inside this call; the rest run after any main work.
+     * @param {{ key: string, specs: { OD?: object, OS?: object } }[]} jobs
+     * @returns {number} the generation the answers will carry
+     */
+    requestCompare(jobs) {
+      clearCompare();
+      for (const job of jobs) {
+        const hit = compareCache.get(job.key);
+        if (hit === undefined) {
+          compareQueue.push(job);
+          continue;
+        }
+        compareCache.delete(job.key);
+        compareCache.set(job.key, hit);
+        onCompare({ gen: generation, key: job.key, results: hit });
+      }
+      pump();
+      return generation;
+    },
+    cancelCompare: clearCompare,
+    isCompareCurrent: (gen) => gen === generation,
+    /** Sync mode: run the queued compare jobs on the main thread (the page's 'Vergleich berechnen'). */
+    runCompareNow() {
+      if (compareQueue.length === 0) return;
+      allowCompareInSync = true;
+      pump();
+    },
     receive(msg) {
       switch (msg?.type) {
         case 'ready':
@@ -317,6 +417,9 @@ export function createComputeClient({
           return;
         case 'bench':
           onBenchMsg(msg);
+          return;
+        case 'compare':
+          onCompareMsg(msg);
           return;
         case 'error':
           onErrorMsg(msg);
@@ -335,6 +438,7 @@ export function createComputeClient({
       inFlight = null;
       disarm();
       if (job.kind === 'bench') endBenchWithError(job.caseId);
+      else if (job.kind === 'compare') dropCompare(job);
       else failCurrent(job);
       pump();
     },
