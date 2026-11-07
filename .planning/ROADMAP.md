@@ -125,7 +125,7 @@ Plans:
   5. The page works from 320 px width to desktop without overflowing German compound words, every technical term opens a German explanation by tap and by keyboard, the whole flow is keyboard operable, no information relies on colour alone, and automated axe checks pass in CI.
   6. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
-**Plans**: 15 plans (15 sequential waves: every slice touches index.html, de-AT.js and style.css; MVP vertical slices, each usable on the page; old 02-05 split into 02-05/02-06/02-07 after the lens-critic plan review (M4); push only in 02-15 after lens-critic and explicit approval)
+**Plans**: 21 plans (21 sequential waves: every slice touches index.html, de-AT.js and style.css; MVP vertical slices, each usable on the page; old 02-05 split into 02-05/02-06/02-07 after the lens-critic plan review (M4); push only in 02-15 after lens-critic and explicit approval; gap-closure plans 02-16..02-21 added 2026-11-07 after the lens-critic NEEDS WORK result review, run after 02-15 Task 1 and before 02-15 Tasks 2–3, followed by a lens-critic re-review)
 
 Plans:
 **Wave 1**
@@ -186,7 +186,31 @@ Plans:
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
-- [ ] 02-15-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live and real-phone checks
+- [ ] 02-15-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live and real-phone checks *(Task 1 done; Tasks 2–3 resume after 02-21 and the lens-critic re-review)*
+
+**Wave 16** *(gap closure; after 02-15 Task 1)*
+
+- [ ] 02-16-PLAN.md — B1: thinnest point = min(CT, thinnest edge) incl. 'in der Mitte'; 'Dünnster Rand' as Zwischenwert; e2e re-pinned (RES-01)
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [ ] 02-17-PLAN.md — M1: oblique 0° meridian shows its own power, 'Hauptschnitt' only for principal meridians; M2: summary bar 'Vorher (A):' marker (ANA-01, RES-03)
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [ ] 02-18-PLAN.md — M3: no empty-field error on untouched fields; field messages wait for the current tap/click (RX-04, RX-05, UX-03)
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [ ] 02-19-PLAN.md — m2 split property tests; m3/m4 material-intro wording; m8 Simple-view hidden test; m1 traceability (RES-03, UX-02, UX-03 → Phase 2 + 3); m5–m7 accepted for later (RES-02, RES-03, UX-02, UX-03)
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [ ] 02-20-PLAN.md — M4: profile the 4× input frame, move compare-job building out of it, re-measure ≥ 3 runs; ENG-09 Pending if (a) is not met (ENG-09)
+
+**Wave 21** *(blocked on Wave 20 completion)*
+
+- [ ] 02-21-PLAN.md — Post-gap gate, 24-row trace with value-asserting tests, finding crosswalk, hand-off to lens-critic re-review and 02-15 Tasks 2–3
 
 **UI hint**: yes
 
@@ -231,6 +255,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 14/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 14/21 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
