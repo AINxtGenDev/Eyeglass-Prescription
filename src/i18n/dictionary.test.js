@@ -322,6 +322,9 @@ describe('material comparison (02-07)', () => {
   });
   test('placeholders of the intro, the percentages and the assumed note', () => {
     expect(ph('cmp.material.intro')).toEqual(['eye']);
+    // 02-19 (m3): the intro's {eye} is one of these two wrappers
+    expect(ph('cmp.eye.thicker')).toEqual(['eye']);
+    expect(ph('cmp.eye.tie')).toEqual(['eye']);
     expect(ph('cmp.pct')).toEqual(['pct']);
     expect(ph('cmp.pctThicker')).toEqual(['pct']);
     expect(ph('cmp.assumedNote')).toEqual(['materials']);

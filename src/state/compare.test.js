@@ -15,6 +15,7 @@ import {
   lrDifference,
   materialRows,
   thickerEye,
+  shownEye,
   configDiff,
   displayedValues,
 } from './compare.js';
@@ -256,6 +257,25 @@ describe('thickerEye: displayed thickest values, tie → OD', () => {
   });
 });
 
+describe('RES-02 shownEye (02-19, lens-critic m3): displayed thickest values, tie flagged', () => {
+  // Synthetic: only the fields shownEye reads (ok, metrics.ct, metrics.etMax).
+  const l = (et) => ({ ok: true, metrics: { ct: 1.8, etMax: { value: et, location: 'nasal' } } });
+  test('RES-02 4,6 / 4,6 → OD, tie', () => expect(shownEye({ OD: l(4.6), OS: l(4.6) })).toEqual({ eye: 'OD', tie: true }));
+  test('RES-02 tie on the displayed value (4,61 / 4,64) → OD, tie', () =>
+    expect(shownEye({ OD: l(4.61), OS: l(4.64) })).toEqual({ eye: 'OD', tie: true }));
+  test('RES-02 4,6 / 4,7 → OS, no tie', () => expect(shownEye({ OD: l(4.6), OS: l(4.7) })).toEqual({ eye: 'OS', tie: false }));
+  test('RES-02 only OS computed → OS, no tie', () => {
+    expect(shownEye({ OD: { ok: false }, OS: l(4.6) })).toEqual({ eye: 'OS', tie: false });
+    expect(shownEye({ OD: null, OS: l(4.6) })).toEqual({ eye: 'OS', tie: false });
+  });
+  test('RES-02 only OD computed → OD, no tie', () => expect(shownEye({ OD: l(4.6), OS: { ok: false } })).toEqual({ eye: 'OD', tie: false }));
+  test('RES-02 none computed → null', () => {
+    expect(shownEye({ OD: { ok: false }, OS: null })).toBeNull();
+    expect(shownEye({})).toBeNull();
+    expect(shownEye(undefined)).toBeNull();
+  });
+});
+
 describe('materialRows (02-06)', () => {
   const FRAME = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
   /** Engine results for all six materials, both eyes: { [id]: { OD, OS } }. */
@@ -296,6 +316,11 @@ describe('materialRows (02-06)', () => {
     expect(rows[0].pct).toBeNull();
     expect(rows[5].pct).toBe(35);
     for (const r of rows) expect(r.thickWhere).toBe('temporal-superior');
+  });
+
+  test('RES-02 example page is a tie (4,6 / 4,6, 02-19 m3); the plus case is not (3,9 / 3,7)', () => {
+    expect(shownEye(MINUS.cr39)).toEqual({ eye: 'OD', tie: true });
+    expect(shownEye(PLUS.cr39)).toEqual({ eye: 'OD', tie: false });
   });
 
   test('plus case: thickest point is the centre for every row; 1,74 saves 0,9 mm, not 0,6 mm', () => {

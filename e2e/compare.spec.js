@@ -48,6 +48,25 @@ test('example: six rows, 1,74 saves 1,6 mm and 4 g; switching moves "Ihre Auswah
   expect(r150).toContain('schwerer');
 });
 
+// lens-critic m3, m4 (02-19): the example is a tie (4,6 / 4,6 mm), so "das dickere Glas" would be
+// untrue; the intro always names the per-material minimum thickness.
+test('RES-02 intro: example tie names the shown eye, and each material its own minimum (m3, m4)', async ({ page }) => {
+  await settledCompare(page);
+  expect(await text(page.locator('#cmp-material-intro'))).toBe(
+    'Gleiches Rezept, gleiche Fassung, jedes Material mit seiner eigenen Mindestdicke. Dickste Stelle (Mitte oder Rand): beide Gläser gleich dick – gezeigt: das rechte Glas. Gewicht: beide Gläser zusammen.',
+  );
+});
+
+test("RES-02 intro: 'Stark kurzsichtig' (R 8,7 / L 8,3 mm) names the thicker glass (m3, m4)", async ({ page }) => {
+  await settled(page);
+  await page.locator('#rx-presets .chip', { hasText: 'Stark kurzsichtig' }).click();
+  await settledCompare(page);
+  const intro = await text(page.locator('#cmp-material-intro'));
+  expect(intro).toContain('das rechte Glas (das dickere Glas)');
+  expect(intro).toContain('jedes Material mit seiner eigenen Mindestdicke');
+  expect(intro).not.toContain('gleich dick');
+});
+
 test('plus case: thickest point in the centre, 1,74 saves 0,9 mm and 2 g', async ({ page }) => {
   await plusCase(page);
   expect(await text(page.locator('#cmp-material-intro'))).toContain('rechte');

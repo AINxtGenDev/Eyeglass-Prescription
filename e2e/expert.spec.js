@@ -614,3 +614,51 @@ test('Eigenes Material as Vorher (A): frozen constants, labelled when Vorher is 
   await expect(page.locator('#result-od-material')).toContainText('Eigenes Material, nₑ 1,523');
   expect(await text(page, '#result-od-weight')).toBe(glassWeight);
 });
+
+// lens-critic m8 (02-19): every Expert-only element, listed explicitly from index.html (no generic
+// selector that could match nothing), is hidden in the Simple view at load and again after the
+// switch was on and off; 'Eigenes Material' with its fields and the Expert-override footnote too.
+const EXPERT_ONLY = [
+  '#frame-rim-wrap', // Randtiefe (rim depth)
+  '#material-custom-card', // 'Eigenes Material' card
+  '#custom-material', // its five fields
+  '#custom-ne',
+  '#glass-settings', // Glas-Einstellungen
+  '#expert-basecurve',
+  '#expert-min-ct',
+  '#expert-min-et',
+  '#expert-analysis', // Zwischenwerte and Querschnitt
+  '#result-od-dec',
+  '#result-os-basecurve',
+  '#xsec', // Querschnitt
+  '#cmp-footnote', // Expert-override footnote of the material table
+];
+
+test('UX-02 Simple view hides every Expert-only element (m8)', async ({ page }) => {
+  expect(EXPERT_ONLY.length).toBeGreaterThanOrEqual(5);
+  const allHidden = async (when) => {
+    for (const sel of EXPERT_ONLY) {
+      await expect(page.locator(sel), `${sel} exists (${when})`).toHaveCount(1);
+      await expect(page.locator(sel), `${sel} hidden (${when})`).toBeHidden();
+    }
+    // the technical location name is an Expert suffix too
+    await expect(page.locator('#result-od-thick-loc')).not.toContainText('(');
+  };
+  await settledCompare(page);
+  await allHidden('load');
+
+  await sw(page).check();
+  for (const sel of ['#frame-rim-wrap', '#material-custom-card', '#glass-settings', '#expert-analysis']) await expect(page.locator(sel)).toBeVisible();
+  await expect(page.locator('#result-od-thick-loc')).toContainText('(temporal-superior)');
+  // An override shows the footnote, 'Eigenes Material' shows its fields.
+  await page.locator('#expert-basecurve').fill('4');
+  await settledCompare(page);
+  await expect(page.locator('#cmp-footnote')).toBeVisible();
+  await material(page, 'custom').check();
+  await expect(page.locator('#custom-material')).toBeVisible();
+
+  await sw(page).uncheck();
+  await settledCompare(page);
+  await allHidden('after on → off');
+  await expect(material(page, 'custom')).not.toBeChecked();
+});
