@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-11-07T11:45:34.261Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-11-07T11:59:19.755Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 20
+  completed_plans: 21
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 6 of 15
+Plan: 7 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -70,6 +70,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P03 | 20min | 2 tasks | 19 files |
 | Phase 02 P04 | 36min | 2 tasks | 20 files |
 | Phase 02 P05 | 25min | 2 tasks | 3 files |
+| Phase 02 P06 | 16min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-04]: #pd-note and #b-note appear only for eyes computed with the assumed PD / estimated B
 - [Phase 02]: [02-04]: UX-01 not complete: tips for A, B, DBL, Stempel added; Brechungsindex, Basiskurve, Mittendicke, Randdicke, Dezentration pending
 - [Phase 02]: [02-05]: UI module dependency order is main -> timing -> pipeline; pipeline.js imports neither; timing hooks injected via initPipeline, update via initTiming (no import cycle)
+- [Phase 02]: [02-06]: Compare lane in compute-client: pump order main -> one compare job -> bench; generation bumped only by a changed main request; a timed-out compare job is re-queued for the sync fallback (runCompareNow)
+- [Phase 02]: [02-06]: materialRows uses one eye (thicker displayed thickest of the selected material, tie -> OD) and counts only computed selected eyes; no computed selected eye -> []
 
 ### Pending Todos
 
@@ -151,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T11:45:26.110Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-11-07T11:59:19.750Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None

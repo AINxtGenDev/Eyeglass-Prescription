@@ -150,7 +150,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 02-06-PLAN.md — Low-priority latest-wins compare lane and material rows on max(CT, edge), one fixed eye (RES-02, unit tests only)
+- [x] 02-06-PLAN.md — Low-priority latest-wins compare lane and material rows on max(CT, edge), one fixed eye (RES-02, unit tests only)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 5/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 6/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
