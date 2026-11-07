@@ -142,7 +142,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-04-PLAN.md — Smart PD, temple stamp with own SVG help, shape cards, frame ranges (RX-06, FRAME-02, FRAME-03)
+- [x] 02-04-PLAN.md — Smart PD, temple stamp with own SVG help, shape cards, frame ranges (RX-06, FRAME-02, FRAME-03)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 3/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 4/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

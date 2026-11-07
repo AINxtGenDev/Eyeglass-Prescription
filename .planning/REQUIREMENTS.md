@@ -22,7 +22,7 @@
 - [x] **RX-03**: Plus-cylinder input is accepted and automatically transposed to minus-cylinder form, and the user is shown both forms.
 - [x] **RX-04**: Ranges enforced with plain-German messages next to the field: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (after transposition), Achse 0…180° (0 ≡ 180), PD 25,0…40,0 mm per eye. Values are never silently clamped.
 - [x] **RX-05**: Validation distinguishes invalid (e.g. Zyl without Achse, Achse 200°), unusual-but-computed (e.g. off a 0,25 step → "Meinten Sie …?"), and outside-the-model; messages are linked to the field for screen readers.
-- [ ] **RX-06**: PD can be entered as monocular per eye (`32/33`, `32,5`) or binocular (`64`, split evenly with a note); if PD is missing, a default is used and the result states clearly that PD was assumed.
+- [x] **RX-06**: PD can be entered as monocular per eye (`32/33`, `32,5`) or binocular (`64`, split evenly with a note); if PD is missing, a default is used and the result states clearly that PD was assumed.
 - [x] **RX-07**: A "same for both eyes" option keeps L in sync with R.
 - [x] **RX-08**: A collapsible section explains other values that may be on the paper (Add, Prisma/Basis, HSA, F/N); it states they are not modelled and that the single-vision distance lens is shown. Nothing on the paper is silently ignored.
 
@@ -30,7 +30,7 @@
 
 - [x] **FRAME-01**: User picks a frame shape — Rund, Rechteckig, Panto, Pilot (Aviator) — each a parametric outline scaled to the boxing dimensions.
 - [ ] **FRAME-02**: User sets A (Glasbreite) 40–62 mm, B (Glashöhe) 28–55 mm, DBL (Stegbreite) 14–24 mm and rim depth; each shape preset has typical defaults.
-- [ ] **FRAME-03**: User can type or paste the frame stamp from the temple (`52□18 140`, `52-18-140`, `52 18 140`) to set A and DBL, with a "Wo finde ich das?" illustration; B defaults from the shape.
+- [x] **FRAME-03**: User can type or paste the frame stamp from the temple (`52□18 140`, `52-18-140`, `52 18 140`) to set A and DBL, with a "Wo finde ich das?" illustration; B defaults from the shape.
 
 ### Materials & Lens Design (MAT)
 
@@ -157,12 +157,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RX-03 | Phase 1 | Complete |
 | RX-04 | Phase 2 | Complete |
 | RX-05 | Phase 2 | Complete |
-| RX-06 | Phase 2 | Pending |
+| RX-06 | Phase 2 | Complete |
 | RX-07 | Phase 2 | Complete |
 | RX-08 | Phase 2 | Complete |
 | FRAME-01 | Phase 1 | Complete |
 | FRAME-02 | Phase 2 | Pending |
-| FRAME-03 | Phase 2 | Pending |
+| FRAME-03 | Phase 2 | Complete |
 | MAT-01 | Phase 1 | Complete |
 | MAT-02 | Phase 1 | Complete |
 | MAT-03 | Phase 2 | Pending |

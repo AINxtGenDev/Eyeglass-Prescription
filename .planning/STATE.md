@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-11-07T10:48:41.974Z"
+last_updated: "2026-11-07T11:29:55.730Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 18
+  completed_plans: 19
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 4 of 15
+Plan: 5 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -68,6 +68,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P01 | 25min | 3 tasks | 19 files |
 | Phase 02 P02 | 25min | 3 tasks | 15 files |
 | Phase 02 P03 | 20min | 2 tasks | 19 files |
+| Phase 02 P04 | 36min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,10 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-03]: Rx model range checked on the minus-cylinder form; out-of-model texts take {min}/{max} from RX_RANGES
 - [Phase 02]: [02-03]: Only field-message display is debounced (600 ms / blur); compute stays per input frame; blocked card shows 'Eingabe unvollständig …' until the message is due
 - [Phase 02]: [02-03]: UX-01 not complete yet: only Sph/Zyl/Achse/PD tips exist
+- [Phase 02]: [02-04]: PD conflicts and questions never guess: a blocking Hinweis per field, resolvePd.blockedBy names the field that blocks each eye
+- [Phase 02]: [02-04]: An invalid or swapped temple stamp blocks both eyes; the estimate for B is never written into a focused or emptied B field
+- [Phase 02]: [02-04]: #pd-note and #b-note appear only for eyes computed with the assumed PD / estimated B
+- [Phase 02]: [02-04]: UX-01 not complete: tips for A, B, DBL, Stempel added; Brechungsindex, Basiskurve, Mittendicke, Randdicke, Dezentration pending
 
 ### Pending Todos
 
@@ -144,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T10:48:41.969Z
+Last session: 2026-11-07T11:29:47.809Z
 Stopped at: Completed 02-03-PLAN.md
 Resume file: None
