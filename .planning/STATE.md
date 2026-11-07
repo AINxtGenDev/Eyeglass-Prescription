@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-11-07T11:29:55.730Z"
+last_updated: "2026-11-07T11:45:34.261Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 19
+  completed_plans: 20
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 5 of 15
+Plan: 6 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -69,6 +69,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P02 | 25min | 3 tasks | 15 files |
 | Phase 02 P03 | 20min | 2 tasks | 19 files |
 | Phase 02 P04 | 36min | 2 tasks | 20 files |
+| Phase 02 P05 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,7 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-04]: An invalid or swapped temple stamp blocks both eyes; the estimate for B is never written into a focused or emptied B field
 - [Phase 02]: [02-04]: #pd-note and #b-note appear only for eyes computed with the assumed PD / estimated B
 - [Phase 02]: [02-04]: UX-01 not complete: tips for A, B, DBL, Stempel added; Brechungsindex, Basiskurve, Mittendicke, Randdicke, Dezentration pending
+- [Phase 02]: [02-05]: UI module dependency order is main -> timing -> pipeline; pipeline.js imports neither; timing hooks injected via initPipeline, update via initTiming (no import cycle)
 
 ### Pending Todos
 
@@ -149,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T11:29:47.809Z
+Last session: 2026-11-07T11:45:26.110Z
 Stopped at: Completed 02-03-PLAN.md
 Resume file: None

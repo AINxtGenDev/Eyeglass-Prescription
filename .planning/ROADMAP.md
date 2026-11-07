@@ -146,7 +146,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 02-05-PLAN.md — Verbatim move of the worker pipeline and ENG-09 timing out of main.js (no behaviour change; enables RES-02)
+- [x] 02-05-PLAN.md — Verbatim move of the worker pipeline and ENG-09 timing out of main.js (no behaviour change; enables RES-02)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 4/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 5/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
