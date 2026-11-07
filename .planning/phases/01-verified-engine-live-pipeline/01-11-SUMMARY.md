@@ -13,6 +13,7 @@ decisions:
   - "First run of Task 1 (2026-11-06, HEAD e291946): lens-critic NEEDS WORK (3 MAJOR). User: \"Gap plan, then push\". Recorded in 01-VERIFICATION.md, then closed by 01-12 … 01-15."
   - "Re-run of Task 1 (2026-11-07, HEAD e8139c4): lens-critic VERDICT: PASS (0 BLOCKER, 0 MAJOR, 5 MINOR). MINORs 1, 3 and 4 were fixed before the push in 02bf4ff. MINORs 2 and 5 were accepted (see Open)."
   - "Task 2 (D-02 checkpoint 2): user's words 2026-11-06: \"please push it when finished\". The orchestrator confirmed this would apply only after a lens-critic PASS, or after the user explicitly accepted any open findings. That condition was met by the PASS. No findings needed accepting."
+  - "ENG-09 marked complete on the real-phone measurement (2026-11-07), per the user's decision 'phone-decides'."
   - "DEPL-01 marked complete: on the live site, every request is under the sub-path and returns 200, there is no root favicon request and no console error (chrome-devtools, 2026-11-07)."
 metrics:
   completed: 2026-11-07
@@ -113,11 +114,49 @@ Rollback: `git revert <sha>` and push. Never force-push.
    - **L +4:** D1 +3,95 dpt, CT 4,9 mm, 8,8 g, shown with the τ wording and "Vogel +10,00 … 5,4 mm".
    - **+12 in rechteckig 62×55/24, PD 25:** CT 38,3 mm, D1 +9,19, with "Vogel +18,00 dpt, begrenzt auf +14,00 dpt; damit ließe sich das Glas in diesem Modell nicht berechnen". Diagnostic: "Großes Rohglas nötig … mindestens etwa 105,3 mm".
    - No `NaN` and no raw codes.
-6. **ENG-09 real-device measurement: PENDING (user).** Needs the measurement on a real mid-range phone against the restated ENG-09 (a)–(d), per 01-11 Task 3 step 5.
+6. **ENG-09 real-device measurement (2026-11-07, user, Google Pixel, Chrome 156, UA "Mozilla/5.0 (Linux; Android 10; K) … Chrome/156.0.0.0 Mobile Safari/537.36"; live 02bf4ff, `data-mode` worker). Source: the user's screenshots of "Technische Angaben".**
+
+   Bench readouts (worker), median / p95:
+
+   | Case | Run 1 | Run 2 |
+   |---|---|---|
+   | Normal (−4/−2×30, rechteckig 52×38/18, PD 32) | 2,30 / 6,50 | 2,30 / 3,30 |
+   | Outline miss | 2,20 / 3,50 | 2,10 / 3,20 |
+   | Grenzfall | 9,95 / 11,70 | 9,70 / 9,90 |
+   | Rescan pair | 25,40 / 25,60 | 25,30 / 25,50 |
+
+   Run 1 covered case A with 10 slow edits **plus fast typing**, and 3× "Erneut messen". Results:
+   - input to reaction: median 11,50 ms, longest 32,10 ms;
+   - **main thread per input including rendering: median 7,40 ms, longest 30,10 ms**;
+   - input to result visible (last 8): median 24,25 ms, longest 53,60 ms; result render longest 17,60 ms; compute median 7,20 ms;
+   - "rechnet …": 2×, longest wait 53,60 ms;
+   - Event Timing longest: 72 ms.
+
+   Run 2 covered case A with **10 slow edits only, about 2 s apart**. Results:
+   - input to reaction: median 10,65 ms, longest 15,80 ms;
+   - **main thread per input including rendering: median 5,45 ms, longest 12,80 ms**;
+   - input to result visible (last 10): median 24,35 ms, longest 27,30 ms; result render longest 4,70 ms; compute median 1,95 ms;
+   - "rechnet …": 2× since load, longest 53,60 ms;
+   - Event Timing longest: 64 ms.
+
+   Verdict against restated ENG-09:
+
+   | Criterion | Limit | Run 2 (slow edits) | Result |
+   |---|---|---|---|
+   | (a) every main-thread task incl. rendering | < 16,7 ms | longest 12,80 ms; result render 4,70 ms | PASS |
+   | (b) INP | ≤ 200 ms | Event Timing max 64 ms (72 in run 1) | PASS |
+   | (c) normal result visible, every edit | ≤ 100 ms | longest 27,30 ms (53,60 in run 1) | PASS |
+   | (d) extreme cases | "rechnet …" shown, input responsive, result arrives | worker mode, "rechnet …" counted, longest wait 53,60 ms | PASS |
+
+   **ENG-09 marked complete.**
+
+   Recorded finding: during **fast typing** (run 1), the page's main-thread figure reached 30,10 ms and the result render 17,60 ms. The page timer spans from frame start to after-paint. When keystrokes arrive back to back, it can include several tasks; the 01-15 desktop diagnosis showed this (LoAF found no frame over 50 ms, and paced typing removed the inflation). On the phone the two cannot be separated, because LoAF is not readable there. The browser's own Event Timing stayed at ≤ 72 ms.
+
+   Still to be supplied by the user: the exact Pixel model (the reduced UA hides it) and a subjective typing impression. Neither blocks the verdict, which rests on the readouts.
 
 ## Open
 
-- **ENG-09:** real-phone measurement (user). The proxy verdict was 4× FAIL (a,b measured; c,d estimated). Residual at 4×: plain edits take 14,5 ms median and 16,3 ms max, and frames reach 21–30 ms during unpaced typing. The user's decision was "phone-decides".
+- **ENG-09:** passed on a real Pixel (see Task 3 step 6). Fast-typing residual (30,10 ms page figure) recorded as a finding; the phone model and typing impression are still to be supplied.
 - **DEPL-02:** failure-blocks-deploy rests on structural evidence only (`needs:` plus workflow-structure.test.js). Accepted as MINOR-4.
 - **Deferred:**
   - pilot orientation (assumed);
