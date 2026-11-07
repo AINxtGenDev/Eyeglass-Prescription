@@ -146,3 +146,64 @@ for (const width of [320, 1280]) {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 }
+
+// ANA-01, lens-critic M1 (02-17): the 0° option shows the power in that section from the engine's
+// meridianPower, D(θ) = S + C·sin²(θ − α), and is called "Hauptschnitt" only when 0° is α or α + 90°.
+const optionTexts = async (page) =>
+  (await page.locator('#xsec-meridian option').allTextContents()).map((s) => plain(s));
+
+async function setOd(page, sph, cyl, axis) {
+  await page.locator('#rx-od-sph').fill(sph);
+  await page.locator('#rx-od-cyl').fill(cyl);
+  await page.locator('#rx-od-axis').fill(axis);
+  await settledXsec(page);
+}
+
+test('ANA-01 axis 170 (example L −2,50 / −0,75 × 170): 0° is kein Hauptschnitt, −2,52 dpt', async ({ page }) => {
+  await expertOn(page);
+  await page.locator('#xsec-eye label', { hasText: 'Linkes Glas' }).click();
+  await settledXsec(page);
+  // D(0) = −2,50 − 0,75·sin²(0 − 170°) = −2,50 − 0,75·0,030154 = −2,5226 → −2,52
+  // D(80) = −2,50 − 0,75·sin²(−90°) = −3,25; D(170) = −2,50
+  expect(await optionTexts(page)).toEqual([
+    'waagrecht (0°), kein Hauptschnitt (−2,52 dpt)',
+    'Hauptschnitt 80° (−3,25 dpt)',
+    'Hauptschnitt 170° (−2,50 dpt)',
+  ]);
+});
+
+test('ANA-01 axis 45 (R −1,00 / −2,00 × 45): 0° is kein Hauptschnitt, −2,00 dpt', async ({ page }) => {
+  await expertOn(page);
+  await setOd(page, '-1,00', '-2,00', '45');
+  // D(0) = −1 − 2·sin²(−45°) = −1 − 2·0,5 = −2,00; D(45) = −1,00; D(135) = −1 − 2·1 = −3,00
+  expect(await optionTexts(page)).toEqual([
+    'waagrecht (0°), kein Hauptschnitt (−2,00 dpt)',
+    'Hauptschnitt 45° (−1,00 dpt)',
+    'Hauptschnitt 135° (−3,00 dpt)',
+  ]);
+});
+
+test('ANA-01 axis 180 (example R −2,75 / −0,50 × 180): 0° ≡ α is a Hauptschnitt', async ({ page }) => {
+  await expertOn(page);
+  // D(0) = S = −2,75 (0 ≡ 180); D(90) = −2,75 − 0,50 = −3,25
+  expect(await optionTexts(page)).toEqual([
+    'waagrecht (0°), Hauptschnitt (−2,75 dpt)',
+    'Hauptschnitt 90° (−3,25 dpt)',
+  ]);
+});
+
+test('ANA-01 axis 90 (R −1,00 / −2,00 × 90): 0° ≡ α + 90° is a Hauptschnitt with S + C', async ({ page }) => {
+  await expertOn(page);
+  await setOd(page, '-1,00', '-2,00', '90');
+  // D(0) = −1 − 2·sin²(−90°) = −3,00; D(90) = −1,00
+  expect(await optionTexts(page)).toEqual([
+    'waagrecht (0°), Hauptschnitt (−3,00 dpt)',
+    'Hauptschnitt 90° (−1,00 dpt)',
+  ]);
+});
+
+test('ANA-01 Zyl 0 (R −2,75): single option with its power', async ({ page }) => {
+  await expertOn(page);
+  await setOd(page, '-2,75', '', '');
+  expect(await optionTexts(page)).toEqual(['waagrecht (0°), −2,75 dpt']);
+});
