@@ -7,7 +7,7 @@ import { t } from '../i18n/t.js';
 import { fmtMm, fmtMs } from '../i18n/format.js';
 import { $, setText } from './dom.js';
 import { fmtForm } from './rx-input.js';
-import { pending, writePending, computeMode, busyCount, client } from './pipeline.js';
+import { pending, writePending, computeMode, busyCount, client, onInputFrameStart, onInputFrameEnd } from './pipeline.js';
 
 // The input frame's update(inputTs), injected by initTiming (main.js owns it; no import cycle).
 let update;
@@ -100,6 +100,21 @@ export function timeResultFrame(frameStart, openTs, openCount) {
 }
 
 /**
+ * Duration of the deferred compare start (02-20, lens-critic M4): the task after the input frame
+ * that builds and sends the compare jobs, into timings.compareStart, shown as
+ * #timing-compare-start. data-min-gap = the smallest start − input-frame end so far (ms, MJ-1:
+ * never negative).
+ */
+export function timeCompareStart(start, dur, inputEnd) {
+  pushTiming(timings.compareStart, dur);
+  minCompareStartGap = Math.min(minCompareStartGap, start - inputEnd);
+  const c = timings.compareStart;
+  setText('timing-compare-start', t('tech.timingCompareStart', { n: c.length, med: medOf(c), max: maxOf(c) }));
+  $('timing-compare-start').dataset.minGap = minCompareStartGap.toFixed(2);
+}
+let minCompareStartGap = Infinity;
+
+/**
  * Timing of a painted compare frame (02-07, T-02-50): rAF start → after paint, into
  * timings.compareFrame, shown as #timing-compare. So ENG-09 (a) can be read with the comparison
  * active: this frame shares the main thread with the input frames.
@@ -126,9 +141,18 @@ const median = (sorted) => {
 // - resultFrame = result frame (render the delivered result) incl. paint: rAF start → after paint;
 // - result      = earliest open input → result painted, only when no eye is still open;
 // - compute     = the worker's computeMs (information only);
-// - compareFrame = compare frame (paint the material table) incl. paint (02-07).
+// - compareFrame = compare frame (paint the material table) incl. paint (02-07);
+// - compareStart = the deferred compare start task after the input frame (02-20).
 // event.timeStamp and performance.now() share the same time origin.
-export const timings = { inputFrame: [], reaction: [], resultFrame: [], result: [], compute: [], compareFrame: [] };
+export const timings = {
+  inputFrame: [],
+  reaction: [],
+  resultFrame: [],
+  result: [],
+  compute: [],
+  compareFrame: [],
+  compareStart: [],
+};
 let longestResult = 0;
 let skipTiming = true; // the init() frame is not an input
 let initInputTs = Infinity;
@@ -168,30 +192,40 @@ export function writeBusyTiming() {
 function runFrame({ inputTs, frameStart }) {
   const timed = !skipTiming;
   skipTiming = false;
+  let ok = false;
+  onInputFrameStart();
   try {
     update(inputTs);
+    ok = true;
   } finally {
     pending.input = false;
     writePending();
+    // After-paint point: the end stamp first, then the deferred compare start may run (02-20,
+    // MJ-1), so that task is never inside the measured input frame. The start-up frame is not
+    // timed, but its compare start goes through the same hook.
+    setTimeout(() => {
+      const end = performance.now();
+      if (timed && ok) stampInputFrame(frameStart, inputTs, end);
+      onInputFrameEnd(end);
+    }, 0);
   }
-  if (!timed) return;
-  setTimeout(() => {
-    const end = performance.now();
-    if (PERF_MARKS) performance.measure('u:inputFrame', { start: frameStart, end });
-    pushTiming(timings.inputFrame, end - frameStart);
-    pushTiming(timings.reaction, end - inputTs);
-    setText(
-      'timing-input',
-      t('tech.inputRender', {
-        n: timings.inputFrame.length,
-        reactMed: medOf(timings.reaction),
-        reactMax: maxOf(timings.reaction),
-        mainMed: medOf(timings.inputFrame),
-        mainMax: maxOf(timings.inputFrame),
-      }),
-    );
-    writeBusyTiming();
-  }, 0);
+}
+
+function stampInputFrame(frameStart, inputTs, end) {
+  if (PERF_MARKS) performance.measure('u:inputFrame', { start: frameStart, end });
+  pushTiming(timings.inputFrame, end - frameStart);
+  pushTiming(timings.reaction, end - inputTs);
+  setText(
+    'timing-input',
+    t('tech.inputRender', {
+      n: timings.inputFrame.length,
+      reactMed: medOf(timings.reaction),
+      reactMax: maxOf(timings.reaction),
+      mainMed: medOf(timings.inputFrame),
+      mainMax: maxOf(timings.inputFrame),
+    }),
+  );
+  writeBusyTiming();
 }
 
 // Browser cross-check (Event Timing; MDN PerformanceEventTiming: minimum durationThreshold 16 ms,

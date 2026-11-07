@@ -16,6 +16,10 @@
 // eye's profile (and A's, with a configuration comparison) is one profile job, last on the compare
 // lane, requested after the compare paint (so never before the main result); #xsec[data-pending]
 // signals it. In sync mode it waits for 'Vergleich berechnen', like the comparison.
+// 02-20 (lens-critic M4, ENG-09 (a)): an input frame no longer builds the compare jobs. It only
+// queues the start ('queued' in #compare[data-pending]); timing.js calls onInputFrameEnd after
+// the input frame's end stamp, which posts one coalesced following task (MessageChannel) that
+// builds and sends the jobs for the latest specs. While queued, the compare paint waits.
 import { createComputeClient, BUSY_AFTER_MS } from '../state/compute-client.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
@@ -50,11 +54,11 @@ const lap = (name, start) => {
 
 // Timing hooks, injected by initPipeline (the ENG-09 readouts own them; no import cycle).
 // currentConfig (02-08): the frame and material of the last input frame, from main.js.
-let onBench, onPainted, onCompute, onComparePainted, currentConfig;
+let onBench, onPainted, onCompute, onComparePainted, onCompareStarted, currentConfig;
 
 /** Wire the timing hooks; call once before startWorker(). */
 export function initPipeline(hooks) {
-  ({ onBench, onPainted, onCompute, onComparePainted, currentConfig } = hooks);
+  ({ onBench, onPainted, onCompute, onComparePainted, onCompareStarted, currentConfig } = hooks);
   setText('cmp-footnote', t('cmp.footnote'));
   $('cmp-run').addEventListener('click', runCompareFromButton);
   $('cmp-start').addEventListener('click', startConfigCompare);
@@ -255,7 +259,8 @@ export function requestMain(specs, inputTs) {
   if (PERF_MARKS) t0 = lap('u:rm.rimFootnote', t0);
   // A changed main request starts a new compare generation in the client (and drops its queue);
   // an identical one keeps it, so the comparison is only requested when a main key changed.
-  if (!client.isCompareCurrent(compareGen)) startCompare(specs);
+  // 02-20: started in a following task, after this input frame's end stamp (MJ-1).
+  if (!client.isCompareCurrent(compareGen)) scheduleCompareStart();
   if (PERF_MARKS) lap('u:rm.startCompare', t0);
 }
 
@@ -307,16 +312,74 @@ let compareBusyTimer = null;
 /** Sync mode: the jobs wait for 'Vergleich berechnen', so the old rows stay marked. */
 let compareHeld = false;
 
-/** #compare[data-pending]: configA, autoBc, then the open material ids in MATERIALS order; '' = nothing open. */
+// ---- Deferred compare start (02-20) ----
+
+/** A changed main request is waiting for its compare start (token 'queued'). */
+let compareStartQueued = false;
+/** An input frame ran and its end stamp (timing.js) is not taken yet. */
+let inputFrameOpen = false;
+/** performance.now() of the last input frame's end stamp. */
+let inputFrameEnd = 0;
+// Following task: a MessageChannel message is a macrotask queued after the posting task, without
+// setTimeout's clamping. Test-only ?cmpdelay=<ms> delays it with setTimeout instead (m-c test).
+const COMPARE_DELAY = Number(new URLSearchParams(location.search).get('cmpdelay')) || 0;
+const startChannel = new MessageChannel();
+startChannel.port1.onmessage = runCompareStart;
+
+/** Queue the compare start for the latest request; cheap, inside the input frame. */
+function scheduleCompareStart() {
+  if (compareStartQueued) return;
+  compareStartQueued = true;
+  writeComparePending();
+}
+
+/** timing.js: an input frame starts (before update). */
+export function onInputFrameStart() {
+  inputFrameOpen = true;
+}
+
+/** timing.js: the input frame's end stamp is taken; only now may the compare start run (MJ-1). */
+export function onInputFrameEnd(end) {
+  inputFrameOpen = false;
+  inputFrameEnd = end;
+  if (!compareStartQueued) return;
+  if (COMPARE_DELAY > 0) setTimeout(runCompareStart, COMPARE_DELAY);
+  else startChannel.port2.postMessage(null);
+}
+
+/**
+ * The following task: one build for every input frame since the last start (coalesced), with
+ * the latest specs. If another input frame has run since the post and is not stamped yet, its
+ * own end posts again, so this task never runs inside a measured input frame.
+ */
+function runCompareStart() {
+  if (!compareStartQueued || inputFrameOpen) return;
+  const start = performance.now();
+  compareStartQueued = false;
+  // The main request already started a new client generation, so compare answers that arrive
+  // between the input frame and this task carry an old gen and are dropped (onCompare, paintCompare).
+  if (client.isCompareCurrent(compareGen)) {
+    // A button (startConfigCompare) has started this generation meanwhile.
+    writeComparePending();
+    scheduleComparePaint();
+    return;
+  }
+  startCompare(requested);
+  onCompareStarted(start, performance.now() - start, inputFrameEnd);
+}
+
+/** #compare[data-pending]: queued, configA, autoBc, then the open material ids in MATERIALS order; '' = nothing open. */
 function writeComparePending() {
-  const value = [CONFIG_A, AUTO_BC, ...MATERIAL_IDS].filter((id) => comparePending.has(id)).join(' ');
+  const ids = [CONFIG_A, AUTO_BC, ...MATERIAL_IDS].filter((id) => comparePending.has(id));
+  const value = (compareStartQueued ? ['queued', ...ids] : ids).join(' ');
   const el = $('compare');
   if (el.dataset.pending !== value) el.dataset.pending = value;
-  if (comparePending.size > 0) {
+  const busy = () => compareStartQueued || comparePending.size > 0;
+  if (busy()) {
     // "Vergleich rechnet …" only when the comparison takes longer than BUSY_AFTER_MS (RAIL).
     compareBusyTimer ??= setTimeout(() => {
       compareBusyTimer = null;
-      if (comparePending.size === 0) return;
+      if (!busy()) return;
       setText('cmp-status', t('cmp.pending'));
       setCompareStale(true);
     }, BUSY_AFTER_MS);
@@ -454,6 +517,9 @@ function scheduleComparePaint() {
  */
 function paintCompare() {
   compareFrame = null;
+  // 02-20 (m-c): the rows belong to the previous input until the queued start has run; that
+  // task schedules this paint again.
+  if (compareStartQueued) return;
   const frameStart = performance.now();
   for (const d of compareDeliveries.splice(0)) {
     if (!client.isCompareCurrent(d.gen)) continue;

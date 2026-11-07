@@ -45,6 +45,7 @@ import {
   runBench,
   timeResultFrame,
   timeCompareFrame,
+  timeCompareStart,
   timings,
   pushTiming,
   writeBusyTiming,
@@ -241,6 +242,7 @@ function init() {
     onPainted: timeResultFrame,
     onCompute: (ms) => pushTiming(timings.compute, ms),
     onComparePainted: timeCompareFrame,
+    onCompareStarted: timeCompareStart,
     // 02-12: a custom A keeps a copy of its constants and minimums (the fields may change later).
     currentConfig: () => ({
       frame: lastFrame?.frame ?? null,

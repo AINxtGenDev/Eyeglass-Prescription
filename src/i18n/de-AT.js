@@ -599,6 +599,8 @@ export default Object.freeze({
     'Eingabe bis Reaktion (letzte {n} Eingaben): Median {reactMed}, längste {reactMax}; Hauptthread je Eingabe einschließlich Darstellung: Median {mainMed}, längste {mainMax}',
   // 02-07: the frame that paints the material comparison, on the same main thread (T-02-50).
   'tech.timingCompare': 'Vergleich-Frame einschließlich Darstellung (letzte {n}): Median {med}, längste {max}',
+  // 02-20: the task after the input frame that queues the comparison jobs (ENG-09 (a)).
+  'tech.timingCompareStart': 'Vergleich-Start nach dem Eingabe-Frame (letzte {n}): Median {med}, längste {max}',
   'tech.result':
     'Eingabe bis Ergebnis sichtbar (letzte {n} Ergebnisse): Median {med}, längste {max}; Darstellung des Ergebnisses längstens {renderMax}; davon Rechnen: Median {compute}',
   'tech.busy': '„rechnet …“ angezeigt seit dem Laden: {count}-mal; längste Wartezeit auf ein Ergebnis: {longest}',
