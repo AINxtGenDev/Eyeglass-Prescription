@@ -117,9 +117,10 @@ test.describe('smart PD (RX-06)', () => {
   test('"64" is the binocular PD: 32 mm per eye', async ({ page }) => {
     await page.locator('#rx-od-pd').fill('64');
     await page.locator('#rx-os-pd').fill('');
-    await expect(page.locator('#rx-od-pd-echo')).toContainText('Gesamt-PD');
-    expect(await text(page, '#rx-od-pd-echo')).toContain('64,0 mm Gesamt-PD → je 32,0 mm');
-    expect(await text(page, '#rx-os-pd-echo')).toBe('32,0 mm');
+    // Retrying assertions: if an input frame runs between the two fills, the OD echo already
+    // reads "Gesamt-PD" while OS still holds 31,5; the next frame clears it (02-07 deflake).
+    await expect(page.locator('#rx-od-pd-echo')).toHaveText(/^64,0\smm Gesamt-PD → je 32,0\smm$/);
+    await expect(page.locator('#rx-os-pd-echo')).toHaveText(/^32,0\smm$/);
     await settled(page);
     await page.locator('#expert').check();
     // PD 32 on 52□18: decentration (52 + 18) / 2 − 32 = 3,0 mm for both eyes
