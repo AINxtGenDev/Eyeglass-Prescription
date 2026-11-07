@@ -178,3 +178,72 @@ export function materialRows({ selectedId, selected, others }) {
     };
   });
 }
+
+/**
+ * Displayed values of one LensResult with the result cards' rounding: thick = roundMm of
+ * thickest(m) (never the edge alone), ct = roundMm(CT), weight = whole grams. null when the lens
+ * is not computed.
+ * @param {object|null|undefined} res LensResult
+ * @returns {{ thick: number, ct: number, weight: number } | null}
+ */
+export function displayedValues(res) {
+  if (!okLens(res)) return null;
+  const m = res.metrics;
+  return { thick: roundMm(thickest(m).value), ct: roundMm(m.ct), weight: roundG(m.weightG) };
+}
+
+const CONFIG_ROWS = /** @type {const} */ ([
+  ['thickOD', 'thick', 'OD'],
+  ['thickOS', 'thick', 'OS'],
+  ['ctOD', 'ct', 'OD'],
+  ['ctOS', 'ct', 'OS'],
+]);
+
+/**
+ * Configuration comparison (02-08, RES-03, D-28): Vorher (A) against Nachher (B), the same Rx,
+ * from displayed values (displayedValues), so the differences on screen add up.
+ *
+ * - diff = b − a, rounded to the display step: negative = B thinner or lighter.
+ * - An eye that is not computed in A or in B fails its rows; the weight and the summary then use
+ *   the eyes computed in both, flagged partial.
+ * - The summary eye is the thicker eye of B (the configuration the cards show by default; tie →
+ *   OD), and thickDiffMm compares that same eye in A and B, never R against L (lens-critic
+ *   MINOR-4, the materialRows rule).
+ * - same: every computed row has difference 0.
+ *
+ * @param {{ OD: ReturnType<typeof displayedValues>, OS: ReturnType<typeof displayedValues> }} A
+ * @param {typeof A} B
+ * @returns {{ rows: object[], summary: { eye: 'OD'|'OS', thickDiffMm: number, weightDiffG: number,
+ *   same: boolean, partial: boolean } | null }} rows: { id, a, b, diff } or { id, failed: true };
+ *   weightBoth also carries partial: true when one eye is missing. summary null when no eye is
+ *   computed in both.
+ */
+export function configDiff(A, B) {
+  const eyes = EYES.filter((e) => A?.[e] && B?.[e]);
+  const partial = eyes.length < 2;
+  const rows = CONFIG_ROWS.map(([id, field, eye]) => {
+    if (!eyes.includes(eye)) return { id, failed: true };
+    const a = A[eye][field];
+    const b = B[eye][field];
+    return { id, a, b, diff: roundMm(b - a) };
+  });
+  if (eyes.length === 0) {
+    rows.push({ id: 'weightBoth', failed: true });
+    return { rows, summary: null };
+  }
+  const sum = (c) => eyes.reduce((s, e) => s + c[e].weight, 0);
+  const wa = sum(A);
+  const wb = sum(B);
+  rows.push({ id: 'weightBoth', a: wa, b: wb, diff: wb - wa, ...(partial ? { partial: true } : {}) });
+  const eye = thickerEye({ OD: B.OD && eyes.includes('OD') ? B.OD.thick : null, OS: B.OS && eyes.includes('OS') ? B.OS.thick : null });
+  return {
+    rows,
+    summary: {
+      eye,
+      thickDiffMm: roundMm(B[eye].thick - A[eye].thick),
+      weightDiffG: wb - wa,
+      same: rows.every((r) => r.failed || r.diff === 0),
+      partial,
+    },
+  };
+}
