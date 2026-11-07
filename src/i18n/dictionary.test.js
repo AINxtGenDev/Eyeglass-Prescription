@@ -3,6 +3,7 @@ import dict from './de-AT.js';
 import { t } from './t.js';
 import { PARSE_CODES } from '../state/parse.js';
 import { RX_CODES } from '../state/transpose.js';
+import { VAL_CODES } from '../state/validate.js';
 import { DIAGNOSTICS } from '../engine/diagnostics.js';
 import { readFileSync } from 'node:fs';
 
@@ -32,6 +33,10 @@ describe('de-AT dictionary', () => {
 
   test.each(Object.keys(RX_CODES))('has rx.%s', (code) => {
     expect(dict).toHaveProperty([`rx.${code}`]);
+  });
+
+  test.each(Object.keys(VAL_CODES))('has val.%s', (code) => {
+    expect(dict).toHaveProperty([`val.${code}`]);
   });
 
   test('never uses "Stärke" (thickness is Mittendicke/Randdicke)', () => {
@@ -86,7 +91,7 @@ describe('L10N-02 completeness (codes ↔ dictionary, both ways)', () => {
     }
   });
 
-  test('no orphan diag.*, parse.* or rx.<CODE> keys', () => {
+  test('no orphan diag.*, parse.*, rx.<CODE> or val.<CODE> keys', () => {
     for (const key of Object.keys(dict)) {
       let m;
       if ((m = key.match(/^diag\.([A-Z_]+)\.(title|explain|suggest)$/))) {
@@ -97,7 +102,16 @@ describe('L10N-02 completeness (codes ↔ dictionary, both ways)', () => {
         expect(Object.keys(PARSE_CODES), key).toContain(m[1]);
       } else if ((m = key.match(/^rx\.([A-Z][A-Z_]*)$/))) {
         expect(Object.keys(RX_CODES), key).toContain(m[1]);
+      } else if ((m = key.match(/^val\.([A-Z][A-Z_]*)$/))) {
+        expect(Object.keys(VAL_CODES), key).toContain(m[1]);
       }
+    }
+  });
+
+  test('every {param} in val.* is suggestion, value, typed, min or max', () => {
+    for (const [key, v] of Object.entries(dict)) {
+      if (!key.startsWith('val.')) continue;
+      for (const p of placeholders(v)) expect(['suggestion', 'value', 'typed', 'min', 'max'], `${key} {${p}}`).toContain(p);
     }
   });
 
