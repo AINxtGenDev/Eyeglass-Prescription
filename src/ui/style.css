@@ -928,6 +928,69 @@ td:has(.msg-out) input[aria-invalid='true'] {
   margin-block: 0 var(--space-2);
 }
 
+/* 02-09 preset chips (UI-SPEC "Preset chips"): actions, not modes, so there is no selected state. */
+.presets {
+  margin-block: var(--space-4);
+}
+
+.presets-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  font-weight: 400;
+}
+
+.chip:hover,
+.chip:active {
+  border-color: var(--fg);
+}
+
+/* Inline non-modal confirm after the chip row (UI-SPEC "Inline confirm", RESEARCH Pattern 5). */
+.preset-confirm {
+  background: var(--surface);
+  border: 2px solid var(--fg);
+  border-radius: 6px;
+  padding: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+.preset-confirm p {
+  margin-block: 0 var(--space-2);
+}
+
+.preset-confirm-q {
+  font-weight: 600;
+}
+
+.preset-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.preset-confirm-actions button {
+  font-weight: 600;
+}
+
+.btn-danger {
+  border-color: var(--error);
+  background: var(--error);
+  color: #ffffff;
+}
+
 /* 02-02 Experten-Ansicht switch (UI-SPEC Header): 44×24 px track, 20 px knob. The knob position
    and the check mark carry the state, not the fill colour alone. Label text never changes. */
 .expert-switch {

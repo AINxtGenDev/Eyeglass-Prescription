@@ -59,7 +59,9 @@ test.describe('360 × 780', () => {
   test('summary bar shows both eyes while the result is out of view', async ({ page }) => {
     await settled(page);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(page.locator('#rx-od-sph')).toBeInViewport();
+    // 02-09: the Rx preset chips (UI-SPEC page structure) are the first Rx controls; at 780 px
+    // height they push R Sph just below the first screen (top 834 px, measured).
+    await expect(page.locator('#rx-presets')).toBeInViewport();
     await expect(page.locator('#result')).not.toBeInViewport();
     const bar = page.locator('#summary-bar');
     await expect(bar).toBeVisible();

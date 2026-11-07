@@ -31,6 +31,8 @@ const numNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1, useGrou
 
 /** Sizes the user typed (or set through the stamp); the shape defaults never count. */
 const userTyped = { A: false, B: false, DBL: false };
+/** The sizes on screen come from a frame preset chip (02-09): they are not the user's own. */
+let fromPreset = false;
 /** The stamp text was typed by the user (false after we rewrote it from A and DBL). */
 let stampTyped = false;
 /** Bügellänge from the last valid stamp (shown in the echo only). */
@@ -183,6 +185,7 @@ function initStampHelp() {
 /** The stamp was typed: a valid one writes A and DBL (once, no synthetic input events). */
 function onStampInput(e) {
   stampTyped = true;
+  fromPreset = false;
   const r = parseStamp(input(STAMP_ID).value);
   if (r.ok) {
     input(ID.A).value = String(r.A);
@@ -294,6 +297,30 @@ export function readFrame() {
   };
 }
 
+/** The user's own sizes are on screen: A, B or DBL typed (or set by the stamp), not by a preset. */
+export function frameSizesTyped() {
+  return !fromPreset && FIELDS.some((f) => userTyped[f]);
+}
+
+/**
+ * A frame preset (02-09): write A and DBL, keep the shape, let B follow the shape again
+ * ("geschätzt aus der Form"), then run one input frame through the A field's own handler, which
+ * also rewrites the stamp. Only parsed numbers are written (T-02-13).
+ * @param {string} A @param {string} DBL field text of the preset
+ */
+export function applyFrameSizes(A, DBL) {
+  const a = parseMm(A);
+  const d = parseMm(DBL);
+  if (!a.ok || !d.ok) return;
+  input(ID.DBL).value = String(d.value);
+  userTyped.DBL = true;
+  userTyped.B = false;
+  input(ID.B).value = String(estimateB(currentShape(), a.value));
+  input(ID.A).value = String(a.value);
+  input(ID.A).dispatchEvent(new Event('input', { bubbles: true }));
+  fromPreset = true;
+}
+
 /**
  * Build the cards, fill the example frame and wire the inputs.
  * @param {{ schedule: (timeStamp: number) => void, onMessageShown: () => void }} hooks
@@ -309,6 +336,7 @@ export function initFrameInput(hooks) {
     input(ID[f]).addEventListener('input', (e) => {
       // An emptied B goes back to the estimate; A and DBL stay typed.
       userTyped[f] = f === 'B' ? !isBlank(ID.B) : true;
+      fromPreset = false;
       if (f !== 'B') rewriteStamp();
       schedule(e.timeStamp);
     });

@@ -13,7 +13,9 @@ import {
   repaintFromLast,
 } from './results.js';
 import { initRxInput, readRx, eyeStatus } from './rx-input.js';
-import { initFrameInput, readFrame, frameStatus } from './frame-input.js';
+import { initFrameInput, readFrame, frameStatus, frameSizesTyped, applyFrameSizes } from './frame-input.js';
+import { initPresets } from './presets.js';
+import { EXAMPLE } from '../state/presets.js';
 import { initMaterialInput, currentMaterialId, renderMaterialLine } from './material-input.js';
 import { initCompareView } from './compare-view.js';
 import { initToggletips } from './toggletip.js';
@@ -49,12 +51,10 @@ const EYES = /** @type {const} */ (['OD', 'OS']);
 // (radio cards since 02-07, in material-input.js); frame shape/size and PD per eye since 01-07
 // (frame section and smart PD since 02-04, in frame-input.js and rx-input.js). Fitting height is
 // supported by the engine but omitted here (D-04).
-// Example at load (UI-SPEC "Preset data", D-26): a moderate myope with a small cylinder.
-const EXAMPLE = {
-  od: { sph: '-2,75', cyl: '-0,50', axis: '180', pd: '32' },
-  os: { sph: '-2,50', cyl: '-0,75', axis: '170', pd: '31,5' },
-};
+// Example at load (UI-SPEC "Preset data", D-26): EXAMPLE in src/state/presets.js (02-09).
 const RX_FIELDS = ['sph', 'cyl', 'axis', 'pd'];
+/** The Sph/Zyl/Achse fields a preset writes (PD is kept). */
+const PRESET_FIELDS = ['sph', 'cyl', 'axis'];
 /** The last Rx read per eye, for repainting a not-ready card when its field message appears. */
 const lastRead = { OD: null, OS: null };
 /** The last frame read (blocked state of the frame fields, which block both eyes). */
@@ -112,12 +112,21 @@ function update(inputTs) {
   requestMain(specs, inputTs);
 }
 
+/** The six Sph/Zyl/Achse field texts, R then L. */
+const presetFieldTexts = () =>
+  EYES.flatMap((eye) => PRESET_FIELDS.map((f) => /** @type {HTMLInputElement} */ ($(`rx-${eye.toLowerCase()}-${f}`)).value));
+
 /**
  * Example at load (D-26, UI-SPEC "Example banner"): fill the eight Rx fields. While untouched,
  * focusing an Rx field selects its content; the first input removes the banner.
+ * Returns hasOwnRx for the preset chips (02-09): the user's own Sph/Zyl/Achse are on screen when
+ * a field is not empty and the six texts differ from what the page wrote last (the example or a
+ * preset). So the example, a preset and "Eigene Werte eingeben" (empty fields) never ask.
+ * @returns {{ hasOwnRx: () => boolean, onRxApplied: (p: { od: object, os: object }) => void }}
  */
 function initExample(onInput) {
   let untouched = true;
+  let written = EYES.flatMap((eye) => PRESET_FIELDS.map((f) => EXAMPLE[eye.toLowerCase()][f]));
   const fields = [];
   for (const eye of EYES) {
     const e = eye.toLowerCase();
@@ -146,6 +155,15 @@ function initExample(onInput) {
     $('rx-od-sph').focus();
     schedule(performance.now());
   });
+  return {
+    hasOwnRx: () => {
+      const now = presetFieldTexts();
+      return now.some((v) => v.trim() !== '') && now.join('|') !== written.join('|');
+    },
+    onRxApplied: (p) => {
+      written = EYES.flatMap((eye) => PRESET_FIELDS.map((f) => p[eye.toLowerCase()][f]));
+    },
+  };
 }
 
 function init() {
@@ -171,8 +189,9 @@ function init() {
   initMaterialInput({ schedule });
   initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });
   const onInput = (e) => schedule(e.timeStamp);
-  initExample(onInput);
+  const example = initExample(onInput);
   initRxInput({ onInput, onMessageShown });
+  initPresets({ ...example, hasOwnFrame: frameSizesTyped, applyFrame: applyFrameSizes });
   const tech = /** @type {HTMLDetailsElement} */ ($('tech'));
   // Sync fallback: the bench would block the page, so only the button starts it (MINOR-6).
   tech.addEventListener('toggle', () => {

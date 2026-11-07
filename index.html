@@ -25,6 +25,11 @@
             <button type="button" id="example-clear" data-i18n="example.clear"></button>
           </div>
           <form id="rx" novalidate>
+            <div id="rx-presets" class="presets" role="group" aria-labelledby="rx-presets-label">
+              <span id="rx-presets-label" class="presets-label" data-i18n="preset.rx.label"></span>
+              <div class="chips"></div>
+            </div>
+            <div id="rx-preset-confirm-slot"></div>
             <table id="rx-table" class="rx-table">
               <caption data-i18n="rx.caption"></caption>
               <thead>
@@ -195,6 +200,11 @@
                 <legend data-i18n="frame.shape.legend"></legend>
                 <div class="shape-cards"></div>
               </fieldset>
+              <div id="frame-presets" class="presets" role="group" aria-labelledby="frame-presets-label">
+                <span id="frame-presets-label" class="presets-label" data-i18n="preset.frame.label"></span>
+                <div class="chips"></div>
+              </div>
+              <div id="frame-preset-confirm-slot"></div>
               <button type="button" id="frame-defaults" class="link-button" hidden></button>
               <h3 data-i18n="frame.single"></h3>
               <div class="frame-dims">

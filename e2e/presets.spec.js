@@ -116,9 +116,10 @@ test.describe('untouched example: a preset applies at once', () => {
     await settled(page);
     await page.locator('#rx-same').check();
     await settled(page);
-    // the user ticked the box, so the page is touched; R still equals the example → no own values
+    // the mirror rewrote L (−2,75 / −0,50 × 180), so L no longer shows what the page wrote: own values
     await chip(page, 'Stark kurzsichtig').click();
-    if ((await confirmGroup(page).count()) > 0) await page.getByRole('button', { name: 'Ersetzen' }).click();
+    await expect(confirmGroup(page)).toHaveCount(1);
+    await confirmGroup(page).getByRole('button', { name: 'Ersetzen' }).click();
     await settled(page);
     await expect(page.locator('#rx-same')).not.toBeChecked();
     expect(await page.locator('#rx-os-sph').inputValue()).toBe('-6,00');
@@ -245,6 +246,8 @@ test.describe('frame chips', () => {
     await settled(page);
     await expect(page.locator('input[name=frame-shape][value=rund]')).toBeChecked();
     expect(await page.locator('#frame-a').inputValue()).toBe('48');
+    // estimateB('rund', 48) = 44 (02-09 scratch check), not the rectangle's 35
+    expect(await page.locator('#frame-b').inputValue()).toBe('44');
     await expect(page.locator('#frame-b-echo')).toContainText('geschätzt');
   });
 

@@ -6,6 +6,7 @@ import { RX_CODES } from '../state/transpose.js';
 import { VAL_CODES } from '../state/validate.js';
 import { DIAGNOSTICS } from '../engine/diagnostics.js';
 import { MATERIALS } from '../engine/materials.js';
+import { RX_PRESETS, FRAME_PRESETS } from '../state/presets.js';
 import { readFileSync } from 'node:fs';
 
 describe('t() (L10N-02)', () => {
@@ -341,5 +342,29 @@ describe('configuration comparison (02-08)', () => {
     expect(t('cmp.config.diff', { mm: '1,6 mm', thinnerThicker: 'dünner', g: '4 g', lighterHeavier: 'leichter' })).toBe(
       'Nachher (B) ist an der dicksten Stelle 1,6 mm dünner und insgesamt 4 g leichter als Vorher (A).',
     );
+  });
+});
+
+describe('presets (02-09)', () => {
+  test.each(RX_PRESETS.map((p) => p.id))('has preset.rx.%s', (id) => {
+    expect(dict).toHaveProperty([`preset.rx.${id}`]);
+  });
+
+  test.each(FRAME_PRESETS.map((p) => p.id))('has preset.frame.%s with exactly {A} and {DBL}', (id) => {
+    expect(dict).toHaveProperty([`preset.frame.${id}`]);
+    expect(dict[`preset.frame.${id}`].match(/\{(\w+)\}/g)).toEqual(['{A}', '{DBL}']);
+  });
+
+  test('the UI-SPEC sentences', () => {
+    expect(dict['preset.rx.label']).toBe('Beispiele zum Ausprobieren:');
+    expect(dict['preset.frame.label']).toBe('Typische Größen:');
+    expect(dict['preset.confirm.q']).toBe('Ihre Eingaben ersetzen?');
+    expect(dict['preset.confirm.body']).toBe('Ihre eingetippten Werte werden durch das Beispiel „{preset}“ ersetzt.');
+    expect(dict['preset.confirm.replace']).toBe('Ersetzen');
+    expect(dict['preset.confirm.keep']).toBe('Eingaben behalten');
+  });
+
+  test('the Hornhaut·verkrümmung escape is in place', () => {
+    expect(dict['preset.rx.hhv']).toBe('Hornhaut\u00ADverkrümmung');
   });
 });
