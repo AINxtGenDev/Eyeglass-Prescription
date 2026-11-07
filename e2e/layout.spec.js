@@ -203,6 +203,13 @@ for (const width of [360, 1280]) {
       await page.goto('./');
       await settled(page);
       await page.locator('#expert').check();
+      // The switch handler unhides the Expert fields and marks the profile pending at once; their
+      // echo lines (Basiskurve, Mindestdicken: +48 px at 1280, +72 px at 360) are written by the
+      // input frame, a requestAnimationFrame callback that runs before the next paint. A read in
+      // the task gap between the change event and that frame sees a layout that is never painted
+      // (one layout-shift entry per switch, also at 6x CPU throttle), so wait for the input frame
+      // first: 'before' is the first painted layout while the drawing is pending (02-15).
+      await settled(page);
       await expect(page.locator('#xsec')).toHaveAttribute('data-pending', 'profile');
       await expect(page.locator('#xsec-figure svg')).toHaveCount(0);
       const top = () =>
