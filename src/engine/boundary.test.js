@@ -6,6 +6,7 @@ import { describe, test, expect } from 'vitest';
 import { ESLint } from 'eslint';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const eslint = new ESLint({ cwd: root });
@@ -61,5 +62,36 @@ describe('state layer (src/state)', () => {
     expect(await ruleIds('export const f = () => document.title;', 'src/state/__probe__.js')).toContain(
       'no-undef',
     );
+  });
+});
+
+// 02-14 (T-02-39): no browser storage anywhere in the app source. The Rx is health-adjacent data on
+// the shared ainxtgendev.github.io origin; persistence is deferred to v2.
+describe('no storage API in src/ (T-02-39)', () => {
+  const STORAGE = /\b(localStorage|sessionStorage|indexedDB)\b|document\.cookie/;
+  const files = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) return files(p);
+      return e.name.endsWith('.js') && !e.name.endsWith('.test.js') ? [p] : [];
+    });
+  const src = files(path.join(root, 'src'));
+
+  test('scans the app source (positive control: main.js and the worker are in the list)', () => {
+    const rel = src.map((p) => path.relative(root, p).split(path.sep).join('/'));
+    expect(rel).toContain('src/ui/main.js');
+    expect(rel).toContain('src/worker/engine.worker.js');
+    expect(STORAGE.test('x = window.localStorage.getItem(k)')).toBe(true);
+    expect(STORAGE.test('document.cookie = s')).toBe(true);
+  });
+
+  test('no file uses localStorage, sessionStorage, indexedDB or document.cookie', () => {
+    const hits = src.flatMap((p) =>
+      readFileSync(p, 'utf8')
+        .split('\n')
+        .map((line, i) => (STORAGE.test(line) ? `${path.relative(root, p)}:${i + 1}: ${line.trim()}` : null))
+        .filter(Boolean),
+    );
+    expect(hits).toEqual([]);
   });
 });

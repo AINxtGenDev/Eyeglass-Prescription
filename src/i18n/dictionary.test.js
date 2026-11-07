@@ -464,3 +464,21 @@ describe('02-13 Querschnitt copy (ANA-01, D-30, D-37)', () => {
     for (const v of ['superior', 'inferior']) expect(dict[`xs.end.${v}`]).toBe(words[v]);
   });
 });
+
+describe('02-14 UX-01 term list (UI-SPEC Toggletips)', () => {
+  // Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration.
+  const UX01 = ['sph', 'cyl', 'axis', 'pd', 'index', 'basecurve', 'ct', 'et', 'a', 'b', 'dbl', 'dec'];
+
+  test('lists the 12 UX-01 terms', () => expect(UX01).toHaveLength(12));
+
+  test.each(UX01)('tip.%s has a name "Erklärung: …" and a text', (id) => {
+    expect(dict[`tip.${id}.name`]).toMatch(/^Erklärung: \S/);
+    expect(dict[`tip.${id}.text`]?.trim().length).toBeGreaterThan(0);
+  });
+
+  test.each(UX01)('index.html has a tip button and panel for tip-%s', (id) => {
+    const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    expect(html).toMatch(new RegExp(`class="tip-btn"[^>]*\\s+aria-controls="tip-${id}"`));
+    expect(html).toContain(`id="tip-${id}"`);
+  });
+});

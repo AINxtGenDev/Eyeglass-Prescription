@@ -2,7 +2,6 @@
 // RED until plan 01-03 ships the German page; runs against `vite preview` locally
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
 import { settled, thickOf, sphOnly } from './helpers.js';
 /* global document, window, MutationObserver -- page.evaluate bodies run in the browser */
 
@@ -500,8 +499,5 @@ test('unchanged diagnostics are not re-announced (MINOR-11)', async ({ page }) =
   expect(await page.evaluate(() => window.__diagMutations)).toBe(0);
 });
 
-test('no serious or critical accessibility violations', async ({ page }) => {
-  const { violations } = await new AxeBuilder({ page }).analyze();
-  const severe = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-  expect(severe.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
-});
+// 02-14: the whole-page axe check moved to e2e/a11y.spec.js, which is stricter (WCAG 2.2 AA tag
+// list, zero violations of any impact, four page states at 320 × 640 and 1280 × 800).
