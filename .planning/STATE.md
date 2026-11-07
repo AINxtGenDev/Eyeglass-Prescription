@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-11-07T13:35:46.154Z"
+stopped_at: Completed 02-09-PLAN.md
+last_updated: "2026-11-07T14:16:18.018Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 23
+  completed_plans: 24
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 9 of 15
+Plan: 10 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -73,6 +73,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 02 P06 | 16min | 2 tasks | 7 files |
 | Phase 02 P07 | 45min | 3 tasks | 16 files |
 | Phase 02 P08 | 80 min | 3 tasks | 14 files |
+| Phase 02 P09 | 40 min | 4 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-08]: While 'Vorher' is shown, main deliveries update shown[] but do not repaint the cards; cards stay stale-marked until A for the same input is painted (T-02-21)
 - [Phase 02]: [02-08]: A and B both converted with displayedValues (card rounding) from LensResults; results.js displayed cannot be B's source while A is shown
 - [Phase 02]: [02-08]: Test busy windows use holdWorker (test-held worker messages), not timers, when the test does unbounded work (axe) inside the window
+- [Phase 02]: [02-09]: The two-column grid lives in .layout-cols; .col-full sits outside it so the sticky results column cannot cover the disclaimer (a sticky box is held inside its parent)
+- [Phase 02]: [02-09]: Preset 'own values' = non-empty fields that differ from what the page wrote last (example or preset); for frame chips typed A/B/DBL not set by a preset. Presets in a row never ask
+- [Phase 02]: [02-09]: MAT-02 monotonicity split into 12 per-case tests with per-case observed sample floors (sum 3188); same sweeps and assertion
 
 ### Pending Todos
 
@@ -162,6 +166,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T13:35:36.651Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-11-07T14:16:04.074Z
+Stopped at: Completed 02-09-PLAN.md
 Resume file: None
