@@ -511,7 +511,7 @@ The trade term "Einstärkenglas" (single vision) is deliberately avoided: the UX
 | Weight below 0,5 g | unter 1 g |
 | L/R callout | Das {linke/rechte} Glas ist an der dicksten Stelle {diff} dicker als das {rechte/linke} {cause} |
 | L/R callout (weight only) | Das {linke/rechte} Glas ist {diff} schwerer als das {rechte/linke} {cause} |
-| L/R cause | rx: – weil die Rezeptwerte der beiden Augen verschieden sind. · pd: – weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung. · rx-pd: – weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind. Choice: Rx differs → rx; PD (or fitting height) differs by at least 2 mm (LR_PD_CAUSE_MM) → pd; both → rx-pd. A smaller PD difference (e.g. 32 / 31,5) is not named as a cause (lens-critic round 2 MINOR-a). |
+| L/R cause | rx: – weil die Rezeptwerte der beiden Augen verschieden sind. · pd: – weil die Pupillendistanz (PD) der beiden Augen verschieden ist: das Glas sitzt dadurch anders in der Fassung. · rx-pd: – weil Rezeptwerte und Pupillendistanz der beiden Augen verschieden sind. Choice: same Rx and PD (or fitting height) differs → pd; Rx differs and PD differs by less than 2 mm (LR_PD_CAUSE_MM) → rx; Rx differs and PD differs by at least 2 mm → rx-pd (lens-critic rounds 2 and 3). Uniform edge (displayed thickest edge = thinnest edge): say 'Rand ringsum {value}' instead of two location words. |
 | Short disclaimer | Modellwerte – kein Ersatz für die Messung und Beratung beim Optiker. |
 | Disclaimer link | Zum Hinweis unten |
 | Computing (existing) | rechnet … / rechnet … Die Werte gehören noch zur vorigen Eingabe. |
