@@ -311,3 +311,35 @@ describe('material comparison (02-07)', () => {
     expect(dict).toHaveProperty([`tip.${term}.text`]);
   });
 });
+
+describe('configuration comparison (02-08)', () => {
+  const ph = (key) => [...dict[key].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  const ALLOWED = {
+    'cmp.config.status': ['A', 'DBL', 'material', 'shape'],
+    'cmp.config.diff': ['g', 'lighterHeavier', 'mm', 'thinnerThicker'],
+    'cmp.config.diffEqualThick': ['g', 'lighterHeavier'],
+    'cmp.config.diffEqualWeight': ['mm', 'thinnerThicker'],
+    'cmp.config.partial': ['eye'],
+  };
+  test('placeholder whitelist for cmp.config.*: exactly the listed params, none elsewhere', () => {
+    const keys = Object.keys(dict).filter((k) => k.startsWith('cmp.config.'));
+    expect(keys.length).toBeGreaterThanOrEqual(14);
+    for (const k of keys) expect(ph(k), k).toEqual(ALLOWED[k] ?? []);
+  });
+  test('cmp.cfg.diff.* use only {mm} or {g}; rows and columns have no params', () => {
+    for (const k of Object.keys(dict).filter((x) => x.startsWith('cmp.cfg.') || x.startsWith('cmp.show.'))) {
+      const allowed = k.startsWith('cmp.cfg.diff.') ? ['g', 'mm'] : [];
+      for (const p of ph(k)) expect(allowed, `${k} {${p}}`).toContain(p);
+    }
+    expect(ph('cmp.cfg.diff.thinner')).toEqual(['mm']);
+    expect(ph('cmp.cfg.diff.lighter')).toEqual(['g']);
+  });
+  test('the UI-SPEC sentences', () => {
+    expect(dict['cmp.config.cta']).toBe('Variante vergleichen');
+    expect(dict['cmp.config.end']).toBe('Vergleich beenden');
+    expect(dict['cmp.show.legend']).toBe('Ergebniskarten zeigen:');
+    expect(t('cmp.config.diff', { mm: '1,6 mm', thinnerThicker: 'dünner', g: '4 g', lighterHeavier: 'leichter' })).toBe(
+      'Nachher (B) ist an der dicksten Stelle 1,6 mm dünner und insgesamt 4 g leichter als Vorher (A).',
+    );
+  });
+});

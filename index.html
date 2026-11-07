@@ -247,7 +247,7 @@
         <section id="result" aria-labelledby="result-title">
           <h2 id="result-title" tabindex="-1" data-i18n="result.title"></h2>
           <article id="result-od-card" class="result-card" aria-labelledby="result-od-title">
-            <h3 id="result-od-title" data-i18n="result.card.od"></h3>
+            <h3 id="result-od-title"><span data-i18n="result.card.od"></span><span id="result-od-suffix"></span></h3>
             <p id="result-od-headline" class="result-headline"></p>
             <p id="result-od-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
             <p id="result-od-status" class="result-status"></p>
@@ -278,7 +278,7 @@
             <p id="tip-ct" class="tip" hidden data-i18n="tip.ct.text"></p>
           </article>
           <article id="result-os-card" class="result-card" aria-labelledby="result-os-title">
-            <h3 id="result-os-title" data-i18n="result.card.os"></h3>
+            <h3 id="result-os-title"><span data-i18n="result.card.os"></span><span id="result-os-suffix"></span></h3>
             <p id="result-os-headline" class="result-headline"></p>
             <p id="result-os-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
             <p id="result-os-status" class="result-status"></p>
@@ -353,6 +353,64 @@
             </details>
             <p id="cmp-assumed-note" class="small"></p>
             <p id="cmp-footnote" class="small" hidden></p>
+          </section>
+          <section id="cmp-config" aria-labelledby="cmp-config-title">
+            <h2 id="cmp-config-title" data-i18n="cmp.config.title"></h2>
+            <p id="cmp-config-help" data-i18n="cmp.config.help"></p>
+            <button type="button" id="cmp-start" class="btn-primary" data-i18n="cmp.config.cta"></button>
+            <div id="cmp-active" hidden>
+              <p id="cmp-a-status"></p>
+              <p id="cmp-diff" tabindex="-1" class="cmp-diff"></p>
+              <table id="cmp-config-table" class="cmp-config-table">
+                <caption class="visually-hidden" data-i18n="cmp.cfg.caption"></caption>
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="visually-hidden" data-i18n="cmp.cfg.col.row"></span></th>
+                    <th scope="col" data-i18n="cmp.cfg.col.a"></th>
+                    <th scope="col" data-i18n="cmp.cfg.col.b"></th>
+                    <th scope="col" data-i18n="cmp.cfg.col.diff"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr id="cmp-row-thickOD">
+                    <th scope="row" data-i18n="cmp.cfg.row.thickOD"></th>
+                    <td data-col="a"><span class="cmp-val"></span></td>
+                    <td data-col="b"><span class="cmp-val"></span><span class="cmp-rowdiff"></span></td>
+                    <td data-col="diff"><span class="cmp-val"></span></td>
+                  </tr>
+                  <tr id="cmp-row-thickOS">
+                    <th scope="row" data-i18n="cmp.cfg.row.thickOS"></th>
+                    <td data-col="a"><span class="cmp-val"></span></td>
+                    <td data-col="b"><span class="cmp-val"></span><span class="cmp-rowdiff"></span></td>
+                    <td data-col="diff"><span class="cmp-val"></span></td>
+                  </tr>
+                  <tr id="cmp-row-ctOD">
+                    <th scope="row" data-i18n="cmp.cfg.row.ctOD"></th>
+                    <td data-col="a"><span class="cmp-val"></span></td>
+                    <td data-col="b"><span class="cmp-val"></span><span class="cmp-rowdiff"></span></td>
+                    <td data-col="diff"><span class="cmp-val"></span></td>
+                  </tr>
+                  <tr id="cmp-row-ctOS">
+                    <th scope="row" data-i18n="cmp.cfg.row.ctOS"></th>
+                    <td data-col="a"><span class="cmp-val"></span></td>
+                    <td data-col="b"><span class="cmp-val"></span><span class="cmp-rowdiff"></span></td>
+                    <td data-col="diff"><span class="cmp-val"></span></td>
+                  </tr>
+                  <tr id="cmp-row-weightBoth">
+                    <th scope="row" data-i18n="cmp.cfg.row.weightBoth"></th>
+                    <td data-col="a"><span class="cmp-val"></span></td>
+                    <td data-col="b"><span class="cmp-val"></span><span class="cmp-rowdiff"></span></td>
+                    <td data-col="diff"><span class="cmp-val"></span></td>
+                  </tr>
+                </tbody>
+              </table>
+              <fieldset id="cmp-show" class="segmented">
+                <legend data-i18n="cmp.show.legend"></legend>
+                <label><input type="radio" name="cmp-show" value="a"><span data-i18n="cmp.show.a"></span></label>
+                <label><input type="radio" name="cmp-show" value="b" checked><span data-i18n="cmp.show.b"></span></label>
+              </fieldset>
+              <button type="button" id="cmp-end" data-i18n="cmp.config.end"></button>
+            </div>
           </section>
         </div>
       </div>

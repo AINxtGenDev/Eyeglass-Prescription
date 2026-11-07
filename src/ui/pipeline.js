@@ -4,24 +4,41 @@
 // when the main request changed, answers are buffered and painted in their own frame after a
 // second isCompareCurrent check (T-02-49), and #compare[data-pending] signals compare work
 // (#result[data-pending] stays main-only).
+// 02-08: the configuration comparison (D-28): 'Variante vergleichen' freezes frame + material as
+// Vorher (A); A is one more job on the same lane, queued first, with the current (shared) Rx. The
+// Vorher | Nachher toggle chooses which configuration the result cards show.
 import { createComputeClient, BUSY_AFTER_MS } from '../state/compute-client.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
 import { $, setText } from './dom.js';
 import { renderResult, renderFailed, renderLrCallout, setStale } from './results.js';
-import { renderMaterialTable, markOutdated, setCompareStale } from './compare-view.js';
+import {
+  renderMaterialTable,
+  markOutdated,
+  setCompareStale,
+  renderConfigCompare,
+  setConfigActive,
+} from './compare-view.js';
+import { renderMaterialLine } from './material-input.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
 const MATERIAL_IDS = Object.keys(MATERIALS);
 
 // Timing hooks, injected by initPipeline (the ENG-09 readouts own them; no import cycle).
-let onBench, onPainted, onCompute, onComparePainted;
+// currentConfig (02-08): the frame and material of the last input frame, from main.js.
+let onBench, onPainted, onCompute, onComparePainted, currentConfig;
 
 /** Wire the timing hooks; call once before startWorker(). */
 export function initPipeline(hooks) {
-  ({ onBench, onPainted, onCompute, onComparePainted } = hooks);
+  ({ onBench, onPainted, onCompute, onComparePainted, currentConfig } = hooks);
   $('cmp-run').addEventListener('click', runCompareFromButton);
+  $('cmp-start').addEventListener('click', startConfigCompare);
+  $('cmp-end').addEventListener('click', endConfigCompare);
+  $('cmp-show').addEventListener('change', (e) => {
+    showA = /** @type {HTMLInputElement} */ (e.target).value === 'a';
+    paintCards();
+  });
   writeComparePending();
 }
 
@@ -97,7 +114,10 @@ function paintDeliveries() {
     pending.delivered.delete(eye);
     if (client.isCurrent(eye, d.seq)) {
       // isCurrent: the result belongs to the latest request, so requested[eye] is its spec.
-      renderResult(eye, d.result, requested[eye]);
+      // 02-08: while Vorher (A) is shown, the card keeps A's values, marked until the A job for
+      // this input is painted (paintCompare → paintCards).
+      if (showA) setStale(eye, true);
+      else renderResult(eye, d.result, requested[eye]);
       shown[eye] = { key: requestedKeys[eye], result: d.result };
       painted++;
     }
@@ -209,7 +229,17 @@ let compareJobs = [];
 const jobMaterial = new Map();
 /** Compare results of the current jobs by material id (null = failed). */
 let others = {};
-/** Material ids whose job is open, or delivered but not painted yet. */
+/** Pseudo id of the configuration-A job in jobMaterial / comparePending (02-08). */
+const CONFIG_A = 'configA';
+/** @type {{ frame: object|null, materialId: string } | null} the frozen Vorher (A) */
+let configA = null;
+/** A's results for the current input: pair, null = failed, undefined = computing / no job. */
+let resultA;
+/** Specs of the current A job per eye (for lrCause when A is painted into the cards). */
+let specA = { OD: null, OS: null };
+/** The cards and the summary bar show A (toggle 'Vorher'). */
+let showA = false;
+/** Material ids (and CONFIG_A) whose job is open, or delivered but not painted yet. */
 const comparePending = new Set();
 /** Delivered ids waiting for a painted table. */
 const compareDelivered = new Set();
@@ -220,9 +250,9 @@ let compareBusyTimer = null;
 /** Sync mode: the jobs wait for 'Vergleich berechnen', so the old rows stay marked. */
 let compareHeld = false;
 
-/** #compare[data-pending]: the open material ids in MATERIALS order, '' when nothing is open. */
+/** #compare[data-pending]: configA, then the open material ids in MATERIALS order; '' = nothing open. */
 function writeComparePending() {
-  const value = MATERIAL_IDS.filter((id) => comparePending.has(id)).join(' ');
+  const value = [CONFIG_A, ...MATERIAL_IDS].filter((id) => comparePending.has(id)).join(' ');
   const el = $('compare');
   if (el.dataset.pending !== value) el.dataset.pending = value;
   if (comparePending.size > 0) {
@@ -257,12 +287,24 @@ function buildCompareJobs(specs) {
     jobMaterial.set(key, id);
     jobs.push({ key, specs: job });
   }
+  // 02-08: Vorher (A) = the current Rx with A's frame and material, queued first (T-02-22). Own
+  // key prefix, so it never shares a delivery with a material row of the same specs.
+  specA = { OD: null, OS: null };
+  if (configA?.frame) {
+    const job = {};
+    for (const eye of EYES) if (specs[eye]) job[eye] = { ...specs[eye], materialId: configA.materialId, frame: configA.frame };
+    const key = CONFIG_A + ':' + JSON.stringify(job);
+    jobMaterial.set(key, CONFIG_A);
+    jobs.unshift({ key, specs: job });
+    specA = { OD: job.OD ?? null, OS: job.OS ?? null };
+  }
   return jobs;
 }
 
 function startCompare(specs) {
   markOutdated();
   others = {};
+  resultA = undefined;
   compareDelivered.clear();
   compareJobs = buildCompareJobs(specs);
   $('cmp-run').hidden = true;
@@ -321,7 +363,8 @@ function paintCompare() {
     if (!client.isCompareCurrent(d.gen)) continue;
     const id = jobMaterial.get(d.key);
     if (id === undefined) continue;
-    others[id] = d.error ? null : d.results;
+    if (id === CONFIG_A) resultA = d.error ? null : d.results;
+    else others[id] = d.error ? null : d.results;
     compareDelivered.add(id);
   }
   const selected = {};
@@ -332,8 +375,76 @@ function paintCompare() {
   }
   const selectedId = (requested.OD ?? requested.OS)?.materialId ?? null;
   renderMaterialTable({ selectedId, selected, others });
+  if (configA) {
+    renderConfigCompare({ config: configA, A: resultA === null ? { OD: null, OS: null } : resultA, B: selected, same: sameConfig() });
+    if (showA) paintCards();
+  }
   for (const id of compareDelivered) comparePending.delete(id);
   compareDelivered.clear();
   writeComparePending();
   onComparePainted(frameStart);
+}
+
+// ---- Configuration comparison (02-08) ----
+
+/** The current input's frame and material equal A's (nothing changed yet). */
+function sameConfig() {
+  const s = requested.OD ?? requested.OS;
+  return !!s && !!configA && s.materialId === configA.materialId && JSON.stringify(s.frame) === JSON.stringify(configA.frame);
+}
+
+/** Material named under the cards: A's while Vorher is shown (main.js update uses this too). */
+export function cardMaterialId(currentId) {
+  return showA && configA ? configA.materialId : currentId;
+}
+
+/**
+ * Paint the result cards from the configuration the toggle shows. B = the painted main results;
+ * A = the A job's results for the current input (while still computing, the card's values are
+ * marked stale until A is painted). An eye without a main spec keeps main.js's not-ready card.
+ */
+function paintCards() {
+  for (const eye of EYES) {
+    if (requested[eye] === null) continue;
+    if (showA) {
+      // A still computing: the values on the card are not A's yet, so they are marked (T-02-21).
+      if (resultA === undefined) {
+        setStale(eye, true);
+        continue;
+      }
+      const r = resultA?.[eye];
+      if (r) renderResult(eye, r, specA[eye]);
+      else renderFailed(eye);
+    } else {
+      const s = shown[eye];
+      if (s?.key !== requestedKeys[eye]) continue;
+      if (s.result) renderResult(eye, s.result, requested[eye]);
+      else renderFailed(eye);
+    }
+  }
+  renderLrCallout();
+  const materialId = cardMaterialId(currentConfig().materialId);
+  for (const eye of EYES) {
+    setText(`result-${eye.toLowerCase()}-suffix`, showA ? t('cmp.show.suffix.a') : '');
+    renderMaterialLine(eye, materialId);
+  }
+}
+
+/** 'Variante vergleichen': freeze frame + material as A; the status is written before the focus. */
+function startConfigCompare() {
+  configA = currentConfig();
+  setConfigActive(true);
+  renderConfigCompare({ config: configA, A: undefined, B: {}, same: sameConfig() });
+  $('cmp-diff').focus();
+  startCompare(requested);
+}
+
+/** 'Vergleich beenden': back to one configuration (B stays current), focus on the CTA. */
+function endConfigCompare() {
+  configA = null;
+  showA = false;
+  resultA = undefined;
+  setConfigActive(false);
+  paintCards();
+  $('cmp-start').focus();
 }

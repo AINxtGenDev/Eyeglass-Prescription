@@ -205,6 +205,23 @@ test('an Rx change recomputes A and B with the new Rx (D-28: the Rx is shared)',
   expect(await text(cfgCell(page, 'thickOD', 'a'))).toBe('4,6 mm');
 });
 
+test('Vorher shown before A is computed: the B values on the card are marked, then A is painted (T-02-21)', async ({ page }) => {
+  await settled(page);
+  await slowWorker(page, 1500, { types: ['compare'] });
+  await page.goto('./');
+  await settledCompare(page, { timeout: 20_000 });
+  await page.locator('#cmp-start').click();
+  await material(page, 'idx174').check();
+  await settled(page);
+  await expect(page.locator('#compare')).not.toHaveAttribute('data-pending', '');
+  await showRadio(page, 'a').check();
+  await expect(page.locator('#result-od-thick')).toHaveAttribute('data-stale', 'true');
+  expect(await text(page.locator('#result-od-title'))).toContain('Vorher (A)');
+  await settledCompare(page, { timeout: 20_000 });
+  await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
+  await expect(page.locator('#result-od-thick')).not.toHaveAttribute('data-stale', /.*/);
+});
+
 test("'Vergleich beenden' keeps B, hides the comparison and focuses 'Variante vergleichen'", async ({ page }) => {
   await settledCompare(page);
   await compareWith174(page);

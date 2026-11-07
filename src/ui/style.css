@@ -1198,3 +1198,149 @@ td:has(.msg-out) input[aria-invalid='true'] {
     display: none;
   }
 }
+
+/* 02-08 configuration comparison (UI-SPEC "#cmp-config", Accent list items 2 and 4). */
+#cmp-config {
+  margin-block-start: var(--space-8);
+}
+
+/* The only filled accent button on the page: full width in a narrow container. */
+.btn-primary {
+  width: 100%;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+@container cmp (width >= 480px) {
+  .btn-primary {
+    width: auto;
+  }
+}
+
+.cmp-diff {
+  font-weight: 600;
+}
+
+/* A two-value table fits 288 px, so it stays a table on every width (D-29 as changed). */
+.cmp-config-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cmp-config-table th,
+.cmp-config-table td {
+  padding: var(--space-2);
+  text-align: start;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-config-table thead th {
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-block-end: 1px solid var(--line);
+}
+
+.cmp-config-table tbody th {
+  font-weight: 600;
+}
+
+/* Numbers never break inside ("4,6 mm"); the row label column shrinks instead. */
+.cmp-config-table .cmp-val {
+  white-space: nowrap;
+}
+
+.cmp-config-table tbody tr + tr > * {
+  border-block-start: 1px solid var(--line);
+}
+
+/* The per-row difference under B appears only when the Unterschied column is dropped. */
+.cmp-rowdiff {
+  display: none;
+}
+
+@container cmp (width < 480px) {
+  .cmp-config-table th:nth-child(4),
+  .cmp-config-table td[data-col='diff'] {
+    display: none;
+  }
+
+  .cmp-rowdiff {
+    display: block;
+    font-size: 0.875rem;
+  }
+}
+
+/* Segmented control: native radios, visually hidden; the selected segment is accent-filled with
+   white text and the check icon (state carried by the icon, not by colour alone). */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: var(--space-4) 0;
+  padding: 0;
+  border: 0;
+}
+
+.segmented legend {
+  width: 100%;
+  margin-block-end: var(--space-2);
+  padding: 0;
+}
+
+.segmented label {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--fg);
+  cursor: pointer;
+}
+
+.segmented label + label {
+  border-inline-start: 0;
+}
+
+.segmented label:first-of-type {
+  border-radius: 4px 0 0 4px;
+}
+
+.segmented label:last-of-type {
+  border-radius: 0 4px 4px 0;
+}
+
+.segmented input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmented .icon {
+  display: none;
+}
+
+.segmented label:has(:checked) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.segmented label:has(:checked) .icon {
+  display: inline-block;
+}
+
+.segmented label:has(:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  z-index: 1;
+}

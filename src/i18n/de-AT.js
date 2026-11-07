@@ -228,6 +228,47 @@ export default Object.freeze({
   'cmp.footnote':
     'Die anderen Materialien sind mit ihren eigenen Mindestdicken gerechnet; Ihre Basiskurve und Vorderfläche gelten für alle.',
   'cmp.assumedNote': 'Für {materials} ist die Mindest-Randdicke angenommen (keine Herstellerangabe).',
+  // Configuration comparison (02-08, RES-03, D-28, UI-SPEC Copywriting "Vergleich"). {mm}/{g}
+  // are fmtMm/fmtGramWhole strings of the absolute displayed differences of B − A; the words
+  // carry the sign. German comparatives take "als", equality takes "wie", so the equal parts have
+  // their own sentences.
+  'cmp.config.title': 'Zwei Varianten vergleichen',
+  'cmp.config.help':
+    'Merkt sich die jetzige Fassung und das Material als „Vorher“. Ändern Sie danach Fassung oder Material – das wird „Nachher“.',
+  'cmp.config.cta': 'Variante vergleichen',
+  'cmp.config.status': 'Vorher (A) ist gemerkt: {shape} {A}□{DBL}, {material}. Ändern Sie jetzt Fassung oder Material.',
+  'cmp.config.same': 'Nachher ist noch gleich wie Vorher. Ändern Sie Fassung oder Material.',
+  'cmp.config.diff': 'Nachher (B) ist an der dicksten Stelle {mm} {thinnerThicker} und insgesamt {g} {lighterHeavier} als Vorher (A).',
+  'cmp.config.diffEqualThick':
+    'Nachher (B) ist an der dicksten Stelle gleich dick wie Vorher (A) und insgesamt {g} {lighterHeavier}.',
+  'cmp.config.diffEqualWeight':
+    'Nachher (B) ist an der dicksten Stelle {mm} {thinnerThicker} als Vorher (A) und insgesamt gleich schwer.',
+  'cmp.config.equal': 'Nachher (B) ist an der dicksten Stelle gleich dick und insgesamt gleich schwer wie Vorher (A).',
+  'cmp.config.partial': 'Verglichen wird nur {eye}; das andere Glas ist nicht in beiden Varianten berechnet.',
+  'cmp.config.word.thinner': 'dünner',
+  'cmp.config.word.thicker': 'dicker',
+  'cmp.config.word.lighter': 'leichter',
+  'cmp.config.word.heavier': 'schwerer',
+  'cmp.config.end': 'Vergleich beenden',
+  'cmp.cfg.caption': 'Vorher und Nachher im Vergleich',
+  'cmp.cfg.col.row': 'Wert',
+  'cmp.cfg.col.a': 'Vorher (A)',
+  'cmp.cfg.col.b': 'Nachher (B)',
+  'cmp.cfg.col.diff': 'Unterschied',
+  'cmp.cfg.row.thickOD': 'Dickste Stelle rechts',
+  'cmp.cfg.row.thickOS': 'Dickste Stelle links',
+  'cmp.cfg.row.ctOD': 'Mittendicke rechts',
+  'cmp.cfg.row.ctOS': 'Mittendicke links',
+  'cmp.cfg.row.weightBoth': 'Gewicht (beide)',
+  'cmp.cfg.diff.thinner': '{mm} dünner',
+  'cmp.cfg.diff.thicker': '{mm} dicker',
+  'cmp.cfg.diff.lighter': '{g} leichter',
+  'cmp.cfg.diff.heavier': '{g} schwerer',
+  'cmp.cfg.diff.same': 'gleich',
+  'cmp.show.legend': 'Ergebniskarten zeigen:',
+  'cmp.show.a': 'Vorher',
+  'cmp.show.b': 'Nachher',
+  'cmp.show.suffix.a': ' – Vorher (A)',
   'tip.ct.name': 'Erklärung: Mittendicke',
   'tip.ct.text': 'Mittendicke: die Dicke des Glases in der Mitte. Bei Plusgläsern ist sie meist die dickste Stelle.',
   'tip.et.name': 'Erklärung: Randdicke',

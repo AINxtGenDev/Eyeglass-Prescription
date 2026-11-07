@@ -27,6 +27,7 @@ import {
   requested,
   initPipeline,
   requestMain,
+  cardMaterialId,
 } from './pipeline.js';
 import {
   initTiming,
@@ -92,7 +93,8 @@ function update(inputTs) {
   const fr = readFrame();
   lastFrame = fr;
   const materialId = currentMaterialId();
-  for (const eye of EYES) renderMaterialLine(eye, materialId);
+  // 02-08: while Vorher (A) is shown, the cards name A's material.
+  for (const eye of EYES) renderMaterialLine(eye, cardMaterialId(materialId));
   const ready = (eye) => fr.frame !== null && read[eye].rx !== null && read[eye].pd !== null;
   const specs = { OD: null, OS: null };
   for (const eye of EYES) {
@@ -163,6 +165,7 @@ function init() {
     onPainted: timeResultFrame,
     onCompute: (ms) => pushTiming(timings.compute, ms),
     onComparePainted: timeCompareFrame,
+    currentConfig: () => ({ frame: lastFrame?.frame ?? null, materialId: currentMaterialId() }),
   });
   setComputeMode('worker', 'tech.mode.worker');
   initMaterialInput({ schedule });

@@ -5,10 +5,11 @@
 // with data-cmp-stale, never with the main result's stale attribute, which keeps its main-only
 // meaning (PATTERNS risk 4). Every string is written with textContent (T-02-20).
 import { MATERIALS } from '../engine/materials.js';
-import { materialRows, thickest, roundMm } from '../state/compare.js';
+import { materialRows, thickest, roundMm, configDiff, displayedValues } from '../state/compare.js';
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtGramWhole } from '../i18n/format.js';
 import { $, setText } from './dom.js';
+import { icon } from './icons.js';
 
 const IDS = Object.keys(MATERIALS);
 const EYES = /** @type {const} */ (['OD', 'OS']);
@@ -50,6 +51,8 @@ const rows = new Map();
 /** @type {Map<string, { tr: HTMLTableRowElement, outdated: boolean, vals: HTMLElement[], c: Record<string, any> }>} */
 const eyeRows = new Map();
 let staleOn = false;
+/** The configuration table's values belong to the previous input (02-08). */
+let cfgOutdated = false;
 
 function buildRows() {
   const body = /** @type {HTMLElement} */ (document.querySelector('#cmp-material-table tbody'));
@@ -115,6 +118,8 @@ export function initCompareView() {
   const assumed = IDS.filter((id) => MATERIALS[id].assumed?.includes('minET')).map((id) => t('material.' + id + '.title'));
   setText('cmp-assumed-note', assumed.length > 0 ? t('cmp.assumedNote', { materials: assumed.join(' und ') }) : '');
   $('cmp-assumed-note').hidden = assumed.length === 0;
+  // 02-08: the check icon in both Vorher | Nachher segments (state is the native radio's checked).
+  for (const input of document.querySelectorAll('#cmp-show input')) input.after(icon('check'));
 }
 
 /** The input changed: every row's values now belong to the previous input. */
@@ -123,12 +128,15 @@ export function markOutdated() {
     r.outdated = true;
     if (staleOn) markRow(r, true);
   }
+  cfgOutdated = true;
+  if (staleOn) markConfig(true);
 }
 
 /** Dotted underline on the outdated rows while the comparison is computing (or not run, sync). */
 export function setCompareStale(on) {
   staleOn = on;
   for (const r of [...rows.values(), ...eyeRows.values()]) markRow(r, on && r.outdated);
+  markConfig(on && cfgOutdated);
 }
 
 /** Difference sentence key and params from the signed displayed differences (row thinner = +). */
@@ -233,4 +241,106 @@ export function renderMaterialTable({ selectedId, selected, others }) {
       else paintEyeRow(r, pair === undefined ? undefined : (pair?.[e] ?? null));
     }
   }
+}
+
+// ---- Configuration comparison (02-08, RES-03, D-28, UI-SPEC "#cmp-config") ----
+// All arithmetic is in src/state/compare.js configDiff; this part only formats.
+
+const sizeNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 1 });
+
+/** Value spans of the configuration table, for the stale mark. */
+const cfgVals = () => [...document.querySelectorAll('#cmp-config-table .cmp-val, #cmp-config-table .cmp-rowdiff, #cmp-diff')];
+
+function markConfig(on) {
+  for (const v of cfgVals()) {
+    if (on) /** @type {HTMLElement} */ (v).dataset.cmpStale = 'true';
+    else delete (/** @type {HTMLElement} */ (v).dataset.cmpStale);
+  }
+}
+
+/** A displayed value of a row ('weightBoth' in grams, the others in mm). */
+const fmtVal = (id, v) => (id === 'weightBoth' ? (fmtGramWhole(v) ?? t('result.weightUnder1')) : fmtMm(v));
+
+/** Signed difference B − A in words: "1,6 mm dünner", "4 g leichter", "gleich". */
+function rowDiffText(id, diff) {
+  if (diff === 0) return t('cmp.cfg.diff.same');
+  if (id === 'weightBoth') return t(diff < 0 ? 'cmp.cfg.diff.lighter' : 'cmp.cfg.diff.heavier', { g: fmtVal(id, Math.abs(diff)) });
+  return t(diff < 0 ? 'cmp.cfg.diff.thinner' : 'cmp.cfg.diff.thicker', { mm: fmtMm(Math.abs(diff)) });
+}
+
+/** The difference sentence from the summary (B − A; negative = B thinner or lighter). */
+function configSentence(s) {
+  const mm = fmtMm(Math.abs(s.thickDiffMm));
+  const g = fmtGramWhole(Math.abs(s.weightDiffG)) ?? t('result.weightUnder1');
+  const thinnerThicker = t(s.thickDiffMm < 0 ? 'cmp.config.word.thinner' : 'cmp.config.word.thicker');
+  const lighterHeavier = t(s.weightDiffG < 0 ? 'cmp.config.word.lighter' : 'cmp.config.word.heavier');
+  let text;
+  if (s.thickDiffMm === 0 && s.weightDiffG === 0) text = t('cmp.config.equal');
+  else if (s.thickDiffMm === 0) text = t('cmp.config.diffEqualThick', { g, lighterHeavier });
+  else if (s.weightDiffG === 0) text = t('cmp.config.diffEqualWeight', { mm, thinnerThicker });
+  else text = t('cmp.config.diff', { mm, thinnerThicker, g, lighterHeavier });
+  if (s.partial) text += ' ' + t('cmp.config.partial', { eye: t(s.eye === 'OD' ? 'cmp.eye.od' : 'cmp.eye.os') });
+  return text;
+}
+
+/**
+ * Status line naming the frozen configuration A: shape, A□DBL and material from the dictionary,
+ * sizes through Intl (T-02-23: textContent only).
+ * @param {{ frame: { shape: string, A: number, DBL: number } | null, materialId: string }} config
+ */
+function statusText(config) {
+  const f = config.frame;
+  return t('cmp.config.status', {
+    shape: f ? t('frame.shape.' + f.shape) : DASH,
+    A: f ? sizeNf.format(f.A) : DASH,
+    DBL: f ? sizeNf.format(f.DBL) : DASH,
+    material: t('material.' + config.materialId),
+  });
+}
+
+/** Show or hide the active block, with empty values; the toggle is back on Nachher afterwards. */
+export function setConfigActive(on) {
+  $('cmp-active').hidden = !on;
+  cfgOutdated = false;
+  markConfig(false);
+  for (const v of document.querySelectorAll('#cmp-config-table .cmp-val')) write(/** @type {HTMLElement} */ (v), on ? DASH : '');
+  for (const v of document.querySelectorAll('#cmp-config-table .cmp-rowdiff')) write(/** @type {HTMLElement} */ (v), '');
+  setText('cmp-diff', '');
+  setText('cmp-a-status', '');
+  if (!on) /** @type {HTMLInputElement} */ (document.querySelector('#cmp-show input[value=b]')).checked = true;
+}
+
+/**
+ * Paint the configuration comparison. A and B are LensResult pairs ({ OD, OS }, an eye null when
+ * not computed); A undefined = still computing (old values stay, marked). `same` = the current
+ * frame and material equal A's (then the "noch gleich" sentence is shown).
+ * @param {{ config: { frame: object|null, materialId: string }, A: { OD?: object|null, OS?: object|null } | undefined,
+ *   B: { OD?: object|null, OS?: object|null }, same: boolean }} o
+ */
+export function renderConfigCompare({ config, A, B, same }) {
+  setText('cmp-a-status', statusText(config));
+  if (A === undefined) {
+    if (same) setText('cmp-diff', t('cmp.config.same'));
+    return; // pending: old values stay, marked while the comparison computes
+  }
+  const shownOf = (pair) => ({ OD: displayedValues(pair?.OD), OS: displayedValues(pair?.OS) });
+  const { rows: list, summary } = configDiff(shownOf(A), shownOf(B));
+  for (const row of list) {
+    const tr = /** @type {HTMLElement} */ ($('cmp-row-' + row.id));
+    const [a, b, d] = ['a', 'b', 'diff'].map((c) => /** @type {HTMLElement} */ (tr.querySelector(`td[data-col=${c}] .cmp-val`)));
+    const under = /** @type {HTMLElement} */ (tr.querySelector('.cmp-rowdiff'));
+    if (row.failed) {
+      for (const el of [a, b, d]) write(el, DASH);
+      write(under, '');
+      continue;
+    }
+    write(a, fmtVal(row.id, row.a));
+    write(b, fmtVal(row.id, row.b));
+    const diff = rowDiffText(row.id, row.diff);
+    write(d, diff);
+    write(under, diff);
+  }
+  setText('cmp-diff', same ? t('cmp.config.same') : summary === null ? '' : configSentence(summary));
+  cfgOutdated = false;
+  markConfig(false);
 }
