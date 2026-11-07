@@ -754,11 +754,28 @@ td:has(.msg-out) input[aria-invalid='true'] {
     border: 0;
   }
 
+  /* Two columns like the eye cards (Sph | Zyl, Achse | PD): always two 44 px rows. A wrapping
+     flex row needed a third row when the fallback font was wider (DejaVu Sans on the CI runner),
+     which pushed R Sph below the first phone screen. A long term wraps inside its own row. */
   .rx-table thead tr:first-child {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: var(--space-4);
     margin-block-end: var(--space-2);
+  }
+
+  /* UI-SPEC Typography: column headers 14 px, 600, line-height 1.4. */
+  .rx-table thead th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  /* The text wraps next to the tip button instead of pushing the button to a second line;
+     block-level flex adds no baseline strut, so a two-line term stays 44 px high. */
+  .rx-table thead .term {
+    display: flex;
+    flex-wrap: nowrap;
   }
 
   .rx-table thead tr:first-child th:first-child {
@@ -1049,6 +1066,8 @@ td:has(.msg-out) input[aria-invalid='true'] {
   flex-basis: 100%;
   margin: 0;
   font-size: 0.875rem;
+  /* UI-SPEC Typography "Label / small": 14 px with line-height 1.4. */
+  line-height: 1.4;
   color: var(--muted);
 }
 
@@ -1092,6 +1111,29 @@ td:has(.msg-out) input[aria-invalid='true'] {
    480 px container, stacked rows with visible cell labels below. */
 #compare {
   container: cmp / inline-size;
+}
+
+/* 02-15: the intro and invisible copies of all its wordings share one grid cell, so the height is
+   that of the longest wording and a switch (tie ↔ "das dickere Glas") never moves the page.
+   visibility: hidden also keeps the copies out of the accessibility tree. The margins sit on the
+   stack, so they still collapse with the heading like the former plain paragraph. */
+.intro-stack,
+.intro-sizers {
+  display: grid;
+}
+
+.intro-stack {
+  margin-block: 1em;
+}
+
+.intro-stack > *,
+.intro-sizers > * {
+  grid-area: 1 / 1;
+  margin: 0;
+}
+
+.intro-sizers {
+  visibility: hidden;
 }
 
 /* One line reserved, so "Vergleich rechnet …" never moves the table. */

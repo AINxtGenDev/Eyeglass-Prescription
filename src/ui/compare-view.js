@@ -8,7 +8,7 @@ import { MATERIALS } from '../engine/materials.js';
 import { materialRows, shownEye, thickest, roundMm, configDiff, displayedValues } from '../state/compare.js';
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtGramWhole } from '../i18n/format.js';
-import { $, setText } from './dom.js';
+import { $, setText, para } from './dom.js';
 import { icon } from './icons.js';
 
 const IDS = Object.keys(MATERIALS);
@@ -223,6 +223,23 @@ function paintEyeRow(r, res) {
 }
 
 /**
+ * 02-15: every wording of the intro (tie or "das dickere Glas", right or left glass) sits
+ * invisible in the same grid cell as the intro, so the block is always as high as the longest
+ * wrapped wording. Switching wording never moves the table or the disclaimer, in any font (the
+ * line counts differed only with the CI runner's DejaVu Sans).
+ * @param {boolean} on
+ */
+function sizeIntro(on) {
+  const box = $('cmp-material-intro-sizers');
+  const texts = on
+    ? ['cmp.eye.od', 'cmp.eye.os'].flatMap((eye) =>
+        ['cmp.eye.tie', 'cmp.eye.thicker'].map((v) => t('cmp.material.intro', { eye: t(v, { eye: t(eye) }) })),
+      )
+    : [];
+  if (box.childElementCount !== texts.length) box.replaceChildren(...texts.map(para));
+}
+
+/**
  * Paint the comparison for the main result pair `selected` (never recomputed, D-15) and the
  * compare results `others` (material id → { OD, OS } pair; null = failed; missing = pending).
  * @param {{ selectedId: string|null, selected: { OD?: object|null, OS?: object|null }, others: Record<string, object|null> }} o
@@ -240,6 +257,7 @@ export function renderMaterialTable({ selectedId, selected, others }) {
   const list = selectedId === null ? [] : materialRows({ selectedId, selected, others });
   if (list.length === 0) {
     setText('cmp-material-intro', '');
+    sizeIntro(false);
     for (const r of rows.values()) clearRow(r);
     for (const r of eyeRows.values()) paintEyeRow(r, null);
     return;
@@ -249,6 +267,7 @@ export function renderMaterialTable({ selectedId, selected, others }) {
   const { eye, tie } = /** @type {{ eye: 'OD'|'OS', tie: boolean }} */ (shownEye(selected));
   const eyeText = t(eye === 'OD' ? 'cmp.eye.od' : 'cmp.eye.os');
   setText('cmp-material-intro', t('cmp.material.intro', { eye: t(tie ? 'cmp.eye.tie' : 'cmp.eye.thicker', { eye: eyeText }) }));
+  sizeIntro(true);
   for (const row of list) paintRow(/** @type {any} */ (rows.get(row.id)), row);
   for (const id of custom ? ROW_IDS : IDS) {
     const pair = id === selectedId ? selected : others[id];

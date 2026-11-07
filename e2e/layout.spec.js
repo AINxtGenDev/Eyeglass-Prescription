@@ -63,7 +63,8 @@ test.describe('360 × 780', () => {
     const bar = page.locator('#summary-bar');
     await expect(bar).toBeVisible();
     // 02-14: the Rx preset chips follow the table, so the Rx entry starts on the first screen:
-    // the table caption is in view and R Sph begins above the summary bar (measured 693 < 720 px).
+    // the table caption is in view and R Sph begins above the summary bar. Measured against the
+    // 720 px bar top (02-15): 685 px with Noto Sans, 704 px with DejaVu Sans (the CI runner font).
     await expect(page.locator('#rx-table caption')).toBeInViewport();
     const sphTop = (await page.locator('#rx-od-sph').boundingBox()).y;
     expect(sphTop, 'R Sph top above the summary bar top').toBeLessThan((await bar.boundingBox()).y);
