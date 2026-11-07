@@ -1,6 +1,6 @@
 // Thickest and thinnest point, display rounding and the left/right difference rule (02-01, RES-01, RES-04).
 // Pure: no DOM, no i18n text. Returns codes; src/ui turns them into German.
-// Material rows (02-06, RES-02): materialRows / thickerEye.
+// Material rows (02-06, RES-02): materialRows / thickerEye / shownEye (02-19).
 import { MATERIALS } from '../engine/materials.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
@@ -141,6 +141,22 @@ export function thickerEye({ OD, OS }) {
 const okLens = (r) => r?.ok === true;
 
 /**
+ * The eye the material comparison shows (02-19, lens-critic m3): thickerEye on the displayed
+ * thickest values of the selected material (tie → OD), and whether it is a tie, so the intro does
+ * not call one of two equally thick glasses "das dickere Glas". tie is true only when both eyes are
+ * computed and their displayed (roundMm) thickest values are equal.
+ * @param {{ OD?: object|null, OS?: object|null } | null | undefined} selected main LensResult pair
+ * @returns {{ eye: 'OD'|'OS', tie: boolean } | null} null when no selected eye is computed
+ */
+export function shownEye(selected) {
+  const shown = (r) => (okLens(r) ? roundMm(thickest(r.metrics).value) : null);
+  const OD = shown(selected?.OD);
+  const OS = shown(selected?.OS);
+  if (OD === null && OS === null) return null;
+  return { eye: thickerEye({ OD, OS }), tie: OD !== null && OS !== null && OD === OS };
+}
+
+/**
  * Rows of the material comparison (D-15, D-16), in MATERIALS order, codes only.
  *
  * - Thickness is thickest(m) = max(CT, etMax) (lens-critic B1, the same rule as the result card),
@@ -167,8 +183,7 @@ const okLens = (r) => r?.ok === true;
 export function materialRows({ selectedId, selected, others }) {
   const eyes = EYES.filter((e) => okLens(selected?.[e]));
   if (eyes.length === 0) return [];
-  const shown = (r) => (okLens(r) ? roundMm(thickest(r.metrics).value) : null);
-  const eye = thickerEye({ OD: shown(selected.OD), OS: shown(selected.OS) });
+  const eye = /** @type {{ eye: 'OD'|'OS' }} */ (shownEye(selected)).eye;
 
   const rowOf = (id, pair, isSelected) => {
     if (!isSelected && pair === undefined) return { id, pending: true };

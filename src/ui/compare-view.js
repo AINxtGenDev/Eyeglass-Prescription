@@ -5,7 +5,7 @@
 // with data-cmp-stale, never with the main result's stale attribute, which keeps its main-only
 // meaning (PATTERNS risk 4). Every string is written with textContent (T-02-20).
 import { MATERIALS } from '../engine/materials.js';
-import { materialRows, thickest, roundMm, configDiff, displayedValues } from '../state/compare.js';
+import { materialRows, shownEye, thickest, roundMm, configDiff, displayedValues } from '../state/compare.js';
 import { t } from '../i18n/t.js';
 import { fmtMm, fmtGramWhole } from '../i18n/format.js';
 import { $, setText } from './dom.js';
@@ -244,8 +244,11 @@ export function renderMaterialTable({ selectedId, selected, others }) {
     for (const r of eyeRows.values()) paintEyeRow(r, null);
     return;
   }
-  const eye = /** @type {{ eye: 'OD'|'OS' }} */ (list.find((row) => row.selected)).eye;
-  setText('cmp-material-intro', t('cmp.material.intro', { eye: t(eye === 'OD' ? 'cmp.eye.od' : 'cmp.eye.os') }));
+  // 02-19 (lens-critic m3): the same eye as every row (materialRows uses shownEye too); a tie on
+  // the displayed values is named as such instead of "das dickere Glas".
+  const { eye, tie } = /** @type {{ eye: 'OD'|'OS', tie: boolean }} */ (shownEye(selected));
+  const eyeText = t(eye === 'OD' ? 'cmp.eye.od' : 'cmp.eye.os');
+  setText('cmp-material-intro', t('cmp.material.intro', { eye: t(tie ? 'cmp.eye.tie' : 'cmp.eye.thicker', { eye: eyeText }) }));
   for (const row of list) paintRow(/** @type {any} */ (rows.get(row.id)), row);
   for (const id of custom ? ROW_IDS : IDS) {
     const pair = id === selectedId ? selected : others[id];

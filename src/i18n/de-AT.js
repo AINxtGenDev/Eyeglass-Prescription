@@ -243,8 +243,12 @@ export default Object.freeze({
   // Material comparison (02-07, RES-02, D-15, UI-SPEC Copywriting "Vergleich"). {mm}/{g} are
   // fmtMm/fmtGramWhole strings of the absolute displayed differences; the words carry the sign.
   'cmp.material.title': 'Was bringt ein anderes Material?',
+  // 02-19 (lens-critic m3, m4): {eye} is cmp.eye.thicker or, when both glasses show the same
+  // thickest value, cmp.eye.tie; the per-material minimum is stated always, not only in cmp.footnote.
   'cmp.material.intro':
-    'Gleiches Rezept, gleiche Fassung. Dickste Stelle (Mitte oder Rand): {eye} (das dickere Glas). Gewicht: beide Gläser zusammen.',
+    'Gleiches Rezept, gleiche Fassung, jedes Material mit seiner eigenen Mindestdicke. Dickste Stelle (Mitte oder Rand): {eye}. Gewicht: beide Gläser zusammen.',
+  'cmp.eye.thicker': '{eye} (das dickere Glas)',
+  'cmp.eye.tie': 'beide Gläser gleich dick – gezeigt: {eye}',
   'cmp.eye.od': 'das rechte Glas',
   'cmp.eye.os': 'das linke Glas',
   'cmp.col.material': 'Material',
