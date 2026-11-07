@@ -79,6 +79,9 @@ test('the assumed minimum edge of 1,67 and 1,74 is footnoted', async ({ page }) 
 });
 
 test('comparison lane: "Vergleich rechnet …" and dotted old values, main settles first', async ({ page }) => {
+  // 02-08: let guardPage's first page load its worker before navigating again; otherwise the
+  // in-flight worker request is aborted and the guard counts a failed request (2/40 before).
+  await settled(page);
   await slowWorker(page, 1500, { types: ['compare'] });
   await page.goto('./');
   await settledCompare(page, { timeout: 20_000 });
