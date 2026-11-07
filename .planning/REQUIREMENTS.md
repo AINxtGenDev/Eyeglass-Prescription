@@ -17,14 +17,14 @@
 
 ### Prescription Input (RX)
 
-- [ ] **RX-01**: User enters the prescription in a table laid out like the paper Rx: rows R (rechtes Auge / OD) and L (linkes Auge / OS); columns Sph, Zyl, Achse, PD.
+- [x] **RX-01**: User enters the prescription in a table laid out like the paper Rx: rows R (rechtes Auge / OD) and L (linkes Auge / OS); columns Sph, Zyl, Achse, PD.
 - [x] **RX-02**: Number fields accept comma or point decimals, Unicode minus, leading `+`, trailing `dpt`/`D`, `°` on axis, and `plan`/`pl`/`plano` as 0; the parsed value is echoed back in de-AT format (e.g. `−2,25 dpt`).
 - [x] **RX-03**: Plus-cylinder input is accepted and automatically transposed to minus-cylinder form, and the user is shown both forms.
-- [ ] **RX-04**: Ranges enforced with plain-German messages next to the field: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (after transposition), Achse 0…180° (0 ≡ 180), PD 25,0…40,0 mm per eye. Values are never silently clamped.
-- [ ] **RX-05**: Validation distinguishes invalid (e.g. Zyl without Achse, Achse 200°), unusual-but-computed (e.g. off a 0,25 step → "Meinten Sie …?"), and outside-the-model; messages are linked to the field for screen readers.
+- [x] **RX-04**: Ranges enforced with plain-German messages next to the field: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (after transposition), Achse 0…180° (0 ≡ 180), PD 25,0…40,0 mm per eye. Values are never silently clamped.
+- [x] **RX-05**: Validation distinguishes invalid (e.g. Zyl without Achse, Achse 200°), unusual-but-computed (e.g. off a 0,25 step → "Meinten Sie …?"), and outside-the-model; messages are linked to the field for screen readers.
 - [ ] **RX-06**: PD can be entered as monocular per eye (`32/33`, `32,5`) or binocular (`64`, split evenly with a note); if PD is missing, a default is used and the result states clearly that PD was assumed.
-- [ ] **RX-07**: A "same for both eyes" option keeps L in sync with R.
-- [ ] **RX-08**: A collapsible section explains other values that may be on the paper (Add, Prisma/Basis, HSA, F/N); it states they are not modelled and that the single-vision distance lens is shown. Nothing on the paper is silently ignored.
+- [x] **RX-07**: A "same for both eyes" option keeps L in sync with R.
+- [x] **RX-08**: A collapsible section explains other values that may be on the paper (Add, Prisma/Basis, HSA, F/N); it states they are not modelled and that the single-vision distance lens is shown. Nothing on the paper is silently ignored.
 
 ### Frame (FRAME)
 
@@ -152,14 +152,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEPL-02 | Phase 1 | Complete |
 | DEPL-03 | Phase 1 | Complete |
 | DEPL-04 | Phase 1 | Complete |
-| RX-01 | Phase 2 | Pending |
+| RX-01 | Phase 2 | Complete |
 | RX-02 | Phase 1 | Complete |
 | RX-03 | Phase 1 | Complete |
-| RX-04 | Phase 2 | Pending |
-| RX-05 | Phase 2 | Pending |
+| RX-04 | Phase 2 | Complete |
+| RX-05 | Phase 2 | Complete |
 | RX-06 | Phase 2 | Pending |
-| RX-07 | Phase 2 | Pending |
-| RX-08 | Phase 2 | Pending |
+| RX-07 | Phase 2 | Complete |
+| RX-08 | Phase 2 | Complete |
 | FRAME-01 | Phase 1 | Complete |
 | FRAME-02 | Phase 2 | Pending |
 | FRAME-03 | Phase 2 | Pending |

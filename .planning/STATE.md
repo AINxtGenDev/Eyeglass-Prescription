@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-11-07T10:27:49.897Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-11-07T10:48:41.974Z"
 last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 30
-  completed_plans: 17
+  completed_plans: 18
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 3 of 15
+Plan: 4 of 15
 Status: Ready to execute
 Last activity: 2026-11-07
 
@@ -67,6 +67,7 @@ Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
 | Phase 01 P15 | 50min | 6 tasks | 21 files |
 | Phase 02 P01 | 25min | 3 tasks | 19 files |
 | Phase 02 P02 | 25min | 3 tasks | 15 files |
+| Phase 02 P03 | 20min | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,10 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-02]: Toggling Experten-Ansicht rewrites only the location spans (repaintFromLast); no compute, no stale-mark change
 - [Phase 02]: [02-02]: Summary bar accessible name = hidden 'Zum Ergebnis:' + visible text; the UI-SPEC aria-label failed axe label-content-name-mismatch (WCAG 2.5.3)
 - [Phase 02]: [02-02]: Only ANA-02 marked complete; UX-02 (more Expert blocks) and UX-03 (phase-3 lens view, iPhone check) stay Pending
+- [Phase 02]: [02-03]: Card-mode Rx header stays visible as a term row (tip buttons must not be focusable-but-invisible); only the Auge cell is hidden
+- [Phase 02]: [02-03]: Rx model range checked on the minus-cylinder form; out-of-model texts take {min}/{max} from RX_RANGES
+- [Phase 02]: [02-03]: Only field-message display is debounced (600 ms / blur); compute stays per input frame; blocked card shows 'Eingabe unvollständig …' until the message is due
+- [Phase 02]: [02-03]: UX-01 not complete yet: only Sph/Zyl/Achse/PD tips exist
 
 ### Pending Todos
 
@@ -139,6 +144,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-07T10:27:42.406Z
-Stopped at: Phase 2 UI-SPEC approved
+Last session: 2026-11-07T10:48:41.969Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
