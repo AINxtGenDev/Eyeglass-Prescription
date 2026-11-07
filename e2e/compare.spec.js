@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { settled, settledCompare, plain, guardPage, slowWorker } from './helpers.js';
-/* global document */
+/* global document, window */
 
 guardPage(test);
 
@@ -254,3 +254,72 @@ for (const vp of [
     });
   });
 }
+
+// RES-03, lens-critic M2 (02-17): while the cards show Vorher (A), the phone summary bar repeats
+// A's card strings, so it must say so ('Vorher (A):' before its label); Nachher and 'Vergleich
+// beenden' drop the prefix. The toggle is never switched for the user (WCAG 3.2.2 spirit).
+const barLabel = async (page) => plain(await page.locator('#summary-bar-label').textContent());
+const barVals = async (page) => plain(await page.locator('#summary-bar-values').textContent());
+const cardBar = async (page) => {
+  const v = async (eye, f) => text(page.locator(`#result-${eye}-${f}`));
+  return `R ${await v('od', 'thick')} · ${await v('od', 'weight')} | L ${await v('os', 'thick')} · ${await v('os', 'weight')}`;
+};
+async function barInView(page) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('#result')).not.toBeInViewport();
+  await expect(page.locator('#summary-bar')).toBeVisible();
+}
+
+test.describe('RES-03 summary bar marks Vorher (A), 360 × 780', () => {
+  test.use({ viewport: { width: 360, height: 780 } });
+
+  test('RES-03 summary bar: Vorher (A) prefix through toggle, frame edit and end', async ({ page }) => {
+    await settledCompare(page);
+    await compareWith174(page);
+    await showRadio(page, 'a').check();
+    await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
+    await barInView(page);
+    expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
+    const aBar = await cardBar(page);
+    expect(await barVals(page)).toBe(aBar);
+
+    // a frame edit changes B only; the cards and the bar keep A and stay marked
+    await page.locator('#frame-presets .chip', { hasText: 'Klein' }).click();
+    await settledCompare(page);
+    await barInView(page);
+    expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
+    expect(await cardBar(page)).toBe(aBar);
+    expect(await barVals(page)).toBe(aBar);
+
+    await showRadio(page, 'b').check();
+    await expect(page.locator('#result-od-title')).not.toContainText('Vorher');
+    await barInView(page);
+    expect(await barLabel(page)).not.toContain('Vorher');
+    expect(await barVals(page)).toBe(await cardBar(page));
+    expect(await barVals(page)).not.toBe(aBar);
+
+    await showRadio(page, 'a').check();
+    await barInView(page);
+    expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
+    await page.locator('#cmp-end').click();
+    await barInView(page);
+    expect(await barLabel(page)).not.toContain('Vorher');
+    expect(await barVals(page)).toBe(await cardBar(page));
+  });
+});
+
+test.describe('RES-03 summary bar with the Vorher prefix, 320 × 640', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  // style.css scroll-padding-bottom: 72px (WCAG 2.4.11) assumes a bar of at most 56 px (no wrap).
+  test('RES-03 summary bar: the prefixed bar stays ≤ 56 px tall', async ({ page }) => {
+    await settledCompare(page);
+    await compareWith174(page);
+    await showRadio(page, 'a').check();
+    await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
+    await barInView(page);
+    expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
+    const box = await page.locator('#summary-bar').boundingBox();
+    expect(box.height).toBeLessThanOrEqual(56);
+  });
+});
