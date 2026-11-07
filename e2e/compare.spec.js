@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { settled, settledCompare, plain, guardPage, slowWorker } from './helpers.js';
-/* global document, window */
+/* global document, window, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 guardPage(test);
 
@@ -349,4 +349,65 @@ test.describe('RES-03 summary bar with the Vorher prefix, 320 × 640', () => {
     expect(label.height, 'label on one line (14 px × 1.4)').toBeLessThanOrEqual(20.6);
     expect(box.height, 'bar below scroll-padding-bottom').toBeLessThan(72);
   });
+});
+
+// ---- 02-20 (lens-critic M4, amendments MJ-1 / m-c): the compare start runs in a following task ----
+
+const selectedThick = async (page) => text(page.locator('#cmp-material-table tbody tr[data-selected] td[data-col=thick]'));
+const tableText = (page) => page.evaluate(() => document.querySelector('#cmp-material-table tbody').textContent);
+
+test('ENG-09 RES-02: five quick R Sph values, the comparison converges to the last one (latest-wins)', async ({ page }) => {
+  await settledCompare(page);
+  const sph = page.locator('#rx-od-sph');
+  for (const v of ['-1', '-2,5', '-3', '-5,25', '-4']) await sph.fill(v);
+  await settledCompare(page);
+  const card = await text(page.locator('#result-od-thick'));
+  expect(await selectedThick(page)).toContain(card.replace(/\s.*$/, ''));
+  const after = await tableText(page);
+  // A fresh page that only ever saw the last value paints the same table.
+  await page.goto('./');
+  await settledCompare(page);
+  await page.locator('#rx-od-sph').fill('-4');
+  await settledCompare(page);
+  expect(await tableText(page)).toBe(after);
+});
+
+test('ENG-09 RES-02: #compare[data-pending] carries "queued" from the input frame on, and the start runs after the frame (MJ-1)', async ({ page }) => {
+  await settledCompare(page);
+  // The input frame is the next rAF after the input event: the page's rAF callback (update) was
+  // registered first, so this one runs right after it, inside the same frame.
+  const seen = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const el = /** @type {HTMLInputElement} */ (document.getElementById('rx-od-sph'));
+        el.value = '-3,5';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        requestAnimationFrame(() => resolve(document.getElementById('compare').dataset.pending));
+      }),
+  );
+  expect(seen.split(' ')).toContain('queued');
+  await settledCompare(page);
+  await expect(page.locator('#compare')).toHaveAttribute('data-pending', '');
+  // The deferred task is measured: the readout and its start-after-input-frame gap (never < 0).
+  await expect(page.locator('#timing-compare-start')).toHaveText(/\(letzte \d+\): Median [\d,]+\sms, längste [\d,]+\sms/);
+  expect(Number(await page.locator('#timing-compare-start').getAttribute('data-min-gap'))).toBeGreaterThanOrEqual(0);
+});
+
+test('ENG-09 RES-02: while the compare start is queued, no old rows are painted next to the new selection (m-c)', async ({ page }) => {
+  await settled(page);
+  // Test-only delay of the deferred compare start (?cmpdelay=<ms>).
+  await page.goto('./?cmpdelay=1200');
+  await settledCompare(page);
+  const before = await tableText(page);
+  await page.locator('#rx-od-sph').fill('-4');
+  await settled(page); // the main result for -4 is painted
+  await expect(page.locator('#compare')).toHaveAttribute('data-pending', /queued/);
+  // Inside the delay the table is not repainted: it still shows the previous input's rows only.
+  expect(await tableText(page)).toBe(before);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  expect(await tableText(page)).toBe(before);
+  await settledCompare(page);
+  const card = await text(page.locator('#result-od-thick'));
+  expect(await selectedThick(page)).toContain(card.replace(/\s.*$/, ''));
+  expect(await tableText(page)).not.toBe(before);
 });
