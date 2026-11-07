@@ -276,6 +276,18 @@ export default Object.freeze({
   'cmp.show.suffix.a': ' – Vorher (A)',
   'tip.ct.name': 'Erklärung: Mittendicke',
   'tip.ct.text': 'Mittendicke: die Dicke des Glases in der Mitte. Bei Plusgläsern ist sie meist die dickste Stelle.',
+  'tip.basecurve.name': 'Erklärung: Basiskurve',
+  'tip.basecurve.text':
+    'Die Wölbung der Vorderfläche in Dioptrien (auch Durchbiegung genannt). Sie beeinflusst, wie dick und wie gewölbt das Glas wird.',
+  'tip.dec.name': 'Erklärung: Dezentration',
+  'tip.dec.text':
+    'Wie weit der optische Mittelpunkt von der Glasmitte zur Nase hin verschoben ist. Sie ergibt sich aus PD, Glasbreite und Stegbreite.',
+  'tip.minct.name': 'Erklärung: Mindestmittendicke',
+  'tip.minct.text':
+    'Die kleinste Mittendicke, die der Hersteller für dieses Material angibt. Dünner wird das Glas in der Mitte nicht.',
+  'tip.minet.name': 'Erklärung: Mindestranddicke',
+  'tip.minet.text':
+    'Die kleinste Dicke an der dünnsten Stelle des Randes. Bei Plusgläsern legt sie oft die Mittendicke fest.',
   'tip.et.name': 'Erklärung: Randdicke',
   'tip.et.text':
     'Randdicke: die Dicke am Rand des Glases. Bei Minusgläsern ist der Rand meist am dicksten, besonders außen.',
@@ -381,7 +393,7 @@ export default Object.freeze({
   // later phase-2 plans extend it with their Expert blocks.
   'expert.switch': 'Experten-Ansicht',
   'expert.hint':
-    'Zeigt zusätzlich die Zwischenwerte: Dezentration, Basiskurve, Rückfläche, Radien, Pfeilhöhen, festlegende Mindestdicke und das Gewicht auf 0,1 g.',
+    'Zeigt zusätzlich die Glas-Einstellungen (Basiskurve und Mindestdicken selbst wählen) und die Zwischenwerte: Dezentration, Basiskurve, Rückfläche, Radien, Pfeilhöhen, festlegende Mindestdicke und das Gewicht auf 0,1 g.',
   'expert.tag': 'Experten-Ansicht',
   'expert.analysis.title': 'Experten-Analyse',
   'expert.zw.title': 'Zwischenwerte',
@@ -400,6 +412,25 @@ export default Object.freeze({
   'expert.zw.sags.point': '{where}: vorne {front}, hinten {back}',
   'expert.binding.minCT': 'Die Mittendicke ist durch den Mindestwert festgelegt.',
   'expert.binding.minET': 'Die Mittendicke ergibt sich aus der Mindest-Randdicke.',
+  // Glas-Einstellungen (02-10, MAT-03, MAT-04, UI-SPEC Copywriting "Material" Expert rows).
+  'expert.gs.title': 'Glas-Einstellungen',
+  'expert.bc.label': 'Basiskurve (dpt) – leer lassen für automatisch',
+  'expert.bc.echoManual': 'von Ihnen vorgegeben',
+  'expert.bc.echoAuto': 'automatisch',
+  // {glass} = result.glass.*, {value} = fmtDiopter of the automatic D1, {vogelRef} = basecurve.* sentence.
+  'expert.bc.autoLine': '{glass} – automatisch: {value} – dünnstes Glas, flachste Vorderfläche innerhalb 0,1 mm. {vogelRef}',
+  'expert.bc.autoNone': '{glass} – automatisch: –',
+  'expert.bc.minusNote':
+    'Bei Minusgläsern wählt das Modell automatisch die flachste Vorderfläche (+0,50 dpt), weil sie das dünnste Glas ergibt. Handelsübliche Gläser sind oft stärker gewölbt (Faustregel nach Vogel); mit „Vogel-Basiskurve übernehmen“ sehen Sie ein solches Glas.',
+  'expert.bc.vogelApply': 'Vogel-Basiskurve übernehmen',
+  'expert.min.ct': 'Mindest\u00ADmitten\u00ADdicke (mm)',
+  'expert.min.et': 'Mindest\u00ADrand\u00ADdicke (mm)',
+  'expert.min.reset': 'Standardwerte setzen',
+  'expert.min.sourced': 'Herstellerangabe (Zeiss-Datenblatt)',
+  'expert.min.assumed': 'angenommen (keine Herstellerangabe)',
+  'expert.min.typed': 'von Ihnen vorgegeben',
+  // {glass} = result.glass.*, {text} = expert.binding.*
+  'expert.binding.line': '{glass}: {text}',
 
   // D-01 final + D-C (01-12): the flattest front within τ = 0,1 mm of the thinnest; Vogel is a reference only.
   'basecurve.rule.thinnest':
@@ -409,6 +440,8 @@ export default Object.freeze({
   'basecurve.vogelRef': '(zum Vergleich: übliche Faustregel nach Vogel {vogel})',
   'basecurve.vogelRefThicker':
     '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit wäre das Glas an der dicksten Stelle {thickness} dick)',
+  // 02-10 (lens-critic phase-1 MINOR-5): the Vogel value as a usable 0,25 dpt step in 0,00…+10,00.
+  'basecurve.vogelRounded': 'Zum Übernehmen gerundet: {rounded}.',
   'basecurve.vogelRefImpossible':
     '(zum Vergleich: übliche Faustregel nach Vogel {vogel}; damit ließe sich das Glas in diesem Modell nicht berechnen)',
 

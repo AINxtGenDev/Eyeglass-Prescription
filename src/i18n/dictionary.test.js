@@ -140,11 +140,12 @@ describe('L10N-02 completeness (codes ↔ dictionary, both ways)', () => {
     }
   });
 
-  test('every {param} in basecurve.* is vogel, thickness or clamped', () => {
+  test('every {param} in basecurve.* is vogel, thickness, clamped or rounded', () => {
     for (const [key, v] of Object.entries(dict)) {
       if (!key.startsWith('basecurve.')) continue;
       // clamped: basecurve.vogelClamped only (01-13, MINOR-1), passed by main.js baseCurveText
-      for (const p of placeholders(v)) expect(['vogel', 'thickness', 'clamped'], `${key} {${p}}`).toContain(p);
+      // rounded: basecurve.vogelRounded only (02-10, MINOR-5), the 0,25 dpt step in 0,00…+10,00
+      for (const p of placeholders(v)) expect(['vogel', 'thickness', 'clamped', 'rounded'], `${key} {${p}}`).toContain(p);
     }
   });
 

@@ -7,6 +7,9 @@
 // 02-08: the configuration comparison (D-28): 'Variante vergleichen' freezes frame + material as
 // Vorher (A); A is one more job on the same lane, queued first, with the current (shared) Rx. The
 // Vorher | Nachher toggle chooses which configuration the result cards show.
+// 02-10: with Expert overrides the material rows keep the manual base curve but use each
+// material's own minimum thicknesses (RESEARCH Pitfall 11, footnote #cmp-footnote); a manual base
+// curve adds one more job with the automatic curve for the Glas-Einstellungen line.
 import { createComputeClient, BUSY_AFTER_MS } from '../state/compute-client.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
@@ -20,6 +23,7 @@ import {
   setConfigActive,
 } from './compare-view.js';
 import { renderMaterialLine } from './material-input.js';
+import { renderGlassSettings } from './expert.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
@@ -32,6 +36,7 @@ let onBench, onPainted, onCompute, onComparePainted, currentConfig;
 /** Wire the timing hooks; call once before startWorker(). */
 export function initPipeline(hooks) {
   ({ onBench, onPainted, onCompute, onComparePainted, currentConfig } = hooks);
+  setText('cmp-footnote', t('cmp.footnote'));
   $('cmp-run').addEventListener('click', runCompareFromButton);
   $('cmp-start').addEventListener('click', startConfigCompare);
   $('cmp-end').addEventListener('click', endConfigCompare);
@@ -214,10 +219,17 @@ export function requestMain(specs, inputTs) {
   requested = specs;
   requestedKeys = { OD: specs.OD ? JSON.stringify(specs.OD) : null, OS: specs.OS ? JSON.stringify(specs.OS) : null };
   client.request(specs, inputTs);
+  $('cmp-footnote').hidden = !hasOverrides(specs);
   // A changed main request starts a new compare generation in the client (and drops its queue);
   // an identical one keeps it, so the comparison is only requested when a main key changed.
   if (!client.isCompareCurrent(compareGen)) startCompare(specs);
 }
+
+/** A main spec carries an Expert override (02-10; overrides are null while the switch is off). */
+const hasOverrides = (specs) =>
+  EYES.some((eye) => specs[eye] && (specs[eye].baseCurve !== null || specs[eye].minCT !== null || specs[eye].minET !== null));
+/** A main spec has a manual base curve: the automatic one needs its own job (02-10). */
+const hasManualBaseCurve = (specs) => EYES.some((eye) => specs[eye] && specs[eye].baseCurve !== null);
 
 // ---- Material comparison (02-07) ----
 
@@ -231,6 +243,10 @@ const jobMaterial = new Map();
 let others = {};
 /** Pseudo id of the configuration-A job in jobMaterial / comparePending (02-08). */
 const CONFIG_A = 'configA';
+/** Pseudo id of the automatic-base-curve job (02-10, only with a manual base curve). */
+const AUTO_BC = 'autoBc';
+/** The automatic-curve results for the current input: pair, null = failed, undefined = computing / no job. */
+let resultAuto;
 /** @type {{ frame: object|null, materialId: string } | null} the frozen Vorher (A) */
 let configA = null;
 /** A's results for the current input: pair, null = failed, undefined = computing / no job. */
@@ -250,9 +266,9 @@ let compareBusyTimer = null;
 /** Sync mode: the jobs wait for 'Vergleich berechnen', so the old rows stay marked. */
 let compareHeld = false;
 
-/** #compare[data-pending]: configA, then the open material ids in MATERIALS order; '' = nothing open. */
+/** #compare[data-pending]: configA, autoBc, then the open material ids in MATERIALS order; '' = nothing open. */
 function writeComparePending() {
-  const value = [CONFIG_A, ...MATERIAL_IDS].filter((id) => comparePending.has(id)).join(' ');
+  const value = [CONFIG_A, AUTO_BC, ...MATERIAL_IDS].filter((id) => comparePending.has(id)).join(' ');
   const el = $('compare');
   if (el.dataset.pending !== value) el.dataset.pending = value;
   if (comparePending.size > 0) {
@@ -280,12 +296,21 @@ function buildCompareJobs(specs) {
   for (const id of MATERIAL_IDS) {
     if (id === selectedId) continue;
     const job = {};
-    for (const eye of EYES) if (specs[eye]) job[eye] = { ...specs[eye], materialId: id };
+    // Same Rx, frame and base curve; the material's own sourced minimums (RESEARCH Pitfall 11).
+    for (const eye of EYES) if (specs[eye]) job[eye] = { ...specs[eye], materialId: id, minCT: null, minET: null };
     // The job key is the job's own spec pair: switching the selected material back and forth
     // finds the other rows in the client's compare cache.
     const key = JSON.stringify(job);
     jobMaterial.set(key, id);
     jobs.push({ key, specs: job });
+  }
+  // 02-10: the automatic base curve for the Glas-Einstellungen line (same specs, curve null).
+  if (hasManualBaseCurve(specs)) {
+    const job = {};
+    for (const eye of EYES) if (specs[eye]) job[eye] = { ...specs[eye], baseCurve: null };
+    const key = AUTO_BC + ':' + JSON.stringify(job);
+    jobMaterial.set(key, AUTO_BC);
+    jobs.unshift({ key, specs: job });
   }
   // 02-08: Vorher (A) = the current Rx with A's frame and material, queued first (T-02-22). Own
   // key prefix, so it never shares a delivery with a material row of the same specs.
@@ -305,6 +330,7 @@ function startCompare(specs) {
   markOutdated();
   others = {};
   resultA = undefined;
+  resultAuto = undefined;
   compareDelivered.clear();
   compareJobs = buildCompareJobs(specs);
   $('cmp-run').hidden = true;
@@ -364,6 +390,7 @@ function paintCompare() {
     const id = jobMaterial.get(d.key);
     if (id === undefined) continue;
     if (id === CONFIG_A) resultA = d.error ? null : d.results;
+    else if (id === AUTO_BC) resultAuto = d.error ? null : d.results;
     else others[id] = d.error ? null : d.results;
     compareDelivered.add(id);
   }
@@ -375,6 +402,9 @@ function paintCompare() {
   }
   const selectedId = (requested.OD ?? requested.OS)?.materialId ?? null;
   renderMaterialTable({ selectedId, selected, others });
+  // Without a manual base curve the main results are the automatic ones.
+  const auto = hasManualBaseCurve(requested) ? (resultAuto === null ? { OD: null, OS: null } : resultAuto) : selected;
+  renderGlassSettings({ specs: requested, main: selected, auto });
   if (configA) {
     renderConfigCompare({ config: configA, A: resultA === null ? { OD: null, OS: null } : resultA, B: selected, same: sameConfig() });
     if (showA) paintCards();

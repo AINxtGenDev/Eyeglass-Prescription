@@ -2,11 +2,16 @@
 // The Expert blocks only get the `hidden` attribute; they are never created or removed, so every
 // value id exists and is filled while the switch is off (textContent readers keep working).
 // The switch state is not persisted (D-32, T-02-03: shared ainxtgendev.github.io origin).
+// 02-10 (MAT-03, MAT-04, D-33, D-34): the Glas-Einstellungen block (manual base curve, minimum
+// thicknesses). Overrides apply only while the switch is on (T-02-28); typed values are kept.
 import { $, setText } from './dom.js';
-import { thickest } from '../state/compare.js';
 import { nasalSign } from '../engine/conventions.js';
+import { MATERIALS } from '../engine/materials.js';
+import { sphericalEquivalent } from '../engine/power.js';
+import { validateBaseCurve, validateMinThickness, BASE_CURVE_MANUAL } from '../state/validate.js';
 import { t } from '../i18n/t.js';
 import { fmtDiopter, fmtMm, fmtGram } from '../i18n/format.js';
+import { showFieldMessage, messageStatus, flushOnBlur } from './rx-input.js';
 
 const DASH = '–';
 
@@ -25,13 +30,50 @@ function apply() {
   for (const el of document.querySelectorAll('[data-expert]')) /** @type {HTMLElement} */ (el).hidden = !expert;
 }
 
+const BC_ID = 'expert-basecurve';
+const MIN_ID = { minCT: 'expert-min-ct', minET: 'expert-min-et' };
+const EXPERT_FIELDS = [BC_ID, MIN_ID.minCT, MIN_ID.minET];
+const field = (id) => /** @type {HTMLInputElement} */ ($(id));
+// Field text without sign or unit, as typed: "1,8" (parseMm takes one decimal), "4,50".
+const mmField = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+const dptField = new Intl.NumberFormat('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+
+/** The min fields hold a typed value (kept across material changes) rather than the default. */
+const minEdited = { minCT: false, minET: false };
+/** Material whose defaults are in the min fields. */
+let fieldMaterial = 'cr39';
+/** @type {() => void} */
+let onShown = () => {};
+
 /**
- * Wire the switch. Off on every load: the checkbox is reset here, so a browser that restores form
- * state on reload cannot turn it on. `onChange` re-renders the location suffixes; focus stays on
- * the switch (UI-SPEC "Expert switch on").
- * @param {(timeStamp: number) => void} onChange
+ * Vogel D1 as a usable manual value (lens-critic phase-1 MINOR-5): nearest 0,25 dpt step, clamped
+ * to the manual range 0,00…+10,00 (MAT-03). + 0: no −0.
  */
-export function initExpert(onChange) {
+export const vogelRounded = (vogelD1) =>
+  Math.min(BASE_CURVE_MANUAL[1], Math.max(BASE_CURVE_MANUAL[0], Math.round(vogelD1 * 4) / 4)) + 0;
+
+/** Fill the min fields that were not typed with the material's defaults (materials.js, D-34). */
+function fillMinDefaults(materialId, { reset = false } = {}) {
+  fieldMaterial = materialId;
+  for (const k of /** @type {const} */ (['minCT', 'minET'])) {
+    if (reset) minEdited[k] = false;
+    if (!minEdited[k]) field(MIN_ID[k]).value = mmField.format(MATERIALS[materialId][k]);
+  }
+}
+
+/** Material change hook (material-input.js): re-fill the defaults unless the field was edited. */
+export const onMaterialChange = (materialId) => fillMinDefaults(materialId);
+
+/**
+ * Wire the switch and the Glas-Einstellungen. Off on every load: the checkbox is reset here, so a
+ * browser that restores form state on reload cannot turn it on. `onChange` gets the toggle (the
+ * caller re-renders the location suffixes and schedules an input frame, because the overrides
+ * change the specs); focus stays on the switch (UI-SPEC "Expert switch on"). `schedule` runs an
+ * input frame for the Expert fields.
+ * @param {(timeStamp: number) => void} onChange
+ * @param {{ schedule: (timeStamp: number) => void, onMessageShown: () => void, materialId: string }} deps
+ */
+export function initExpert(onChange, { schedule, onMessageShown, materialId }) {
   const sw = /** @type {HTMLInputElement} */ ($('expert'));
   sw.checked = false;
   expert = false;
@@ -41,23 +83,156 @@ export function initExpert(onChange) {
     apply();
     onChange(e.timeStamp);
   });
+  onShown = onMessageShown;
+  field(BC_ID).value = '';
+  fillMinDefaults(materialId, { reset: true });
+  field(BC_ID).addEventListener('input', (e) => schedule(e.timeStamp));
+  for (const k of /** @type {const} */ (['minCT', 'minET'])) {
+    field(MIN_ID[k]).addEventListener('input', (e) => {
+      // An emptied field goes back to the default (and is re-filled on the next material change).
+      minEdited[k] = field(MIN_ID[k]).value.trim() !== '';
+      schedule(e.timeStamp);
+    });
+  }
+  for (const id of EXPERT_FIELDS) flushOnBlur(id);
+  $('expert-min-reset').addEventListener('click', (e) => {
+    fillMinDefaults(fieldMaterial, { reset: true });
+    schedule(e.timeStamp);
+  });
+  $('expert-bc-vogel').addEventListener('click', () => {
+    const v = $('expert-bc-vogel').dataset.value;
+    if (!v) return;
+    field(BC_ID).value = v;
+    field(BC_ID).focus();
+    field(BC_ID).dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
-/** Base-curve cell: thinnest rule plus the Vogel reference (D-01 final, lens-critic MAJOR-2). */
-function baseCurveText(m, im) {
-  const bc = fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule);
-  if (im.baseCurveRule !== 'thinnest') return bc;
+const NO_OVERRIDES = Object.freeze({
+  baseCurve: null,
+  minCT: null,
+  minET: null,
+  active: false,
+  blocked: false,
+  firstBlockedFieldId: null,
+  pendingMessage: false,
+});
+
+/** Source words of a min field: typed, or the material's sourced / assumed default (MINOR-3). */
+function minSource(k, m, value) {
+  if (minEdited[k] && value !== null && value !== m[k]) return t('expert.min.typed');
+  return t(m.assumed?.includes(k) ? 'expert.min.assumed' : 'expert.min.sourced');
+}
+
+/**
+ * The Expert overrides for the specs, only while the switch is on (T-02-28). Validates the three
+ * fields (messages after the pause, like the Rx fields); a Fehler or Außerhalb des Modells blocks
+ * both eyes and is never clamped (T-02-26). A minimum equal to the material default is sent as
+ * null, so the spec (cache key) equals the one without overrides and the result is shared with
+ * the material table.
+ * @param {string} materialId
+ * @returns {{ baseCurve: number|null, minCT: number|null, minET: number|null, active: boolean,
+ *   blocked: boolean, firstBlockedFieldId: string|null, pendingMessage: boolean }}
+ */
+export function readExpertOverrides(materialId) {
+  if (!expert) return NO_OVERRIDES;
+  const m = MATERIALS[materialId];
+  const bc = validateBaseCurve(field(BC_ID).value);
+  showFieldMessage(BC_ID, bc.msg, { kind: 'dpt', apply: null, shown: onShown });
+  setText(`${BC_ID}-echo`, bc.value === null ? (bc.msg ? '' : t('expert.bc.echoAuto')) : fmtDiopter(bc.value) + ' – ' + t('expert.bc.echoManual'));
+  const out = { baseCurve: bc.value, minCT: null, minET: null, active: true };
+  for (const k of /** @type {const} */ (['minCT', 'minET'])) {
+    const r = validateMinThickness(field(MIN_ID[k]).value);
+    showFieldMessage(MIN_ID[k], r.msg, { kind: 'mm', apply: null, shown: onShown });
+    setText(`${MIN_ID[k]}-echo`, r.msg ? '' : minSource(k, m, r.value));
+    out[k] = r.value === null || r.value === m[k] ? null : r.value;
+  }
+  const st = expertStatus();
+  return { ...out, blocked: st.firstBlockedFieldId !== null, ...st };
+}
+
+/**
+ * The first Expert field whose message blocks both eyes, and whether a blocking message is not on
+ * screen yet; read fresh from the message states (like frameStatus).
+ */
+export function expertStatus() {
+  let firstBlockedFieldId = null;
+  let pendingMessage = false;
+  for (const id of EXPERT_FIELDS) {
+    const st = messageStatus(id);
+    if (!st.blocks) continue;
+    firstBlockedFieldId ??= id;
+    if (st.pending) pendingMessage = true;
+  }
+  return { firstBlockedFieldId, pendingMessage };
+}
+
+/**
+ * The Vogel sentence (D-01 final, lens-critic MAJOR-2). The thickness of the Vogel lens is always
+ * named when it computes (lens-critic phase-1 MINOR-2); a manual result names the Vogel value only.
+ * `rounded` appends the 0,25 dpt step that 'Vogel-Basiskurve übernehmen' writes (MINOR-5).
+ */
+function vogelRefText(im, { rounded = false } = {}) {
   // Raw Vogel value; when the rule leaves +0,50…+14,00 (D-A) the clamp is named, and any
   // thickness in the sentence refers to the clamped lens (01-13, MINOR-1).
   let vogel = fmtDiopter(im.vogelD1);
-  if (im.vogelD1 !== im.vogelClampedD1) {
-    vogel += t('basecurve.vogelClamped', { clamped: fmtDiopter(im.vogelClampedD1) });
+  let text;
+  if (im.baseCurveRule !== 'thinnest') {
+    text = t('basecurve.vogelRef', { vogel });
+  } else {
+    if (im.vogelD1 !== im.vogelClampedD1) {
+      vogel += t('basecurve.vogelClamped', { clamped: fmtDiopter(im.vogelClampedD1) });
+    }
+    const v = im.vogelMaxThickness;
+    text =
+      v === null
+        ? t('basecurve.vogelRefImpossible', { vogel })
+        : t('basecurve.vogelRefThicker', { vogel, thickness: fmtMm(v) });
   }
-  const v = im.vogelMaxThickness;
-  const j = thickest(m).value;
-  if (v === null) return bc + ' ' + t('basecurve.vogelRefImpossible', { vogel });
-  if (v - j >= 0.05) return bc + ' ' + t('basecurve.vogelRefThicker', { vogel, thickness: fmtMm(v) });
-  return bc + ' ' + t('basecurve.vogelRef', { vogel });
+  if (rounded) text += ' ' + t('basecurve.vogelRounded', { rounded: fmtDiopter(vogelRounded(im.vogelD1)) });
+  return text;
+}
+
+/** Base-curve cell: the rule plus the Vogel reference. */
+function baseCurveText(im) {
+  return fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule) + ' ' + vogelRefText(im);
+}
+
+const GLASS = { OD: 'result.glass.od', OS: 'result.glass.os' };
+
+/**
+ * Glas-Einstellungen lines from the painted results (pipeline.js paintCompare, after the main
+ * result). `main` = the results on the cards (all overrides); `auto` = the same specs with the
+ * automatic base curve (the main results themselves when no manual base curve is set; undefined
+ * while that job computes). null = no result for the eye.
+ * `specs` = the main specs (the minus-lens note needs the Rx).
+ * @param {{ specs: Record<'OD'|'OS', object|null>, main: Record<'OD'|'OS', object|null>,
+ *   auto: Record<'OD'|'OS', object|null> | undefined }} r
+ */
+export function renderGlassSettings({ specs, main, auto }) {
+  let minusFloor = false;
+  for (const eye of /** @type {const} */ (['OD', 'OS'])) {
+    const e = eye.toLowerCase();
+    const glass = t(GLASS[eye]);
+    const a = auto?.[eye];
+    if (a?.ok) {
+      const im = a.intermediates;
+      setText(`expert-bc-auto-${e}`, t('expert.bc.autoLine', { glass, value: fmtDiopter(im.D1), vogelRef: vogelRefText(im, { rounded: true }) }));
+      // The phase-1 rule puts minus lenses at the +0,50 floor (01-SKELETON): say so (D-01 disclosure).
+      const s = specs[eye];
+      if (s && sphericalEquivalent(s.sph, s.cyl) < 0 && im.baseCurveRule === 'thinnest' && im.D1 <= 0.5 + 1e-9) minusFloor = true;
+    } else {
+      setText(`expert-bc-auto-${e}`, t('expert.bc.autoNone', { glass }));
+    }
+    const r = main[eye];
+    setText(`expert-binding-${e}`, r?.ok ? t('expert.binding.line', { glass, text: t('expert.binding.' + r.intermediates.bindingConstraint) }) : '');
+  }
+  $('expert-bc-minus-note').hidden = !minusFloor;
+  // 'Vogel-Basiskurve übernehmen' writes the right eye's rounded Vogel value (left when R has none).
+  const ref = [main.OD, main.OS].find((r) => r?.ok);
+  const btn = $('expert-bc-vogel');
+  if (ref) btn.dataset.value = dptField.format(vogelRounded(ref.intermediates.vogelD1));
+  else delete btn.dataset.value;
 }
 
 /** Radius in mm, or "plan" for a plano surface (the engine gives null, never Infinity). */
@@ -77,7 +252,7 @@ export function renderZwischenwerte(eye, res) {
   setText(`${p}-dec`, fmtMm(nasalSign(eye) * m.decentration.x));
   // 'Dickster Rand' is the edge value, number first (e2e etmaxOf).
   setText(`${p}-etmax`, fmtMm(m.etMax.value));
-  setText(`${p}-basecurve`, baseCurveText(m, im));
+  setText(`${p}-basecurve`, baseCurveText(im));
   setText(`${p}-d2`, t('expert.zw.d2.value', { a: fmtDiopter(im.D2a), b: fmtDiopter(im.D2b) }));
   setText(`${p}-radii`, t('expert.zw.radii.value', { r1: radius(im.R1), ra: radius(im.Ra), rb: radius(im.Rb) }));
   setText(

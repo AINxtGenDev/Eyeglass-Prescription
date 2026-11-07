@@ -1405,3 +1405,50 @@ td:has(.msg-out) input[aria-invalid='true'] {
   outline-offset: 2px;
   z-index: 1;
 }
+
+/* 02-10 Glas-Einstellungen (UI-SPEC Material section "[Expert] Glas-Einstellungen"): same Expert
+   surface as #expert-analysis; the two minimum fields side by side when there is room. */
+#glass-settings {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-4);
+  margin-block: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+#glass-settings[hidden] {
+  display: none;
+}
+
+#glass-settings h3 {
+  margin: 0;
+}
+
+#glass-settings .field,
+#glass-settings .gs-min,
+#expert-bc-auto,
+#expert-binding-note {
+  justify-self: stretch;
+}
+
+#glass-settings .small {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+#glass-settings .small p {
+  margin-block: 0 var(--space-1);
+}
+
+.gs-min {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@media (min-width: 480px) {
+  .gs-min {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

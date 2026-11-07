@@ -102,6 +102,8 @@ export function renderEmpty(eye, statusText, empty = false) {
 const MM_PARAMS = ['R1', 'rhoMax', 'mbsMm', 'stockMm'];
 // Codes that mean "this lens cannot exist in the model" (others are internal limits).
 const IMPOSSIBLE = ['FRONT_SAG_UNDEFINED', 'BACK_SAG_UNDEFINED'];
+// Warnings whose suggestion is shown too (02-10: the convex back is fixed by the user's own input).
+const WARN_SUGGEST = ['MANUAL_BACK_CONVEX'];
 
 /** Engine numbers → German mm text for the {param} placeholders of diag.* texts. */
 function diagParams(data) {
@@ -110,7 +112,8 @@ function diagParams(data) {
   return params;
 }
 
-/** Error: title, explanation, suggestion. Warnings: title and explanation. Info is not shown. */
+/** Error: title, explanation, suggestion. Warnings: title and explanation (plus the suggestion for
+ * WARN_SUGGEST). Info is not shown. */
 function renderDiagnostics(eye, diagnostics) {
   const box = $(`diag-${eye.toLowerCase()}`);
   const items = [];
@@ -124,7 +127,7 @@ function renderDiagnostics(eye, diagnostics) {
     const block = document.createElement('div');
     block.className = d.severity === 'error' ? 'diag-error' : 'diag-warn';
     block.append(head, para(t(`diag.${d.code}.explain`, params)));
-    if (d.severity === 'error') block.append(para(t(`diag.${d.code}.suggest`, params)));
+    if (d.severity === 'error' || WARN_SUGGEST.includes(d.code)) block.append(para(t(`diag.${d.code}.suggest`, params)));
     items.push(block);
   }
   // Rewrite the role=status box only when its content changes, so an eye that recomputes with

@@ -250,6 +250,50 @@
             <p class="term"><span data-i18n="material.abbeTerm"></span><button type="button" class="tip-btn"
                 aria-expanded="false" aria-controls="tip-abbe" data-i18n-aria-label="tip.abbe.name"></button></p>
             <p id="tip-abbe" class="tip" hidden data-i18n="tip.abbe.text"></p>
+            <div id="glass-settings" data-expert hidden>
+              <span class="expert-tag" data-i18n="expert.tag"></span>
+              <h3 data-i18n="expert.gs.title"></h3>
+              <div class="field">
+                <span class="term"><label for="expert-basecurve" data-i18n="expert.bc.label"></label><button type="button" class="tip-btn"
+                    aria-expanded="false" aria-controls="tip-basecurve" data-i18n-aria-label="tip.basecurve.name"></button></span>
+                <p id="tip-basecurve" class="tip" hidden data-i18n="tip.basecurve.text"></p>
+                <input id="expert-basecurve" name="expert-basecurve" type="text" inputmode="decimal" autocomplete="off"
+                  aria-describedby="expert-basecurve-echo expert-basecurve-err">
+                <output id="expert-basecurve-echo" for="expert-basecurve"></output>
+                <div id="expert-basecurve-err" class="msg" aria-live="polite" hidden></div>
+              </div>
+              <div id="expert-bc-auto" class="small">
+                <p id="expert-bc-auto-od"></p>
+                <p id="expert-bc-auto-os"></p>
+              </div>
+              <p id="expert-bc-minus-note" class="small" data-i18n="expert.bc.minusNote" hidden></p>
+              <button type="button" id="expert-bc-vogel" data-i18n="expert.bc.vogelApply"></button>
+              <div class="gs-min">
+                <div class="field">
+                  <span class="term"><label for="expert-min-ct" data-i18n="expert.min.ct"></label><button type="button" class="tip-btn"
+                      aria-expanded="false" aria-controls="tip-minct" data-i18n-aria-label="tip.minct.name"></button></span>
+                  <p id="tip-minct" class="tip" hidden data-i18n="tip.minct.text"></p>
+                  <input id="expert-min-ct" name="expert-min-ct" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="expert-min-ct-echo expert-min-ct-err">
+                  <output id="expert-min-ct-echo" for="expert-min-ct"></output>
+                  <div id="expert-min-ct-err" class="msg" aria-live="polite" hidden></div>
+                </div>
+                <div class="field">
+                  <span class="term"><label for="expert-min-et" data-i18n="expert.min.et"></label><button type="button" class="tip-btn"
+                      aria-expanded="false" aria-controls="tip-minet" data-i18n-aria-label="tip.minet.name"></button></span>
+                  <p id="tip-minet" class="tip" hidden data-i18n="tip.minet.text"></p>
+                  <input id="expert-min-et" name="expert-min-et" type="text" inputmode="decimal" autocomplete="off"
+                    aria-describedby="expert-min-et-echo expert-min-et-err">
+                  <output id="expert-min-et-echo" for="expert-min-et"></output>
+                  <div id="expert-min-et-err" class="msg" aria-live="polite" hidden></div>
+                </div>
+              </div>
+              <button type="button" id="expert-min-reset" data-i18n="expert.min.reset"></button>
+              <div id="expert-binding-note" class="small">
+                <p id="expert-binding-od"></p>
+                <p id="expert-binding-os"></p>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -437,7 +481,9 @@
               <caption data-i18n="result.card.od"></caption>
               <tbody>
                 <tr>
-                  <th scope="row" data-i18n="expert.zw.dec"></th>
+                  <th scope="row"><span class="term"><span data-i18n="expert.zw.dec"></span><button type="button" class="tip-btn"
+                      aria-expanded="false" aria-controls="tip-dec" data-i18n-aria-label="tip.dec.name"></button></span>
+                    <p id="tip-dec" class="tip" hidden data-i18n="tip.dec.text"></p></th>
                   <td id="result-od-dec"></td>
                 </tr>
                 <tr>

@@ -43,10 +43,16 @@ function buildMaterialCards() {
   }
 }
 
-/** @param {{ schedule: (timeStamp: number) => void }} deps */
-export function initMaterialInput({ schedule }) {
+/**
+ * @param {{ schedule: (timeStamp: number) => void, onMaterialChange: (materialId: string) => void }} deps
+ *   onMaterialChange (02-10): re-fills the Expert minimum thicknesses before the input frame.
+ */
+export function initMaterialInput({ schedule, onMaterialChange }) {
   buildMaterialCards();
-  $('material').addEventListener('change', (e) => schedule(e.timeStamp));
+  $('material').addEventListener('change', (e) => {
+    onMaterialChange(currentMaterialId());
+    schedule(e.timeStamp);
+  });
 }
 
 /** The material line under a result card (MAT-01). */

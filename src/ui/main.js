@@ -19,7 +19,7 @@ import { EXAMPLE } from '../state/presets.js';
 import { initMaterialInput, currentMaterialId, renderMaterialLine } from './material-input.js';
 import { initCompareView } from './compare-view.js';
 import { initToggletips } from './toggletip.js';
-import { initExpert } from './expert.js';
+import { initExpert, readExpertOverrides, expertStatus, onMaterialChange } from './expert.js';
 import { initSummaryBar } from './summary-bar.js';
 import {
   computeMode,
@@ -59,15 +59,19 @@ const PRESET_FIELDS = ['sph', 'cyl', 'axis'];
 const lastRead = { OD: null, OS: null };
 /** The last frame read (blocked state of the frame fields, which block both eyes). */
 let lastFrame = null;
+/** The last Expert overrides read (02-10: a blocking Expert field blocks both eyes too). */
+let lastExpert = null;
 
 /**
  * Not-ready status of an eye: its own Rx/PD fields first; when they do not block, a blocking
- * frame field blocks it (both cards point to the frame field).
+ * frame field blocks it, then a blocking Expert field (both cards point to that field).
  */
 function notReadyStatus(eye) {
   const read = { ...lastRead[eye], ...eyeStatus(eye) };
-  if (read.blocked || !lastFrame?.blocked) return read;
-  return { ...read, blocked: true, ...frameStatus() };
+  if (read.blocked) return read;
+  if (lastFrame?.blocked) return { ...read, blocked: true, ...frameStatus() };
+  if (lastExpert?.blocked) return { ...read, blocked: true, ...expertStatus() };
+  return read;
 }
 
 /**
@@ -93,14 +97,17 @@ function update(inputTs) {
   const fr = readFrame();
   lastFrame = fr;
   const materialId = currentMaterialId();
+  // 02-10: Expert overrides (all null while the switch is off).
+  const overrides = readExpertOverrides(materialId);
+  lastExpert = overrides;
   // 02-08: while Vorher (A) is shown, the cards name A's material.
   for (const eye of EYES) renderMaterialLine(eye, cardMaterialId(materialId));
-  const ready = (eye) => fr.frame !== null && read[eye].rx !== null && read[eye].pd !== null;
+  const ready = (eye) => fr.frame !== null && !overrides.blocked && read[eye].rx !== null && read[eye].pd !== null;
   const specs = { OD: null, OS: null };
   for (const eye of EYES) {
     lastRead[eye] = read[eye];
     if (ready(eye)) {
-      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, fr.frame);
+      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, fr.frame, null, overrides);
       continue;
     }
     paintNotReady(eye, notReadyStatus(eye));
@@ -170,9 +177,16 @@ function init() {
   applyDictionary();
   initToggletips();
   initResultJumps();
-  // Toggling only rewrites the location suffixes; it never goes through schedule()/the compute
-  // client, which would skip the identical spec and paint nothing (lens-critic round 3 MAJOR-A).
-  initExpert(repaintFromLast);
+  // Toggling rewrites the location suffixes directly: an identical spec is skipped by the compute
+  // client and paints nothing (lens-critic round 3 MAJOR-A). 02-10: it also schedules an input
+  // frame, because the Expert overrides start or stop applying (UI-SPEC "Expert switch off").
+  initExpert(
+    (ts) => {
+      repaintFromLast();
+      schedule(ts);
+    },
+    { schedule, onMessageShown: () => EYES.forEach(onMessageShown), materialId: currentMaterialId() },
+  );
   initSummaryBar();
   // Short disclaimer under the cards → the full Hinweis below (UI-SPEC "Disclaimer link").
   $('disclaimer-jump').addEventListener('click', () => $('disclaimer').focus());
@@ -186,7 +200,7 @@ function init() {
     currentConfig: () => ({ frame: lastFrame?.frame ?? null, materialId: currentMaterialId() }),
   });
   setComputeMode('worker', 'tech.mode.worker');
-  initMaterialInput({ schedule });
+  initMaterialInput({ schedule, onMaterialChange });
   initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });
   const onInput = (e) => schedule(e.timeStamp);
   const example = initExample(onInput);

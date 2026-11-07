@@ -3,7 +3,7 @@
 // Pinned values: 02-01-SUMMARY Task 2 table (node, src/engine/evaluate.js, CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, plain, guardPage, slowWorker } from './helpers.js';
+import { settled, settledCompare, plain, guardPage, slowWorker } from './helpers.js';
 /* global window, document, Worker -- page.evaluate / addInitScript bodies run in the browser */
 
 guardPage(test);
@@ -227,3 +227,80 @@ test('minimum thicknesses: pre-filled per material, typed value kept, Standardwe
   await settled(page);
   await expect(page.locator('#result-od-ct')).toHaveText('2,5 mm');
 });
+
+test('convex manual back: warning with the steeper-curve advice, a steeper curve clears it', async ({ page }) => {
+  // +2,00, manual 0,50: D2 = Sph − D1v ≈ +1,50 dpt > 0 (engine pin: +1,4995 in rechteckig 52×38/18, PD 32)
+  await sphPair(page, '+2,00', '+2,00');
+  await sw(page).check();
+  await bcField(page).fill('0,5');
+  await settled(page);
+  const box = page.locator('#diag-od');
+  await expect(box).toContainText('Rückfläche zum Auge hin gewölbt');
+  await expect(box).toContainText('stärker gewölbte');
+  // still computed: a warning keeps the numbers
+  await expect(page.locator('#result-od-ct')).not.toHaveText('–');
+  await bcField(page).fill('3');
+  await settled(page);
+  await expect(box).not.toContainText('Rückfläche zum Auge hin gewölbt');
+});
+
+test('min-thickness source: 1,74 minimum edge is assumed, 1,50 is the manufacturer value', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await material(page, 'idx174').check();
+  await settled(page);
+  await expect(page.locator('#expert-min-et-echo')).toContainText('angenommen');
+  await expect(page.locator('#expert-min-ct-echo')).toContainText('Herstellerangabe');
+  await material(page, 'cr39').check();
+  await settled(page);
+  await expect(page.locator('#expert-min-et-echo')).toContainText('Herstellerangabe');
+  await page.locator('#expert-min-et').fill('1,5');
+  await settled(page);
+  await expect(page.locator('#expert-min-et-echo')).toContainText('von Ihnen vorgegeben');
+});
+
+test('Vogel apply, automatic line, minus note and the comparison footnote', async ({ page }) => {
+  await settledCompare(page);
+  await sw(page).check();
+  await settledCompare(page);
+  await expect(page.locator('#cmp-footnote')).toBeHidden();
+  // Example R −2,75 −0,50 × 180: SE −3,00, Vogel −3/2 + 6 = +4,50; the thinnest rule gives +0,50
+  await expect(page.locator('#expert-bc-auto-od')).toContainText('automatisch: +0,50');
+  await expect(page.locator('#expert-bc-auto-od')).toContainText('gerundet: +4,50');
+  await expect(page.locator('#expert-bc-auto-od')).toContainText('dicksten Stelle');
+  await expect(page.locator('#expert-bc-minus-note')).toBeVisible();
+  await expect(page.locator('#expert-binding-od')).toContainText('Rechtes Glas: Die Mittendicke ist durch den Mindestwert');
+  const autoThick = await text(page, '#result-od-thick');
+  await page.locator('#expert-bc-vogel').click();
+  await expect(bcField(page)).toHaveValue('4,50');
+  await settledCompare(page);
+  await expect(page.locator('#result-od-basecurve')).toContainText('+4,50');
+  await expect(page.locator('#result-od-basecurve')).toContainText('von Ihnen vorgegeben');
+  // the automatic value stays in view next to the manual one
+  await expect(page.locator('#expert-bc-auto-od')).toContainText('automatisch: +0,50');
+  const num = (s) => Number(s.replace(/[^\d,]/g, '').replace(',', '.'));
+  expect(num(await text(page, '#result-od-thick'))).toBeGreaterThan(num(autoThick));
+  await expect(page.locator('#cmp-footnote')).toBeVisible();
+  await expect(page.locator('#cmp-footnote')).toContainText('eigenen Mindestdicken');
+  await bcField(page).fill('');
+  await settledCompare(page);
+  await expect(page.locator('#cmp-footnote')).toBeHidden();
+});
+
+test('Glas-Einstellungen: no WCAG violations in the material section with the switch on', async ({ page }) => {
+  await settled(page);
+  await sw(page).check();
+  await bcField(page).fill('12');
+  await bcField(page).blur();
+  await expect(page.locator('#expert-basecurve-err')).toBeVisible();
+  for (const id of ['tip-basecurve', 'tip-minct', 'tip-minet']) await page.locator(`[aria-controls=${id}]`).click();
+  const { violations } = await new AxeBuilder({ page })
+    .include('#material-section')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  await expect(page.locator('#tip-dec')).toBeHidden();
+  await page.locator('[aria-controls=tip-dec]').click();
+  await expect(page.locator('#tip-dec')).toContainText('optische Mittelpunkt');
+});
+
