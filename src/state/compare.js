@@ -134,10 +134,10 @@ const okLens = (r) => r?.ok === true;
  *
  * @param {object} o
  * @param {string} o.selectedId the user's material; its row comes from the main result (never
- *   recomputed, D-15)
+ *   recomputed, D-15). 'custom' (02-12): its row comes first, then all six MATERIALS rows.
  * @param {{ OD?: object|null, OS?: object|null }} o.selected main LensResult pair
  * @param {Record<string, { OD?: object|null, OS?: object|null } | undefined>} o.others compare results
- * @returns {object[]} [] when no selected eye is computed. Row: { id, eye, thickMm, thickWhere,
+ * @returns {object[]} [] when no selected eye is computed; 6 rows, or 7 with 'custom'. Row: { id, eye, thickMm, thickWhere,
  *   ctMm, weightG, diffMm, diffG, pct, selected } (diffMm/diffG/pct positive = this row thinner
  *   or lighter; null on the selected row; pct null when diffMm is 0), or { id, failed: true }, or
  *   { id, pending: true } while the material is still computing.
@@ -165,7 +165,10 @@ export function materialRows({ selectedId, selected, others }) {
   };
 
   const sel = rowOf(selectedId, selected, true);
-  return Object.keys(MATERIALS).map((id) => {
+  // D-17 (02-12): a custom material is 'Ihre Auswahl' at the top and never a compared row; the
+  // compared rows are always the six sourced MATERIALS, each against the custom values.
+  const custom = selectedId === 'custom';
+  const compared = Object.keys(MATERIALS).map((id) => {
     if (id === selectedId) return { ...sel, diffMm: null, diffG: null, pct: null };
     const row = rowOf(id, others?.[id], false);
     if (row.failed || row.pending) return row;
@@ -177,6 +180,7 @@ export function materialRows({ selectedId, selected, others }) {
       pct: diffMm === 0 ? null : Math.round((diffMm / sel.thickMm) * 100),
     };
   });
+  return custom ? [{ ...sel, diffMm: null, diffG: null, pct: null }, ...compared] : compared;
 }
 
 /**

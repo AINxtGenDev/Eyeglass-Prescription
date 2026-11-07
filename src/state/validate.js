@@ -1,7 +1,8 @@
 // Tier classification of the Rx fields (RX-04, RX-05, D-07, D-08). Pure and DOM-free: codes and
 // data only, the German text lives in the dictionary (val.*, parse.*, rx.*).
 // Values are never clamped or rounded: the engine gets exactly what was typed (T-02-10).
-import { parseDiopter, parseAxis, parsePd, parseMm, PARSE_CODES, PD_CODES } from './parse.js';
+import { parseDiopter, parseAxis, parsePd, parseMm, parseIndex, parseDensity, parseAbbe, PARSE_CODES, PD_CODES } from './parse.js';
+import { MATERIALS } from '../engine/materials.js';
 import { transpose, RX_CODES } from './transpose.js';
 import { FRAME_RANGES, PD_DEFAULT_MM } from './frame.js';
 
@@ -23,6 +24,10 @@ export const VAL_CODES = Object.freeze({
   // 02-11 Expert fields (MAT-05, FRAME-02 rim depth)
   VAL_CONIC_OUT_OF_MODEL: 'VAL_CONIC_OUT_OF_MODEL',
   VAL_RIMDEPTH_OUT_OF_MODEL: 'VAL_RIMDEPTH_OUT_OF_MODEL',
+  // 02-12 custom material (MAT-06, D-17 "validated plausible ranges"): outside the outer band is a
+  // Fehler (blocks), outside the inner band a Hinweis (computes).
+  VAL_CUSTOM_OUT_OF_RANGE: 'VAL_CUSTOM_OUT_OF_RANGE',
+  VAL_CUSTOM_IMPLAUSIBLE: 'VAL_CUSTOM_IMPLAUSIBLE',
 });
 
 // RX-04, REQUIREMENTS.md verbatim: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (minus form),
@@ -282,3 +287,74 @@ export const validateConic = (raw) => expertField(raw, parseDiopter, CONIC_RANGE
  * @param {string} raw @returns {{ value: number|null, msg: FieldMsg|null }}
  */
 export const validateRimDepth = (raw) => expertField(raw, parseMm, RIM_DEPTH_RANGE, VAL_CODES.VAL_RIMDEPTH_OUT_OF_MODEL);
+
+// MAT-06 custom material bands (02-12). Design constants, anchors per RESEARCH Open Q3: the listed
+// materials span ne 1,500–1,738 and 1,11–1,47 g/cm³ (materials.js); crown glass nd ≈ 1,523,
+// 2,54 g/cm³, Abbe ≈ 56–59; PC νe 29. The glass upper bound ne 1,9 of the Hinweis band is
+// [ASSUMED A3]. error = outside is a Fehler (blocks), hint = outside is a Hinweis (computes).
+export const CUSTOM_BANDS = Object.freeze({
+  ne: Object.freeze({ error: Object.freeze([1.4, 2]), hint: Object.freeze([1.49, 1.9]) }),
+  density: Object.freeze({ error: Object.freeze([0.8, 5]), hint: Object.freeze([1, 4]) }),
+  abbe: Object.freeze({ error: Object.freeze([15, 80]), hint: Object.freeze([25, 65]) }),
+});
+
+/**
+ * The listed material with the nearest ne (prefill of the custom minimum thicknesses). A tie goes
+ * to the lower index (MATERIALS is in ascending ne order; a gap within 1e-12 counts as a tie, so
+ * float noise such as 1,515 between 1,500 and 1,530 cannot pick the higher one).
+ * @param {number} ne @returns {string} MATERIALS id
+ */
+export function nearestListedMaterial(ne) {
+  let best = 'cr39';
+  let gapBest = Infinity;
+  for (const [id, m] of Object.entries(MATERIALS)) {
+    const g = Math.abs(ne - m.ne);
+    if (g < gapBest - 1e-12) {
+      best = id;
+      gapBest = g;
+    }
+  }
+  return best;
+}
+
+/** One custom constant: parse, then the two bands. Empty abbe = no νe. */
+function customField(field, raw, parse) {
+  if (field === 'abbe' && isBlank(raw)) return { value: null, msg: null };
+  const r = parse(raw);
+  if (!r.ok) return { value: null, msg: msg(TIERS.ERROR, r.code) };
+  const band = CUSTOM_BANDS[field];
+  const data = (range) => ({ field, value: r.value, min: range[0], max: range[1] });
+  if (!inside(r.value, band.error)) return { value: null, msg: msg(TIERS.ERROR, VAL_CODES.VAL_CUSTOM_OUT_OF_RANGE, data(band.error)) };
+  if (!inside(r.value, band.hint)) return { value: r.value, msg: msg(TIERS.HINT, VAL_CODES.VAL_CUSTOM_IMPLAUSIBLE, data(band.hint)) };
+  return { value: r.value, msg: null };
+}
+
+/**
+ * Custom material fields (02-12, MAT-06). ne and density are required, Abbe is optional. An empty
+ * minimum thickness takes the default of the listed material with the nearest ne (the value the
+ * field is pre-filled with), so the engine always gets explicit numbers. A Fehler or Außerhalb
+ * des Modells blocks both eyes; a Hinweis computes. Never clamped.
+ * @param {{ ne?: string, density?: string, abbe?: string, minCT?: string, minET?: string }} raw
+ * @returns {{ fields: { ne: FieldMsg|null, density: FieldMsg|null, abbe: FieldMsg|null,
+ *   minCT: FieldMsg|null, minET: FieldMsg|null }, blocked: boolean,
+ *   customMaterial: { ne: number, density: number, ve: number|null } | null,
+ *   minCT: number|null, minET: number|null, nearest: string }}
+ */
+export function validateCustomMaterial({ ne = '', density = '', abbe = '', minCT = '', minET = '' } = {}) {
+  const n = customField('ne', ne, parseIndex);
+  const d = customField('density', density, parseDensity);
+  const a = customField('abbe', abbe, parseAbbe);
+  const nearest = MATERIALS[nearestListedMaterial(n.value ?? MATERIALS.cr39.ne)];
+  const ct = validateMinThickness(minCT);
+  const et = validateMinThickness(minET);
+  const fields = { ne: n.msg, density: d.msg, abbe: a.msg, minCT: ct.msg, minET: et.msg };
+  const blocked = Object.values(fields).some(blocks) || n.value === null || d.value === null;
+  return {
+    fields,
+    blocked,
+    customMaterial: blocked ? null : { ne: n.value, density: d.value, ve: a.value },
+    minCT: ct.msg ? null : (ct.value ?? nearest.minCT),
+    minET: et.msg ? null : (et.value ?? nearest.minET),
+    nearest: nearest.id,
+  };
+}

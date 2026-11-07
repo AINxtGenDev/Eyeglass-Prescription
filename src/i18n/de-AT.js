@@ -70,6 +70,11 @@ export default Object.freeze({
   // 02-11 (FRAME-02): the rim depth never blocks an eye; only the rim line is not shown.
   'val.VAL_RIMDEPTH_OUT_OF_MODEL':
     'Randtiefe {value} liegt außerhalb des Bereichs ({min} bis {max}). Die Dicke und das Gewicht ändern sich dadurch nicht.',
+  // 02-12 (MAT-06): {field} is material.custom.field.*; {value}/{min}/{max} plain numbers.
+  'val.VAL_CUSTOM_OUT_OF_RANGE':
+    '{field} {value} liegt außerhalb des zulässigen Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
+  'val.VAL_CUSTOM_IMPLAUSIBLE':
+    '{field} {value} ist ungewöhnlich (üblich {min} bis {max}). Bitte prüfen Sie den Wert; es wird damit gerechnet.',
   // Sph checked on the minus-cylinder form after a plus cylinder (RESEARCH Pitfall 8).
   'val.transposedSuffix': 'Der Wert gilt in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}.',
   'val.contactLensSuffix': 'Falls das der Durchmesser (DIA) einer Kontaktlinse ist: Hier gehören die Werte vom Brillenpass hin.',
@@ -190,6 +195,27 @@ export default Object.freeze({
   'material.hint':
     'Ein höherer Brechungsindex macht Minusgläser am Rand meist dünner. Was das bei Ihren Werten bringt, zeigt der Vergleich beim Ergebnis.',
   'material.abbeTerm': 'Was bedeutet die Abbe-Zahl?',
+  // 02-12 (MAT-06, D-17, UI-SPEC Copywriting "Material Expert"): Experten-Ansicht only.
+  'material.custom': 'Eigenes Material',
+  'material.custom.title': 'Eigenes Material',
+  'material.custom.sub': 'Werte selbst eingeben',
+  'material.custom.label': 'beruht auf Ihren Angaben, kein geprüftes Material',
+  'material.custom.onlyExpert': 'Eigenes Material gilt nur in der Experten-Ansicht. Es wird wieder {material} verwendet.',
+  'material.custom.legend': 'Werte des eigenen Materials',
+  'material.custom.ne.label': 'Brechungsindex nₑ',
+  'material.custom.density.label': 'Dichte (g/cm³)',
+  'material.custom.abbe.label': 'Abbe-Zahl (freiwillig)',
+  'material.custom.minCT.label': 'Mindest\u00ADmitten\u00ADdicke (mm)',
+  'material.custom.minET.label': 'Mindest\u00ADrand\u00ADdicke (mm)',
+  'material.custom.minPrefill': 'vorbelegt wie {material}',
+  'material.custom.field.ne': 'Brechungsindex nₑ',
+  'material.custom.field.density': 'Dichte',
+  'material.custom.field.abbe': 'Abbe-Zahl',
+  'material.custom.noAbbe': 'ohne Abbe-Zahl',
+  'result.materialLineCustom': '{eye}: Eigenes Material, nₑ {ne}, Dichte {density}, {abbe} – {label}',
+  'result.materialLineCustom.abbe': 'Abbe-Zahl {abbe}',
+  'tip.ne.name': 'Erklärung: Brechungsindex nₑ',
+  'tip.ne.text': 'nₑ liegt meist 0,001 bis 0,007 über dem oft angegebenen n_d.',
   'material.cr39': 'Kunststoff CR-39 (1,50)',
   'material.trivex': 'Trivex 1,53',
   'material.pc': 'Polycarbonat (1,59)',
@@ -248,6 +274,8 @@ export default Object.freeze({
   // Shown by 02-10 when Expert overrides are active (Research Pitfall 11).
   'cmp.footnote':
     'Die anderen Materialien sind mit ihren eigenen Mindestdicken gerechnet; Ihre Basiskurve und Vorderfläche gelten für alle.',
+  'cmp.customExcluded': 'Ihr eigenes Material ist hier nicht aufgeführt; verglichen werden nur geprüfte Materialien.',
+  'cmp.customSelected': 'Eigenes Material',
   'cmp.assumedNote': 'Für {materials} ist die Mindest-Randdicke angenommen (keine Herstellerangabe).',
   // Configuration comparison (02-08, RES-03, D-28, UI-SPEC Copywriting "Vergleich"). {mm}/{g}
   // are fmtMm/fmtGramWhole strings of the absolute displayed differences of B − A; the words

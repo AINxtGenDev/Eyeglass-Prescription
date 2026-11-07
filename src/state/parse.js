@@ -184,3 +184,43 @@ export function parseStamp(raw) {
   }
   return { ok: true, A: first, DBL: second, temple };
 }
+
+// Custom material (MAT-06, 02-12). Range checks are in validate.js (validateCustomMaterial).
+// Raw text is capped before any regex; the patterns are anchored, no nested quantifiers (T-02-34).
+
+/**
+ * Shared shape of the three material parsers: cap, normalise, unit strip, separators, decimals.
+ * @param {unknown} raw @param {RegExp|null} unit trailing unit to strip, null = none
+ * @param {RegExp} tooMany more decimals than allowed @param {RegExp} pattern (int)(frac)?
+ */
+function parseUnsigned(raw, unit, tooMany, pattern) {
+  const str = String(raw ?? '');
+  if (str.length > MAX_RAW) return fail(PARSE_CODES.PARSE_NOT_A_NUMBER);
+  let s = normalise(str);
+  if (s === '') return fail(PARSE_CODES.PARSE_EMPTY);
+  if (unit) s = s.replace(unit, '');
+  if (s.includes('.') && s.includes(',')) return fail(PARSE_CODES.PARSE_MIXED_SEPARATORS);
+  if (tooMany.test(s)) return fail(PARSE_CODES.PARSE_TOO_MANY_DECIMALS);
+  const m = pattern.exec(s);
+  if (!m) return fail(PARSE_CODES.PARSE_NOT_A_NUMBER);
+  return okValue(compose('', m[1], m[2]));
+}
+
+/**
+ * Refractive index nₑ: "1,523", "1.6" (one integer digit, up to three decimals).
+ * @param {unknown} raw @returns {{ok: true, value: number} | {ok: false, code: string}}
+ */
+export const parseIndex = (raw) => parseUnsigned(raw, null, /^\d[.,]\d{4,}$/, /^(\d)(?:[.,](\d{1,3}))?$/);
+
+/**
+ * Density in g/cm³: "2,54", "1.32", "2,5 g/cm³" (one integer digit, up to two decimals).
+ * @param {unknown} raw @returns {{ok: true, value: number} | {ok: false, code: string}}
+ */
+export const parseDensity = (raw) =>
+  parseUnsigned(raw, /\s*g\/cm[³3]$/, /^\d[.,]\d{3,}$/, /^(\d)(?:[.,](\d{1,2}))?$/);
+
+/**
+ * Abbe number: "58", "58,5" (up to two integer digits, one decimal).
+ * @param {unknown} raw @returns {{ok: true, value: number} | {ok: false, code: string}}
+ */
+export const parseAbbe = (raw) => parseUnsigned(raw, null, /^\d{1,2}[.,]\d{2,}$/, /^(\d{1,2})(?:[.,](\d))?$/);

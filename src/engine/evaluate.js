@@ -7,7 +7,7 @@
  * @property {number} sph dpt
  * @property {number} cyl dpt (minus-cyl form)
  * @property {number} axisDeg TABO, [0, 180)
- * @property {string} materialId key of MATERIALS
+ * @property {string} materialId key of MATERIALS, or 'custom' with customMaterial (02-12)
  * @property {{ shape: string, A: number, B: number, DBL: number }} frame mm
  * @property {number} monoPD mm
  * @property {number|null} fittingHeight mm from the bottom of the box (D-04), null = box centre
@@ -18,6 +18,10 @@
  * @property {number|null} [frontConic] conic constant k of the front (MAT-05, 02-11); null or 0 =
  *   sphere. The automatic base curve is always chosen at k = 0, then k is applied at that D1
  *   (RESEARCH Pitfall 1), see the conic block in evaluateLens.
+ * @property {{ ne: number, density: number, ve: number|null }|null} [customMaterial] user-supplied
+ *   material (MAT-06, 02-12): ne, density g/cm³, νe or null. Required exactly when materialId is
+ *   'custom', together with non-null minCT and minET; present with any other materialId it is
+ *   INVALID_SPEC (one source of truth). The engine invents no defaults for user materials.
  */
 
 /**
@@ -46,7 +50,7 @@
  *   sags (01-13, ENG-06): lens-local (x, y) of each named outline point and the front/back sag
  *   there, mm along +z toward the eye from each surface's vertex plane; thickness = CT − front + back.
  *   abbe (01-13, MAT-01): νe of the material (same line as ne), exposed for display; chromatic
- *   effects are not modelled in v1.
+ *   effects are not modelled in v1. null for a customMaterial without νe (02-12).
  * @property {null|{ n: number, ct: number, c1: number, k1: number, ca: number, cb: number,
  *   axisRad: number, oc: { x: number, y: number } }} surfaces
  */
@@ -81,7 +85,16 @@ function invalidReason(spec) {
   }
   if (!(f.A > 0 && f.B > 0)) return 'frame-size';
   if (!Object.hasOwn(SHAPES, f.shape)) return 'unknown-shape';
-  if (!Object.hasOwn(MATERIALS, spec.materialId)) return 'material';
+  if (spec.materialId === 'custom') {
+    const cm = spec.customMaterial;
+    const veOk = cm?.ve === null || (fin(cm?.ve) && cm.ve > 0);
+    if (cm == null || typeof cm !== 'object' || !(fin(cm.ne) && cm.ne > 1) || !(fin(cm.density) && cm.density > 0) || !veOk) {
+      return 'custom-material';
+    }
+    if (spec.minCT == null || spec.minET == null) return 'custom-material';
+  } else if (spec.customMaterial != null) {
+    return 'custom-material';
+  } else if (!Object.hasOwn(MATERIALS, spec.materialId)) return 'material';
   if (!(spec.fittingHeight == null || fin(spec.fittingHeight))) return 'fitting-height';
   if (!optNonNeg(spec.baseCurve)) return 'base-curve';
   if (!optPositive(spec.minCT) || !optPositive(spec.minET)) return 'min-thickness';
@@ -126,7 +139,13 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
   if (reason) return fail(eye, [diag('INVALID_SPEC', { reason })]);
 
   const { sph, cyl, axisDeg, frame, monoPD, fittingHeight } = spec;
-  const m = MATERIALS[spec.materialId];
+  // MAT-06: a user material carries no minimum thicknesses; minCT/minET are required for it
+  // (invalidReason), so the NaN defaults are unreachable.
+  const cm = spec.customMaterial;
+  const m =
+    spec.materialId === 'custom'
+      ? { ne: cm.ne, density: cm.density, ve: cm.ve, minCT: NaN, minET: NaN }
+      : MATERIALS[spec.materialId];
   const n = m.ne;
   const minCT = spec.minCT ?? m.minCT;
   const minET = spec.minET ?? m.minET;
@@ -231,7 +250,7 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
     bindingConstraint: r.binding,
     iterations: r.iterations,
     sags,
-    abbe: m.ve,
+    abbe: m.ve ?? null,
   };
   if (!allFinite(metrics) || !allFinite(intermediates)) {
     return fail(eye, [diag('NON_FINITE_RESULT', {})]);
