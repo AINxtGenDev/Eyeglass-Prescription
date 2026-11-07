@@ -22,6 +22,9 @@
 //   i7-8809G) and 1,67 / 10,4 ms (02-RESEARCH Pattern 1). A compare error never fails a main eye
 //   (T-02-19). In sync mode (no worker) compare jobs run only after runCompareNow(), because they
 //   would run on the main thread.
+// - Profile jobs (02-13, ANA-01): the cross-section's meridian profiles run last in the compare
+//   lane (after every compare job, before bench), with the same generation drop, error branch
+//   (a profile error never fails a main eye), sync-mode rule and an LRU cache by key.
 import { BENCH_RUNS, medianOf, tailOf } from './bench-cases.js';
 
 export const BUSY_AFTER_MS = 50;
@@ -47,6 +50,8 @@ const EYES = /** @type {const} */ (['OD', 'OS']);
  * @param {(openEyes: string[]) => void} o.onOpenChange fires synchronously whenever the open set changes
  * @param {(d: { gen: number, key: string, results: { OD: object, OS: object } | null, error?: true }) => void} [o.onCompare]
  *   a compare job of the current generation finished (or failed: results null, error true)
+ * @param {(d: { gen: number, key: string, items: object[] | null, error?: true }) => void} [o.onProfile]
+ *   a profile job of the current generation finished (or failed: items null, error true)
  * @param {() => number} [o.now] @param {(fn: () => void, ms: number) => any} [o.setTimer]
  * @param {(h: any) => void} [o.clearTimer] @param {() => boolean} [o.isHidden]
  * @param {number} [o.busyAfterMs] @param {number} [o.watchdogMs]
@@ -60,6 +65,7 @@ export function createComputeClient({
   onFallback,
   onOpenChange,
   onCompare = () => {},
+  onProfile = () => {},
   now = () => globalThis.performance.now(),
   setTimer = (fn, ms) => globalThis.setTimeout(fn, ms),
   clearTimer = (h) => globalThis.clearTimeout(h),
@@ -87,6 +93,7 @@ export function createComputeClient({
   /**
    * @type {{ id: number, kind: 'compute', eyes: Record<string, number> }
    *   | { id: number, kind: 'compare', gen: number, key: string, specs: object }
+   *   | { id: number, kind: 'profile', gen: number, key: string, items: object[] }
    *   | { id: number, kind: 'bench', caseId: string } | null}
    */
   let inFlight = null;
@@ -99,7 +106,11 @@ export function createComputeClient({
   const compareQueue = [];
   /** @type {Map<string, object>} */
   const compareCache = new Map();
-  /** Sync mode only: run compare jobs on the main thread until the queue drains. */
+  /** Profile jobs (02-13): after the compare queue. @type {{ key: string, items: object[] }[]} */
+  const profileQueue = [];
+  /** @type {Map<string, object[]>} */
+  const profileCache = new Map();
+  /** Sync mode only: run compare and profile jobs on the main thread until both queues drain. */
   let allowCompareInSync = false;
 
   const isOpen = (eye) => openSince[eye] !== null;
@@ -175,6 +186,9 @@ export function createComputeClient({
     if (inFlight?.kind === 'compare' && inFlight.gen === generation) {
       compareQueue.unshift({ key: inFlight.key, specs: inFlight.specs });
     }
+    if (inFlight?.kind === 'profile' && inFlight.gen === generation) {
+      profileQueue.unshift({ key: inFlight.key, items: inFlight.items });
+    }
     inFlight = null;
     onFallback(reason);
   }
@@ -200,9 +214,16 @@ export function createComputeClient({
     }
     if (compareQueue.length > 0 && (mode !== 'sync' || allowCompareInSync)) {
       const job = /** @type {{ key: string, specs: object }} */ (compareQueue.shift());
-      if (compareQueue.length === 0) allowCompareInSync = false;
+      if (compareQueue.length === 0 && profileQueue.length === 0) allowCompareInSync = false;
       inFlight = { id: nextId++, kind: 'compare', gen: generation, key: job.key, specs: job.specs };
       dispatch({ type: 'compare', id: inFlight.id, eyes: job.specs });
+      return;
+    }
+    if (profileQueue.length > 0 && (mode !== 'sync' || allowCompareInSync)) {
+      const job = /** @type {{ key: string, items: object[] }} */ (profileQueue.shift());
+      if (profileQueue.length === 0) allowCompareInSync = false;
+      inFlight = { id: nextId++, kind: 'profile', gen: generation, key: job.key, items: job.items };
+      dispatch({ type: 'profile', id: inFlight.id, items: job.items });
       return;
     }
     if (bench) {
@@ -252,6 +273,11 @@ export function createComputeClient({
     if (job.gen === generation) onCompare({ gen: job.gen, key: job.key, results: null, error: true });
   }
 
+  /** Drop a failed profile job, like dropCompare (02-13). */
+  function dropProfile(job) {
+    if (job.gen === generation) onProfile({ gen: job.gen, key: job.key, items: null, error: true });
+  }
+
   function request(specs, inputTs) {
     const fromCache = {};
     let cacheTs = Infinity;
@@ -281,6 +307,7 @@ export function createComputeClient({
     if (changed) {
       generation++;
       clearCompare();
+      profileQueue.length = 0;
     }
     if (Object.keys(fromCache).length > 0) {
       onResults({ results: fromCache, openTs: cacheTs, computeMs: null, current: openEyes().length === 0 });
@@ -353,6 +380,18 @@ export function createComputeClient({
     pump();
   }
 
+  function onProfileMsg(msg) {
+    if (inFlight?.kind !== 'profile' || msg.id !== inFlight.id) return;
+    const job = inFlight;
+    inFlight = null;
+    disarm();
+    profileCache.delete(job.key);
+    profileCache.set(job.key, msg.items);
+    if (profileCache.size > COMPARE_CACHE_SIZE) profileCache.delete(profileCache.keys().next().value);
+    if (job.gen === generation) onProfile({ gen: job.gen, key: job.key, items: msg.items });
+    pump();
+  }
+
   function onErrorMsg(msg) {
     if (inFlight === null || msg.id !== inFlight.id) return;
     const job = inFlight;
@@ -360,6 +399,7 @@ export function createComputeClient({
     disarm();
     if (job.kind === 'bench') endBenchWithError(job.caseId);
     else if (job.kind === 'compare') dropCompare(job);
+    else if (job.kind === 'profile') dropProfile(job);
     else failCurrent(job);
     pump();
   }
@@ -396,11 +436,30 @@ export function createComputeClient({
       pump();
       return generation;
     },
+    /**
+     * Replace the queued profile job (02-13) with one job for `items`, queued after the compare
+     * jobs. A cached key resolves through onProfile inside this call.
+     * @param {{ surfaces: object, frame: object, eye: string, thetaDeg: number }[]} items
+     * @returns {number} the generation the answer will carry
+     */
+    requestProfiles(items) {
+      profileQueue.length = 0;
+      const key = JSON.stringify(items);
+      const hit = profileCache.get(key);
+      if (hit === undefined) profileQueue.push({ key, items });
+      else {
+        profileCache.delete(key);
+        profileCache.set(key, hit);
+        onProfile({ gen: generation, key, items: hit });
+      }
+      pump();
+      return generation;
+    },
     cancelCompare: clearCompare,
     isCompareCurrent: (gen) => gen === generation,
     /** Sync mode: run the queued compare jobs on the main thread (the page's 'Vergleich berechnen'). */
     runCompareNow() {
-      if (compareQueue.length === 0) return;
+      if (compareQueue.length === 0 && profileQueue.length === 0) return;
       allowCompareInSync = true;
       pump();
     },
@@ -421,6 +480,9 @@ export function createComputeClient({
         case 'compare':
           onCompareMsg(msg);
           return;
+        case 'profile':
+          onProfileMsg(msg);
+          return;
         case 'error':
           onErrorMsg(msg);
           return;
@@ -439,6 +501,7 @@ export function createComputeClient({
       disarm();
       if (job.kind === 'bench') endBenchWithError(job.caseId);
       else if (job.kind === 'compare') dropCompare(job);
+      else if (job.kind === 'profile') dropProfile(job);
       else failCurrent(job);
       pump();
     },
