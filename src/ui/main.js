@@ -2,7 +2,7 @@
 // (01-15) → German render. Every visible string comes from t(); everything is written with textContent.
 import './style.css';
 import { createFrameScheduler } from '../state/frame-scheduler.js';
-import { createComputeClient, TAIL_PCT } from '../state/compute-client.js';
+import { TAIL_PCT } from '../state/compute-client.js';
 import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR } from '../state/bench-cases.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
@@ -12,12 +12,8 @@ import {
   renderEmpty,
   renderBlocked,
   initResultJumps,
-  renderResult,
-  renderFailed,
-  renderLrCallout,
   renderPdNote,
   renderBNote,
-  setStale,
   repaintFromLast,
 } from './results.js';
 import { initRxInput, readRx, eyeStatus, fmtForm } from './rx-input.js';
@@ -25,6 +21,18 @@ import { initFrameInput, readFrame, frameStatus } from './frame-input.js';
 import { initToggletips } from './toggletip.js';
 import { initExpert } from './expert.js';
 import { initSummaryBar } from './summary-bar.js';
+import {
+  pending,
+  writePending,
+  computeMode,
+  busyCount,
+  setComputeMode,
+  client,
+  startWorker,
+  requested,
+  initPipeline,
+  requestMain,
+} from './pipeline.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
@@ -80,107 +88,6 @@ function renderMaterialLine(eye, materialId) {
       abbe: abbeNf.format(m.ve),
     }),
   );
-}
-
-// Settled signal (01-15): #result[data-pending] is a space-separated token set, '' when nothing
-// is pending. 'input' = an input frame is scheduled; OD/OS = the eye is open in the client or
-// delivered but not yet painted. e2e/helpers.js settled() waits for ''.
-const pending = { input: false, open: new Set(), delivered: new Set() };
-
-function writePending() {
-  const tokens = pending.input ? ['input'] : [];
-  for (const eye of EYES) if (pending.open.has(eye) || pending.delivered.has(eye)) tokens.push(eye);
-  const value = tokens.join(' ');
-  const el = $('result');
-  if (el.dataset.pending !== value) el.dataset.pending = value;
-}
-
-/** @type {'worker' | 'sync'} */
-let computeMode = 'worker';
-/** @type {Worker | null} */
-let worker = null;
-const busyEyes = new Set();
-// "rechnet …" displays since load (ENG-09 (d), observable on a phone).
-let busyCount = 0;
-
-function onBusy(eye, on) {
-  if (on) {
-    busyEyes.add(eye);
-    busyCount++;
-    setText(`result-${eye.toLowerCase()}-status`, t('result.computing'));
-    setStale(eye, true);
-    $('result').setAttribute('aria-busy', 'true');
-    setText('calc-status', t('result.computingNote'));
-    return;
-  }
-  // Marks only; renderResult / renderEmpty / onFailed own the status cell (MINOR-2).
-  busyEyes.delete(eye);
-  setStale(eye, false);
-  // The note explains the dotted cells, so it stays while the other eye is still busy.
-  if (busyEyes.size === 0) {
-    $('result').removeAttribute('aria-busy');
-    setText('calc-status', '');
-  }
-}
-
-function onFailed(eyes) {
-  for (const eye of eyes) renderFailed(eye);
-}
-
-// Deliveries are painted in the next frame; an eye is painted only if its seq is still current
-// there (an input may arrive between the message and the frame, MINOR-1).
-/** @type {Record<string, { seq: number, result: object }>} */
-const deliveries = {};
-let deliveryFrame = null;
-/** Earliest open input of the deliveries waiting for the frame, when they complete the page. */
-let deliveryOpenTs = null;
-
-function paintDeliveries() {
-  deliveryFrame = null;
-  const frameStart = performance.now();
-  const openTs = deliveryOpenTs;
-  deliveryOpenTs = null;
-  let painted = 0;
-  for (const eye of EYES) {
-    const d = deliveries[eye];
-    if (!d) continue;
-    delete deliveries[eye];
-    // Skipped eyes leave the delivered set too: they are open again (or cancelled), so the
-    // settled signal cannot hang on them.
-    pending.delivered.delete(eye);
-    if (client.isCurrent(eye, d.seq)) {
-      // isCurrent: the result belongs to the latest request, so requested[eye] is its spec.
-      renderResult(eye, d.result, requested[eye]);
-      painted++;
-    }
-  }
-  writePending();
-  if (painted === 0) return;
-  // After renderResult: reads the values just painted (T-02-02). Cache-restored deliveries come
-  // through this path too.
-  renderLrCallout();
-  // 'result' is recorded only when no eye is still open; the start-up result is not an input.
-  const complete = openTs !== null && openTs > initInputTs && pending.open.size === 0;
-  setTimeout(() => {
-    const end = performance.now();
-    pushTiming(timings.resultFrame, end - frameStart);
-    if (complete) {
-      pushTiming(timings.result, end - openTs);
-      longestResult = Math.max(longestResult, end - openTs);
-    }
-    writeResultTiming();
-  }, 0);
-}
-
-function onResults({ results, openTs, computeMs, current }) {
-  for (const [eye, d] of Object.entries(results)) {
-    deliveries[eye] = d;
-    pending.delivered.add(eye);
-  }
-  if (Number.isFinite(computeMs)) pushTiming(timings.compute, computeMs);
-  deliveryOpenTs = current && openTs !== null ? Math.min(deliveryOpenTs ?? Infinity, openTs) : null;
-  writePending();
-  if (deliveryFrame === null) deliveryFrame = requestAnimationFrame(paintDeliveries);
 }
 
 const where = () => t(computeMode === 'sync' ? 'tech.where.sync' : 'tech.where.worker');
@@ -241,65 +148,6 @@ function runBench() {
   client.bench(BENCH_CASES);
 }
 
-function setComputeMode(mode, key) {
-  computeMode = mode;
-  const el = $('compute-mode');
-  el.dataset.mode = mode;
-  setText('compute-mode', t(key));
-}
-
-/** The worker cannot start or does not answer: terminate it and compute on the page. */
-function onFallback(reason) {
-  worker?.terminate();
-  worker = null;
-  setComputeMode('sync', reason === 'timeout' ? 'tech.mode.syncTimeout' : 'tech.mode.sync');
-  import('../state/compute-protocol.js').then(
-    ({ createHandler }) => {
-      const handle = createHandler();
-      // One job per macrotask, so input events can run between jobs.
-      client.useTransport((msg) => setTimeout(() => client.receive(handle(msg)), 0));
-    },
-    (err) => console.warn('compute fallback could not load', err),
-  );
-}
-
-const client = createComputeClient({
-  send: (msg) => /** @type {Worker} */ (worker).postMessage(msg),
-  onResults,
-  onBusy,
-  onBench,
-  onFailed,
-  onFallback,
-  onOpenChange: (eyes) => {
-    pending.open = new Set(eyes);
-    writePending();
-  },
-  isHidden: () => document.hidden,
-});
-
-function startWorker() {
-  try {
-    worker = new Worker(new URL('../worker/engine.worker.js', import.meta.url), { type: 'module' });
-  } catch {
-    client.workerError();
-    return;
-  }
-  // Test-only probe (?msgprobe): duration of the message task for result deliveries (MINOR-13).
-  const probe = location.search.includes('msgprobe') ? (window.__msgMs = []) : null;
-  worker.onmessage = (e) => {
-    // Engine error text is English and for developers only (T-01-41).
-    if (e.data?.type === 'error') console.warn('compute worker:', e.data.message);
-    const t0 = performance.now();
-    client.receive(e.data);
-    if (probe && e.data?.type === 'result') probe.push(performance.now() - t0);
-  };
-  worker.addEventListener('error', () => client.workerError());
-  worker.addEventListener('messageerror', () => client.workerError());
-}
-
-/** Specs of the latest request per eye (the spec of any result that passes isCurrent). */
-let requested = { OD: null, OS: null };
-
 /** The last Rx read per eye, for repainting a not-ready card when its field message appears. */
 const lastRead = { OD: null, OS: null };
 /** The last frame read (blocked state of the frame fields, which block both eyes). */
@@ -353,8 +201,22 @@ function update(inputTs) {
   // are computed with them.
   renderPdNote(EYES.filter((eye) => specs[eye] !== null && read[eye].pdSource === 'default'));
   renderBNote(fr.frame !== null && fr.bEstimated && EYES.some((eye) => specs[eye] !== null) ? fr.B : null);
-  requested = specs;
-  client.request(specs, inputTs);
+  requestMain(specs, inputTs);
+}
+
+/** Timing of a painted result frame (pipeline.js calls it after renderLrCallout). */
+function timeResultFrame(frameStart, openTs, openCount) {
+  // 'result' is recorded only when no eye is still open; the start-up result is not an input.
+  const complete = openTs !== null && openTs > initInputTs && openCount === 0;
+  setTimeout(() => {
+    const end = performance.now();
+    pushTiming(timings.resultFrame, end - frameStart);
+    if (complete) {
+      pushTiming(timings.result, end - openTs);
+      longestResult = Math.max(longestResult, end - openTs);
+    }
+    writeResultTiming();
+  }, 0);
 }
 
 const median = (sorted) => {
@@ -517,6 +379,7 @@ function init() {
   initSummaryBar();
   // Short disclaimer under the cards → the full Hinweis below (UI-SPEC "Disclaimer link").
   $('disclaimer-jump').addEventListener('click', () => $('disclaimer').focus());
+  initPipeline({ onBench, onPainted: timeResultFrame, onCompute: (ms) => pushTiming(timings.compute, ms) });
   setComputeMode('worker', 'tech.mode.worker');
   buildMaterialOptions();
   materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));
