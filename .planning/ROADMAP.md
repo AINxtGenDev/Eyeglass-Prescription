@@ -15,7 +15,7 @@ Every phase is gated by the project-local `lens-critic` agent (`.claude/agents/l
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Verified Engine & Live Pipeline** - Pure-JS optics engine with tiered validation, gated GitHub Actions deploy to Pages, minimal live German result page
+- [x] **Phase 1: Verified Engine & Live Pipeline** - Pure-JS optics engine with tiered validation, gated GitHub Actions deploy to Pages, minimal live German result page (completed 2026-11-07)
 - [ ] **Phase 2: Lay-First German Input, Results & Comparison** - Paper-shaped Rx entry, frame and material choice, plain-German results, mm/g comparison, Expert view with 2D cross-section, accessibility
 - [ ] **Phase 3: 3D Lenses & Frame** - Procedural lens meshes and parametric frame from engine data, camera presets, glass impression, thickness heatmap, smooth re-meshing on phones
 - [ ] **Phase 4: Refraction View & Offline** - Ray-traced "Durchblick" view through the real lens surfaces, graceful mobile degradation, offline service worker with update prompt
@@ -41,6 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
      - (d) "rechnet …" with outdated-value marking for any result slower than 50 ms, and the latest result arrives.
 
      (a) and (b) are measured on the 4× CPU-throttled proxy and on a real mid-range phone via the live site. (c) and (d) are decided on the real phone. The proxy only estimates them, because CPU throttling does not reach the worker.
+
   6. Explicit phase step: GitHub Pages is enabled on `AINxtGenDev/Eyeglass-Prescription` with Source "GitHub Actions" once the pipeline is ready (pre-authorized by the user 2026-11-06), and the first deploy is verified by loading the live URL.
   7. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
@@ -105,7 +106,7 @@ Plans:
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
-- [ ] 01-11-PLAN.md — Phase gate + lens-critic result review (Task 1 re-run after the gap plans), D-02 checkpoint 2 final push, live + real-phone timing (ENG-09)
+- [x] 01-11-PLAN.md — Phase gate + lens-critic result review (Task 1 re-run after the gap plans), D-02 checkpoint 2 final push, live + real-phone timing (ENG-09)
 
 **UI hint**: yes
 
@@ -167,7 +168,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Verified Engine & Live Pipeline | 14/15 | In Progress|  |
+| 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 0/TBD | Not started | - |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

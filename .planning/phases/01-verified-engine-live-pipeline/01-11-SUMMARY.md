@@ -157,10 +157,30 @@ Rollback: `git revert <sha>` and push. Never force-push.
 ## Open
 
 - **ENG-09:** passed on a real Pixel (see Task 3 step 6). Fast-typing residual (30,10 ms page figure) recorded as a finding; the phone model and typing impression are still to be supplied.
-- **DEPL-02:** failure-blocks-deploy rests on structural evidence only (`needs:` plus workflow-structure.test.js). Accepted as MINOR-4.
+- **DEPL-02:** closed by a real CI demo (see "DEPL-02 CI gate demo" below).
 - **Deferred:**
   - pilot orientation (assumed);
   - range checks (RX-04, phase 2);
   - the manual base-curve range and its convexity (MAT-03, phase 2);
   - minus lenses at the +0,50 floor (user-accepted, MAT-03);
   - result-review MINORs 2 and 5 (phase 2).
+
+## DEPL-02 CI gate demo (2026-11-07, user-approved: "Run the CI demo (Recommended)")
+
+- Branch `ci/gate-demo` was created from `main` at bb1ea0f. Commit a9e2b6d adds `test/ci/gate-demo.test.js`, which runs `expect(1).toBe(2)`.
+- The branch was pushed, and the workflow was started with `gh workflow run deploy.yml --ref ci/gate-demo`. Run 42350539302 (event workflow_dispatch, headSha a9e2b6d) concluded with **failure**:
+  ```
+  {"conclusion":"failure","name":"build"}
+  {"conclusion":"skipped","name":"verify-live"}
+  {"conclusion":"skipped","name":"deploy"}
+  ```
+  Build steps: npm ci and lint succeeded. `npm run test:coverage` failed with `FAIL test/ci/gate-demo.test.js > DEPL-02 gate demo … AssertionError: expected 1 to be 2`. build, playwright install, test:e2e, configure-pages and upload-pages-artifact were all skipped, so no artifact was produced.
+- Caveat, as planned in 01-05: on a non-main ref the deploy job is also excluded by its own `if:`. The demo therefore proves that a failing unit test turns build red in CI and that nothing is uploaded or deployed. The claim that build failure is what blocks deploy on main rests on `needs: build` (GitHub docs) plus `test/ci/workflow-structure.test.js`.
+- Cleanup: `git push origin --delete ci/gate-demo`, the local branch was deleted, `git ls-remote origin ci/gate-demo` is empty, and `git log main | grep -c gate-demo` gives 0. The live site still serves 02bf4ff.
+- **DEPL-02 marked complete.**
+
+## Phase 1 requirement status
+
+All 21 phase-1 requirements are complete: DEPL-01..04, ENG-01..09, MAT-01, MAT-02, RX-02, RX-03, FRAME-01, L10N-01, L10N-02, RES-06.
+
+## Self-Check: PASSED

@@ -1,8 +1,8 @@
 ---
 phase: 01-verified-engine-live-pipeline
 verified: 2026-11-06T13:55:00Z
-status: gaps_found
-score: 16/21 requirements verified (ENG-09, DEPL-01 wait on the final push and the phone; ENG-06, MAT-01, MAT-02 open)
+status: passed
+score: 21/21 requirements verified (final, 2026-11-07)
 source: 01-11 Task 1. Orchestrator gate, requirement trace (gsd-executor) and lens-critic phase-result review
 ---
 
@@ -80,3 +80,13 @@ VERDICT: NEEDS WORK
 ```
 
 Confirmed correct by lens-critic: optics conventions (TABO axis, nasal decentration, surface signs, thick-lens back-vertex correction), tyre-torus orientation, SC-4 demo (−12/−6×10 62×55 CR-39 → BACK_SAG_UNDEFINED; computable with 1,74), and the 360 px table fix (3193223).
+
+## Final status (2026-11-07)
+
+**passed.**
+- GAP-1 to GAP-3 were closed by 01-12 … 01-15. The lens-critic result review at e8139c4 returned `VERDICT: PASS`. The requirement trace showed 21/21 rows passing with no mismatch.
+- The final push was 02bf4ff, verified live: CI passed, the live Playwright run passed 68/68, and the chrome-devtools check showed 0 errors.
+- ENG-09 passed on a real Pixel.
+- DEPL-02 was proven by the CI gate demo (run 42350539302).
+
+Details: 01-11-SUMMARY.md.

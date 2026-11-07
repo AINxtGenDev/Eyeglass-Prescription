@@ -104,9 +104,13 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-11 re-run (2026-11-07):** gate at e8139c4 green (1070 unit tests, 68 e2e, coverage 98,45 %); trace 21/21 rows, no mismatch. **lens-critic result review: PASS** (0 BLOCKER, 0 MAJOR). MINORs 1/3/4 fixed in `02bf4ff`; MINORs 2/5 accepted (phase 2).
 - **Pushed** (user approval "please push it when finished", conditional on PASS): `364dd91..02bf4ff`, 86 commits. CI run 42348782420 passed build/deploy/verify-live. The live Playwright run passed 68/68 and the commit grep found the hash.
 - **chrome-devtools live check:** 4 requests, all under `/Eyeglass-Prescription/` including the worker; no favicon request and no console error, so **DEPL-01 is complete**. `data-mode=worker`. R −4/−2×30 gives 7,3 mm / 8,5 g; L +4 gives D1 +3,95, CT 4,9 mm; +12 in 62×55 gives CT 38,3 mm, D1 +9,19, "Vogel +18 begrenzt auf +14" and "Großes Rohglas nötig". No NaN.
+- **Real-phone measurement (Pixel, Chrome 156, live 02bf4ff, worker), ENG-09 complete.** Run 1 (slow edits plus fast typing): main thread median 7,40 ms, longest 30,10 ms; Event Timing 72 ms; result visible ≤ 53,6 ms. Run 2 (slow edits only, 2 s apart): **main thread median 5,45 ms, longest 12,80 ms** (< 16,7), result visible ≤ 27,3 ms, Event Timing 64 ms, "rechnet …" 2× (≤ 53,6 ms). (a)–(d) pass. The fast-typing value of 30,1 ms is recorded as a finding; it is the multi-task-spanning artifact known from the desktop diagnosis. Bench in the worker on the phone: normal 2,3 ms, Grenzfall 9,7 ms, rescan 25,3 ms.
+- **DEPL-02 CI demo (user-approved):** branch `ci/gate-demo` with a deliberately failing test, run 42350539302: build failure (test:coverage failed with "expected 1 to be 2"), build/e2e/upload skipped, deploy and verify-live **skipped**. The branch was deleted and main is untouched. DEPL-02 complete.
+- **Phase 1 complete:** 21/21 requirements, `01-VERIFICATION.md` status passed, `gsd-tools phase complete 01`.
 
 ### Open items
-- **Real-phone measurement (user), ENG-09:** see the instructions in the chat or in 01-11-PLAN Task 3 step 5.
+- Still missing from the user: the exact Pixel model and a typing impression (not blocking).
+- gsd-tools warning (pre-existing, not phase 1): 9 v2 IDs (SHARE-01/02, INS-01..05, LANG-01, DATA-01) are missing from the REQUIREMENTS traceability table. Fix it when planning phase 2.
 - **Changed requirement texts for the 01-11 manifest:** MAT-01 ("uses ne and density, exposes νe") and MAT-02 (+14, D-C, Expert view → UX-02).
 - ENG-09: the planner projects the slowest case at about 57 ms with 4× throttling, against a 16,7 ms budget, so 01-14 will probably stop at its checkpoint. Then the choice is a Web Worker or restating ENG-09.
 - ENG-09 worst case: the spec with the most iterations (+0,50/−0,50×81, 1,60, Panto 58×54/15) is not the slowest on desktop; +7,50/−5,75×148 takes 8,0 ms against 7,4 ms. Time both on the phone.
@@ -125,4 +129,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Real-phone measurement (ENG-09) → record it in 01-11-SUMMARY → close phase 1 (verify/complete). If the phone misses, a small optimisation plan follows.
+`/clear`, then `/gsd-discuss-phase 2` (lay-first German input, results, comparison, Expert view). Phase-2 backlog from phase 1: RX-04 range checks, MAT-03 manual base curve (range and convexity), UX-02 Expert view with base curve, lens-critic MINORs 2/5 (Vogel comparison), pilot orientation, phone layout (UX-03).
