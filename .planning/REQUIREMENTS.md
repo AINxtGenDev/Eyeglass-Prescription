@@ -73,7 +73,7 @@
 - [x] **UX-01**: Every technical term (Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration) has a one- or two-sentence German explanation that opens by tap (not hover-only) and by keyboard.
 - [ ] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06).
 - [ ] **UX-03**: Layout works on phone (from 320 px width), tablet and desktop; on phones the lens view stays visible while editing inputs; long German compound words never overflow.
-- [ ] **UX-04**: Fully keyboard operable; all inputs labelled; WCAG AA contrast; no information conveyed by colour alone; automated accessibility checks pass in CI.
+- [x] **UX-04**: Fully keyboard operable; all inputs labelled; WCAG AA contrast; no information conveyed by colour alone; automated accessibility checks pass in CI.
 - [x] **UX-05**: Terminology avoids ambiguous words (e.g. "Stärke" for both power and thickness): power is "Dioptrien (dpt)", thickness is "Mittendicke"/"Randdicke".
 
 ### Localization (L10N)
@@ -187,7 +187,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-01 | Phase 2 | Complete |
 | UX-02 | Phase 2 | Pending |
 | UX-03 | Phase 2 | Pending |
-| UX-04 | Phase 2 | Pending |
+| UX-04 | Phase 2 | Complete |
 | UX-05 | Phase 2 | Complete |
 | L10N-01 | Phase 1 | Complete |
 | L10N-02 | Phase 1 | Complete |

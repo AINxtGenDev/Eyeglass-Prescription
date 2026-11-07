@@ -182,7 +182,7 @@ Plans:
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 02-14-PLAN.md — Whole-page WCAG 2.2 AA matrix, keyboard flow, ENG-09 proxy record with the comparison lane (UX-01, UX-03, UX-04)
+- [x] 02-14-PLAN.md — Whole-page WCAG 2.2 AA matrix, keyboard flow, ENG-09 proxy record with the comparison lane (UX-01, UX-03, UX-04)
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 13/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 14/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
