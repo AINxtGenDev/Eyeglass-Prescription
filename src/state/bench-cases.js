@@ -10,11 +10,14 @@ export const BENCH_RUNS = 50;
  * @param {number} monoPD @param {string} materialId
  * @param {{ shape: string, A: number, B: number, DBL: number }} frame
  * @param {number|null} [fittingHeight] mm from the bottom of the box; the page sends null (D-04)
- * @param {{ baseCurve?: number|null, minCT?: number|null, minET?: number|null }} [overrides]
+ * @param {{ baseCurve?: number|null, minCT?: number|null, minET?: number|null, frontConic?: number|null }} [overrides]
  *   Expert overrides (02-10, MAT-03/04); missing = null. The key order never changes (cache key).
+ *   frontConic (02-11, MAT-05) is appended as the last key only when it is a non-zero finite
+ *   number: the phase-1 bench keys and the 02-10 JSON stay identical, and k = 0 shares the cache
+ *   entry with the sphere (the engine treats null and 0 the same).
  */
 export function specFor(eye, rx, monoPD, materialId, frame, fittingHeight = null, overrides = {}) {
-  return {
+  const spec = {
     eye,
     sph: rx.sph,
     cyl: rx.cyl,
@@ -27,6 +30,9 @@ export function specFor(eye, rx, monoPD, materialId, frame, fittingHeight = null
     minCT: overrides.minCT ?? null,
     minET: overrides.minET ?? null,
   };
+  const k = overrides.frontConic;
+  if (Number.isFinite(k) && k !== 0) spec.frontConic = k;
+  return spec;
 }
 
 const pair = (rx, monoPD, materialId, frame, fittingHeight = null) =>

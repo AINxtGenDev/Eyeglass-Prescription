@@ -15,6 +15,9 @@
  *   flattest front within τ of the thinnest)
  * @property {number|null} minCT mm, null = material default
  * @property {number|null} minET mm, null = material default
+ * @property {number|null} [frontConic] conic constant k of the front (MAT-05, 02-11); null or 0 =
+ *   sphere. The automatic base curve is always chosen at k = 0, then k is applied at that D1
+ *   (RESEARCH Pitfall 1), see the conic block in evaluateLens.
  */
 
 /**
@@ -82,6 +85,8 @@ function invalidReason(spec) {
   if (!(spec.fittingHeight == null || fin(spec.fittingHeight))) return 'fitting-height';
   if (!optNonNeg(spec.baseCurve)) return 'base-curve';
   if (!optPositive(spec.minCT) || !optPositive(spec.minET)) return 'min-thickness';
+  // Any k ≤ 0 (k = 0 sphere); the UI offers only the cited −5…−1 (src/state/validate.js).
+  if (!(spec.frontConic == null || (fin(spec.frontConic) && spec.frontConic <= 0))) return 'front-conic';
   // Minus-cylinder form only; the UI transposes plus-cylinder input (src/state/transpose.js, 01-09).
   if (spec.cyl > 0) return 'plus-cyl-must-be-transposed';
   return null;
@@ -142,10 +147,18 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
   let baseCurveRule;
   let baseCurveSearch = null;
   let vogelMaxThickness = null;
+  // MAT-05 generic conic front. The conic sag z(r) with vertex radius R = 1/c satisfies
+  // r² = 2Rz − (1 + k)z² (sag.test.js proves it for sphereSag). Jalie, US4289387, writes the
+  // front as y² = 2000(n′ − n)x/F₀ − p·x², so p = 1 + k: his p 0…−4 is k −1…−5 (the UI range).
+  // The patent applies the hyperboloid to the FRONT of plus lenses only (minus lenses get it on
+  // the back); this model applies k to the front for any Rx as a generic surface, which is why
+  // the UI says it mainly changes plus lenses. Paraxial power is set by the vertex curvature, so
+  // D1v/D2 and the Rx do not depend on k.
+  const k = spec.frontConic ?? 0;
   if (spec.baseCurve != null) {
     D1 = spec.baseCurve;
     baseCurveRule = 'manual';
-    r = solveCT({ ...common, D1 });
+    r = solveCT({ ...common, k1: k, D1 });
   } else {
     baseCurveRule = 'thinnest';
     r = optimiseBaseCurve({ ...common, maxD1: bc.maxD1, seedD1: bc.vogelClampedD1 });
@@ -158,6 +171,26 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
         minMaxThickness: r.minMaxThickness,
       };
       vogelMaxThickness = r.seedMaxThickness;
+    }
+    // The search ran at k1: 0 (common): the base curve is chosen on the spherical design, never
+    // re-optimised with k (that gives bowl-shaped fronts, RESEARCH Pitfall 1). baseCurveSearch
+    // and vogelMaxThickness stay the k = 0 values (the UI labels them as such).
+    if (k !== 0 && r.ok) {
+      r = solveCT({ ...common, k1: k, D1, ct0: r.ct });
+      // Convex-back guard (lens-critic M2, GAP-1: an automatic lens never has a convex back). The
+      // thinner CT lowers D1v = D1/(1 − (ct/1000)/n·D1), so D2 = sph − D1v can turn positive.
+      // max(D2a, D2b) ≤ 0 ⇔ D1v ≥ m, m = max(sph, sph + cyl); D1v increases in D1 and ct, so the
+      // flattest non-convex front at a given ct is D1min(ct) = m / (1 + (ct/1000)/n · m). D1 only
+      // rises, and only to that value at the previous pass's CT. Warning sign: an aspheric D1
+      // above the spherical D1 by more than this minimal raise means the rule was broken.
+      const mm = Math.max(sph, sph + cyl);
+      for (let pass = 0; r.ok && Math.max(r.surfaces.D2a, r.surfaces.D2b) > BACK_CONVEX_MAX_DPT; pass++) {
+        if (pass === 10) {
+          return fail(eye, [diag('BACK_SURFACE_CONVEX', { D2max: Math.max(r.surfaces.D2a, r.surfaces.D2b) })]);
+        }
+        D1 = Math.max(D1, mm / (1 + (r.ct / 1000 / n) * mm));
+        r = solveCT({ ...common, k1: k, D1, ct0: r.ct });
+      }
     }
   }
   if (!r.ok) return fail(eye, [diag(r.code, r.data)]);
