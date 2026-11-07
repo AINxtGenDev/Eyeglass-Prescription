@@ -1,6 +1,6 @@
 // Shared e2e helpers (01-15).
 import { expect } from '@playwright/test';
-/* global requestAnimationFrame -- page.evaluate bodies run in the browser */
+/* global requestAnimationFrame, self -- page/worker.evaluate bodies run in the browser */
 
 /**
  * Wait until the page has nothing pending: no input frame scheduled, no eye open in the compute
@@ -58,6 +58,37 @@ export async function slowWorker(page, delayMs, { types = ['result'] } = {}) {
     const body = await response.text();
     await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
   });
+}
+
+/**
+ * Serve the real worker with a test-controlled hold on `result` messages (02-08). While held,
+ * results are queued inside the worker; release() posts them in order. Unlike slowWorker's
+ * fixed delay, the busy window lasts exactly until the test releases it, so slow steps inside
+ * the window (axe under load) cannot outlast it. Hold no longer than WATCHDOG_MS (10 s), or the
+ * client falls back to direct computation. Must be called before page.goto.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function holdWorker(page) {
+  const patch =
+    '{const post = self.postMessage.bind(self); const q = []; self.__hold = false;' +
+    'self.__release = () => { self.__hold = false; while (q.length) post(...q.shift()); };' +
+    "self.postMessage = (m, ...rest) => { if (self.__hold && m && m.type === 'result') q.push([m, ...rest]); else post(m, ...rest); };}\n";
+  await page.route(WORKER_URL, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
+  });
+  const worker = () => {
+    const w = page.workers().find((x) => WORKER_URL.test(new URL(x.url()).pathname));
+    if (!w) throw new Error('holdWorker: engine worker not found');
+    return w;
+  };
+  return {
+    hold: () => worker().evaluate(() => {
+      self.__hold = true;
+    }),
+    release: () => worker().evaluate(() => self.__release()),
+  };
 }
 
 /** Text without soft hyphens (U+00AD, RESEARCH Pitfall 6) and with NBSP / narrow NBSP as spaces. */

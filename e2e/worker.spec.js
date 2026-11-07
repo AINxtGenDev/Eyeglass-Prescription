@@ -5,7 +5,7 @@
 // here), and assert the stored pair differs before the main assertion.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, settledCompare, thickOf, sphOnly, slowWorker, WORKER_URL } from './helpers.js';
+import { settled, settledCompare, thickOf, sphOnly, slowWorker, holdWorker, WORKER_URL } from './helpers.js';
 /* global window, document, MutationObserver -- page.evaluate bodies run in the browser */
 
 // Must equal vite.config.js CSP exactly (T-01-39).
@@ -173,8 +173,11 @@ test('result frame re-checks isCurrent (input between message and frame)', async
   expect(seq.some((s) => s.startsWith(mmText(et1)))).toBe(false);
 });
 
+// 02-08: the busy window is held open by the test (holdWorker), not by a 2000 ms timer. Under
+// parallel load the axe scan inside the window took longer than 2000 ms and the guard below
+// failed ('busy window too short') although the app behaved correctly.
 test('"rechnet …" marks old values per eye, input stays responsive, nothing moves (slow worker)', async ({ page }) => {
-  await slowWorker(page, 2000);
+  const gate = await holdWorker(page);
   await page.goto('./');
   await settled(page);
   // 02-01: the first Rx input removes the example banner; remove it before the baseline boxes.
@@ -199,6 +202,7 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
     }
   };
   const b0 = await boxes();
+  await gate.hold();
   // 02-01: −2,50 against L −2,00 (3,7 → 4,2 mm vs 3,7 mm) stays below the 1,0 mm L/R rule, so
   // the #lr-callout does not appear; −3 (4,7 mm) would add the sentence and move the boxes.
   await sph(page).fill('-2,5');
@@ -215,6 +219,7 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
   const severe = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
   expect(severe.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   expect(await page.locator('#result').getAttribute('aria-busy'), 'busy window too short').toBe('true');
+  await gate.release();
   await settled(page);
   await expect(page.locator('#result')).not.toHaveAttribute('aria-busy', /.*/);
   expect(await page.locator('[data-stale]').count()).toBe(0);
