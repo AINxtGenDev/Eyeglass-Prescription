@@ -2,6 +2,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { createHandler, READY, medianOf, tailOf } from './compute-protocol.js';
 import { NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR, specFor } from './bench-cases.js';
 import { evaluateLens } from '../engine/evaluate.js';
+import { meridianProfile } from '../engine/profile.js';
 
 const SC4 = specFor('OD', { sph: -12, cyl: -6, axisDeg: 10 }, 32, 'cr39', { shape: 'rechteckig', A: 62, B: 55, DBL: 18 });
 const NAN_SPEC = { ...NORMAL_PAIR.OD, sph: Number.NaN };
@@ -117,6 +118,41 @@ describe('compute protocol (01-15, ENG-09 worker side)', () => {
       });
       const res = handle({ type: 'compare', id: 5, eyes: { OD: NORMAL_PAIR.OD, OS: NORMAL_PAIR.OS } });
       expect(res).toEqual({ type: 'error', id: 5, eyes: [], message: 'boom' });
+    });
+  });
+
+  describe('profile (02-13)', () => {
+    const r = evaluateLens(NORMAL_PAIR.OD);
+    const item = (thetaDeg) => ({ surfaces: r.surfaces, frame: NORMAL_PAIR.OD.frame, eye: 'OD', thetaDeg });
+
+    test('profile items: same id, one meridianProfile per item in order, computeMs ≥ 0', () => {
+      const res = createHandler()({ type: 'profile', id: 21, items: [item(0), item(90)] });
+      expect(res.type).toBe('profile');
+      expect(res.id).toBe(21);
+      expect(res.items).toEqual([
+        meridianProfile({ surfaces: r.surfaces, frame: NORMAL_PAIR.OD.frame, eye: 'OD' }, 0),
+        meridianProfile({ surfaces: r.surfaces, frame: NORMAL_PAIR.OD.frame, eye: 'OD' }, 90),
+      ]);
+      expect(res.computeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    test('structuredClone round trip keeps the profile response (typed arrays included)', () => {
+      const res = createHandler()({ type: 'profile', id: 2, items: [item(30)] });
+      expect(res.items[0].ok).toBe(true);
+      expect(structuredClone(res)).toEqual(res);
+    });
+
+    test('injected profileFn; a throwing one gives an error with no eyes', () => {
+      const profileFn = vi.fn(() => ({ ok: false, code: 'NO_CHORD' }));
+      const res = createHandler({ profileFn })({ type: 'profile', id: 3, items: [item(0)] });
+      expect(profileFn).toHaveBeenCalledWith({ surfaces: r.surfaces, frame: NORMAL_PAIR.OD.frame, eye: 'OD' }, 0);
+      expect(res.items).toEqual([{ ok: false, code: 'NO_CHORD' }]);
+      const boom = createHandler({
+        profileFn: () => {
+          throw new Error('boom');
+        },
+      });
+      expect(boom({ type: 'profile', id: 4, items: [item(0)] })).toEqual({ type: 'error', id: 4, eyes: [], message: 'boom' });
     });
   });
 });

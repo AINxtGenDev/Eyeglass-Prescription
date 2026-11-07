@@ -57,6 +57,7 @@ function setup({ ready = true, hidden = false } = {}) {
     onFallback: vi.fn(),
     onOpenChange: vi.fn(),
     onCompare: vi.fn(),
+    onProfile: vi.fn(),
   };
   const state = { hidden };
   const client = createComputeClient({
@@ -627,5 +628,112 @@ describe('compare lane (02-06)', () => {
     client.receive({ type: 'result', id: sync[3].id, eyes: { OD: { seq: 2, result: res(-3) } }, computeMs: 1 });
     client.requestCompare([pairJob('c')]);
     expect(sync).toHaveLength(4);
+  });
+});
+
+// Profile jobs (02-13, ANA-01): last in the compare lane, same generation rule.
+describe('profile jobs in the compare lane (02-13)', () => {
+  const pairJob = (key) => ({ key, specs: { OD: spec('OD', -2), OS: spec('OS', -2) } });
+  const item = (thetaDeg) => ({ surfaces: { ct: 1 }, frame: { shape: 'rund' }, eye: 'OD', thetaDeg });
+  const answerProfile = (client, job, tag) =>
+    client.receive({ type: 'profile', id: job.id, items: job.items.map(() => ({ ok: true, tag })), computeMs: 1 });
+  const answerCompare = (client, job, tag) =>
+    client.receive({ type: 'compare', id: job.id, eyes: { OD: res(tag), OS: res(tag) }, computeMs: 1 });
+
+  test('dispatch order: main compute → compare jobs → profile → bench', () => {
+    const { client, sent, cb, answer } = setup();
+    client.request({ OD: spec('OD', -2) }, 0);
+    client.requestCompare([pairJob('a')]);
+    const gen = client.requestProfiles([item(0), item(90)]);
+    client.bench(['normal']);
+    expect(sent.map((m) => m.type)).toEqual(['compute']);
+    answer(sent[0]);
+    expect(sent.map((m) => m.type)).toEqual(['compute', 'compare']);
+    answerCompare(client, sent[1], 'a');
+    expect(sent[2]).toEqual({ type: 'profile', id: expect.any(Number), items: [item(0), item(90)] });
+    answerProfile(client, sent[2], 'p');
+    expect(cb.onProfile).toHaveBeenCalledWith({
+      gen,
+      key: JSON.stringify([item(0), item(90)]),
+      items: [
+        { ok: true, tag: 'p' },
+        { ok: true, tag: 'p' },
+      ],
+    });
+    expect(sent[3].type).toBe('bench');
+  });
+
+  test('requestCompare after requestProfiles keeps the profile last; requestProfiles replaces the queued profile', () => {
+    const { client, sent } = setup();
+    client.request({ OD: spec('OD', -2) }, 0); // in flight, holds the lane
+    client.requestProfiles([item(0)]);
+    client.requestProfiles([item(90)]);
+    client.requestCompare([pairJob('a')]);
+    client.receive({ type: 'result', id: sent[0].id, eyes: { OD: { seq: 1, result: res(-2) } }, computeMs: 1 });
+    expect(sent[1].type).toBe('compare');
+    answerCompare(client, sent[1], 'a');
+    expect(sent[2]).toMatchObject({ type: 'profile', items: [item(90)] });
+    answerProfile(client, sent[2], 'p');
+    expect(sent).toHaveLength(3);
+  });
+
+  test('a main input waits for at most one profile job; a changed request drops old profile answers and the queue', () => {
+    const { client, sent, cb, answer } = setup();
+    client.requestProfiles([item(0)]);
+    client.request({ OD: spec('OD', -3) }, 0);
+    expect(sent.map((m) => m.type)).toEqual(['profile']);
+    answerProfile(client, sent[0], 'old');
+    expect(cb.onProfile).not.toHaveBeenCalled();
+    expect(sent[1].type).toBe('compute');
+    // queued (not yet sent) profile of the old generation is dropped by the next change
+    client.requestProfiles([item(90)]);
+    client.request({ OD: spec('OD', -4) }, 1);
+    answer(sent[1]);
+    expect(sent.map((m) => m.type)).toEqual(['profile', 'compute', 'compute']);
+    answer(sent[2]);
+    expect(sent).toHaveLength(3);
+  });
+
+  test('cached profile keys resolve synchronously; isCompareCurrent guards delivery', () => {
+    const { client, sent, cb } = setup();
+    const g = client.requestProfiles([item(0)]);
+    answerProfile(client, sent[0], 'p');
+    expect(cb.onProfile).toHaveBeenCalledTimes(1);
+    const g2 = client.requestProfiles([item(0)]);
+    expect(g2).toBe(g);
+    expect(sent).toHaveLength(1);
+    expect(cb.onProfile).toHaveBeenCalledTimes(2);
+    expect(cb.onProfile.mock.calls[1][0].items).toEqual([{ ok: true, tag: 'p' }]);
+    expect(client.isCompareCurrent(g)).toBe(true);
+  });
+
+  test('a profile error is reported for the current generation only, never onFailed, never cached', () => {
+    const { client, sent, cb } = setup();
+    const gen = client.requestProfiles([item(0)]);
+    client.receive({ type: 'error', id: sent[0].id, eyes: [], message: 'x' });
+    expect(cb.onFailed).not.toHaveBeenCalled();
+    expect(cb.onProfile).toHaveBeenCalledWith({ gen, key: JSON.stringify([item(0)]), items: null, error: true });
+    client.requestProfiles([item(0)]);
+    expect(sent).toHaveLength(2);
+    client.workerError(); // profile in flight: dropped like a compare job
+    expect(cb.onFailed).not.toHaveBeenCalled();
+    expect(cb.onProfile).toHaveBeenCalledTimes(2);
+  });
+
+  test('sync mode: profile jobs wait for runCompareNow(); a timeout re-queues the profile in flight', () => {
+    const { client, sent, cb, ft } = setup();
+    client.requestProfiles([item(0)]);
+    expect(sent).toHaveLength(1);
+    ft.advance(WATCHDOG_MS);
+    expect(cb.onFallback).toHaveBeenCalledWith('timeout');
+    const sync = [];
+    client.useTransport((m) => sync.push(m));
+    expect(sync).toHaveLength(0);
+    client.runCompareNow();
+    expect(sync).toEqual([{ type: 'profile', id: expect.any(Number), items: [item(0)] }]);
+    answerProfile(client, sync[0], 'p');
+    expect(cb.onProfile).toHaveBeenCalledTimes(1);
+    client.requestProfiles([item(90)]);
+    expect(sync).toHaveLength(1); // drained: waits again
   });
 });

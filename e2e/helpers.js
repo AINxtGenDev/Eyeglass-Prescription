@@ -28,6 +28,19 @@ export async function settledCompare(page, { timeout = 10_000 } = {}) {
 }
 
 /**
+ * settledCompare(), then wait until the cross-section has nothing pending (02-13):
+ * #xsec[data-pending] = '' (no profile job open, none delivered but unpainted), then one more
+ * frame. The compare paint requests the profile synchronously, so after settledCompare() a needed
+ * profile is already marked pending.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function settledXsec(page, { timeout = 10_000 } = {}) {
+  await settledCompare(page, { timeout });
+  await expect(page.locator('#xsec')).toHaveAttribute('data-pending', '', { timeout });
+  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+}
+
+/**
  * Numeric value of #result-<eye>-etmax ("2,8 mm" → 2.8); NaN when the cell shows no number.
  * Since 02-01 this is the 'Dickster Rand' technical row (the edge value). Callers that mean the
  * shown thickest point use thickOf; perf-throttled discriminator() stays on the edge on purpose.
