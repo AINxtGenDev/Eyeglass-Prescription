@@ -173,3 +173,17 @@ describe('result cards (02-01)', () => {
     expect(dict['loc.centre']).toBe('in der Mitte');
   });
 });
+
+describe('Experten-Ansicht (02-02)', () => {
+  test('has the binding-constraint sentences', () => {
+    expect(dict['expert.binding.minCT']).toBe('Die Mittendicke ist durch den Mindestwert festgelegt.');
+    expect(dict['expert.binding.minET']).toBe('Die Mittendicke ergibt sich aus der Mindest-Randdicke.');
+  });
+  test('every loc.<x> key has a loc.tech.<x> key and vice versa', () => {
+    const keys = Object.keys(dict);
+    const lay = keys.filter((k) => k.startsWith('loc.') && !k.startsWith('loc.tech.')).map((k) => k.slice(4));
+    const tech = keys.filter((k) => k.startsWith('loc.tech.')).map((k) => k.slice(9));
+    expect(lay.length).toBeGreaterThan(0);
+    expect(tech.sort()).toEqual(lay.sort());
+  });
+});

@@ -11,7 +11,8 @@ import { SHAPES } from '../engine/frame/shapes.js';
 import { t } from '../i18n/t.js';
 import { fmtDiopter, fmtAxis, fmtMm, fmtMs } from '../i18n/format.js';
 import { $, setText, applyDictionary } from './dom.js';
-import { renderEmpty, renderResult, renderFailed, renderLrCallout, setStale } from './results.js';
+import { renderEmpty, renderResult, renderFailed, renderLrCallout, setStale, repaintFromLast } from './results.js';
+import { initExpert } from './expert.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 const DASH = '–';
@@ -580,6 +581,9 @@ function initExample(onInput) {
 
 function init() {
   applyDictionary();
+  // Toggling only rewrites the location suffixes; it never goes through schedule()/the compute
+  // client, which would skip the identical spec and paint nothing (lens-critic round 3 MAJOR-A).
+  initExpert(repaintFromLast);
   setComputeMode('worker', 'tech.mode.worker');
   buildMaterialOptions();
   materialSelect().addEventListener('change', (e) => schedule(e.timeStamp));

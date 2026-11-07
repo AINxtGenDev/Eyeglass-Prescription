@@ -1,17 +1,18 @@
-// Result rendering (02-01, RES-01, RES-04): one plain-German card per eye, the technical rows
-// (Dezentration, Dickster Rand, Basiskurve), diagnostics, stale marks and the L/R callout.
+// Result rendering (02-01, RES-01, RES-04): one plain-German card per eye, diagnostics, stale
+// marks and the L/R callout. The technical values live in the Zwischenwerte (expert.js, 02-02).
 // Every number comes from the engine result or from src/state/compare.js.
 import { $, setText, para } from './dom.js';
-import { thickest, roundMm, roundG, lrCause, lrDifference } from '../state/compare.js';
-import { nasalSign } from '../engine/conventions.js';
+import { thickest, roundMm, roundG, uniformEdge, lrCause, lrDifference } from '../state/compare.js';
 import { t } from '../i18n/t.js';
-import { fmtDiopter, fmtMm, fmtGramWhole } from '../i18n/format.js';
+import { fmtMm, fmtGramWhole } from '../i18n/format.js';
+import { renderZwischenwerte, clearZwischenwerte, isExpert, EXPERT_CELLS } from './expert.js';
 
 const DASH = '–';
 
-/** Every value id per eye: the four card values plus the three technical rows. */
-export const CELLS = ['ct', 'thick', 'etmin', 'weight', 'dec', 'etmax', 'basecurve'];
-const LOCS = ['thick-loc', 'etmin-loc', 'etmax-loc'];
+/** The four card value ids per eye. */
+export const CELLS = ['ct', 'thick', 'etmin', 'weight'];
+// Location spans per eye, keyed as in lastLoc (etmax = the 'Dickster Rand' Zwischenwert).
+const LOCS = { thick: 'thick-loc', etmin: 'etmin-loc', etmax: 'etmax-loc' };
 
 const glass = (eye) => t(eye === 'OD' ? 'result.glass.od' : 'result.glass.os');
 const side = (eye) => t(eye === 'OD' ? 'result.side.od' : 'result.side.os');
@@ -23,13 +24,41 @@ const side = (eye) => t(eye === 'OD' ? 'result.side.od' : 'result.side.os');
  */
 const displayed = { OD: null, OS: null };
 
+/**
+ * Location codes painted per eye ({ thick, etmin, etmax }: 'centre', 'temporal-superior', …, and
+ * 'uniform' wherever the uniform-edge rule painted loc.uniform); null = no result shown. Lets
+ * repaintFromLast() switch the Expert suffix without a recompute.
+ */
+const lastLoc = { OD: null, OS: null };
+
+/** Lay location word, plus the technical term in parentheses in the Experten-Ansicht. */
+const locText = (code) => t('loc.' + code) + (isExpert() ? ' (' + t('loc.tech.' + code) + ')' : '');
+
+function writeLocs(eye) {
+  const p = `result-${eye.toLowerCase()}`;
+  const codes = lastLoc[eye];
+  for (const [k, id] of Object.entries(LOCS)) setText(`${p}-${id}`, codes ? locText(codes[k]) : '');
+}
+
 function noResult(eye) {
   const p = `result-${eye.toLowerCase()}`;
   displayed[eye] = null;
+  lastLoc[eye] = null;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
-  for (const c of LOCS) setText(`${p}-${c}`, '');
+  clearZwischenwerte(eye);
+  writeLocs(eye);
   $(`${p}-grid`).hidden = true;
   renderLrCallout();
+}
+
+/**
+ * Expert switch toggled: rewrite only the location spans from the codes painted last (lens-critic
+ * round 4 finding 1). No number, headline, Zwischenwert, stale mark or compute is touched, so it
+ * can neither repaint old values nor clear a "rechnet …" mark. The compute client would skip an
+ * identical spec anyway (compute-client.js `wanted[eye]?.key === key`).
+ */
+export function repaintFromLast() {
+  for (const eye of ['OD', 'OS']) if (lastLoc[eye]) writeLocs(eye);
 }
 
 /**
@@ -94,26 +123,9 @@ function statusLabel(diagnostics) {
   return diagnostics.some((d) => d.severity === 'warn') ? t('result.diagLabel.warn') : '';
 }
 
-/** Base-curve cell: thinnest rule plus the Vogel reference (D-01 final, lens-critic MAJOR-2). */
-function baseCurveText(m, im) {
-  const bc = fmtDiopter(im.D1) + ' – ' + t('basecurve.rule.' + im.baseCurveRule);
-  if (im.baseCurveRule !== 'thinnest') return bc;
-  // Raw Vogel value; when the rule leaves +0,50…+14,00 (D-A) the clamp is named, and any
-  // thickness in the sentence refers to the clamped lens (01-13, MINOR-1).
-  let vogel = fmtDiopter(im.vogelD1);
-  if (im.vogelD1 !== im.vogelClampedD1) {
-    vogel += t('basecurve.vogelClamped', { clamped: fmtDiopter(im.vogelClampedD1) });
-  }
-  const v = im.vogelMaxThickness;
-  const j = thickest(m).value;
-  if (v === null) return bc + ' ' + t('basecurve.vogelRefImpossible', { vogel });
-  if (v - j >= 0.05) return bc + ' ' + t('basecurve.vogelRefThicker', { vogel, thickness: fmtMm(v) });
-  return bc + ' ' + t('basecurve.vogelRef', { vogel });
-}
-
 /** Dotted underline on an eye's value cells while its values belong to the previous input. */
 export function setStale(eye, on) {
-  for (const c of CELLS) {
+  for (const c of [...CELLS, ...EXPERT_CELLS]) {
     const el = $(`result-${eye.toLowerCase()}-${c}`);
     if (on) el.dataset.stale = 'true';
     else delete el.dataset.stale;
@@ -149,23 +161,26 @@ export function renderResult(eye, res, spec) {
     return;
   }
   const m = res.metrics;
-  const im = res.intermediates;
   const th = thickest(m);
   const thick = fmtMm(th.value);
   const ct = fmtMm(m.ct);
   const etmin = fmtMm(m.etMin.value);
-  const etmax = fmtMm(m.etMax.value);
   const weight = fmtGramWhole(m.weightG) ?? t('result.weightUnder1');
   // Uniform edge: the displayed thickest and thinnest edge are equal, so no edge location is named.
-  const uniform = etmax === etmin;
-  const thickLoc = t(uniform && th.where !== 'centre' ? 'loc.uniform' : 'loc.' + th.where);
-  const etminLoc = t(uniform ? 'loc.uniform' : 'loc.' + m.etMin.location);
+  const uniform = uniformEdge(m);
+  lastLoc[eye] = {
+    thick: uniform && th.where !== 'centre' ? 'uniform' : th.where,
+    etmin: uniform ? 'uniform' : m.etMin.location,
+    etmax: m.etMax.location,
+  };
+  // The headline keeps the lay words only; the spans get the Expert suffix (writeLocs).
+  const thickLoc = t('loc.' + lastLoc[eye].thick);
+  const etminLoc = t('loc.' + lastLoc[eye].etmin);
   $(`${p}-grid`).hidden = false;
   $(`${p}-empty`).hidden = true;
   setText(`${p}-thick`, thick);
-  setText(`${p}-thick-loc`, thickLoc);
   setText(`${p}-etmin`, etmin);
-  setText(`${p}-etmin-loc`, etminLoc);
+  writeLocs(eye);
   setText(`${p}-ct`, ct);
   setText(`${p}-weight`, weight);
   setText(
@@ -174,12 +189,7 @@ export function renderResult(eye, res, spec) {
       ? t('result.headline.uniformEdge', { glass: glass(eye), etmin, ct, weight })
       : t('result.headline', { glass: glass(eye), thick, thickLoc, etmin, etminLoc, ct, weight }),
   );
-  // Technical rows. The 'Dickster Rand' row is the edge value, number first (e2e etmaxOf).
-  // display only: the engine's signed x offset turned into "toward the nose" for this eye
-  setText(`${p}-dec`, fmtMm(nasalSign(eye) * m.decentration.x));
-  setText(`${p}-etmax`, etmax);
-  setText(`${p}-etmax-loc`, t('loc.' + m.etMax.location));
-  setText(`${p}-basecurve`, baseCurveText(m, im));
+  renderZwischenwerte(eye, res);
   setText(`${p}-status`, statusLabel(res.diagnostics));
   renderDiagnostics(eye, res.diagnostics);
   displayed[eye] = { thick: roundMm(th.value), weight: roundG(m.weightG), spec };

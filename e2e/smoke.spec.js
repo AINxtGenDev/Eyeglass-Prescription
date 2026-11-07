@@ -55,6 +55,9 @@ test('both eyes show thickness, weight and base curve', async ({ page }) => {
     await expect(page.locator(id)).toHaveText(/^\d+,\d\smm$/);
   }
   await expect(page.locator('#result-od-weight')).toHaveText(/^\d+\sg$/);
+  // 02-02: the base curve is a Zwischenwert behind the Experten-Ansicht.
+  await page.locator('#expert').check();
+  await expect(page.locator('#result-od-basecurve')).toBeVisible();
   await expect(page.locator('#result-od-basecurve')).toContainText('Vogel');
 });
 
@@ -92,6 +95,9 @@ test('frame shape and PD change the edge', async ({ page }) => {
   // 02-01 lay words: −6,00 / −0,50 × 180 (example cylinder kept), PD 32 → 8,0 mm 'außen oben'.
   await expect(page.locator('#result-od-thick-loc')).toContainText('außen');
   const before = await thickOf(page, 'od');
+  // 02-02: Dezentration is a Zwischenwert behind the Experten-Ansicht.
+  await page.locator('#expert').check();
+  await expect(page.locator('#result-od-dec')).toBeVisible();
   await expect(page.locator('#result-od-dec')).toHaveText(/^3,0\smm$/);
   await page.locator('#rx-od-pd').fill('28');
   await settled(page);
@@ -193,7 +199,9 @@ test('oversized lens warns', async ({ page }) => {
   await expect(page.locator('#result-od-weight')).toHaveText(/^\d+\sg$/);
   await expect(page.locator('#diag-od')).toContainText('Großes Rohglas nötig');
   await expect(page.locator('#result-od-status')).toHaveText('Hinweis');
+  await page.locator('#expert').check(); // 02-02: Zwischenwerte behind the Experten-Ansicht
   const bc = page.locator('#result-od-basecurve');
+  await expect(bc).toBeVisible();
   for (const s of ['nahezu so dünn wie möglich', 'Faustregel nach Vogel', 'nicht berechnen']) await expect(bc).toContainText(s);
   await expect(page.locator('#result-od-ct')).toHaveText(/^38,3\smm$/);
   await expect(page.locator('body')).not.toContainText('NaN');
@@ -218,7 +226,9 @@ test('very strong plus beyond the model range is explained (01-12)', async ({ pa
 test('normal lens shows Vogel reference', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('-2');
   await settled(page);
+  await page.locator('#expert').check(); // 02-02: Zwischenwerte behind the Experten-Ansicht
   const bc = page.locator('#result-od-basecurve');
+  await expect(bc).toBeVisible();
   await expect(bc).toContainText('nahezu so dünn wie möglich');
   await expect(bc).toContainText('Faustregel nach Vogel');
   await expect(page.locator('#diag-od')).toBeEmpty();
@@ -252,7 +262,9 @@ test('Vogel raw value with clamp note (MINOR-1)', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('+12');
   await page.locator('#rx-od-cyl').fill('');
   await settled(page);
+  await page.locator('#expert').check(); // 02-02: Zwischenwerte behind the Experten-Ansicht
   const bc = page.locator('#result-od-basecurve');
+  await expect(bc).toBeVisible();
   await expect(bc).toContainText('Faustregel nach Vogel +18,00');
   await expect(bc).toContainText('begrenzt auf +14,00\u00A0dpt');
   await expect(bc).toContainText('dpt, begrenzt auf');

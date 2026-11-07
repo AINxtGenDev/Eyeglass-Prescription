@@ -179,12 +179,15 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
   await settled(page);
   // 02-01: the first Rx input removes the example banner; remove it before the baseline boxes.
   await sphOnly(page);
-  const SELECTORS = ['.result-table', '#calc-status', '#disclaimer'];
-  const boxes = async () => [
-    await page.locator('.result-table').boundingBox(),
-    await page.locator('#calc-status').boundingBox(),
-    await page.locator('#disclaimer').boundingBox(),
-  ];
+  // 02-02: the phase-1 .result-table is gone (its rows are Zwischenwerte behind the
+  // Experten-Ansicht), so the two result cards are measured instead: they hold the values that are
+  // marked stale and sit above #calc-status, so any growth of a card would also move the others.
+  const SELECTORS = ['#result-od-card', '#result-os-card', '#calc-status', '#disclaimer'];
+  const boxes = async () => {
+    const out = [];
+    for (const s of SELECTORS) out.push(await page.locator(s).boundingBox());
+    return out;
+  };
   const expectSame = (a, b, when) => {
     for (const [i, s] of SELECTORS.entries()) {
       for (const k of ['x', 'y', 'width', 'height']) {
@@ -194,7 +197,7 @@ test('"rechnet …" marks old values per eye, input stays responsive, nothing mo
   };
   const b0 = await boxes();
   // 02-01: −2,50 against L −2,00 (3,7 → 4,2 mm vs 3,7 mm) stays below the 1,0 mm L/R rule, so
-  // the #lr-callout does not appear; −3 (4,7 mm) would add the sentence and move the table.
+  // the #lr-callout does not appear; −3 (4,7 mm) would add the sentence and move the boxes.
   await sph(page).fill('-2,5');
   const quick = { timeout: 300 };
   await expect(page.locator('#rx-od-sph-echo')).toContainText('−2,50', quick);

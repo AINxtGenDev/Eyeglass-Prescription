@@ -1,7 +1,7 @@
 // Display rules, thickest point and the L/R difference rule (02-01, RES-01, RES-04).
 import { describe, test, expect } from 'vitest';
 import fc from 'fast-check';
-import { thickest, roundMm, roundG, LR_DIFF_MM, LR_DIFF_G, LR_PD_CAUSE_MM, lrCause, lrDifference } from './compare.js';
+import { thickest, roundMm, roundG, uniformEdge, LR_DIFF_MM, LR_DIFF_G, LR_PD_CAUSE_MM, lrCause, lrDifference } from './compare.js';
 import { fmtMm } from '../i18n/format.js';
 
 const intNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 0 });
@@ -26,6 +26,23 @@ describe('thickest(m) = max(CT, thickest edge) (lens-critic B1)', () => {
   });
   test('tie CT = edge: the centre', () => {
     expect(thickest({ ct: 2.5, etMax: { value: 2.5, location: 'nasal' } }).where).toBe('centre');
+  });
+});
+
+describe('uniformEdge(m): displayed thickest edge = thinnest edge', () => {
+  const m = (max, min) => ({ etMax: { value: max }, etMin: { value: min } });
+  test('rund 50/50/18, PD 34, −3,00: 3,692 / 3,692 → uniform', () => expect(uniformEdge(m(3.692, 3.692))).toBe(true));
+  test('same display step → uniform (3,66 / 3,74 both show 3,7 mm)', () => expect(uniformEdge(m(3.74, 3.66))).toBe(true));
+  test('example OD 4,597 / 2,980 → not uniform', () => expect(uniformEdge(m(4.597, 2.98))).toBe(false));
+  test('agrees with the fmtMm strings', () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 60, noNaN: true }), fc.double({ min: 0, max: 60, noNaN: true }), (a, b) => {
+        const hi = Math.max(a, b);
+        const lo = Math.min(a, b);
+        expect(uniformEdge(m(hi, lo))).toBe(fmtMm(hi) === fmtMm(lo));
+      }),
+      { seed: 23, numRuns: 500 },
+    );
   });
 });
 

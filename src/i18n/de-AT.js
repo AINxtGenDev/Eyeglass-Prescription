@@ -70,14 +70,11 @@ export default Object.freeze({
 
   'result.title': 'Ergebnis je Glas',
   'result.ct': 'Mittendicke',
-  'result.etmax': 'Dickster Rand',
   'result.etmin': 'Dünnste Randdicke',
   'result.weight': 'Gewicht (pro Glas)',
-  'result.basecurve': 'Basiskurve (Vorderfläche)',
   'result.status': 'Hinweis',
   'result.inputMissing': 'Bitte zuerst einen gültigen Sph-Wert eingeben.',
   'result.inputInvalid': 'Bitte zuerst die markierten Felder korrigieren.',
-  'result.dec': 'Dezentration (zur Nase)',
   'result.materialLine': '{eye}: {label}, Dichte {density}, Abbe-Zahl {abbe} (je höher, desto weniger Farbsäume)',
   // Text labels next to diagnostics (never colour alone).
   'result.diagLabel.impossible': 'Nicht herstellbar',
@@ -127,6 +124,41 @@ export default Object.freeze({
   'loc.nasal-inferior': 'innen unten',
   'loc.temporal-superior': 'außen oben',
   'loc.temporal-inferior': 'außen unten',
+  // Experten-Ansicht suffix after the lay word, in parentheses (UI-SPEC "Location words (Expert suffix)").
+  'loc.tech.centre': 'optischer Mittelpunkt',
+  'loc.tech.uniform': 'rundum gleich',
+  'loc.tech.nasal': 'nasal',
+  'loc.tech.temporal': 'temporal',
+  'loc.tech.superior': 'superior',
+  'loc.tech.inferior': 'inferior',
+  'loc.tech.nasal-superior': 'nasal-superior',
+  'loc.tech.nasal-inferior': 'nasal-inferior',
+  'loc.tech.temporal-superior': 'temporal-superior',
+  'loc.tech.temporal-inferior': 'temporal-inferior',
+
+  // Experten-Ansicht (02-02, D-32, UX-02, ANA-02). The hint names only what the switch shows today;
+  // later phase-2 plans extend it with their Expert blocks.
+  'expert.switch': 'Experten-Ansicht',
+  'expert.hint':
+    'Zeigt zusätzlich die Zwischenwerte: Dezentration, Basiskurve, Rückfläche, Radien, Pfeilhöhen, festlegende Mindestdicke und das Gewicht auf 0,1 g.',
+  'expert.tag': 'Experten-Ansicht',
+  'expert.analysis.title': 'Experten-Analyse',
+  'expert.zw.title': 'Zwischenwerte',
+  'expert.zw.dec': 'Dezen\u00ADtration (zur Nase)',
+  'expert.zw.etmax': 'Dickster Rand',
+  'expert.zw.basecurve': 'Basiskurve D1',
+  'expert.zw.d2': 'Rückfläche D2 (Hauptschnitte)',
+  'expert.zw.radii': 'Radien',
+  'expert.zw.sags': 'Pfeilhöhen',
+  'expert.zw.binding': 'Festlegende Mindestdicke',
+  'expert.zw.weight': 'Gewicht (0,1 g)',
+  'expert.zw.d2.value': '{a} / {b}',
+  'expert.zw.radii.value': 'Vorderfläche R1 {r1} · Rückfläche Ra {ra}, Rb {rb}',
+  'expert.zw.plano': 'plan',
+  // Sag at a named outline point: front and back surface, mm toward the eye from each vertex plane.
+  'expert.zw.sags.point': '{where}: vorne {front}, hinten {back}',
+  'expert.binding.minCT': 'Die Mittendicke ist durch den Mindestwert festgelegt.',
+  'expert.binding.minET': 'Die Mittendicke ergibt sich aus der Mindest-Randdicke.',
 
   // D-01 final + D-C (01-12): the flattest front within τ = 0,1 mm of the thinnest; Vogel is a reference only.
   'basecurve.rule.thinnest':

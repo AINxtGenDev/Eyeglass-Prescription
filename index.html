@@ -11,6 +11,11 @@
   <body>
     <header>
       <h1 data-i18n="app.title">Brillenglas-Rechner</h1>
+      <div class="expert-switch">
+        <input type="checkbox" role="switch" id="expert" aria-describedby="expert-hint">
+        <label for="expert" data-i18n="expert.switch"></label>
+        <p id="expert-hint" data-i18n="expert.hint"></p>
+      </div>
     </header>
     <main>
       <div id="example-banner">
@@ -199,32 +204,6 @@
           </dl>
         </article>
         <p id="lr-callout" class="callout" hidden></p>
-        <table class="result-table">
-          <thead>
-            <tr>
-              <td></td>
-              <th scope="col" data-i18n="rx.od"></th>
-              <th scope="col" data-i18n="rx.os"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row" data-i18n="result.dec"></th>
-              <td id="result-od-dec"></td>
-              <td id="result-os-dec"></td>
-            </tr>
-            <tr>
-              <th scope="row" data-i18n="result.etmax"></th>
-              <td><span id="result-od-etmax"></span> <span id="result-od-etmax-loc"></span></td>
-              <td><span id="result-os-etmax"></span> <span id="result-os-etmax-loc"></span></td>
-            </tr>
-            <tr>
-              <th scope="row" data-i18n="result.basecurve"></th>
-              <td id="result-od-basecurve"></td>
-              <td id="result-os-basecurve"></td>
-            </tr>
-          </tbody>
-        </table>
         <p id="calc-status" class="calc-status"></p>
         <div id="diag-od" class="diag" role="status"></div>
         <div id="diag-os" class="diag" role="status"></div>
@@ -234,6 +213,88 @@
           <h3 id="disclaimer-title" data-i18n="disclaimer.title"></h3>
           <p data-i18n="disclaimer.body"></p>
         </aside>
+      </section>
+
+      <section id="expert-analysis" data-expert hidden aria-labelledby="expert-analysis-title">
+        <span class="expert-tag" data-i18n="expert.tag"></span>
+        <h2 id="expert-analysis-title" data-i18n="expert.analysis.title"></h2>
+        <h3 data-i18n="expert.zw.title"></h3>
+        <div class="zw-grid">
+          <table class="zw-table">
+            <caption data-i18n="result.card.od"></caption>
+            <tbody>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.dec"></th>
+                <td id="result-od-dec"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.etmax"></th>
+                <td><span id="result-od-etmax"></span> <span id="result-od-etmax-loc"></span></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.basecurve"></th>
+                <td id="result-od-basecurve"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.d2"></th>
+                <td id="result-od-d2"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.radii"></th>
+                <td id="result-od-radii"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.sags"></th>
+                <td id="result-od-sags"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.binding"></th>
+                <td id="result-od-binding"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.weight"></th>
+                <td id="result-od-weight-precise"></td>
+              </tr>
+            </tbody>
+          </table>
+          <table class="zw-table">
+            <caption data-i18n="result.card.os"></caption>
+            <tbody>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.dec"></th>
+                <td id="result-os-dec"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.etmax"></th>
+                <td><span id="result-os-etmax"></span> <span id="result-os-etmax-loc"></span></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.basecurve"></th>
+                <td id="result-os-basecurve"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.d2"></th>
+                <td id="result-os-d2"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.radii"></th>
+                <td id="result-os-radii"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.sags"></th>
+                <td id="result-os-sags"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.binding"></th>
+                <td id="result-os-binding"></td>
+              </tr>
+              <tr>
+                <th scope="row" data-i18n="expert.zw.weight"></th>
+                <td id="result-os-weight-precise"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <details id="tech">

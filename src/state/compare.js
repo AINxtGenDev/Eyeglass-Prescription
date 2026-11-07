@@ -23,6 +23,15 @@ export const roundMm = (v) => Math.round(v * 10) / 10;
 export const roundG = (v) => Math.round(v);
 
 /**
+ * Uniform edge (02-01 display rule, moved here in 02-02): the displayed thickest and thinnest edge
+ * are the same 0,1 mm value, so no edge location is named. Compares rounded values on purpose: an
+ * edge that varies by less than 0,1 mm reads 'ringsum', matching what is shown. roundMm equals the
+ * fmtMm rounding (sweep test below), so this is the 02-01 comparison of the display strings.
+ * @param {{ etMax: { value: number }, etMin: { value: number } }} m LensResult.metrics
+ */
+export const uniformEdge = (m) => roundMm(m.etMax.value) === roundMm(m.etMin.value);
+
+/**
  * L/R thickness threshold, mm on the displayed thickest point (thickest(m)). Measured on the
  * canonical frame, the rule fires from about 1 dpt of anisometropia, depending on rounding and on
  * which eye has the larger PD (−2/−3 raw 0,99 mm, +2/+3 0,97 mm; R −1/L −2 shows 2,8 / 3,8 and
