@@ -98,6 +98,9 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   Restated ENG-09: main thread < 16,7 ms per task (the user's words: "under one frame"; RAIL's 50 ms only as the outer bound), a normal result within 100 ms, INP ≤ 200 ms ("good", checked on web.dev/articles/inp, applied strictly per edit), and in extreme cases "rechnet …" while the UI stays responsive. Plan checker and lens-critic are reviewing it.
 - **01-15 review rounds.** Round 1: lens-critic NEEDS WORK with 4 MAJORs. It proved that CDP CPU throttling does not slow the worker (45→50 ms vs main 46→193 ms; worker target: "Operation is only supported for pages, not workers"). So the proxy measures only (a)/(b); (c)/(d) are estimates and the real phone decides. Round 2: the 4 MAJORs are resolved, with 3 new ones: CT is 1,8 mm for every minus lens, so the tests can't discriminate (use etmax/weight); a layout shift at 360 px; no "settled" signal. The third revision is running.
 - **01-15 round 3:** lens-critic NEEDS WORK with 2 MAJORs (the coalescing test and the sync-no-autobench test could not fail). The orchestrator fixed both in the plan (`3a8d938`); lens-critic confirmed **PASS**. Its 12 MINORs were handed to the executor as binding additions. **01-15 execution has started.**
+- **01-15 done.** Module Web Worker (latest-wins, the bench run by run, 10 s watchdog, sync fallback), per-eye "rechnet …" without layout shift, a `data-pending` settled signal, timing to after paint, ENG-09 restated (INP/RAIL). 1070 unit tests and 68 e2e tests pass, and the engine is unchanged.
+- **Proxy:** 4× FAIL (a,b measured; c,d estimated). (a) reached 54,80 ms in the extreme run. **Diagnosis** (LoAF plus paced keystrokes, no code change): it is an artifact of the timing spanning several tasks. No LoAF frame was > 50 ms, and Event Timing max was 32 ms (INP "good" ≤ 200). What remains: a plain edit at 4× takes 14,5 ms median and 16,3 ms max, and frames reach 21–30 ms during fast typing. (b) passes at every rate; the (c)/(d) estimates pass.
+- **User decision: "Phone decides".** The real phone in 01-11 decides; if it also misses, a small optimisation plan follows.
 
 ### Open items
 - **Changed requirement texts for the 01-11 manifest:** MAT-01 ("uses ne and density, exposes νe") and MAT-02 (+14, D-C, Expert view → UX-02).
@@ -118,4 +121,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-Plan 01-15 (Web Worker + ENG-09 per INP/RAIL) → lens-critic plan review → execute → 01-11 (gate, lens-critic result review, push if PASS, live check, real phone).
+01-11: gate + trace + lens-critic result review → push if PASS → live check (chrome-devtools) → real-phone measurement by the user.
