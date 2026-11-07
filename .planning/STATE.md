@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-14-PLAN.md
-last_updated: "2026-11-06T19:31:47.892Z"
-last_activity: 2026-11-06
+stopped_at: Completed 01-15-PLAN.md
+last_updated: "2026-11-07T06:37:43.098Z"
+last_activity: 2026-11-07
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 14
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 14
   percent: 93
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 01 (verified-engine-live-pipeline) — EXECUTING
-Plan: 14 of 14 complete except 01-11 (next: gap plan 01-15 Web Worker + RAIL-based ENG-09, then 01-11)
-Status: Ready to execute
-Last activity: 2026-11-06
+Plan: 14 of 15 complete (01-15 done, decision phone-decides); next: 01-11 (final gate, lens-critic result review, push, real-phone ENG-09 check)
+Status: Ready to execute 01-11
+Last activity: 2026-11-07
 
 Progress: [█████████░] 93%
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 93%
 | Phase 01 P12 | 45min | 3 tasks | 17 files |
 | Phase 01 P13 | 10min | 3 tasks | 15 files |
 | Phase 01 P14 | 15min | 4 tasks | 15 files |
+| Phase 01 P15 | 50min | 6 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-13]: MAT-02 text = +0,50…+14,00 (D-A, US4185897) capped by FRONT_RADIUS_MARGIN_MM, flattest within τ 0,10 mm (D-C), back principal powers ≤ 0; Expert-view clause moved to UX-02
 - [Phase 01]: [01-13]: Base-curve cell shows the raw Vogel value plus a 'begrenzt auf' clamp note; axis input that is not whole unsigned degrees gets PARSE_AXIS_INVALID
 - [Phase 01]: [01-14]: Proxy 4x FAIL (rescan pair 178 ms, Grenzfall 64 ms; host BenchmarkIndex 2221); user decision web-worker: Web Worker + RAIL-based ENG-09 restatement in gap plan 01-15
+- [Phase 01]: [01-15]: Engine in a module Web Worker (per-eye seq latest-wins plus isCurrent re-check in the paint frame, one job in flight with compute first, sync fallback, 10 s suspension-aware watchdog); #result[data-pending] settled signal; ENG-09 restated to RAIL/INP (a)-(d), still Pending
+- [Phase 01]: [01-15]: 4× proxy fails (a) as measured (54,8 ms extreme run); diagnostics: multi-task measurement artifact, no LoAF frame > 50 ms, real input frame 14,5/16,3 ms; Task 6 decision phone-decides, ENG-09 (a) open finding for 01-11
 
 ### Pending Todos
 
@@ -115,7 +118,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: ENG-09: CPU-throttled proxy 4× FAIL (01-14: Grenzfall 64 ms, rescan-path pair 178 ms per pair); user chose Web Worker + RAIL-based restatement (01-15); real-device measurement on the live site still needed (01-11).
+- [Phase 1]: ENG-09 (restated 01-15, still Pending): engine now in a Web Worker; 4× proxy (a) measured fail. The 54,8 ms extreme-run value is a multi-task artifact (no LoAF frame > 50 ms, Event Timing max 32 ms); the real 4× overshoot is the input frame (14,5 ms median / 16,3 ms max for plain edits, frame gaps 21–30 ms while typing unpaced). User decision phone-decides: the real phone on the live site (01-11) decides; if it also misses, a small optimisation plan follows.
 - [Phase 1]: Textbook worked examples (Jalie; Brooks & Borish) and ISO 8980-1 tolerances not accessible — validation relies on analytic cases, Zeiss charts and ray-trace oracle.
 - [Phase 2]: No citable conic constants for real aspheric lenses — aspheric (MAT-05) is a generic parametric model.
 - [Phase 2]: Unverified: iOS decimal keypad minus key; German hyphenation support; Austrian terms (Basiskurve vs Durchbiegung).
@@ -128,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-06T19:31:44.485Z
-Stopped at: Completed 01-14-PLAN.md
+Last session: 2026-11-07T06:37:37.126Z
+Stopped at: Completed 01-15-PLAN.md
 Resume file: None

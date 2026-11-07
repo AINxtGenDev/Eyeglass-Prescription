@@ -52,21 +52,26 @@ decisions:
   - "[01-15]: Engine runs in a module Web Worker; one job in flight, compute before the next one-run bench job; per-eye seq latest-wins plus isCurrent re-check in the paint frame"
   - "[01-15]: Sync fallback (dynamic import of compute-protocol) on constructor throw, error before READY, or a 10 s watchdog that re-arms while hidden or when fired late"
   - "[01-15]: ENG-09 restated to RAIL/INP (a)-(d); (a)/(b) measured on the proxy and phone, (c)/(d) decided on the phone"
-  - "[01-15]: Proxy at 4x fails (a) as measured: 54,8 ms main-thread input frame in the extreme run (case A 16,3 ms, case B 16,1 ms); Task 6 decision pending"
+  - "[01-15]: Proxy at 4x fails (a) as measured: 54,8 ms main-thread input frame in the extreme run (case A 16,3 ms, case B 16,1 ms); diagnostics show the 54,8 ms is a multi-task measurement artifact (no LoAF frame > 50 ms), the real 4x overshoot is the input frame (16,3 ms max, frame gaps 21–30 ms while typing)"
+  - "[01-15]: Task 6 decision phone-decides (user: \"Phone decides (Recommended)\"); ENG-09 (a) is an open finding for 01-11 and the real phone"
 metrics:
-  duration: 35min
+  duration: 50min
   completed: 2026-11-06
-  tasks: 5 of 6 (Task 6 = blocking decision, pending)
+  tasks: 6
   files: 21
 ---
 
 # Phase 1 Plan 15: Engine in a Web Worker, settled signal, per-eye "rechnet …" and ENG-09 restated Summary
 
-Both lenses are now computed in a module Web Worker with per-eye latest-wins. A result more than 50 ms late shows a German "rechnet …" state per eye without moving the page. The page computes directly when the worker cannot start, and says so. A deterministic settled signal is what the whole e2e suite now waits on. ENG-09 is restated to RAIL/INP with re-checked citations. **The 4× CPU-throttled proxy fails criterion (a), which is measured, not estimated.** During the extreme run (keystrokes typed while the rescan bench runs in the worker), one main-thread input frame reaches 54,8 ms. Case A (16,3 ms) and case B (16,1 ms) pass at 4×. Criterion (b) and the estimates for (c) and (d) pass at every rate. Task 6 is therefore a blocking decision for the user.
+Both lenses are now computed in a module Web Worker with per-eye latest-wins. A result more than 50 ms late shows a German "rechnet …" state per eye without moving the page. The page computes directly when the worker cannot start, and says so. A deterministic settled signal is what the whole e2e suite now waits on. ENG-09 is restated to RAIL/INP with re-checked citations. **The 4× CPU-throttled proxy fails criterion (a), which is measured, not estimated.** During the extreme run (keystrokes typed while the rescan bench runs in the worker), one main-thread input frame reaches 54,8 ms. Case A (16,3 ms) and case B (16,1 ms) pass at 4×. Criterion (b) and the estimates for (c) and (d) pass at every rate. Task 6 was decided by the user: `phone-decides`. Orchestrator-authorized diagnostics show that the 54,8 ms spans several tasks and is not one frame. The remaining 4× overshoot of the input frame is an open ENG-09 (a) finding for 01-11.
 
 Proxy verdict (ENG-09 restated): 4× FAIL (a,b measured; c,d estimated): (a) main-thread input frame incl. paint 54,80 ms in the extreme run (≥ 16,7 ms); case A 16,30 ms and case B 16,10 ms pass; (b) 57,10 ms pass; (c) estimate 47,0 ms pass; (d) functional pass, predicted rescan wait 215,4 ms ('rechnet …' expected)
 
-Decision (Task 6): _pending, a blocking checkpoint was returned to the orchestrator; the user chooses `fix` or `phone-decides`_
+Decision (Task 6): phone-decides
+
+- User's answer, quoted verbatim from the question dialog: "Phone decides (Recommended)"
+- Option text: "Go to 01-11: final check run, lens-critic result review, push, then the real-phone check. The small one-frame overshoot is recorded as a finding with these numbers, and the real phone decides. If the phone also misses, a small optimisation plan follows (lighter page work per keystroke)."
+- Open finding for 01-11 and the real phone: ENG-09 (a), see "Diagnostics (orchestrator-authorized, no code change)".
 
 ## Proxy (Task 5)
 
@@ -144,6 +149,53 @@ Decision (Task 6): _pending, a blocking checkpoint was returned to the orchestra
 
 - **CPUQuota:** `systemd-run --user --scope -p CPUQuota=25%` would be a different model (a quota on all threads, including the worker). It was not used, and nothing relies on it.
 - The real phone in 01-11 decides (c) and (d), and also measures (a) and (b) on the live site.
+
+## Diagnostics (orchestrator-authorized, no code change)
+
+These ran after the Task 5 proxy and before the Task 6 decision, as a measurement only. The scratch spec, config and JSON are in `/tmp/claude-1000/-home-nuc8-05-development-45-brille/beae44f8-9eba-48b3-b7a2-b56ed3dee3bf/scratchpad/diag-01-15/`. They ran against the current build; `src/` and the committed specs are unchanged, and nothing was committed.
+
+### Method
+
+- The extreme run is repeated as in Task 5: case A, the rescan bench running in the worker, and 10 OD-Sph edits typed with `pressSequentially`, each followed by `settled`.
+- Each edit is typed three ways: with no delay between keys, then `{ delay: 50 }`, then `{ delay: 100 }`. All three run at 1× and at 4×.
+- Probes in the page (an init script):
+  - a buffered `long-animation-frame` PerformanceObserver;
+  - an `event` observer (durationThreshold 16);
+  - a rAF loop that records `performance.now()` per callback.
+- Only entries inside the extreme-run window are counted.
+
+### Probe validation (80 ms busy-loop control)
+
+- **LoAF:** Chromium 158 lists `long-animation-frame` in `PerformanceObserver.supportedEntryTypes`. An 80 ms busy loop inside one rAF callback gave one LoAF entry at both rates: 95,1 ms at 1× and 80,3 ms at 4×. Its script was `user-callback:FrameRequestCallback` (80 ms), with blockingDuration 30,3 ms. The observer works, so if it reports no entries, there was no frame over 50 ms.
+- **rAF intervals:** the browser's rAF timestamps are **not** usable here. A 30 ms busy loop still gave 16,7 ms intervals, so that version was discarded. Intervals taken from `performance.now()` at each callback show the 80 ms loop correctly (80,2 / 80,4 ms), and only those are reported.
+- **LoAF limit:** it reports only frames over 50 ms. Frames between 16,7 and 50 ms can be seen only through the rAF intervals.
+
+### Results (ms)
+
+| Rate | Typing | Page: longest input frame incl. paint | Event Timing longest interaction | LoAF frames > 50 ms | Longest gap between frames | Gaps > 20 ms |
+|---|---|---|---|---|---|---|
+| 1× | no delay | 20,8 | 24 | 0 | 19,3 | 0 of 63 |
+| 1× | 50 ms between keys | 3,2 | 24 | 0 | 18,5 | 0 of 171 |
+| 1× | 100 ms between keys | 3,1 | 24 | 0 | 17,4 | 0 of 321 |
+| 4× | no delay | 52,6 | 32 | 0 | 29,7 | 13 of 73 |
+| 4× | 50 ms between keys | 19,1 | 32 | 0 | 21,1 | 1 of 190 |
+| 4× | 100 ms between keys | 22,4 | 32 | 0 | 21,6 | 2 of 340 |
+
+- In the first diagnostic run, the unpaced 4× case gave a page value of 56,5 ms and one 40 ms keydown in Event Timing. 9,5 ms of that keydown was input delay.
+- The rescan bench was running at the start of every run. It was still running at the end only in the unpaced runs; the paced runs (2,8–5,7 s) outlasted it.
+- No LoAF entry exists, so no `scripts[]` attribution is possible.
+
+### Conclusion
+
+- **The 54,80 ms in Task 5 is an artifact.** The page's rAF + setTimeout mark spans several tasks: when Playwright sends keys back to back, the queued key events run between the paint and the mark.
+- **No LoAF frame was over 50 ms** in any run.
+- **Event Timing max was 32 ms at 4×** (24 ms at 1×).
+- **The remaining 4× overshoot is the input frame itself.** For plain edits it is about **14,5 ms median and 16,3 ms max** (Task 5 case A, where no other task runs in between). During unpaced typing, frame gaps are 21–30 ms (13 of 73 over 20 ms). With paced keys, gaps still reach about 21 ms, while the 1× baseline jitter tops out near 19 ms.
+- **What runs in those frames is inferred, not attributed** (LoAF does not see frames under 50 ms). It is our input frame (reading the fields, echo, style, layout, paint), plus keystroke handling that lands in the same frame when keys arrive back to back. These are unlikely causes:
+  - the bench message handler (≤ 0,2 ms measured);
+  - result rendering (result frame ≤ 10,8 ms in the extreme run);
+  - GC (no frame over 50 ms, no outlier gap).
+- **Open finding for 01-11 and the real phone: ENG-09 (a).** At 4×, the main-thread input frame is at or just over one frame. The real phone decides. If the phone also misses, a small optimisation plan follows (lighter page work per keystroke). The Task 5 verdict line stays as measured.
 
 ## Implementation notes
 
@@ -311,7 +363,7 @@ None beyond the plan's threat model.
 | 4 | 6b01189 | feat(01-15): main-thread timing including paint, one-run worker bench with guard, busy counter, Event Timing |
 | 5 test | 8358f2e | test(01-15): throttled proxy measures main-thread criteria, estimates worker criteria |
 | 5 docs | 8c467e2 | docs(01-15): restate ENG-09 to RAIL/INP (user decision Worker + RAIL target) |
-| 6 | — | blocking decision checkpoint (pending) |
+| 6 | — | decision checkpoint: phone-decides (user, 2026-11-06) |
 
 ## TDD Gate Compliance
 
