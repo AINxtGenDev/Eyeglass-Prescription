@@ -163,7 +163,32 @@ Limits of this trace, stated plainly:
 
 ## lens-critic result review
 
-PENDING — orchestrator inserts the review
+**Reviewer:** lens-critic (project agent), result review of origin/main 12219a5 .. eae5443, 2026-11-07. Built HEAD, served with vite preview, driven with Playwright at 360/320 px, engine spot-checked in node. No repo files modified.
+
+**Verdict: NEEDS WORK — not safe to push.**
+
+BLOCKER
+- **B1** "am dünnsten"/"Dünnste Stelle" uses `m.etMin.value` (thinnest edge), not the thinnest point (`src/ui/results.js:225,248`; pinned wrong in `e2e/results.spec.js:45,48`). For minus lenses the centre is thinnest: example page reads "am dünnsten 3,0 mm oben. Mitte 1,8 mm". Fix: `thinnest(m)` = min(CT, etMin) with 'centre'; thinnest edge as separate "Dünnster Rand"; re-pin to "am dünnsten 1,8 mm in der Mitte".
+
+MAJOR
+- **M1** Cross-section option 0° always labelled "Hauptschnitt" with power sph+cyl when Zyl ≠ 0, even for oblique axes (`src/ui/cross-section.js:58-60`); example L × 170 shows −3,25 instead of ≈ −2,52. Fix: Hauptschnitt only if 0 ∈ {α, α+90}; else meridian power sph + cyl·sin²(θ−α); e2e for axis 170 and 45.
+- **M2** Phone summary bar shows frozen A values without a "Vorher" marker while the toggle is on Vorher (`src/ui/results.js:33-36`, `src/ui/summary-bar.js:50`, `src/ui/pipeline.js:643`); a frame edit appears to change nothing. Fix: prefix "Vorher (A):" or auto-switch to Nachher on edit; e2e.
+- **M3** Blur message moves controls under the finger (tap on `#rx-same` lost at 360 px touch) and shows "Fehler: Bitte einen Wert eingeben." on untouched fields. Fix: empty-field message only after the field is dirty; reserve the message line.
+- **M4** ENG-09 (a) proxy regression 19,5–19,9 ms vs 16,7 ms (ENG09-PROXY-1..4); REQUIREMENTS names both proxy and phone, so the phone alone cannot close it. Suspect (UNVERIFIED) the compare-lane job build in `src/ui/pipeline.js:340-370` (JSON.stringify keys + material table + meridian repaint in the input frame). Fix: profile; defer compare build to a following task; re-measure.
+
+MINOR
+- m1 RES-03 "in numbers and in the views": 3D view is phase 3 — treat like UX-02/UX-03; re-map UX-02/UX-03 (and RES-03's 3D part) to Phase 3 in the traceability table.
+- m2 Property tests at 80–83 % of coverage timeouts (`evaluate.test.js` optimality, `solve.test.js` affected region) — split per case like MAT-02.
+- m3 Material table intro says "das dickere Glas" on a tie; say "beide gleich dick – gezeigt: rechtes Glas".
+- m4 Savings partly from per-material minimum thickness; add "Jedes Material mit seiner eigenen Mindestdicke".
+- m5 Untouched example values in L/PD/frame stay unmarked after the banner disappears; consider a per-field "Beispielwert" tag.
+- m6 No lay note for very thick results (+12 → 13,1 mm; −12/−6 → 18,6 mm).
+- m7 Simple view at 360 px ≈ 7850 px tall, results at ≈ 3680 px; transposition line and Expert hint jargon always shown — consider collapsing.
+- m8 Add a test that hidden Expert/custom elements stay hidden in Simple view; future traces should name a value-asserting test per requirement.
+
+Verified correct: thickest = max(CT, edge) everywhere; custom = cr39 bitwise; manual BC 0 + convex advice direction; aspheric guard; TABO principal meridians, OC decentration, axis 0 ≡ 180; parsing variants; preset confirm; no overflow at 320/360 px; no console errors.
+
+**Orchestrator decision (2026-11-07):** push withheld. Per the standing best-practice rule, findings go to gap-closure plans (02-16+) followed by a lens-critic re-review before the push checkpoint.
 
 ## Rollback path (for Task 2, named before any push)
 
