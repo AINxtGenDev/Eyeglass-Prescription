@@ -101,8 +101,12 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **01-15 done.** Module Web Worker (latest-wins, the bench run by run, 10 s watchdog, sync fallback), per-eye "rechnet …" without layout shift, a `data-pending` settled signal, timing to after paint, ENG-09 restated (INP/RAIL). 1070 unit tests and 68 e2e tests pass, and the engine is unchanged.
 - **Proxy:** 4× FAIL (a,b measured; c,d estimated). (a) reached 54,80 ms in the extreme run. **Diagnosis** (LoAF plus paced keystrokes, no code change): it is an artifact of the timing spanning several tasks. No LoAF frame was > 50 ms, and Event Timing max was 32 ms (INP "good" ≤ 200). What remains: a plain edit at 4× takes 14,5 ms median and 16,3 ms max, and frames reach 21–30 ms during fast typing. (b) passes at every rate; the (c)/(d) estimates pass.
 - **User decision: "Phone decides".** The real phone in 01-11 decides; if it also misses, a small optimisation plan follows.
+- **01-11 re-run (2026-11-07):** gate at e8139c4 green (1070 unit tests, 68 e2e, coverage 98,45 %); trace 21/21 rows, no mismatch. **lens-critic result review: PASS** (0 BLOCKER, 0 MAJOR). MINORs 1/3/4 fixed in `02bf4ff`; MINORs 2/5 accepted (phase 2).
+- **Pushed** (user approval "please push it when finished", conditional on PASS): `364dd91..02bf4ff`, 86 commits. CI run 42348782420 passed build/deploy/verify-live. The live Playwright run passed 68/68 and the commit grep found the hash.
+- **chrome-devtools live check:** 4 requests, all under `/Eyeglass-Prescription/` including the worker; no favicon request and no console error, so **DEPL-01 is complete**. `data-mode=worker`. R −4/−2×30 gives 7,3 mm / 8,5 g; L +4 gives D1 +3,95, CT 4,9 mm; +12 in 62×55 gives CT 38,3 mm, D1 +9,19, "Vogel +18 begrenzt auf +14" and "Großes Rohglas nötig". No NaN.
 
 ### Open items
+- **Real-phone measurement (user), ENG-09:** see the instructions in the chat or in 01-11-PLAN Task 3 step 5.
 - **Changed requirement texts for the 01-11 manifest:** MAT-01 ("uses ne and density, exposes νe") and MAT-02 (+14, D-C, Expert view → UX-02).
 - ENG-09: the planner projects the slowest case at about 57 ms with 4× throttling, against a 16,7 ms budget, so 01-14 will probably stop at its checkpoint. Then the choice is a Web Worker or restating ENG-09.
 - ENG-09 worst case: the spec with the most iterations (+0,50/−0,50×81, 1,60, Panto 58×54/15) is not the slowest on desktop; +7,50/−5,75×148 takes 8,0 ms against 7,4 ms. Time both on the phone.
@@ -121,4 +125,4 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - 4 moderate dev-only npm advisories (minimatch via eslint 10), accepted as T-01-12.
 
 ### Next step
-01-11: gate + trace + lens-critic result review → push if PASS → live check (chrome-devtools) → real-phone measurement by the user.
+Real-phone measurement (ENG-09) → record it in 01-11-SUMMARY → close phase 1 (verify/complete). If the phone misses, a small optimisation plan follows.
