@@ -317,11 +317,25 @@ describe('MAT-02 automatic base curve (D-01)', () => {
     console.log('[01-02] refinement: coarse D1', r.coarseD1, 'J', r.coarseMaxThickness, '→ D1', r.D1, 'J', r.maxThickness, 'evaluations', r.evaluations, 'searchIterations', r.searchIterations);
   });
 
-  it('optimality for all lenses: J_auto ≤ manual 0.05 dpt sweep minimum + 0.01 mm', () => {
-    let worst = -Infinity;
-    let worstSpec = null;
-    let okCount = 0;
-    for (const sph of [-12, -6, -2, 0, 2, 6, 12]) {
+  // Optimality, one test per sphere (02-19, lens-critic m2). This was one 60 s test (01-02, D-C)
+  // that used 24,7 s unloaded and 37,2 s with 4 CPU burners under coverage (02-19 baseline; 48,2 s
+  // in 02-09). Same 42 specs (sph × A [40, 50, 62] × monoPD [10, 32]), same oracle and the same
+  // worst ≤ τ + 0.01 assertion; only the timeout budget is now per sphere. The per-case floors are
+  // the observed ok counts (02-19 scratch count) and sum to the former total of 40 ok specs.
+  const OPTIMALITY_CASES = [
+    [-12, 4],
+    [-6, 6],
+    [-2, 6],
+    [0, 6],
+    [2, 6],
+    [6, 6],
+    [12, 6],
+  ];
+  for (const [sph, floor] of OPTIMALITY_CASES) {
+    it(`optimality for all lenses: J_auto ≤ manual 0.05 dpt sweep minimum + 0.01 mm: sph ${sph}`, () => {
+      let worst = -Infinity;
+      let worstSpec = null;
+      let okCount = 0;
       for (const A of [40, 50, 62]) {
         for (const monoPD of [10, 32]) {
           const s = spec({ sph, monoPD, frame: { shape: 'rund', A, B: A, DBL: 18 } });
@@ -332,12 +346,12 @@ describe('MAT-02 automatic base curve (D-01)', () => {
           if (gap > worst) (worst = gap), (worstSpec = { sph, A, monoPD });
         }
       }
-    }
-    console.log('[01-02] optimality: ok specs', okCount, 'worst gap (mm)', worst, worstSpec);
-    expect(okCount).toBeGreaterThan(0);
-    // D-C: the tie-break may trade up to τ for a flatter front
-    expect(worst).toBeLessThanOrEqual(TAU + 0.01);
-  }, 60_000);
+      console.log(`[01-02] optimality sph ${sph}: ok specs`, okCount, 'worst gap (mm)', worst, worstSpec);
+      expect(okCount).toBeGreaterThanOrEqual(floor);
+      // D-C: the tie-break may trade up to τ for a flatter front
+      expect(worst, JSON.stringify(worstSpec)).toBeLessThanOrEqual(TAU + 0.01);
+    }, 60_000);
+  }
 
   it('rescue property: no failing automatic lens is computable with any manual D1', () => {
     let failing = 0;

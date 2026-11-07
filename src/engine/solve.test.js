@@ -416,41 +416,54 @@ describe('MAT-02 flat-front tie-break (D-C)', () => {
     expect(Jof(r)).toBe(r.intermediates.baseCurveSearch.minMaxThickness);
   });
 
-  it('property (affected region, numRuns 200, seed 12): m ≤ +2 ⇒ D1 ≤ max(m, 0) + 2, J ≤ J_min + τ, flattest by brute force', () => {
-    const arb = fc
-      .record({
-        sph: fc.integer({ min: 0, max: 8 }).map((k) => k / 4),
-        cyl: fc.integer({ min: -4, max: 0 }).map((k) => k / 4 + 0),
-        axisDeg: fc.integer({ min: 0, max: 179 }),
-        materialId: fc.constantFrom('idx160', 'idx167', 'idx174', 'idx174', 'idx167', 'cr39'),
-        shape: fc.constantFrom('rund', 'rechteckig', 'panto', 'pilot'),
-        A: fc.integer({ min: 46, max: 62 }),
-        B: fc.integer({ min: 28, max: 55 }),
-        DBL: fc.integer({ min: 14, max: 24 }),
-        monoPD: fc.integer({ min: 25, max: 40 }),
-      })
-      .map(({ shape, A, B, DBL, ...rx }) => lensSpec({ ...rx, frame: { shape, A, B, DBL } }));
-    let ok = 0;
-    let worstFlat = -Infinity;
-    fc.assert(
-      fc.property(arb, (s) => {
+  // Affected-region property, 10 tests of 20 samples (02-19, lens-critic m2). This was one 300 s
+  // fc.assert (01-12, D-C) that used 208,6 s unloaded and 262,1 s with 4 CPU burners under
+  // coverage (02-19 baseline; 249 s in 02-09). Same property and seed (numRuns: 200, seed: 12):
+  // fc.sample produces the identical 200 inputs, checked in the 02-19 scratch run against the
+  // inputs fc.assert visits (200 of 200 positions equal; ok 200 of 200 before and after). Same
+  // three assertions per sample; only the timeout budget is now per chunk. fc.sample does not
+  // shrink, so every assertion message carries the failing spec instead.
+  const AFFECTED_ARB = fc
+    .record({
+      sph: fc.integer({ min: 0, max: 8 }).map((k) => k / 4),
+      cyl: fc.integer({ min: -4, max: 0 }).map((k) => k / 4 + 0),
+      axisDeg: fc.integer({ min: 0, max: 179 }),
+      materialId: fc.constantFrom('idx160', 'idx167', 'idx174', 'idx174', 'idx167', 'cr39'),
+      shape: fc.constantFrom('rund', 'rechteckig', 'panto', 'pilot'),
+      A: fc.integer({ min: 46, max: 62 }),
+      B: fc.integer({ min: 28, max: 55 }),
+      DBL: fc.integer({ min: 14, max: 24 }),
+      monoPD: fc.integer({ min: 25, max: 40 }),
+    })
+    .map(({ shape, A, B, DBL, ...rx }) => lensSpec({ ...rx, frame: { shape, A, B, DBL } }));
+  const AFFECTED_SAMPLES = fc.sample(AFFECTED_ARB, { numRuns: 200, seed: 12 });
+  const CHUNK = 20;
+  // Per-chunk floors: the observed ok counts (02-19: 20 in every chunk, sum 200 = the former 200 of 200).
+  const AFFECTED_FLOORS = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
+  for (let c = 0; c < AFFECTED_FLOORS.length; c++) {
+    const from = c * CHUNK;
+    it(`property (affected region, numRuns 200, seed 12): m ≤ +2 ⇒ D1 ≤ max(m, 0) + 2, J ≤ J_min + τ, flattest by brute force: samples ${from + 1}–${from + CHUNK}`, () => {
+      let ok = 0;
+      let worstFlat = -Infinity;
+      for (const s of AFFECTED_SAMPLES.slice(from, from + CHUNK)) {
         const r = evaluateLens(s);
-        if (!r.ok) return;
+        if (!r.ok) continue;
         ok++;
+        const msg = JSON.stringify(s);
         const m = Math.max(s.sph, s.sph + s.cyl);
         const D1 = r.intermediates.D1;
-        expect(D1).toBeLessThanOrEqual(Math.max(m, 0) + 2);
-        expect(Jof(r)).toBeLessThanOrEqual(r.intermediates.baseCurveSearch.minMaxThickness + FLAT_FRONT_TOLERANCE_MM + 1e-9);
+        expect(D1, msg).toBeLessThanOrEqual(Math.max(m, 0) + 2);
+        expect(Jof(r), msg).toBeLessThanOrEqual(r.intermediates.baseCurveSearch.minMaxThickness + FLAT_FRONT_TOLERANCE_MM + 1e-9);
         const b = bruteFlat(s);
         if (b.flatD1 !== null) {
           worstFlat = Math.max(worstFlat, D1 - b.flatD1);
-          expect(D1).toBeLessThanOrEqual(b.flatD1 + 0.05);
+          expect(D1, msg).toBeLessThanOrEqual(b.flatD1 + 0.05);
         }
-      }),
-      { numRuns: 200, seed: 12 },
-    );
-    console.log('[01-12] D-C property: ok', ok, 'of 200, worst D1 − brute flattest', worstFlat);
-  }, 300_000);
+      }
+      console.log(`[01-12] D-C property samples ${from + 1}–${from + CHUNK}: ok`, ok, `of ${CHUNK}, worst D1 − brute flattest`, worstFlat);
+      expect(ok).toBeGreaterThanOrEqual(AFFECTED_FLOORS[c]);
+    }, 60_000);
+  }
 });
 
 describe('MAT-02 back surface never convex (01-12, GAP-1)', () => {
