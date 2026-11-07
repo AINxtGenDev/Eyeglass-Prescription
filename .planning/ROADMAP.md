@@ -198,7 +198,7 @@ Plans:
 
 **Wave 18** *(blocked on Wave 17 completion)*
 
-- [ ] 02-18-PLAN.md — M3: no empty-field error on untouched fields; field messages wait for the current tap/click (RX-04, RX-05, UX-03)
+- [x] 02-18-PLAN.md — M3: no empty-field error on untouched fields; field messages wait for the current tap/click (RX-04, RX-05, UX-03)
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 16/21 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 17/21 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
