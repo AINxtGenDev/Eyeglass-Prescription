@@ -84,7 +84,7 @@
 ### 2D Analytics (ANA)
 
 - [ ] **ANA-01**: A 2D cross-section of a selectable meridian (default horizontal, plus the two principal meridians when Zyl ≠ 0) shows the meniscus profile with dimensioned centre and edge thickness; it can overlay the two compared configurations.
-- [ ] **ANA-02**: Expert view shows decentration and which minimum-thickness constraint sets the centre thickness.
+- [x] **ANA-02**: Expert view shows decentration and which minimum-thickness constraint sets the centre thickness.
 
 ### 3D Visualization (VIZ)
 
@@ -192,7 +192,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | L10N-01 | Phase 1 | Complete |
 | L10N-02 | Phase 1 | Complete |
 | ANA-01 | Phase 2 | Pending |
-| ANA-02 | Phase 2 | Pending |
+| ANA-02 | Phase 2 | Complete |
 | VIZ-01 | Phase 3 | Pending |
 | VIZ-02 | Phase 3 | Pending |
 | VIZ-03 | Phase 3 | Pending |

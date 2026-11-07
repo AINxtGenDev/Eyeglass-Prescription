@@ -134,7 +134,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Experten-Ansicht switch with Zwischenwerte; layout 320 px → desktop: two columns with sticky results, phone summary bar, no overflow (UX-02, UX-03, ANA-02)
+- [x] 02-02-PLAN.md — Experten-Ansicht switch with Zwischenwerte; layout 320 px → desktop: two columns with sticky results, phone summary bar, no overflow (UX-02, UX-03, ANA-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 1/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 2/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
