@@ -52,6 +52,13 @@ export default Object.freeze({
     'Zyl {value} liegt außerhalb des berechneten Bereichs ({min} bis {max} in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}). Für dieses Auge wird nichts berechnet.',
   'val.VAL_PD_OUT_OF_MODEL':
     'PD {value} liegt außerhalb des berechneten Bereichs ({min} bis {max} je Auge). Für dieses Auge wird nichts berechnet.',
+  // Smart PD (02-04, RX-06, D-05; UI-SPEC Copywriting "Rezept (Rx)"). A question blocks the eye.
+  'val.VAL_PD_QUESTION': 'Bis dahin wird für dieses Auge nichts berechnet.',
+  'val.VAL_PD_CONFLICT':
+    'Im anderen PD-Feld steht schon ein Wert für beide Augen ({value} für dieses Auge). Bitte nur ein Feld verwenden oder die Werte angleichen.',
+  // Frame model ranges (FRAME-02); {field} is the literal term A, B or DBL.
+  'val.VAL_FRAME_OUT_OF_MODEL':
+    '{field} {value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
   // Sph checked on the minus-cylinder form after a plus cylinder (RESEARCH Pitfall 8).
   'val.transposedSuffix': 'Der Wert gilt in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}.',
   'val.contactLensSuffix': 'Falls das der Durchmesser (DIA) einer Kontaktlinse ist: Hier gehören die Werte vom Brillenpass hin.',
@@ -97,18 +104,66 @@ export default Object.freeze({
   'tip.pd.text':
     'Pupillen\u00ADdistanz: Abstand von der Nasenmitte zur Pupille, je Auge in Millimetern. Steht nur eine Zahl (z. B. 64) da, ist es der Wert für beide Augen zusammen.',
 
+  // PD fields (02-04, RX-06, D-05, D-06). {value}/{total}/{half}/{od}/{os}/{pd} are fmtMm strings.
+  'pd.PD_AMBIGUOUS':
+    'Ist {value} der Wert für ein Auge oder für beide zusammen? Für ein Auge liegt die PD meist bei 25 bis 35 mm, für beide zusammen bei 51 bis 77 mm. Bitte auf dem Brillenpass nachsehen.',
+  'pd.PD_DISTANCE_NEAR':
+    'Zwei Werte über 50 mm sind meist die PD für die Ferne und für die Nähe. Bitte nur die PD für die Ferne eintragen (die größere Zahl).',
+  'pd.PD_LOOKS_LIKE_HSA':
+    'Ist das der HSA (Hornhaut\u00ADscheitel\u00ADabstand)? Die PD liegt meist bei 25 bis 35 mm je Auge.',
+  'pd.binocularNote': '{total} Gesamt-PD → je {half}',
+  'pd.pairNote': '{od} rechts, {os} links',
+  'pd.assumed': 'PD angenommen: {pd} je Auge ({eyes}) – fragen Sie Ihren Optiker nach Ihrem Wert.',
+  'pd.eyes.both': 'rechts und links',
+  'pd.eyes.od': 'rechts',
+  'pd.eyes.os': 'links',
+
+  // Temple stamp (02-04, FRAME-03, D-11, D-12). The drawing is our own SVG.
+  'stamp.label': 'Maße vom Brillenbügel',
+  'stamp.hint': 'z. B. 52□18 140 – die ersten zwei Zahlen genügen.',
+  'stamp.echo': 'Glasbreite {A} · Stegbreite {DBL}',
+  'stamp.echoTemple': 'Glasbreite {A} · Stegbreite {DBL} (Bügellänge {temple}: wird nicht gebraucht)',
+  'stamp.STAMP_INVALID': 'Bitte zwei oder drei Zahlen eingeben, z. B. 52□18 140 oder 52-18-140.',
+  'stamp.STAMP_SWAPPED':
+    'Die Zahlen scheinen vertauscht – meist steht die Glasbreite (40 bis 62 mm) zuerst. Meinten Sie {A}□{DBL}?',
+  'stamp.help': 'Wo finde ich das?',
+  'stamp.figcaption':
+    'Die Zahlen stehen meist innen an einem Bügel: zuerst die Glasbreite, dann die Stegbreite, dann die Bügellänge, alle in Millimetern.',
+  'stamp.svg.title': 'Bügel einer Brille mit den eingeprägten Maßen',
+  'stamp.svg.desc':
+    'Seitenansicht eines Brillenbügels. Eine Lupe vergrößert die Prägung 52□18 140: 52 ist die Glasbreite, 18 die Stegbreite, 140 die Bügellänge.',
+  'stamp.svg.a': 'Glasbreite',
+  'stamp.svg.dbl': 'Stegbreite',
+  'stamp.svg.temple': 'Bügellänge',
+
   // Frame (FRAME-01). Shape outlines are model shapes, not a specific product.
+  // Phase-1 fieldset keys, removed with the fieldset in 02-04 Task 2.
   'frame.legend': 'Fassung',
   'frame.shape.label': 'Form der Fassung',
+  'frame.hint':
+    'Glasbreite und Stegbreite stehen meist innen am Bügel, z. B. „52□18 145“: 52 mm Glasbreite, 18 mm Stegbreite. Die Glashöhe steht dort selten; beim Wechsel der Form werden typische Werte vorgeschlagen.',
+  'frame.title': 'Ihre Fassung',
+  'frame.shape.legend': 'Form der Fassung',
   'frame.shape.rund': 'Rund',
   'frame.shape.rechteckig': 'Rechteckig',
   'frame.shape.panto': 'Panto',
   'frame.shape.pilot': 'Pilot',
+  'frame.single': 'Einzelmaße in mm',
   'frame.a.label': 'A – Glasbreite (mm)',
   'frame.b.label': 'B – Glashöhe (mm)',
   'frame.dbl.label': 'DBL – Stegbreite (mm)',
-  'frame.hint':
-    'Glasbreite und Stegbreite stehen meist innen am Bügel, z. B. „52□18 145“: 52 mm Glasbreite, 18 mm Stegbreite. Die Glashöhe steht dort selten; beim Wechsel der Form werden typische Werte vorgeschlagen.',
+  'frame.defaults': 'Standardmaße übernehmen (A {A} · B {B} · DBL {DBL})',
+  'frame.bEstimated': '{B}, geschätzt aus der Form',
+  'frame.bAssumed': 'Glashöhe B geschätzt: {B} aus der Form – für genauere Werte B messen oder beim Optiker erfragen.',
+  'tip.stamp.name': 'Erklärung: Stempel',
+  'tip.stamp.text':
+    'Die Zahlen, die innen am Bügel eingeprägt sind: Glasbreite, Stegbreite und Bügellänge in Millimetern. Für die Rechnung genügen die ersten zwei.',
+  'tip.a.name': 'Erklärung: Glasbreite A',
+  'tip.a.text': 'Glasbreite: die Breite eines Glases in der Fassung, in Millimetern. Die erste Zahl am Bügel.',
+  'tip.b.name': 'Erklärung: Glashöhe B',
+  'tip.b.text': 'Glashöhe: die Höhe eines Glases in der Fassung. Steht selten am Bügel; wir schätzen sie aus der Form.',
+  'tip.dbl.name': 'Erklärung: Stegbreite DBL',
+  'tip.dbl.text': 'Stegbreite: der Abstand zwischen den beiden Gläsern über der Nase. Die zweite Zahl am Bügel.',
 
   // Option labels per MATERIALS id. Never imply that 1,74 is always better (PITFALLS Pitfall 8).
   'material.label': 'Material (Brechungsindex)',

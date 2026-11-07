@@ -4,7 +4,7 @@
 // Every visible string comes from t() and is written as text, never as markup (T-02-09).
 import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
 import { transpose, RX_CODES } from '../state/transpose.js';
-import { validateRxEye, TIERS, VAL_CODES } from '../state/validate.js';
+import { validateRxEye, resolvePd, TIERS, VAL_CODES } from '../state/validate.js';
 import { createDebouncer } from '../state/debounce.js';
 import { t } from '../i18n/t.js';
 import { fmtDiopter, fmtAxis, fmtMm } from '../i18n/format.js';
@@ -269,6 +269,11 @@ export function readRxEye(eye) {
   const raw = {};
   for (const f of FIELDS) raw[f] = input(fieldId(eye, f)).value;
   const v = validateRxEye(raw);
+  // Bridge until the smart PD UI (02-04 Task 2): PD resolved over both fields.
+  const pd = resolvePd({ od: input('rx-od-pd').value, os: input('rx-os-pd').value });
+  v.fields.pd = pd.messages[eye.toLowerCase()];
+  v.pd = pd[eye].value;
+  v.blocked.pd = pd.blocked[eye];
   echo(fieldId(eye, 'sph'), parseDiopter, fmtDiopter);
   echo(fieldId(eye, 'cyl'), parseDiopter, fmtDiopter);
   echo(fieldId(eye, 'axis'), parseAxis, fmtAxis);
