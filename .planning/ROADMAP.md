@@ -170,7 +170,7 @@ Plans:
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 02-11-PLAN.md — Expert: generic aspheric front (D1 chosen at k = 0) and rim depth (MAT-05, FRAME-02)
+- [x] 02-11-PLAN.md — Expert: generic aspheric front (D1 chosen at k = 0) and rim depth (MAT-05, FRAME-02)
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
@@ -231,6 +231,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 10/15 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 11/15 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

@@ -29,7 +29,7 @@
 ### Frame (FRAME)
 
 - [x] **FRAME-01**: User picks a frame shape — Rund, Rechteckig, Panto, Pilot (Aviator) — each a parametric outline scaled to the boxing dimensions.
-- [ ] **FRAME-02**: User sets A (Glasbreite) 40–62 mm, B (Glashöhe) 28–55 mm, DBL (Stegbreite) 14–24 mm and rim depth; each shape preset has typical defaults.
+- [x] **FRAME-02**: User sets A (Glasbreite) 40–62 mm, B (Glashöhe) 28–55 mm, DBL (Stegbreite) 14–24 mm and rim depth; each shape preset has typical defaults.
 - [x] **FRAME-03**: User can type or paste the frame stamp from the temple (`52□18 140`, `52-18-140`, `52 18 140`) to set A and DBL, with a "Wo finde ich das?" illustration; B defaults from the shape.
 
 ### Materials & Lens Design (MAT)
@@ -38,7 +38,7 @@
 - [x] **MAT-02**: Base curve (front surface power) is chosen automatically in +0,50…+14,00 dpt (automatic range; per lens also limited so the front radius exceeds the outline by 2 mm, i.e. at least 2 mm more than the largest outline distance from the optical centre, FRONT_RADIUS_MARGIN_MM) as the flattest value whose maximum thickness is within 0,10 mm of the thinnest possible lens (the thinnest within 0,10 mm, flattest front among those) for the given Rx, frame and material; it never produces a flat/concave front or a convex back surface (every back principal power ≤ 0, plano allowed), and an error appears only if no value in that range gives a computable lens with such a back. The sourced Vogel rule is shown as a reference value. (2026-11-06, user decision D-A: industry high-plus base-curve series of 12–16 D per US4185897; the earlier +10 came from idea.md:48, the manual range; manual override stays 0,00…+10,00, MAT-03.) (2026-11-06, D-01 amendment D-C, orchestrator per the user's best-practice instruction; τ = 0,10 mm design constant, one third of the ±0,3 mm accuracy and the Zeiss ±0,30 mm CT tolerance; preferring the flattest front among those is an unsourced cosmetic design choice, not an optical one.) (2026-11-06: Expert-view display moved to UX-02, phase 2, user-approved 'Gap plan, then push'; back-surface rule added by gap plan 01-12.)
 - [x] **MAT-03**: Expert user can override base curve manually (0,00…+10,00 dpt).
 - [x] **MAT-04**: Minimum centre and edge thickness default to sourced per-material values and are adjustable in Expert view; the result shows which constraint is binding.
-- [ ] **MAT-05**: Expert user can switch the front surface between spherical and aspheric (conic constant k, with a documented default); aspheric is labelled as a generic model, not a specific manufacturer design.
+- [x] **MAT-05**: Expert user can switch the front surface between spherical and aspheric (conic constant k, with a documented default); aspheric is labelled as a generic model, not a specific manufacturer design.
 - [ ] **MAT-06**: Expert user can enter a custom material (refractive index plus density, optionally Abbe number) instead of a listed one; the result is labelled as based on user-supplied values, not a sourced material.
 
 ### Optics Engine (ENG)
@@ -161,13 +161,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RX-07 | Phase 2 | Complete |
 | RX-08 | Phase 2 | Complete |
 | FRAME-01 | Phase 1 | Complete |
-| FRAME-02 | Phase 2 | Pending |
+| FRAME-02 | Phase 2 | Complete |
 | FRAME-03 | Phase 2 | Complete |
 | MAT-01 | Phase 1 | Complete |
 | MAT-02 | Phase 1 | Complete |
 | MAT-03 | Phase 2 | Complete |
 | MAT-04 | Phase 2 | Complete |
-| MAT-05 | Phase 2 | Pending |
+| MAT-05 | Phase 2 | Complete |
 | MAT-06 | Phase 2 | Pending |
 | ENG-01 | Phase 1 | Complete |
 | ENG-02 | Phase 1 | Complete |
