@@ -17,7 +17,7 @@ const ROW_PX = 18;
 const LINE_PX = 2;
 const DIM_PX = 1;
 const DASH_PX = [6, 4];
-/** UI-SPEC: max height 240 px (style.css caps the svg too). */
+/** UI-SPEC: max height 240 px. style.css reserves the figure box (02-14), the drawing fits into it. */
 const MAX_H_PX = 240;
 /** Fallback width when the figure is not laid out (hidden). */
 const FALLBACK_W_PX = 320;
@@ -88,14 +88,14 @@ function values(p, codes) {
   };
 }
 
-/** Scale in px per mm for the 1:1 drawing: the whole chord fits the width, at most MAX_H_PX high. */
-function pxPerMm(widthPx, chord, depth) {
+/** Scale in px per mm for the 1:1 drawing: the whole chord fits the width, at most heightPx high. */
+function pxPerMm(widthPx, heightPx, chord, depth) {
   let S = 5;
   for (let i = 0; i < 8; i++) {
     const row = ROW_PX / S;
     const vbW = chord + 2 * MARGIN_X_MM;
     const vbH = depth + 3 * row + 0.6 * row;
-    S = Math.min(widthPx / vbW, MAX_H_PX / vbH);
+    S = Math.min(widthPx / vbW, heightPx / vbH);
   }
   return S;
 }
@@ -105,6 +105,19 @@ function clearFigure() {
   $('xsec-legend').hidden = true;
   $('xsec-table').tBodies[0].replaceChildren();
   /** @type {HTMLTableElement} */ ($('xsec-table')).tHead?.replaceChildren();
+}
+
+/**
+ * A profile job is on its way and nothing is drawn yet (02-14): show the text table with its rows
+ * and empty values, so the drawing's arrival does not move the page below (the figure box is
+ * reserved in style.css). An existing drawing stays until the new one is painted.
+ * @param {{ eye: 'OD'|'OS', thetaDeg: number, overlay: boolean }} p
+ */
+export function renderCrossSectionPending({ eye, thetaDeg, overlay }) {
+  if ($('xsec-figure').firstChild) return;
+  $('xsec-nochord').hidden = true;
+  $('xsec-table').hidden = false;
+  renderTable(overlay ? ['a', 'b'] : ['b'], meridianEndLabels(eye, thetaDeg), overlay, { a: null, b: null });
 }
 
 /** No result for the selected eye yet (or it failed): an empty section, no stale drawing. */
@@ -151,7 +164,7 @@ export function renderCrossSection({ profiles, eye, thetaDeg }) {
     }
   }
   const fig = $('xsec-figure');
-  const S = pxPerMm(fig.clientWidth || FALLBACK_W_PX, sMax - sMin, yMax - yMin);
+  const S = pxPerMm(fig.clientWidth || FALLBACK_W_PX, Math.min(fig.clientHeight || MAX_H_PX, MAX_H_PX), sMax - sMin, yMax - yMin);
   const row = ROW_PX / S;
   const pad = 0.3 * row;
   const vb = { x: sMin - MARGIN_X_MM, y: yMin - 2 * row - pad, w: sMax - sMin + 2 * MARGIN_X_MM, h: 0 };
@@ -222,13 +235,13 @@ export function renderCrossSection({ profiles, eye, thetaDeg }) {
   const legend = $('xsec-legend');
   legend.textContent = t('xs.legend');
   legend.hidden = !overlay;
-  renderTable(drawn, profiles, codes, overlay);
+  const cols = overlay ? ['a', 'b'] : ['b'];
+  renderTable(cols, codes, overlay, { b: profiles[profiles.length - 1].profile, a: overlay ? drawn[0].profile : null });
 }
 
-function renderTable(drawn, profiles, codes, overlay) {
+/** Text table; a column whose profile is null gets empty value cells (pending, 02-14). */
+function renderTable(cols, codes, overlay, byCol) {
   const table = /** @type {HTMLTableElement} */ ($('xsec-table'));
-  const cols = overlay ? ['a', 'b'] : ['b'];
-  const byCol = { b: profiles[profiles.length - 1].profile, a: overlay ? drawn[0].profile : null };
   const head = htmlEl('tr');
   head.append(htmlEl('td'));
   for (const c of cols) head.append(htmlEl('th', { scope: 'col' }, t(overlay ? `xs.col.${c}` : 'xs.col.value')));
@@ -241,7 +254,9 @@ function renderTable(drawn, profiles, codes, overlay) {
   const body = rows.map((r) => {
     const tr = htmlEl('tr');
     tr.append(htmlEl('th', { scope: 'row' }, r.label));
-    for (const c of cols) tr.append(htmlEl('td', { 'data-row': r.key, 'data-col': c, class: 'num' }, fmtMm(r.val(byCol[c]))));
+    for (const c of cols) {
+      tr.append(htmlEl('td', { 'data-row': r.key, 'data-col': c, class: 'num' }, byCol[c] ? fmtMm(r.val(byCol[c])) : ''));
+    }
     return tr;
   });
   table.tBodies[0].replaceChildren(...body);

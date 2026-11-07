@@ -3,7 +3,7 @@
 // Pinned values: 02-01-SUMMARY Task 2 table (example 4,597 / 4,597 mm, 6,86 / 6,75 g; R +3,00 CT
 // 3,902, 7,23 g; L +2,75 CT 3,737, 7,00 g; CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
-import { settled, settledXsec, plain, guardPage } from './helpers.js';
+import { settled, settledXsec, slowWorker, plain, guardPage } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 guardPage(test);
@@ -157,11 +157,8 @@ for (const width of [1280, 900]) {
         page,
       }) => {
         await settled(page);
-        if (expert) {
-          await page.locator('#expert').check();
-          // 02-13: the Querschnitt is drawn after its worker job; scroll once the page is complete.
-          await settledXsec(page);
-        }
+        // 02-14: no wait for the Querschnitt drawing; its box and table rows are reserved.
+        if (expert) await page.locator('#expert').check();
         await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
         await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
         const hit = await page.evaluate(() => {
@@ -186,5 +183,32 @@ for (const width of [1280, 900]) {
         expect(hit.overlap, 'overlap area of .col-results and #disclaimer (px²)').toBe(0);
       });
     }
+  });
+}
+
+// 02-14: the Querschnitt is drawn one worker job after the switch turns on. Its figure box and
+// table rows are reserved, so the drawing's arrival moves nothing below it (no layout shift).
+// The profile message is delayed, so the 'before' read is taken while the drawing is pending.
+for (const width of [360, 1280]) {
+  test.describe(`${width} × 800, Experten-Ansicht on`, () => {
+    test.use({ viewport: { width, height: 800 } });
+
+    test('the arriving cross-section does not move the disclaimer', async ({ page }) => {
+      // guardPage's first load must be complete before navigating again (02-08: aborted worker fetch)
+      await settled(page);
+      await slowWorker(page, 1500, { types: ['profile'] });
+      await page.goto('./');
+      await settled(page);
+      await page.locator('#expert').check();
+      await expect(page.locator('#xsec')).toHaveAttribute('data-pending', 'profile');
+      await expect(page.locator('#xsec-figure svg')).toHaveCount(0);
+      const top = () =>
+        page.evaluate(() => document.getElementById('disclaimer').getBoundingClientRect().top + window.scrollY);
+      const before = await top();
+      await settledXsec(page);
+      await expect(page.locator('#xsec-figure svg')).toHaveCount(1);
+      await expect(page.locator('#xsec-table td[data-row="ct"]')).toHaveText(/^\d+,\d\smm$/);
+      expect(await top(), 'disclaimer top (page px) after the drawing arrived').toBe(before);
+    });
   });
 }

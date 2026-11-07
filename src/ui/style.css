@@ -1552,14 +1552,22 @@ td:has(.msg-out) input[aria-invalid='true'] {
   min-height: 44px;
 }
 
+/* 02-14: the figure box is reserved before the drawing arrives (one worker job after the switch),
+   so the page below does not move. Height = width / 2,5, clamped to 120…240 px; the drawing is
+   scaled to fit the box (cross-section.js reads its height). */
 #xsec-figure {
   margin-block-start: var(--space-4);
+  /* explicit width: otherwise max-height transfers through the ratio to a 600 px max width */
+  width: 100%;
+  aspect-ratio: 5 / 2;
+  min-height: 120px;
+  max-height: 240px;
 }
 
 #xsec-figure svg {
   display: block;
   width: 100%;
-  max-height: 240px;
+  height: 100%;
 }
 
 .xs-lens {

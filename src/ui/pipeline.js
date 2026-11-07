@@ -31,7 +31,7 @@ import {
 } from './compare-view.js';
 import { renderMaterialLine } from './material-input.js';
 import { renderGlassSettings, isExpert } from './expert.js';
-import { renderCrossSection, renderCrossSectionEmpty, renderMeridianOptions } from './cross-section.js';
+import { renderCrossSection, renderCrossSectionEmpty, renderCrossSectionPending, renderMeridianOptions } from './cross-section.js';
 import { renderRim } from './frame-input.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
@@ -557,6 +557,7 @@ export function updateXsec() {
   }
   xsec.held = false;
   writeXsecPending(true);
+  renderCrossSectionPending({ eye, thetaDeg, overlay: labels.length > 1 });
   xsec.gen = client.requestProfiles(items);
 }
 
