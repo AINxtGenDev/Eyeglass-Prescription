@@ -24,96 +24,152 @@
           <button type="button" id="example-clear" data-i18n="example.clear"></button>
         </div>
         <form id="rx" novalidate>
-          <table class="rx-table">
+          <table id="rx-table" class="rx-table">
             <caption data-i18n="rx.caption"></caption>
             <thead>
               <tr>
                 <th scope="col" data-i18n="rx.eye"></th>
                 <th scope="col">
-                  <abbr data-i18n="rx.sph.abbr" data-i18n-title="rx.sph.title"></abbr>
-                  <span data-i18n="rx.sph.unit"></span>
+                  <span class="term"><abbr data-i18n="rx.sph.abbr" data-i18n-title="rx.sph.title"></abbr>
+                    <span data-i18n="rx.sph.unit"></span><button type="button" class="tip-btn" aria-expanded="false"
+                      aria-controls="tip-sph" data-i18n-aria-label="tip.sph.name"></button></span>
                 </th>
                 <th scope="col">
-                  <abbr data-i18n="rx.cyl.abbr" data-i18n-title="rx.cyl.title"></abbr>
-                  <span data-i18n="rx.sph.unit"></span>
+                  <span class="term"><abbr data-i18n="rx.cyl.abbr" data-i18n-title="rx.cyl.title"></abbr>
+                    <span data-i18n="rx.sph.unit"></span><button type="button" class="tip-btn" aria-expanded="false"
+                      aria-controls="tip-cyl" data-i18n-aria-label="tip.cyl.name"></button></span>
                 </th>
                 <th scope="col">
-                  <abbr data-i18n="rx.axis.abbr" data-i18n-title="rx.axis.title"></abbr>
-                  <span data-i18n="rx.axis.unit"></span>
+                  <span class="term"><abbr data-i18n="rx.axis.abbr" data-i18n-title="rx.axis.title"></abbr>
+                    <span data-i18n="rx.axis.unit"></span><button type="button" class="tip-btn" aria-expanded="false"
+                      aria-controls="tip-axis" data-i18n-aria-label="tip.axis.name"></button></span>
                 </th>
-                <th scope="col" data-i18n="rx.pd.header"></th>
+                <th scope="col">
+                  <span class="term"><span data-i18n="rx.pd.header"></span><button type="button" class="tip-btn" aria-expanded="false"
+                      aria-controls="tip-pd" data-i18n-aria-label="tip.pd.name"></button></span>
+                </th>
+              </tr>
+              <tr class="tip-row" hidden>
+                <td colspan="5"><p id="tip-sph" class="tip" hidden data-i18n="tip.sph.text"></p></td>
+              </tr>
+              <tr class="tip-row" hidden>
+                <td colspan="5"><p id="tip-cyl" class="tip" hidden data-i18n="tip.cyl.text"></p></td>
+              </tr>
+              <tr class="tip-row" hidden>
+                <td colspan="5"><p id="tip-axis" class="tip" hidden data-i18n="tip.axis.text"></p></td>
+              </tr>
+              <tr class="tip-row" hidden>
+                <td colspan="5"><p id="tip-pd" class="tip" hidden data-i18n="tip.pd.text"></p></td>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <th scope="row" data-i18n="rx.od"></th>
                 <td>
-                  <label for="rx-od-sph" class="visually-hidden" data-i18n="rx.od.sph.label"></label>
-                  <input id="rx-od-sph" name="od-sph" type="text" inputmode="decimal" autocomplete="off"
-                    aria-describedby="rx-od-sph-echo rx-od-sph-err">
+                  <label for="rx-od-sph" class="cell-label" data-i18n="rx.od.sph.label"></label>
+                  <span class="input-group">
+                    <button type="button" class="sign" data-for="rx-od-sph" data-i18n-aria-label="rx.sign.od.sph">±</button>
+                    <input id="rx-od-sph" name="od-sph" type="text" inputmode="decimal" autocomplete="off"
+                      aria-describedby="rx-od-sph-echo rx-od-sph-err">
+                  </span>
                   <output id="rx-od-sph-echo" for="rx-od-sph"></output>
-                  <p id="rx-od-sph-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-od-sph-err" class="msg" aria-live="polite" hidden></div>
                 </td>
                 <td>
-                  <label for="rx-od-cyl" class="visually-hidden" data-i18n="rx.od.cyl.label"></label>
-                  <input id="rx-od-cyl" name="od-cyl" type="text" inputmode="decimal" autocomplete="off"
-                    aria-describedby="rx-od-cyl-echo rx-od-cyl-err">
+                  <label for="rx-od-cyl" class="cell-label" data-i18n="rx.od.cyl.label"></label>
+                  <span class="input-group">
+                    <button type="button" class="sign" data-for="rx-od-cyl" data-i18n-aria-label="rx.sign.od.cyl">±</button>
+                    <input id="rx-od-cyl" name="od-cyl" type="text" inputmode="decimal" autocomplete="off"
+                      aria-describedby="rx-od-cyl-echo rx-od-cyl-err">
+                  </span>
                   <output id="rx-od-cyl-echo" for="rx-od-cyl"></output>
-                  <p id="rx-od-cyl-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-od-cyl-err" class="msg" aria-live="polite" hidden></div>
                 </td>
                 <td>
-                  <label for="rx-od-axis" class="visually-hidden" data-i18n="rx.od.axis.label"></label>
-                  <input id="rx-od-axis" name="od-axis" type="text" inputmode="numeric" autocomplete="off"
-                    aria-describedby="rx-od-axis-echo rx-od-axis-err">
+                  <label for="rx-od-axis" class="cell-label" data-i18n="rx.od.axis.label"></label>
+                  <span class="input-group">
+                    <input id="rx-od-axis" name="od-axis" type="text" inputmode="numeric" autocomplete="off"
+                      aria-describedby="rx-od-axis-echo rx-od-axis-err">
+                  </span>
                   <output id="rx-od-axis-echo" for="rx-od-axis"></output>
-                  <p id="rx-od-axis-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-od-axis-err" class="msg" aria-live="polite" hidden></div>
                 </td>
                 <td>
-                  <label for="rx-od-pd" class="visually-hidden" data-i18n="rx.od.pd.label"></label>
-                  <input id="rx-od-pd" name="od-pd" type="text" inputmode="decimal" autocomplete="off"
-                    aria-describedby="rx-od-pd-echo rx-od-pd-err">
+                  <label for="rx-od-pd" class="cell-label" data-i18n="rx.od.pd.label"></label>
+                  <span class="input-group">
+                    <input id="rx-od-pd" name="od-pd" type="text" inputmode="decimal" autocomplete="off"
+                      aria-describedby="rx-od-pd-echo rx-od-pd-err">
+                  </span>
                   <output id="rx-od-pd-echo" for="rx-od-pd"></output>
-                  <p id="rx-od-pd-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-od-pd-err" class="msg" aria-live="polite" hidden></div>
                 </td>
               </tr>
               <tr>
                 <th scope="row" data-i18n="rx.os"></th>
                 <td>
-                  <label for="rx-os-sph" class="visually-hidden" data-i18n="rx.os.sph.label"></label>
-                  <input id="rx-os-sph" name="os-sph" type="text" inputmode="decimal" autocomplete="off"
-                    aria-describedby="rx-os-sph-echo rx-os-sph-err">
+                  <label for="rx-os-sph" class="cell-label" data-i18n="rx.os.sph.label"></label>
+                  <span class="input-group">
+                    <button type="button" class="sign" data-for="rx-os-sph" data-i18n-aria-label="rx.sign.os.sph">±</button>
+                    <input id="rx-os-sph" name="os-sph" type="text" inputmode="decimal" autocomplete="off"
+                      aria-describedby="rx-os-sph-echo rx-os-sph-err">
+                  </span>
                   <output id="rx-os-sph-echo" for="rx-os-sph"></output>
-                  <p id="rx-os-sph-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-os-sph-err" class="msg" aria-live="polite" hidden></div>
                 </td>
                 <td>
-                  <label for="rx-os-cyl" class="visually-hidden" data-i18n="rx.os.cyl.label"></label>
-                  <input id="rx-os-cyl" name="os-cyl" type="text" inputmode="decimal" autocomplete="off"
-                    aria-describedby="rx-os-cyl-echo rx-os-cyl-err">
+                  <label for="rx-os-cyl" class="cell-label" data-i18n="rx.os.cyl.label"></label>
+                  <span class="input-group">
+                    <button type="button" class="sign" data-for="rx-os-cyl" data-i18n-aria-label="rx.sign.os.cyl">±</button>
+                    <input id="rx-os-cyl" name="os-cyl" type="text" inputmode="decimal" autocomplete="off"
+                      aria-describedby="rx-os-cyl-echo rx-os-cyl-err">
+                  </span>
                   <output id="rx-os-cyl-echo" for="rx-os-cyl"></output>
-                  <p id="rx-os-cyl-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-os-cyl-err" class="msg" aria-live="polite" hidden></div>
                 </td>
                 <td>
-                  <label for="rx-os-axis" class="visually-hidden" data-i18n="rx.os.axis.label"></label>
-                  <input id="rx-os-axis" name="os-axis" type="text" inputmode="numeric" autocomplete="off"
-                    aria-describedby="rx-os-axis-echo rx-os-axis-err">
+                  <label for="rx-os-axis" class="cell-label" data-i18n="rx.os.axis.label"></label>
+                  <span class="input-group">
+                    <input id="rx-os-axis" name="os-axis" type="text" inputmode="numeric" autocomplete="off"
+                      aria-describedby="rx-os-axis-echo rx-os-axis-err">
+                  </span>
                   <output id="rx-os-axis-echo" for="rx-os-axis"></output>
-                  <p id="rx-os-axis-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-os-axis-err" class="msg" aria-live="polite" hidden></div>
                 </td>
                 <td>
-                  <label for="rx-os-pd" class="visually-hidden" data-i18n="rx.os.pd.label"></label>
-                  <input id="rx-os-pd" name="os-pd" type="text" inputmode="decimal" autocomplete="off"
-                    aria-describedby="rx-os-pd-echo rx-os-pd-err">
+                  <label for="rx-os-pd" class="cell-label" data-i18n="rx.os.pd.label"></label>
+                  <span class="input-group">
+                    <input id="rx-os-pd" name="os-pd" type="text" inputmode="decimal" autocomplete="off"
+                      aria-describedby="rx-os-pd-echo rx-os-pd-err">
+                  </span>
                   <output id="rx-os-pd-echo" for="rx-os-pd"></output>
-                  <p id="rx-os-pd-err" class="error" aria-live="polite" hidden></p>
+                  <div id="rx-os-pd-err" class="msg" aria-live="polite" hidden></div>
                 </td>
               </tr>
             </tbody>
           </table>
-          <p id="rx-hint" data-i18n="rx.sph.label"></p>
-          <p id="rx-cyl-hint" data-i18n="rx.cyl.label"></p>
-          <p id="rx-axis-hint" data-i18n="rx.axis.label"></p>
+          <div class="rx-same">
+            <input type="checkbox" id="rx-same">
+            <label for="rx-same" data-i18n="rx.same"></label>
+            <p id="rx-mirror-note" data-i18n="rx.mirrored" hidden></p>
+          </div>
           <p id="rx-od-forms" class="rx-forms" aria-live="polite" hidden></p>
           <p id="rx-os-forms" class="rx-forms" aria-live="polite" hidden></p>
+          <details id="rx-other">
+            <summary data-i18n="rx.other.summary"></summary>
+            <p data-i18n="rx.other.intro"></p>
+            <dl>
+              <dt data-i18n="rx.other.add.term"></dt>
+              <dd data-i18n="rx.other.add.text"></dd>
+              <dt data-i18n="rx.other.prism.term"></dt>
+              <dd data-i18n="rx.other.prism.text"></dd>
+              <dt data-i18n="rx.other.hsa.term"></dt>
+              <dd data-i18n="rx.other.hsa.text"></dd>
+              <dt data-i18n="rx.other.fn.term"></dt>
+              <dd data-i18n="rx.other.fn.text"></dd>
+              <dt data-i18n="rx.other.ep.term"></dt>
+              <dd data-i18n="rx.other.ep.text"></dd>
+            </dl>
+          </details>
           <div class="field">
             <label for="material" data-i18n="material.label"></label>
             <select id="material" name="material" aria-describedby="material-hint"></select>
@@ -160,6 +216,7 @@
             <p id="result-od-headline" class="result-headline"></p>
             <p id="result-od-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
             <p id="result-od-status" class="result-status"></p>
+            <button type="button" id="result-od-jump" class="link-button" data-i18n="result.blockedJump" hidden></button>
             <dl id="result-od-grid" class="value-grid">
               <div>
                 <dt data-i18n="result.label.thick"></dt>
@@ -186,6 +243,7 @@
             <p id="result-os-headline" class="result-headline"></p>
             <p id="result-os-empty" class="result-empty" data-i18n="result.empty.body" hidden></p>
             <p id="result-os-status" class="result-status"></p>
+            <button type="button" id="result-os-jump" class="link-button" data-i18n="result.blockedJump" hidden></button>
             <dl id="result-os-grid" class="value-grid">
               <div>
                 <dt data-i18n="result.label.thick"></dt>

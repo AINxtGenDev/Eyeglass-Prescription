@@ -63,8 +63,11 @@ test('both eyes show thickness, weight and base curve', async ({ page }) => {
 
 test('malformed input shows an error, never NaN', async ({ page }) => {
   await page.locator('#rx-od-sph').fill('1.000,25');
+  // 02-03: field messages appear after a 600 ms pause or on blur.
+  await page.locator('#rx-od-sph').blur();
   const err = page.locator('#rx-od-sph-err');
   await expect(err).toBeVisible();
+  await expect(err).toContainText('Fehler:');
   await expect(err).not.toBeEmpty();
   await expect(page.locator('body')).not.toContainText('NaN');
 });
@@ -146,9 +149,11 @@ test('plus cylinder shows both forms', async ({ page }) => {
 test('cylinder without axis', async ({ page }) => {
   await page.locator('#rx-od-cyl').fill('-1,00');
   await page.locator('#rx-od-axis').fill('');
+  await page.locator('#rx-od-axis').blur();
   await settled(page);
   const err = page.locator('#rx-od-axis-err');
   await expect(err).toBeVisible();
+  await expect(err).toContainText('Fehler:');
   await expect(err).not.toBeEmpty();
   await expect(page.locator('#result-od-ct')).toHaveText('–');
   await expect(page.locator('body')).not.toContainText('NaN');
@@ -207,18 +212,21 @@ test('oversized lens warns', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('NaN');
 });
 
-test('very strong plus beyond the model range is explained (01-12)', async ({ page }) => {
+// 02-03: Sph +16 is outside the RX-04 input range (±12,00 dpt), so the field message explains it
+// before the engine is asked; the engine's own +14,00 limit text (01-12) is no longer reachable
+// from the Sph field.
+test('very strong plus beyond the model range is explained (01-12, 02-03)', async ({ page }) => {
   await setFrame(page, 'rund', 40, 40, 18);
   await page.locator('#rx-od-pd').fill('32');
   await page.locator('#rx-od-sph').fill('+16');
   await page.locator('#rx-od-cyl').fill('');
+  await page.locator('#rx-od-sph').blur();
   await settled(page);
   await expect(page.locator('#material')).toHaveValue('cr39');
-  await expect(page.locator('#result-od-status')).toHaveText('Nicht berechenbar');
-  const box = page.locator('#diag-od');
-  await expect(box).toContainText('+14,00 dpt');
-  await expect(box).toContainText('Optiker');
-  await expect(box).not.toContainText('BACK_SURFACE');
+  const err = page.locator('#rx-od-sph-err');
+  await expect(err).toContainText('Außerhalb des Modells:');
+  await expect(err).toContainText('+12,00');
+  await expect(page.locator('#result-od-status')).toHaveText(/^Für dieses Glas wird nichts berechnet/);
   await expect(page.locator('#result-od-ct')).toHaveText('–');
   await expect(page.locator('body')).not.toContainText('NaN');
 });
@@ -239,6 +247,7 @@ test('axis message is specific (MINOR-5)', async ({ page }) => {
   const err = page.locator('#rx-od-axis-err');
   for (const axis of ['90,5', '-90']) {
     await page.locator('#rx-od-axis').fill(axis);
+    await page.locator('#rx-od-axis').blur();
     await expect(err).toBeVisible();
     await expect(err).toContainText('ganze');
     await expect(err).toContainText('180');

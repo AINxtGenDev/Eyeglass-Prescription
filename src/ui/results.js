@@ -49,8 +49,15 @@ function writeLocs(eye) {
   for (const [k, id] of Object.entries(LOCS)) setText(`${p}-${id}`, codes ? locText(codes[k]) : '');
 }
 
+/** Hide the "Zum markierten Feld" button (shown only by renderBlocked). */
+function hideJump(eye) {
+  const jump = $(`result-${eye.toLowerCase()}-jump`);
+  if (!jump.hidden) jump.hidden = true;
+}
+
 function noResult(eye) {
   const p = `result-${eye.toLowerCase()}`;
+  hideJump(eye);
   displayed[eye] = null;
   lastLoc[eye] = null;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
@@ -133,6 +140,30 @@ function statusLabel(diagnostics) {
   return diagnostics.some((d) => d.severity === 'warn') ? t('result.diagLabel.warn') : '';
 }
 
+/**
+ * The eye is blocked by a field message that is on screen (Fehler or Außerhalb des Modells): no
+ * numbers, the blocked sentence and a button that focuses the first marked field (UI-SPEC
+ * "Error state (blocked eye)").
+ * @param {'OD'|'OS'} eye @param {string} fieldId
+ */
+export function renderBlocked(eye, fieldId) {
+  renderEmpty(eye, t('result.blocked'));
+  const jump = $(`result-${eye.toLowerCase()}-jump`);
+  jump.dataset.target = fieldId;
+  jump.hidden = false;
+}
+
+/** "Zum markierten Feld" moves focus to the field named by renderBlocked. */
+export function initResultJumps() {
+  for (const e of ['od', 'os']) {
+    const jump = $(`result-${e}-jump`);
+    jump.addEventListener('click', () => {
+      const target = jump.dataset.target ? document.getElementById(jump.dataset.target) : null;
+      target?.focus();
+    });
+  }
+}
+
 /** Dotted underline on an eye's value cells while its values belong to the previous input. */
 export function setStale(eye, on) {
   for (const c of [...CELLS, ...EXPERT_CELLS]) {
@@ -169,6 +200,7 @@ export function renderFailed(eye) {
 export function renderResult(eye, res, spec) {
   const p = `result-${eye.toLowerCase()}`;
   setStale(eye, false);
+  hideJump(eye);
   if (!res.ok) {
     renderEmpty(eye, statusLabel(res.diagnostics));
     renderDiagnostics(eye, res.diagnostics);

@@ -1,17 +1,26 @@
 // The only DOM tier: raw field text → parse → transpose (minus cyl) → compute in a Web Worker
 // (01-15) → German render. Every visible string comes from t(); everything is written with textContent.
 import './style.css';
-import { parseDiopter, parseAxis, parseMm } from '../state/parse.js';
-import { transpose, RX_CODES } from '../state/transpose.js';
 import { createFrameScheduler } from '../state/frame-scheduler.js';
 import { createComputeClient, TAIL_PCT } from '../state/compute-client.js';
 import { specFor, NORMAL_PAIR, GRENZFALL_PAIR, RESCAN_PAIR } from '../state/bench-cases.js';
 import { MATERIALS } from '../engine/materials.js';
 import { SHAPES } from '../engine/frame/shapes.js';
 import { t } from '../i18n/t.js';
-import { fmtDiopter, fmtAxis, fmtMm, fmtMs } from '../i18n/format.js';
+import { fmtMm, fmtMs } from '../i18n/format.js';
 import { $, setText, applyDictionary } from './dom.js';
-import { renderEmpty, renderResult, renderFailed, renderLrCallout, setStale, repaintFromLast } from './results.js';
+import {
+  renderEmpty,
+  renderBlocked,
+  initResultJumps,
+  renderResult,
+  renderFailed,
+  renderLrCallout,
+  setStale,
+  repaintFromLast,
+} from './results.js';
+import { initRxInput, readRxEye, readMmField, eyeStatus, fmtForm } from './rx-input.js';
+import { initToggletips } from './toggletip.js';
 import { initExpert } from './expert.js';
 import { initSummaryBar } from './summary-bar.js';
 
@@ -97,97 +106,6 @@ function prefillFrame(shape) {
   for (const [k, v] of [['a', d.A], ['b', d.B], ['dbl', d.DBL]]) {
     /** @type {HTMLInputElement} */ ($(`frame-${k}`)).value = String(v);
   }
-}
-
-/** Mark a field valid and show its echo (may be empty). */
-function showFieldOk(id, echo) {
-  setText(`${id}-echo`, echo);
-  const err = $(`${id}-err`);
-  err.textContent = '';
-  err.hidden = true;
-  $(id).removeAttribute('aria-invalid');
-}
-
-/** Mark a field invalid with a German message. */
-function showFieldError(id, message) {
-  setText(`${id}-echo`, '');
-  const err = $(`${id}-err`);
-  err.textContent = message;
-  err.hidden = false;
-  $(id).setAttribute('aria-invalid', 'true');
-}
-
-const isBlank = (id) => /** @type {HTMLInputElement} */ ($(id)).value.trim() === '';
-
-/** Parse one field, show echo or error; returns the value or null. */
-function readField(id, parse, format) {
-  const r = parse(/** @type {HTMLInputElement} */ ($(id)).value);
-  if (r.ok) {
-    showFieldOk(id, format(r.value));
-    return r.value;
-  }
-  showFieldError(id, t('parse.' + r.code));
-  return null;
-}
-
-const readSph = (eye) => readField(`rx-${eye.toLowerCase()}-sph`, parseDiopter, fmtDiopter);
-const readMm = (id) => readField(id, parseMm, fmtMm);
-
-/** Zyl: blank means 0 (common on paper). */
-function readCyl(eye) {
-  const id = `rx-${eye.toLowerCase()}-cyl`;
-  if (isBlank(id)) {
-    showFieldOk(id, '');
-    return 0;
-  }
-  return readField(id, parseDiopter, fmtDiopter);
-}
-
-/** Achse: required when Zyl ≠ 0, never defaulted (T-01-10); blank without Zyl is fine. */
-function readAxis(eye, cyl) {
-  const id = `rx-${eye.toLowerCase()}-axis`;
-  if (isBlank(id)) {
-    if (cyl !== null && cyl !== 0) {
-      showFieldError(id, t('rx.' + RX_CODES.AXIS_MISSING_FOR_CYL));
-      return null;
-    }
-    showFieldOk(id, '');
-    return 0;
-  }
-  return readField(id, parseAxis, fmtAxis);
-}
-
-/** "Sph / Zyl × Achse" for one cylinder form. */
-const fmtForm = (f) => `${fmtDiopter(f.sph)} / ${fmtDiopter(f.cyl)} × ${fmtAxis(f.axisDeg)}`;
-
-/**
- * Read Sph/Zyl/Achse for one eye, show both cylinder forms, and return the minus-cylinder Rx
- * for the engine (T-01-25), or null when a field is invalid.
- */
-function readRx(eye) {
-  const sph = readSph(eye);
-  const cyl = readCyl(eye);
-  const axisDeg = readAxis(eye, cyl);
-  const formsId = `rx-${eye.toLowerCase()}-forms`;
-  if (sph === null || cyl === null || axisDeg === null) {
-    setText(formsId, '');
-    $(formsId).hidden = true;
-    return { sph, rx: null };
-  }
-  const r = transpose({ sph, cyl, axisDeg });
-  if (r.plus === null) {
-    setText(formsId, '');
-    $(formsId).hidden = true;
-  } else {
-    const forms = t('rx.forms', {
-      eye: t(eye === 'OD' ? 'rx.od' : 'rx.os'),
-      minus: fmtForm(r.minus),
-      plus: fmtForm(r.plus),
-    });
-    setText(formsId, r.transposed ? t('rx.' + RX_CODES.CYL_TRANSPOSED) + ' ' + forms : forms);
-    $(formsId).hidden = false;
-  }
-  return { sph, rx: r.minus };
 }
 
 // Settled signal (01-15): #result[data-pending] is a space-separated token set, '' when nothing
@@ -408,23 +326,43 @@ function startWorker() {
 /** Specs of the latest request per eye (the spec of any result that passes isCurrent). */
 let requested = { OD: null, OS: null };
 
+/** The last Rx read per eye, for repainting a not-ready card when its field message appears. */
+const lastRead = { OD: null, OS: null };
+
+/**
+ * Card of an eye that is not computed: empty state (no Sph), "Eingabe unvollständig …" while the
+ * blocking field message is not due yet (RESEARCH Pitfall 5), the blocked sentence once it is,
+ * or the phase-1 sentence when only a frame field is invalid.
+ */
+function paintNotReady(eye, read) {
+  if (read.sphEmpty) renderEmpty(eye, t('result.inputMissing'), true);
+  else if (!read.blocked) renderEmpty(eye, t('result.inputInvalid'));
+  else if (read.pendingMessage) renderEmpty(eye, t('result.incomplete'));
+  else renderBlocked(eye, read.firstBlockedFieldId);
+}
+
+/** A field message appeared after the pause or on blur: repaint that eye's card if it is not computed. */
+function onMessageShown(eye) {
+  if (requested[eye] !== null || lastRead[eye] === null) return;
+  paintNotReady(eye, { ...lastRead[eye], ...eyeStatus(eye) });
+}
+
 function update(inputTs) {
-  const read = { OD: readRx('OD'), OS: readRx('OS') };
-  const pd = { OD: readMm('rx-od-pd'), OS: readMm('rx-os-pd') };
-  const dims = { A: readMm('frame-a'), B: readMm('frame-b'), DBL: readMm('frame-dbl') };
+  const read = { OD: readRxEye('OD'), OS: readRxEye('OS') };
+  const dims = { A: readMmField('frame-a'), B: readMmField('frame-b'), DBL: readMmField('frame-dbl') };
   const frameOk = dims.A !== null && dims.B !== null && dims.DBL !== null;
   const frame = frameOk ? { shape: currentShape(), A: dims.A, B: dims.B, DBL: dims.DBL } : null;
   const materialId = currentMaterialId();
   for (const eye of EYES) renderMaterialLine(eye, materialId);
-  const ready = (eye) => frameOk && read[eye].rx !== null && pd[eye] !== null;
+  const ready = (eye) => frameOk && read[eye].rx !== null && read[eye].pd !== null;
   const specs = { OD: null, OS: null };
   for (const eye of EYES) {
+    lastRead[eye] = read[eye];
     if (ready(eye)) {
-      specs[eye] = specFor(eye, read[eye].rx, pd[eye], materialId, frame);
+      specs[eye] = specFor(eye, read[eye].rx, read[eye].pd, materialId, frame);
       continue;
     }
-    const empty = isBlank(`rx-${eye.toLowerCase()}-sph`);
-    renderEmpty(eye, t(read[eye].sph === null ? 'result.inputMissing' : 'result.inputInvalid'), empty);
+    paintNotReady(eye, read[eye]);
   }
   requested = specs;
   client.request(specs, inputTs);
@@ -582,6 +520,8 @@ function initExample(onInput) {
 
 function init() {
   applyDictionary();
+  initToggletips();
+  initResultJumps();
   // Toggling only rewrites the location suffixes; it never goes through schedule()/the compute
   // client, which would skip the identical spec and paint nothing (lens-critic round 3 MAJOR-A).
   initExpert(repaintFromLast);
@@ -600,6 +540,7 @@ function init() {
   const onInput = (e) => schedule(e.timeStamp);
   for (const k of ['a', 'b', 'dbl']) $(`frame-${k}`).addEventListener('input', onInput);
   initExample(onInput);
+  initRxInput({ onInput, onMessageShown });
   const tech = /** @type {HTMLDetailsElement} */ ($('tech'));
   // Sync fallback: the bench would block the page, so only the button starts it (MINOR-6).
   tech.addEventListener('toggle', () => {

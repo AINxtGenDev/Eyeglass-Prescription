@@ -203,6 +203,19 @@ describe('Experten-Ansicht (02-02)', () => {
   });
 });
 
+describe('toggletips (02-03, UX-01)', () => {
+  test('every tip.<term>.name has a tip.<term>.text and vice versa', () => {
+    const keys = Object.keys(dict).filter((k) => k.startsWith('tip.'));
+    const terms = (part) => keys.filter((k) => k.endsWith('.' + part)).map((k) => k.slice(4, -part.length - 1)).sort();
+    expect(terms('name').length).toBeGreaterThanOrEqual(4);
+    expect(terms('text')).toEqual(terms('name'));
+    for (const k of keys) expect(k, k).toMatch(/^tip\.[a-z]+\.(name|text)$/);
+  });
+  test('accessible names start with "Erklärung: "', () => {
+    for (const [k, v] of Object.entries(dict)) if (/^tip\..+\.name$/.test(k)) expect(v, k).toMatch(/^Erklärung: \S/);
+  });
+});
+
 describe('soft hyphens (02-02, UI-SPEC Typography)', () => {
   // Written as the \u00AD escape only, so every break point is visible in review (PATTERNS de-AT).
   test('de-AT.js source contains no raw U+00AD', () => {

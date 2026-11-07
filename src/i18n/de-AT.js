@@ -16,23 +16,19 @@ export default Object.freeze({
 
   'rx.caption': 'Ihre Brillenwerte (vom Brillenpass)',
   'rx.eye': 'Auge',
-  'rx.od': 'R – rechtes Auge',
-  'rx.os': 'L – linkes Auge',
+  'rx.od': 'Rechtes Auge (R / OD)',
+  'rx.os': 'Linkes Auge (L / OS)',
   'rx.sph.abbr': 'Sph',
   'rx.sph.title': 'Sphäre: der Kugelwert auf dem Brillenpass',
   'rx.sph.unit': '(dpt)',
-  'rx.sph.label': 'Tippen Sie den Sph-Wert so ein, wie er auf dem Brillenpass steht, z. B. −2,25 oder +1.',
   'rx.od.sph.label': 'Sph rechtes Auge in Dioptrien',
   'rx.os.sph.label': 'Sph linkes Auge in Dioptrien',
   // Zyl/Achse (RX-03); tooltips per PITFALLS "German (de-AT) Pitfalls".
   'rx.cyl.abbr': 'Zyl',
   'rx.cyl.title': 'Zylinder: Ausgleich einer Hornhautverkrümmung (Astigmatismus)',
-  'rx.cyl.label':
-    'Zyl leer lassen, wenn auf dem Brillenpass keiner steht. Ein Pluszylinder (z. B. +2,00) wird automatisch umgerechnet.',
   'rx.axis.abbr': 'Achse',
   'rx.axis.title': 'Achse: Richtung des Zylinders in Grad (0–180), nur zusammen mit Zyl',
   'rx.axis.unit': '(°)',
-  'rx.axis.label': 'Die Achse ist eine Richtung in Grad (0 bis 180), kein Wert für die Glasdicke. Sie gehört immer zum Zyl.',
   'rx.od.cyl.label': 'Zyl rechtes Auge in Dioptrien',
   'rx.os.cyl.label': 'Zyl linkes Auge in Dioptrien',
   'rx.od.axis.label': 'Achse rechtes Auge in Grad',
@@ -60,8 +56,46 @@ export default Object.freeze({
   'val.transposedSuffix': 'Der Wert gilt in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}.',
   'val.contactLensSuffix': 'Falls das der Durchmesser (DIA) einer Kontaktlinse ist: Hier gehören die Werte vom Brillenpass hin.',
   'val.apply': '{suggestion} übernehmen',
-  'rx.od.pd.label': 'PD rechtes Auge in Millimetern (Abstand Nasenmitte bis Pupille)',
-  'rx.os.pd.label': 'PD linkes Auge in Millimetern (Abstand Nasenmitte bis Pupille)',
+  // Visible in card mode (02-03); the explanation moved into tip.pd.text.
+  'rx.od.pd.label': 'PD rechtes Auge in Millimetern',
+  'rx.os.pd.label': 'PD linkes Auge in Millimetern',
+  // "±" before Sph and Zyl: the iOS decimal keypad has no minus key (RESEARCH Pitfall 3).
+  'rx.sign.od.sph': 'Vorzeichen umkehren: Sph rechts',
+  'rx.sign.od.cyl': 'Vorzeichen umkehren: Zyl rechts',
+  'rx.sign.os.sph': 'Vorzeichen umkehren: Sph links',
+  'rx.sign.os.cyl': 'Vorzeichen umkehren: Zyl links',
+  // D-04 as changed by the UI-SPEC: Sph, Zyl and Achse only (RESEARCH Pitfall 9).
+  'rx.same': 'Linkes Auge gleich wie rechtes (Sph, Zyl, Achse)',
+  'rx.mirrored': 'übernommen von rechts',
+  // Other values on the paper (RX-08, D-09). Add and prism are explained, not modelled (v1).
+  'rx.other.summary': 'Auf meinem Rezept stehen noch andere Werte (Add, Prisma, HSA …)',
+  'rx.other.intro':
+    'Diese Seite zeigt ein einfaches Glas für die Ferne (kein Gleitsichtglas). Die folgenden Werte werden erklärt, aber nicht berechnet.',
+  'rx.other.add.term': 'Add',
+  'rx.other.add.text':
+    'Zusatzwert für die Nähe (Lesebrille, Gleitsichtbrille). Wird hier nicht berechnet; gezeigt wird das Glas für die Ferne.',
+  'rx.other.prism.term': 'Prisma / Basis',
+  'rx.other.prism.text':
+    'Ausgleich für das Zusammenspiel der Augen. Wird hier nicht berechnet; ein Prisma kann ein Glas an einer Seite dicker machen.',
+  'rx.other.hsa.term': 'HSA',
+  'rx.other.hsa.text': 'Hornhaut\u00ADscheitel\u00ADabstand: der Abstand zwischen Glas und Auge. Er ändert die Glasdicke nicht.',
+  'rx.other.fn.term': 'F / N',
+  'rx.other.fn.text': 'Ferne / Nähe: Stehen zwei Zeilen am Brillenpass, tragen Sie hier die Werte für die Ferne ein.',
+  'rx.other.ep.term': 'EP / H',
+  'rx.other.ep.text': 'Einschleifhöhe: wie hoch die Pupille im Glas sitzt. Wird in dieser Version nicht verwendet.',
+
+  // Toggletips (UX-01, D-31; UI-SPEC "Toggletip texts"). name = the button's accessible name.
+  'tip.sph.name': 'Erklärung: Sphäre',
+  'tip.sph.text': 'Sphäre: der Hauptwert Ihrer Brille in Dioptrien. Minus bedeutet kurzsichtig, Plus bedeutet weitsichtig.',
+  'tip.cyl.name': 'Erklärung: Zylinder',
+  'tip.cyl.text':
+    'Zylinder: gleicht eine Hornhaut\u00ADverkrümmung aus. Steht kein Zyl am Brillenpass, lassen Sie das Feld leer.',
+  'tip.axis.name': 'Erklärung: Achse',
+  'tip.axis.text':
+    'Die Richtung des Zylinders in Grad (0 bis 180). Sie ist kein Wert für die Dicke und gehört immer zum Zyl.',
+  'tip.pd.name': 'Erklärung: Pupillendistanz',
+  'tip.pd.text':
+    'Pupillen\u00ADdistanz: Abstand von der Nasenmitte zur Pupille, je Auge in Millimetern. Steht nur eine Zahl (z. B. 64) da, ist es der Wert für beide Augen zusammen.',
 
   // Frame (FRAME-01). Shape outlines are model shapes, not a specific product.
   'frame.legend': 'Fassung',
@@ -96,6 +130,8 @@ export default Object.freeze({
   'result.inputInvalid': 'Bitte zuerst die markierten Felder korrigieren.',
   // Blocked eye before its field message is due (RESEARCH Pitfall 5).
   'result.incomplete': 'Eingabe unvollständig …',
+  'result.blocked': 'Für dieses Glas wird nichts berechnet. Bitte das markierte Feld korrigieren.',
+  'result.blockedJump': 'Zum markierten Feld',
   'result.materialLine': '{eye}: {label}, Dichte {density}, Abbe-Zahl {abbe} (je höher, desto weniger Farbsäume)',
   // Text labels next to diagnostics (never colour alone).
   'result.diagLabel.impossible': 'Nicht herstellbar',
