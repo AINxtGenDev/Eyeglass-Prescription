@@ -146,6 +146,7 @@ Why container queries: at 900–1100 px the input column is only about 400–600
 ```
 <header>                 h1 app title · intro line · Experten-Ansicht switch (#expert)
 <main class="layout">
+ <div class="layout-cols">   (02-09: the two-column grid; ends before .col-full so the sticky column cannot cover it)
   <div class="col-inputs">
     #example-banner      (D-26)
     section #rx-section  h2 · Rx preset chips #rx-presets · inline confirm slot
@@ -166,6 +167,7 @@ Why container queries: at 900–1100 px the input column is only about 400–600
       section #cmp-material   "Was bringt ein anderes Material?"
       section #cmp-config     "Zwei Varianten vergleichen"
   </div>
+ </div>
   <div class="col-full">      (full width below both columns)
     section #expert-analysis  [Expert] Zwischenwerte (#result-od-dec, #result-od-basecurve …)
                               · Querschnitt #xsec (own data-pending)
@@ -179,9 +181,9 @@ Why container queries: at 900–1100 px the input column is only about 400–600
 
 ### Desktop (≥ 900 px)
 
-- `.layout`: `display: grid; grid-template-columns: minmax(0, 1fr) 400px; column-gap: 32px; max-width: 1152px; margin-inline: auto`. The existing `body { max-width: 48rem }` moves to the input column as `max-width: 40rem` for text, and `body` itself gets no max width.
+- `.layout-cols` (02-09, was `.layout`): `display: grid; grid-template-columns: minmax(0, 1fr) 400px; column-gap: 32px; max-width: 1152px; margin-inline: auto`. The existing `body { max-width: 48rem }` moves to the input column as `max-width: 40rem` for text, and `body` itself gets no max width.
 - `.col-results`: `position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain`. It gets `tabindex="0"`, `role="region"` and `aria-label` = "Ergebnis und Vergleich" so keyboard users can scroll it (axe `scrollable-region-focusable`). It contains results, material comparison and the configuration comparison, so the core-value answer is visible while the user changes inputs on the left.
-- `.col-full` spans both columns (`grid-column: 1 / -1`), with 64 px top margin.
+- `.col-full` sits below `.layout-cols` (full width, outside the grid since 02-09: a sticky box is held inside its parent, so `.col-full` must not share the sticky column's parent), with 64 px top margin.
 - `#view-slot` is the first child of `.col-results`. Phase 2 ships it as `<div id="view-slot" hidden></div>`; phase 3 fills it. The planner must not put anything else there.
 
 ### Phone and tablet (< 900 px)

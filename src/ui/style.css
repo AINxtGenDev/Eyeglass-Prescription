@@ -58,7 +58,9 @@ body {
 }
 
 /* Page layout (02-02, UI-SPEC "Layout and Breakpoints"): one column below 900 px, two columns
-   (inputs | results) from 900 px; the full-width block spans both. */
+   (inputs | results) from 900 px; the full-width block sits below both. The two columns have their
+   own grid (.layout-cols, 02-09): a sticky element is held inside its parent box, so with
+   .col-full in the same grid the sticky results column slid over the disclaimer (RES-06). */
 header,
 .layout,
 footer {
@@ -83,15 +85,11 @@ footer {
     padding: var(--space-8);
   }
 
-  .layout {
+  .layout-cols {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 400px;
     column-gap: var(--space-8);
     align-items: start;
-  }
-
-  .col-full {
-    grid-column: 1 / -1;
   }
 
   #summary-bar {

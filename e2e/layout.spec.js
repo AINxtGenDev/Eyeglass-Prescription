@@ -4,7 +4,7 @@
 // 3,902, 7,23 g; L +2,75 CT 3,737, 7,00 g; CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
 import { settled, plain, guardPage } from './helpers.js';
-/* global document, window, getComputedStyle -- page.evaluate bodies run in the browser */
+/* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 guardPage(test);
 
@@ -143,3 +143,42 @@ test.describe('1280 × 800', () => {
     await expectNoHorizontalScroll(page, 'at 1280 px');
   });
 });
+
+// RES-06: the full 'Wichtiger Hinweis' text is always readable. At the page bottom the sticky
+// results column must not slide over the full-width block below the two columns (02-09 fix).
+for (const width of [1280, 900]) {
+  test.describe(`${width} × 800, scrolled to the bottom`, () => {
+    test.use({ viewport: { width, height: 800 } });
+
+    for (const expert of [false, true]) {
+      test(`the sticky results column never covers the disclaimer${expert ? ' (Experten-Ansicht)' : ''}`, async ({
+        page,
+      }) => {
+        await settled(page);
+        if (expert) await page.locator('#expert').check();
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+        const hit = await page.evaluate(() => {
+          const d = document.getElementById('disclaimer');
+          const r = d.getBoundingClientRect();
+          const c = document.querySelector('.col-results').getBoundingClientRect();
+          const x = r.left + r.width / 2;
+          const y = r.top + r.height / 2;
+          const el = document.elementFromPoint(x, y);
+          const overlap =
+            Math.max(0, Math.min(r.right, c.right) - Math.max(r.left, c.left)) *
+            Math.max(0, Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top));
+          return {
+            inView: r.top >= 0 && r.bottom <= window.innerHeight,
+            centreIsDisclaimer: !!el && d.contains(el),
+            hitId: el?.closest('[id]')?.id ?? el?.className ?? null,
+            overlap,
+          };
+        });
+        expect(hit.inView, 'disclaimer fully in the viewport at the page bottom').toBe(true);
+        expect(hit.centreIsDisclaimer, `elementFromPoint at the disclaimer centre hit ${hit.hitId}`).toBe(true);
+        expect(hit.overlap, 'overlap area of .col-results and #disclaimer (px²)').toBe(0);
+      });
+    }
+  });
+}
