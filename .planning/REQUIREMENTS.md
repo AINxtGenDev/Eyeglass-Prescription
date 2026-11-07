@@ -51,7 +51,7 @@
 - [x] **ENG-06**: Engine outputs centre thickness, max/min edge thickness with location, thickness at any point, volume (numerical integration over the outline), weight (g), front-surface protrusion, decentration, and intermediate values (radii, sags, binding constraint).
 - [x] **ENG-07**: A lens that cannot be made (sag beyond radius, negative edge) is detected and returned as a coded diagnostic with a plain-German explanation and a suggestion (smaller frame, higher index).
 - [x] **ENG-08**: Engine results are validated by tiered tests: analytic cases; spherical manufacturer-chart rows within ±0,20 mm (after tool-index conversion); a ray-trace oracle confirming the generated lens reproduces the entered Sph/Zyl/Achse; property tests for symmetry and monotonicity.
-- [x] **ENG-09**: Typing never freezes the page. Both lenses are computed off the main thread in a Web Worker. If the browser cannot start it, the page computes directly and says so under "Technische Angaben". Measured and recorded:
+- [ ] **ENG-09**: Typing never freezes the page. Both lenses are computed off the main thread in a Web Worker. If the browser cannot start it, the page computes directly and says so under "Technische Angaben". (2026-11-07, 02-20: phase-2 regression, 4× proxy (a) case A max 21,7 ms (runs 21,7 / 19,1 / 20,5) / case B max 24,9 ms (runs 23,3 / 24,9 / 21,8) ≥ 16,7 ms in 3 of 3 runs; the phone check alone cannot close it. lens-critic M4 stays an open MAJOR that needs explicit user acceptance at the 02-15 checkpoint.) Measured and recorded:
   - (a) Every main-thread frame an input causes stays under one frame (< 16,7 ms), including style, layout and paint. This covers the frame that reads the inputs and sends the job, and the frame that renders the result. It is the user's "under one frame" target (2026-11-06). RAIL's 50 ms input budget is the cited outer bound.
   - (b) Input to next paint is ≤ 200 ms for every measured edit (INP "good", https://web.dev/articles/inp; the source's 75th-percentile field threshold, applied here per edit).
   - (c) In the canonical normal case (−4,00/−2,00 × 30°, Rechteckig 52×38/18, PD 32, CR-39), input to result painted is ≤ 100 ms for every measured edit (RAIL, https://web.dev/articles/rail: "Complete a transition initiated by user input within 100 ms").
@@ -177,7 +177,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENG-06 | Phase 1 | Complete |
 | ENG-07 | Phase 1 | Complete |
 | ENG-08 | Phase 1 | Complete |
-| ENG-09 | Phase 1 | Complete |
+| ENG-09 | Phase 1 | Pending |
 | RES-01 | Phase 2 | Complete |
 | RES-02 | Phase 2 | Complete |
 | RES-03 | Phase 2 + 3 | Pending |
@@ -211,4 +211,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-06*
-*Last updated: 2026-11-07 (02-19, lens-critic m1): RES-03, UX-02 and UX-03 mapped to "Phase 2 + 3" and Pending, because each has a part that needs the phase-3 3D view (user decision 2026-11-07, deferred-items.md).*
+*Last updated: 2026-11-07 (02-20, lens-critic M4): ENG-09 back to Pending, the 4× proxy input frame stays ≥ 16,7 ms after the compare-start move (02-20-SUMMARY). Before: (02-19, lens-critic m1) RES-03, UX-02 and UX-03 mapped to "Phase 2 + 3" and Pending, because each has a part that needs the phase-3 3D view (user decision 2026-11-07, deferred-items.md).*
