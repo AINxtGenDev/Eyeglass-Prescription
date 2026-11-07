@@ -44,3 +44,9 @@
 
 - **Engine property tests near their coverage timeouts (carried forward from 02-08, not touched in 02-14):** `evaluate.test.js` optimality (48,2 of 60 s under 4 burners), `solve.test.js` affected region (249 of 300 s), `diagnostics.test.js` extremes grid and optimality sample. Still a CI-flake risk; the split-per-case fix used for MAT-02 would apply.
 - **A field message that appears on blur can move a control below the field between mousedown and mouseup, so the click is lost (found in 02-14, not fixed).** Reproduced: after "Eigene Werte eingeben" the emptied R Sph is focused; a mouse click on an Rx chip blurs it, the due message "Fehler: Bitte einen Wert eingeben." (58 px) appears above the chips, and the click does not reach the chip (6/6 on desktop in presets.spec before the test waited for the message). This is not specific to the Rx chips: every control below a field with a due message has it (frame chips, `#rx-same`, "Wo finde ich das?"). A person who pauses 600 ms has the message already; a fast click within 600 ms of typing can miss. Candidate for lens-critic / 02-15: reserve the message line, or show the empty-field message only after the field was edited.
+
+## User decision 2026-11-07 (in chat: "i approve")
+
+- Accepted: lens-critic result-review MINORs **m5** (per-field "Beispielwert" tag), **m6** (lay note for very thick lenses) and **m7** (shorter Simple view on phones) are deferred to a later phase.
+- Accepted: **RES-03, UX-02, UX-03** are set to Pending ("Phase 2 + 3"), because they need the phase-3 3D view.
+- Not covered by this approval: the push to the live site. That stays a separate explicit decision at the 02-15 checkpoint, after the lens-critic re-review.
