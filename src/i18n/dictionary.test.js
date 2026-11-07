@@ -404,3 +404,24 @@ describe('02-11 aspheric front and rim depth copy (MAT-05, FRAME-02)', () => {
     }
   });
 });
+
+describe('02-12 custom material copy (MAT-06, D-17)', () => {
+  test('card, label, only-Expert Hinweis, comparison note and ne tip (UI-SPEC copywriting)', () => {
+    expect(dict['material.custom.title']).toBe('Eigenes Material');
+    expect(dict['material.custom.sub']).toBe('Werte selbst eingeben');
+    expect(dict['material.custom.label']).toBe('beruht auf Ihren Angaben, kein geprüftes Material');
+    expect(dict['material.custom.onlyExpert']).toBe('Eigenes Material gilt nur in der Experten-Ansicht. Es wird wieder {material} verwendet.');
+    expect(dict['cmp.customExcluded']).toBe('Ihr eigenes Material ist hier nicht aufgeführt; verglichen werden nur geprüfte Materialien.');
+    expect(dict['tip.ne.text']).toContain('0,001 bis 0,007');
+    expect(dict).toHaveProperty(['tip.ne.name']);
+  });
+  test('field labels and {field} names for the two custom codes', () => {
+    for (const f of ['ne', 'density', 'abbe']) expect(dict).toHaveProperty([`material.custom.field.${f}`]);
+    expect(dict['material.custom.ne.label']).toContain('Brechungsindex');
+    expect(dict['material.custom.density.label']).toContain('g/cm³');
+    expect(dict['material.custom.abbe.label']).toContain('freiwillig');
+    const ph = (k) => [...dict[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+    expect(ph('val.VAL_CUSTOM_OUT_OF_RANGE')).toEqual(['field', 'max', 'min', 'value']);
+    expect(ph('val.VAL_CUSTOM_IMPLAUSIBLE')).toEqual(['field', 'max', 'min', 'value']);
+  });
+});

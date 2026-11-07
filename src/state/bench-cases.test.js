@@ -103,6 +103,22 @@ describe('shared ENG-09 bench cases (01-14)', () => {
     );
     expect(JSON.stringify(specFor('OD', rx, 32, 'cr39', frame, null, {}))).toBe(JSON.stringify(NORMAL_PAIR.OD));
   });
+  test('specFor customMaterial (02-12): appended only for materialId custom', () => {
+    const rx = { sph: -4, cyl: -2, axisDeg: 30 };
+    const frame = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+    const cm = { ne: 1.523, density: 2.54, ve: 58 };
+    const s = specFor('OD', rx, 32, 'custom', frame, null, { minCT: 1.8, minET: 1, customMaterial: cm });
+    expect(Object.keys(s)).toEqual([...Object.keys(NORMAL_PAIR.OD), 'customMaterial']);
+    expect(s.customMaterial).toEqual(cm);
+    expect(s.materialId).toBe('custom');
+    const listed = specFor('OD', rx, 32, 'cr39', frame, null, { customMaterial: cm });
+    expect(JSON.stringify(listed)).toBe(JSON.stringify(NORMAL_PAIR.OD));
+    expect(specFor('OD', rx, 32, 'custom', frame, null, { minCT: 1.8, minET: 1, frontConic: -2, customMaterial: cm })).toMatchObject({
+      frontConic: -2,
+      customMaterial: cm,
+    });
+  });
+
   test('specFor frontConic (02-11): last key when non-zero, omitted for null/0 (cache key unchanged)', () => {
     const rx = { sph: -4, cyl: -2, axisDeg: 30 };
     const frame = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };

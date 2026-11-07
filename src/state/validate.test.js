@@ -8,6 +8,9 @@ import {
   validateMinThickness,
   validateConic,
   validateRimDepth,
+  validateCustomMaterial,
+  nearestListedMaterial,
+  CUSTOM_BANDS,
   CONIC_RANGE,
   CONIC_DEFAULT,
   RIM_DEPTH_RANGE,
@@ -20,6 +23,7 @@ import {
 } from './validate.js';
 import { PARSE_CODES } from './parse.js';
 import { RX_CODES } from './transpose.js';
+import { MATERIALS as MATERIALS_FOR_TEST } from '../engine/materials.js';
 
 const eye = (sph, cyl = '', axis = '') => validateRxEye({ sph, cyl, axis });
 
@@ -390,5 +394,114 @@ describe('Expert fields (02-11, MAT-05 k, FRAME-02 rim depth)', () => {
         data: { value, min: 0.5, max: 10 },
       });
     }
+  });
+});
+
+describe('custom material (02-12, MAT-06, RESEARCH Open Q3 bands)', () => {
+  const v = (o) => validateCustomMaterial({ ne: '1,5', density: '1,32', abbe: '56', minCT: '1,8', minET: '1,0', ...o });
+
+  test('bands are the RESEARCH Open Q3 design constants', () => {
+    expect(CUSTOM_BANDS).toEqual({
+      ne: { error: [1.4, 2], hint: [1.49, 1.9] },
+      density: { error: [0.8, 5], hint: [1, 4] },
+      abbe: { error: [15, 80], hint: [25, 65] },
+    });
+    expect(Object.isFrozen(CUSTOM_BANDS)).toBe(true);
+  });
+
+  test('CR-39 constants: no message, customMaterial and min values for the engine', () => {
+    const r = v({});
+    expect(r.blocked).toBe(false);
+    expect(r.fields).toEqual({ ne: null, density: null, abbe: null, minCT: null, minET: null });
+    expect(r.customMaterial).toEqual({ ne: 1.5, density: 1.32, ve: 56 });
+    expect(r.minCT).toBe(1.8);
+    expect(r.minET).toBe(1);
+  });
+
+  test('ne 1,95 is a Hinweis and computes', () => {
+    const r = v({ ne: '1,95', abbe: '' });
+    expect(r.fields.ne).toEqual({ tier: TIERS.HINT, code: VAL_CODES.VAL_CUSTOM_IMPLAUSIBLE, data: { field: 'ne', value: 1.95, min: 1.49, max: 1.9 } });
+    expect(r.blocked).toBe(false);
+    expect(r.customMaterial).toEqual({ ne: 1.95, density: 1.32, ve: null });
+  });
+
+  test.each([
+    ['ne', '2,1', 2.1, [1.4, 2]],
+    ['ne', '1,39', 1.39, [1.4, 2]],
+    ['density', '0,7', 0.7, [0.8, 5]],
+    ['density', '5,01', 5.01, [0.8, 5]],
+    ['abbe', '12', 12, [15, 80]],
+    ['abbe', '81', 81, [15, 80]],
+  ])('%s %s is a Fehler that blocks', (field, raw, value, [min, max]) => {
+    const r = v({ [field]: raw });
+    expect(r.fields[field]).toEqual({ tier: TIERS.ERROR, code: VAL_CODES.VAL_CUSTOM_OUT_OF_RANGE, data: { field, value, min, max } });
+    expect(r.blocked).toBe(true);
+    expect(r.customMaterial).toBeNull();
+  });
+
+  test.each([
+    ['ne', '1,45'],
+    ['ne', '1,91'],
+    ['density', '0,9'],
+    ['density', '4,2'],
+    ['abbe', '20'],
+    ['abbe', '70'],
+  ])('%s %s is a Hinweis that computes', (field, raw) => {
+    const r = v({ [field]: raw });
+    expect(r.fields[field]).toMatchObject({ tier: TIERS.HINT, code: VAL_CODES.VAL_CUSTOM_IMPLAUSIBLE, data: { field } });
+    expect(r.blocked).toBe(false);
+  });
+
+  test('band edges are inside (2,00 is a Hinweis, 1,49 and 1,90 are fine)', () => {
+    expect(v({ ne: '2' }).fields.ne.tier).toBe(TIERS.HINT);
+    expect(v({ ne: '1,49' }).fields.ne).toBeNull();
+    expect(v({ ne: '1,9' }).fields.ne).toBeNull();
+    expect(v({ density: '0,8' }).fields.density.tier).toBe(TIERS.HINT);
+    expect(v({ abbe: '15' }).fields.abbe.tier).toBe(TIERS.HINT);
+  });
+
+  test('empty ne or density is a Fehler (required); empty Abbe is ve null', () => {
+    expect(v({ ne: '' }).fields.ne).toEqual({ tier: TIERS.ERROR, code: PARSE_CODES.PARSE_EMPTY, data: {} });
+    expect(v({ ne: '' }).blocked).toBe(true);
+    expect(v({ density: ' ' }).fields.density.code).toBe(PARSE_CODES.PARSE_EMPTY);
+    const r = v({ abbe: '' });
+    expect(r.fields.abbe).toBeNull();
+    expect(r.customMaterial.ve).toBeNull();
+  });
+
+  test('parse errors block', () => {
+    expect(v({ ne: '1,5234' }).fields.ne.code).toBe(PARSE_CODES.PARSE_TOO_MANY_DECIMALS);
+    expect(v({ density: 'abc' }).fields.density.code).toBe(PARSE_CODES.PARSE_NOT_A_NUMBER);
+    expect(v({ abbe: '58,55' }).blocked).toBe(true);
+  });
+
+  test('empty minimum thicknesses use the nearest listed material (prefill rule); bad ones block', () => {
+    const r = v({ ne: '1,62', minCT: '', minET: '' });
+    expect(r.minCT).toBe(MATERIALS_FOR_TEST.idx160.minCT);
+    expect(r.minET).toBe(MATERIALS_FOR_TEST.idx160.minET);
+    expect(r.blocked).toBe(false);
+    const bad = v({ minCT: '9' });
+    expect(bad.fields.minCT.code).toBe(VAL_CODES.VAL_MINTHICKNESS_OUT_OF_MODEL);
+    expect(bad.blocked).toBe(true);
+    expect(v({ minET: 'x' }).blocked).toBe(true);
+  });
+
+  test('nearestListedMaterial: nearest ne, tie → lower index', () => {
+    expect(nearestListedMaterial(1.62)).toBe('idx160');
+    expect(nearestListedMaterial(1.5)).toBe('cr39');
+    expect(nearestListedMaterial(1.523)).toBe('trivex');
+    expect(nearestListedMaterial(1.515)).toBe('cr39'); // |1,515−1,5| = |1,515−1,53|: lower index
+    expect(nearestListedMaterial(1.95)).toBe('idx174');
+    expect(nearestListedMaterial(1.2)).toBe('cr39');
+  });
+
+  test('never throws on arbitrary text (property)', () => {
+    fc.assert(
+      fc.property(fc.string(), fc.string(), fc.string(), (a, b, c) => {
+        const r = validateCustomMaterial({ ne: a, density: b, abbe: c, minCT: '', minET: '' });
+        expect(typeof r.blocked).toBe('boolean');
+      }),
+      { numRuns: 300, seed: 1201 },
+    );
   });
 });

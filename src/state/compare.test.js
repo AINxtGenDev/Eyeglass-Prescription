@@ -329,6 +329,23 @@ describe('materialRows (02-06)', () => {
     expect(rows[1]).toMatchObject({ id: 'trivex', eye: 'OS', thickMm: 3.6, weightG: 5, diffMm: 0.4, diffG: 1 });
   });
 
+  test('custom selected (02-12, D-17): Ihre Auswahl first, then all six sourced rows against it', () => {
+    const custom = {
+      OD: evaluateLens(specFor('OD', { sph: -2.75, cyl: -0.5, axisDeg: 180 }, 32, 'custom', FRAME, null, { minCT: 1.8, minET: 1, customMaterial: { ne: 1.5, density: 1.32, ve: 56 } })),
+      OS: evaluateLens(specFor('OS', { sph: -2.5, cyl: -0.75, axisDeg: 170 }, 31.5, 'custom', FRAME, null, { minCT: 1.8, minET: 1, customMaterial: { ne: 1.5, density: 1.32, ve: 56 } })),
+    };
+    const rows = materialRows({ selectedId: 'custom', selected: custom, others: MINUS });
+    expect(rows.map((r) => r.id)).toEqual(['custom', ...Object.keys(MATERIALS)]);
+    expect(rows[0]).toMatchObject({ id: 'custom', selected: true, thickMm: 4.6, weightG: 14, diffMm: null, diffG: null, pct: null });
+    // CR-39 constants: the cr39 row is a compared row with difference 0, never the selection.
+    expect(rows[1]).toMatchObject({ id: 'cr39', selected: false, diffMm: 0, diffG: 0, pct: null });
+    expect(rows[6]).toMatchObject({ id: 'idx174', selected: false, diffMm: 1.6, diffG: 4, pct: 35 });
+    expect(rows.filter((r) => r.selected)).toHaveLength(1);
+    // A custom entry in others is never a row.
+    const again = materialRows({ selectedId: 'custom', selected: custom, others: { ...MINUS, custom } });
+    expect(again.map((r) => r.id)).toEqual(['custom', ...Object.keys(MATERIALS)]);
+  });
+
   test('no computed selected eye → no rows', () => {
     expect(materialRows({ selectedId: 'cr39', selected: { OD: { ok: false }, OS: null }, others: {} })).toEqual([]);
   });

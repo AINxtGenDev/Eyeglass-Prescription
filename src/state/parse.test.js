@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import fc from 'fast-check';
-import { parseDiopter, parseAxis, parseMm, parsePd, parseStamp, PARSE_CODES, PD_CODES, STAMP_CODES } from './parse.js';
+import { parseDiopter, parseAxis, parseMm, parsePd, parseStamp, parseIndex, parseDensity, parseAbbe, PARSE_CODES, PD_CODES, STAMP_CODES } from './parse.js';
 
 const ok = (value) => ({ ok: true, value });
 const err = (code) => ({ ok: false, code });
@@ -193,4 +193,60 @@ test('parsePd and parseStamp never throw on random strings (T-02-12)', () => {
     }),
     { numRuns: 500 },
   );
+});
+
+describe('custom material parsers (02-12, MAT-06)', () => {
+  test.each([
+    ['1,523', 1.523],
+    ['1.6', 1.6],
+    ['1', 1],
+    [' 1,50 ', 1.5],
+  ])('parseIndex(%j) -> %s', (raw, v) => expect(parseIndex(raw)).toEqual(ok(v)));
+  test.each([
+    ['', PARSE_CODES.PARSE_EMPTY],
+    ['1,5234', PARSE_CODES.PARSE_TOO_MANY_DECIMALS],
+    ['1.5,2', PARSE_CODES.PARSE_MIXED_SEPARATORS],
+    ['15', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['-1,5', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['1,'.padEnd(33, '5'), PARSE_CODES.PARSE_NOT_A_NUMBER],
+  ])('parseIndex(%j) -> %s', (raw, code) => expect(parseIndex(raw)).toEqual(err(code)));
+
+  test.each([
+    ['2,54', 2.54],
+    ['1.32', 1.32],
+    ['2,5 g/cm³', 2.5],
+    ['1,2g/cm3', 1.2],
+    ['3', 3],
+  ])('parseDensity(%j) -> %s', (raw, v) => expect(parseDensity(raw)).toEqual(ok(v)));
+  test.each([
+    ['', PARSE_CODES.PARSE_EMPTY],
+    ['2,545', PARSE_CODES.PARSE_TOO_MANY_DECIMALS],
+    ['12', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['x', PARSE_CODES.PARSE_NOT_A_NUMBER],
+  ])('parseDensity(%j) -> %s', (raw, code) => expect(parseDensity(raw)).toEqual(err(code)));
+
+  test.each([
+    ['58', 58],
+    ['58,5', 58.5],
+    ['5', 5],
+  ])('parseAbbe(%j) -> %s', (raw, v) => expect(parseAbbe(raw)).toEqual(ok(v)));
+  test.each([
+    ['', PARSE_CODES.PARSE_EMPTY],
+    ['58,55', PARSE_CODES.PARSE_TOO_MANY_DECIMALS],
+    ['158', PARSE_CODES.PARSE_NOT_A_NUMBER],
+    ['-5', PARSE_CODES.PARSE_NOT_A_NUMBER],
+  ])('parseAbbe(%j) -> %s', (raw, code) => expect(parseAbbe(raw)).toEqual(err(code)));
+
+  test('never throw and return ok/code shapes on any string, including long ones (T-02-34)', () => {
+    fc.assert(
+      fc.property(fc.string({ maxLength: 200 }), (s) => {
+        for (const f of [parseIndex, parseDensity, parseAbbe]) {
+          const r = f(s);
+          expect(r.ok ? Number.isFinite(r.value) : typeof r.code === 'string').toBe(true);
+        }
+      }),
+      { numRuns: 500, seed: 1202 },
+    );
+    for (const f of [parseIndex, parseDensity, parseAbbe]) expect(f('1'.repeat(10000))).toEqual(err(PARSE_CODES.PARSE_NOT_A_NUMBER));
+  });
 });

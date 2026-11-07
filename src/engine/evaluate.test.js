@@ -757,3 +757,62 @@ describe('MAT-05 generic conic front (02-11)', () => {
     }
   });
 });
+
+describe('customMaterial (02-12, MAT-06): user-supplied ne, density, νe', () => {
+  const CR39 = { ne: 1.5, density: 1.32, ve: 56 };
+  const custom = (o = {}) => spec({ materialId: 'custom', customMaterial: CR39, minCT: 1.8, minET: 1.0, ...o });
+
+  it.each([
+    ['minus', {}],
+    ['plus cyl', { sph: 4, cyl: -1.5, axisDeg: 60 }],
+  ])('CR-39 constants as customMaterial give metrics and intermediates equal to cr39 (%s)', (_, rx) => {
+    const a = evaluateLens(custom(rx));
+    const b = evaluateLens(spec({ materialId: 'cr39', ...rx }));
+    expect(a.ok).toBe(true);
+    expect(a.metrics).toEqual(b.metrics);
+    expect(a.intermediates).toEqual(b.intermediates);
+    expect(a.surfaces).toEqual(b.surfaces);
+    expect(a.intermediates.abbe).toBe(56);
+  });
+
+  it('ve null computes and gives intermediates.abbe null', () => {
+    const r = evaluateLens(custom({ customMaterial: { ne: 1.523, density: 2.54, ve: null } }));
+    expect(r.ok).toBe(true);
+    expect(r.intermediates.abbe).toBeNull();
+    expect(r.intermediates.n).toBe(1.523);
+  });
+
+  it('crown glass (ne 1,523, density 2,54) is heavier than CR-39 for the same Rx', () => {
+    const glass = evaluateLens(custom({ customMaterial: { ne: 1.523, density: 2.54, ve: 58 } }));
+    const cr = evaluateLens(spec());
+    expect(glass.metrics.weightG).toBeGreaterThan(1.7 * cr.metrics.weightG);
+  });
+
+  it.each([
+    ['no customMaterial', { customMaterial: undefined }],
+    ['customMaterial null', { customMaterial: null }],
+    ['minCT null', { minCT: null }],
+    ['minET null', { minET: null }],
+    ['ne 1', { customMaterial: { ne: 1, density: 1.32, ve: 56 } }],
+    ['ne NaN', { customMaterial: { ne: NaN, density: 1.32, ve: 56 } }],
+    ['density 0', { customMaterial: { ne: 1.5, density: 0, ve: 56 } }],
+    ['density Infinity', { customMaterial: { ne: 1.5, density: Infinity, ve: 56 } }],
+    ['ve 0', { customMaterial: { ne: 1.5, density: 1.32, ve: 0 } }],
+    ['ve string', { customMaterial: { ne: 1.5, density: 1.32, ve: '56' } }],
+    ['ve missing', { customMaterial: { ne: 1.5, density: 1.32 } }],
+    ['not an object', { customMaterial: 1.5 }],
+  ])('materialId custom with %s is INVALID_SPEC custom-material', (_, o) => {
+    const r = evaluateLens(custom(o));
+    expect(r.ok).toBe(false);
+    expect(r.diagnostics[0]).toMatchObject({ code: 'INVALID_SPEC', data: { reason: 'custom-material' } });
+  });
+
+  it('customMaterial together with a listed materialId is INVALID_SPEC custom-material', () => {
+    const r = evaluateLens(spec({ materialId: 'cr39', customMaterial: CR39 }));
+    expect(r.diagnostics[0]).toMatchObject({ code: 'INVALID_SPEC', data: { reason: 'custom-material' } });
+  });
+
+  it('customMaterial null with a listed materialId is the unchanged result', () => {
+    expect(evaluateLens(spec({ customMaterial: null }))).toEqual(evaluateLens(spec()));
+  });
+});
