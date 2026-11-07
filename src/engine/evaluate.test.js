@@ -5,6 +5,8 @@ import { baseCurveAuto, sphericalEquivalent } from './power.js';
 import { frameOutline } from './frame/outline.js';
 import { maxRadiusFromOC, thicknessAt } from './metrics.js';
 import { MATERIALS } from './materials.js';
+import { traceBVP } from './trace.js';
+import { rxToMatrix } from './power.js';
 
 const spec = (o = {}) => ({
   eye: 'OD',
@@ -665,5 +667,93 @@ describe('MAT-03 manual base curve 0,00…+10,00 and MANUAL_BACK_CONVEX (02-10)'
     const r = evaluateLens(spec({ sph, cyl, axisDeg: 30, frame: FRAME, baseCurve: 0 }));
     expect(r.ok).toBe(true);
     expect(codes(r).includes('MANUAL_BACK_CONVEX')).toBe(Math.max(sph, sph + cyl) > 0);
+  });
+});
+
+describe('MAT-05 generic conic front (02-11)', () => {
+  const EL = [
+    [0, 0],
+    [0, 1],
+    [1, 1],
+  ];
+  const maxElementError = (F, E) => Math.max(...EL.map(([i, j]) => Math.abs(F[i][j] - E[i][j])));
+  const RECT = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+  const plus4 = (o = {}) => spec({ sph: 4, frame: RECT, ...o });
+  const normal = (o = {}) => spec({ sph: -4, cyl: -2, axisDeg: 30, frame: RECT, ...o });
+  const d2max = (r) => Math.max(r.intermediates.D2a, r.intermediates.D2b);
+
+  it('frontConic 0 or null gives results identical to the sphere (normal and plus case)', () => {
+    for (const s of [normal, plus4]) {
+      const base = evaluateLens(s());
+      expect(evaluateLens(s({ frontConic: 0 }))).toEqual(base);
+      expect(evaluateLens(s({ frontConic: null }))).toEqual(base);
+    }
+  });
+
+  it('+4,00 CR-39 rechteckig 52×38/18: D1 kept from k = 0 (guard at −5 only), CT decreases', () => {
+    const r0 = evaluateLens(plus4());
+    const D10 = r0.intermediates.D1;
+    const cts = [r0.metrics.ct];
+    for (const k of [-1, -2, -5]) {
+      const r = evaluateLens(plus4({ frontConic: k }));
+      expect(r.ok).toBe(true);
+      expect(r.surfaces.k1).toBe(k);
+      expect(r.intermediates.baseCurveRule).toBe('thinnest');
+      expect(d2max(r)).toBeLessThanOrEqual(0);
+      if (k === -5) {
+        expect(r.intermediates.D1).toBeGreaterThanOrEqual(D10);
+        expect(r.intermediates.D1 - D10).toBeLessThan(0.01);
+      } else {
+        expect(Math.abs(r.intermediates.D1 - D10)).toBeLessThan(1e-12);
+      }
+      cts.push(r.metrics.ct);
+      console.log(`[02-11] +4,00 k ${k}: CT ${r.metrics.ct.toFixed(4)} D1 ${r.intermediates.D1.toFixed(4)}`);
+    }
+    for (let i = 1; i < cts.length; i++) expect(cts[i]).toBeLessThan(cts[i - 1]);
+    [4.876, 4.817, 4.762, 4.613].forEach((v, i) => expect(cts[i]).toBeCloseTo(v, 2));
+  });
+
+  it('+6,00 −1,00 × 90, k −5: the convex-back guard fires, the back stays non-convex', () => {
+    const s = plus4({ sph: 6, cyl: -1, axisDeg: 90 });
+    const r0 = evaluateLens(s);
+    const r = evaluateLens({ ...s, frontConic: -5 });
+    expect(r.ok).toBe(true);
+    expect(d2max(r)).toBeLessThanOrEqual(0);
+    expect(r.intermediates.D1).toBeGreaterThan(r0.intermediates.D1);
+    expect(r.intermediates.D1).toBeCloseTo(5.875, 3);
+    expect(r.metrics.ct).toBeLessThan(r0.metrics.ct);
+    for (const k of [-1, -2, -5]) {
+      const rk = evaluateLens({ ...s, frontConic: k });
+      console.log(`[02-11] +6,00/−1,00×90 k ${k}: CT ${rk.metrics.ct.toFixed(4)} D1 ${rk.intermediates.D1.toFixed(4)}`);
+    }
+    console.log(`[02-11] +6,00/−1,00×90 k 0: CT ${r0.metrics.ct.toFixed(4)} D1 ${r0.intermediates.D1.toFixed(4)}`);
+  });
+
+  it('manual base curve with frontConic −1: k1 −1, rule manual', () => {
+    const r = evaluateLens(plus4({ baseCurve: 6, frontConic: -1 }));
+    expect(r.ok).toBe(true);
+    expect(r.surfaces.k1).toBe(-1);
+    expect(r.intermediates.baseCurveRule).toBe('manual');
+    expect(r.intermediates.D1).toBe(6);
+  });
+
+  it.each([0.5, NaN, Infinity, '−1'])('frontConic %s is INVALID_SPEC front-conic', (k) => {
+    const r = evaluateLens(plus4({ frontConic: k }));
+    expect(r.ok).toBe(false);
+    expect(r.diagnostics[0]).toMatchObject({ code: 'INVALID_SPEC', data: { reason: 'front-conic' } });
+  });
+
+  it('paraxial power is set by the vertex curvature: traceBVP reproduces the Rx with k ≠ 0', () => {
+    for (const [sph, cyl, axisDeg] of [
+      [4, 0, 0],
+      [6, -1, 90],
+      [-4, -2, 30],
+    ]) {
+      for (const k of [-1, -5]) {
+        const r = evaluateLens(plus4({ sph, cyl, axisDeg, frontConic: k }));
+        expect(r.ok).toBe(true);
+        expect(maxElementError(traceBVP(r.surfaces), rxToMatrix({ sph, cyl, axisDeg }))).toBeLessThan(0.01);
+      }
+    }
   });
 });

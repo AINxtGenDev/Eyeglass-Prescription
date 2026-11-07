@@ -103,4 +103,14 @@ describe('shared ENG-09 bench cases (01-14)', () => {
     );
     expect(JSON.stringify(specFor('OD', rx, 32, 'cr39', frame, null, {}))).toBe(JSON.stringify(NORMAL_PAIR.OD));
   });
+  test('specFor frontConic (02-11): last key when non-zero, omitted for null/0 (cache key unchanged)', () => {
+    const rx = { sph: -4, cyl: -2, axisDeg: 30 };
+    const frame = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
+    const s = specFor('OD', rx, 32, 'cr39', frame, null, { frontConic: -1 });
+    expect(Object.keys(s)).toEqual([...Object.keys(NORMAL_PAIR.OD), 'frontConic']);
+    expect(s.frontConic).toBe(-1);
+    for (const frontConic of [null, 0, undefined]) {
+      expect(JSON.stringify(specFor('OD', rx, 32, 'cr39', frame, null, { frontConic }))).toBe(JSON.stringify(NORMAL_PAIR.OD));
+    }
+  });
 });

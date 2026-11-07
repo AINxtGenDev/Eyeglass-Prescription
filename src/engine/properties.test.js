@@ -9,6 +9,7 @@ import { thicknessAt } from './metrics.js';
 import { frameOutline } from './frame/outline.js';
 import { MATERIALS } from './materials.js';
 import { SHAPES } from './frame/shapes.js';
+import { solveCT, BACK_CONVEX_MAX_DPT } from './solve.js';
 
 const lens = (o = {}) => ({
   eye: 'OD',
@@ -374,4 +375,66 @@ describe('ENG-08 tier-4 properties', () => {
     );
     expect(checked).toBeGreaterThan(200);
   });
+  // MAT-05 (02-11, lens-critic M2): the automatic base curve is chosen on the sphere (k = 0); k is
+  // applied at that D1, and D1 is raised only to the flattest front that keeps the back
+  // non-convex at the new CT: D1min(ct) = m / (1 + (ct/1000)/n · m), m = max(sph, sph + cyl).
+  // The guard uses the previous pass's CT and solveCT stops at |ΔCT| < 1e-4 mm, so the raise is
+  // minimal to 1e-6 dpt, not to rounding (lens-critic round 2: worst 1,01e-7 dpt).
+  it('automatic D1 is the k = 0 D1 unless the back would turn convex (fast-check, seed 1105)', () => {
+    const f = frame('rechteckig', 52, 38, 18);
+    const ol = frameOutline(f.shape, f.A, f.B, 'OD');
+    let guarded = 0;
+    let maxGap = 0;
+    fc.assert(
+      fc.property(
+        fc.record({
+          sph: quarter(0.25, 8),
+          cyl: quarter(-2, 0),
+          axisDeg: fc.integer({ min: 0, max: 179 }),
+          k: fc.double({ min: -5, max: -1, noNaN: true }),
+          materialId: fc.constantFrom('cr39', 'idx167'),
+        }),
+        ({ sph, cyl, axisDeg, k, materialId }) => {
+          const s = lens({ sph, cyl, axisDeg, materialId, frame: f });
+          const r0 = evaluateLens(s);
+          if (!r0.ok) return;
+          const r = evaluateLens({ ...s, frontConic: k });
+          expect(r.ok).toBe(true);
+          const D10 = r0.intermediates.D1;
+          const D1 = r.intermediates.D1;
+          expect(Math.max(r.intermediates.D2a, r.intermediates.D2b)).toBeLessThanOrEqual(BACK_CONVEX_MAX_DPT);
+          expect(D1).toBeGreaterThanOrEqual(D10 - 1e-12);
+          expect(r.metrics.ct).toBeLessThanOrEqual(r0.metrics.ct + 1e-9);
+          const mat = MATERIALS[materialId];
+          const first = solveCT({
+            sph,
+            cyl,
+            axisDeg,
+            n: mat.ne,
+            D1: D10,
+            k1: k,
+            minCT: mat.minCT,
+            minET: mat.minET,
+            outline: ol,
+            oc: r0.surfaces.oc,
+            ct0: r0.surfaces.ct,
+          });
+          expect(first.ok).toBe(true);
+          if (Math.max(first.surfaces.D2a, first.surfaces.D2b) <= BACK_CONVEX_MAX_DPT) {
+            expect(Math.abs(D1 - D10)).toBeLessThan(1e-12);
+          } else {
+            guarded++;
+            const m = Math.max(sph, sph + cyl);
+            const n = mat.ne;
+            const gap = D1 - m / (1 + (r.metrics.ct / 1000 / n) * m);
+            if (gap > maxGap) maxGap = gap;
+            expect(gap).toBeGreaterThanOrEqual(0);
+            expect(gap).toBeLessThanOrEqual(1e-6);
+          }
+        },
+      ),
+      { numRuns: 120, seed: 1105 },
+    );
+    console.log(`[02-11] conic D1 property: ${guarded}/120 guard cases, max D1(k) − D1min(ct(k)) ${maxGap.toExponential(3)} dpt`);
+  }, 120_000);
 });

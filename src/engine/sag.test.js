@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
 import { sphereSag, torusSag, sphereSagGrad, torusSagGrad } from './sag.js';
 import { design } from './design.js';
 import { vogelBaseCurve, sphericalEquivalent } from './power.js';
@@ -177,4 +178,37 @@ describe('ENG-03 model difference (PITFALLS Pitfall 5 cross-check)', () => {
       );
     });
   }
+});
+
+// MAT-05 (02-11): the conic sag satisfies r² = 2Rz − (1 + k)z² (R = 1/c), i.e. Jalie US4289387
+// y² = 2R·x − p·x² with p = 1 + k.
+describe('MAT-05 conic sag identity', () => {
+  it('r² − 2z/c + (1 + k)z² = 0 for random c, r, k where the root is real', () => {
+    let checked = 0;
+    fc.assert(
+      fc.property(
+        fc.double({ min: -1 / 20, max: 1 / 20, noNaN: true }).filter((c) => Math.abs(c) > 1e-6),
+        fc.double({ min: 0, max: 30, noNaN: true }),
+        fc.double({ min: -5, max: 0, noNaN: true }),
+        (c, r, k) => {
+          const z = sphereSag(c, r * r, k);
+          if (Number.isNaN(z)) return;
+          checked++;
+          const res = r * r - (2 * z) / c + (1 + k) * z * z;
+          expect(Math.abs(res)).toBeLessThanOrEqual(1e-9 * Math.max(1, r * r));
+        },
+      ),
+      { numRuns: 500, seed: 1105 },
+    );
+    expect(checked).toBeGreaterThan(250);
+  });
+  it('k = −1 is the paraboloid z = c·r²/2', () => {
+    for (const [c, r2] of [
+      [0.01, 100],
+      [-0.02, 400],
+      [0.05, 900],
+    ]) {
+      expect(sphereSag(c, r2, -1)).toBeCloseTo((c * r2) / 2, 12);
+    }
+  });
 });
