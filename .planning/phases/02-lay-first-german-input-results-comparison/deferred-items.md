@@ -64,3 +64,8 @@ The plan for 02-19 asked to mark these as "accepted for later, needs user confir
 
 - Asked in chat after 02-20 (proxy FAIL; trace: 10–16 ms of each measured 4× frame is Playwright's DevToolsSession task, app work ≤ 9,7–11,8 ms). Options: fix the measurement / accept the gap / optimise paint.
 - **Chosen: "Fix the measurement (Recommended)".** Plan 02-22 makes the harness quiet during measured frames, proves it by trace, and re-measures with the unchanged 16,7 ms rule. The real Pixel check in 02-15 is still required.
+
+## User decision 2026-11-07 — push approval (02-15 Task 2)
+
+- Asked in chat with manifest (121 commits, 12219a5..HEAD), gate green, lens-critic re-review "NEEDS WORK, safe to push now: yes", rollback path.
+- **Chosen: "Push now, fix typing after (Recommended)".** User accepts as open for the push: lens-critic **M4 / ENG-09 (a)** (key-by-key typing on the 4× proxy up to 22,2 ms) and **MINOR-1** (card/bar empty and refill on incomplete entries). ENG-09 stays Pending; a follow-up plan addresses both after the live and Pixel check.
