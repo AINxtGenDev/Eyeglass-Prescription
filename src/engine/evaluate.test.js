@@ -654,10 +654,11 @@ describe('MAT-03 manual base curve 0,00…+10,00 and MANUAL_BACK_CONVEX (02-10)'
     expect(codes(flat)).toContain('MANUAL_BACK_CONVEX');
   });
 
+  // Minus-cylinder form (cyl ≤ 0), so max(sph, sph + cyl) = sph: the mixed +1,00 −2,00 still warns.
   it.each([
     [0.25, 0],
     [1, -2],
-    [-1, 2],
+    [2, -0.5],
     [-2, -1],
     [0, 0],
   ])('baseCurve 0 with sph %s cyl %s: warning iff max(sph, sph + cyl) > 0', (sph, cyl) => {

@@ -10,8 +10,10 @@ export const BENCH_RUNS = 50;
  * @param {number} monoPD @param {string} materialId
  * @param {{ shape: string, A: number, B: number, DBL: number }} frame
  * @param {number|null} [fittingHeight] mm from the bottom of the box; the page sends null (D-04)
+ * @param {{ baseCurve?: number|null, minCT?: number|null, minET?: number|null }} [overrides]
+ *   Expert overrides (02-10, MAT-03/04); missing = null. The key order never changes (cache key).
  */
-export function specFor(eye, rx, monoPD, materialId, frame, fittingHeight = null) {
+export function specFor(eye, rx, monoPD, materialId, frame, fittingHeight = null, overrides = {}) {
   return {
     eye,
     sph: rx.sph,
@@ -21,9 +23,9 @@ export function specFor(eye, rx, monoPD, materialId, frame, fittingHeight = null
     frame,
     monoPD,
     fittingHeight,
-    baseCurve: null,
-    minCT: null,
-    minET: null,
+    baseCurve: overrides.baseCurve ?? null,
+    minCT: overrides.minCT ?? null,
+    minET: overrides.minET ?? null,
   };
 }
 

@@ -1,7 +1,7 @@
 // Tier classification of the Rx fields (RX-04, RX-05, D-07, D-08). Pure and DOM-free: codes and
 // data only, the German text lives in the dictionary (val.*, parse.*, rx.*).
 // Values are never clamped or rounded: the engine gets exactly what was typed (T-02-10).
-import { parseDiopter, parseAxis, parsePd, PARSE_CODES, PD_CODES } from './parse.js';
+import { parseDiopter, parseAxis, parsePd, parseMm, PARSE_CODES, PD_CODES } from './parse.js';
 import { transpose, RX_CODES } from './transpose.js';
 import { FRAME_RANGES, PD_DEFAULT_MM } from './frame.js';
 
@@ -17,6 +17,9 @@ export const VAL_CODES = Object.freeze({
   VAL_PD_QUESTION: 'VAL_PD_QUESTION',
   VAL_PD_CONFLICT: 'VAL_PD_CONFLICT',
   VAL_FRAME_OUT_OF_MODEL: 'VAL_FRAME_OUT_OF_MODEL',
+  // 02-10 Expert fields (MAT-03, MAT-04)
+  VAL_BASECURVE_OUT_OF_MODEL: 'VAL_BASECURVE_OUT_OF_MODEL',
+  VAL_MINTHICKNESS_OUT_OF_MODEL: 'VAL_MINTHICKNESS_OUT_OF_MODEL',
 });
 
 // RX-04, REQUIREMENTS.md verbatim: Sph −12,00…+12,00 dpt, Zyl −6,00…0,00 dpt (minus form),
@@ -225,3 +228,32 @@ export function validateFrame(dims) {
   }
   return out;
 }
+
+// MAT-03, REQUIREMENTS.md verbatim: manual base curve 0,00…+10,00 dpt.
+export const BASE_CURVE_MANUAL = Object.freeze([0, 10]);
+// [ASSUMED, design constant] the sourced defaults are 1,0–1,8 mm (materials.js); these bounds only
+// stop typos. The engine itself only requires > 0.
+export const MIN_THICKNESS_RANGE = Object.freeze([0.5, 5]);
+
+/** Empty = no override; a parse error is a Fehler; outside the range is Außerhalb des Modells. */
+function expertField(raw, parse, range, code) {
+  if (isBlank(raw)) return { value: null, msg: null };
+  const r = parse(raw);
+  if (!r.ok) return { value: null, msg: msg(TIERS.ERROR, r.code) };
+  if (!inside(r.value, range)) return { value: null, msg: msg(TIERS.OUT, code, { value: r.value, min: range[0], max: range[1] }) };
+  return { value: r.value, msg: null };
+}
+
+/**
+ * Expert base curve (02-10, MAT-03): empty = automatic. Never clamped (T-02-26).
+ * @param {string} raw @returns {{ value: number|null, msg: FieldMsg|null }}
+ */
+export const validateBaseCurve = (raw) =>
+  expertField(raw, parseDiopter, BASE_CURVE_MANUAL, VAL_CODES.VAL_BASECURVE_OUT_OF_MODEL);
+
+/**
+ * Expert minimum centre or edge thickness (02-10, MAT-04): empty = material default.
+ * @param {string} raw @returns {{ value: number|null, msg: FieldMsg|null }}
+ */
+export const validateMinThickness = (raw) =>
+  expertField(raw, parseMm, MIN_THICKNESS_RANGE, VAL_CODES.VAL_MINTHICKNESS_OUT_OF_MODEL);

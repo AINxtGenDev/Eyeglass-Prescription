@@ -59,6 +59,11 @@ export default Object.freeze({
   // Frame model ranges (FRAME-02); {field} is the literal term A, B or DBL.
   'val.VAL_FRAME_OUT_OF_MODEL':
     '{field} {value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
+  // Expert fields (02-10, MAT-03, MAT-04): out of range is never clamped and blocks both eyes.
+  'val.VAL_BASECURVE_OUT_OF_MODEL':
+    'Basiskurve {value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
+  'val.VAL_MINTHICKNESS_OUT_OF_MODEL':
+    '{value} liegt außerhalb des berechneten Bereichs ({min} bis {max}). Für beide Gläser wird nichts berechnet.',
   // Sph checked on the minus-cylinder form after a plus cylinder (RESEARCH Pitfall 8).
   'val.transposedSuffix': 'Der Wert gilt in Minuszylinder-Schreibweise; Ihre Eingabe: {typed}.',
   'val.contactLensSuffix': 'Falls das der Durchmesser (DIA) einer Kontaktlinse ist: Hier gehören die Werte vom Brillenpass hin.',
@@ -463,6 +468,11 @@ export default Object.freeze({
   'diag.CT_SET_BY_MIN_ET.explain':
     'Die Mittendicke ist so gewählt, dass die dünnste Stelle am Rand die Mindest-Randdicke des Herstellers erreicht.',
   'diag.CT_SET_BY_MIN_ET.suggest': 'Keine Eingabe nötig; das ist ein Hinweis zur Berechnung.',
+  // 02-10 (MAT-03): D2 = Sph − D1v, so only a higher base curve clears a convex back (lens-critic M1).
+  'diag.MANUAL_BACK_CONVEX.title': 'Rückfläche zum Auge hin gewölbt (konvex)',
+  'diag.MANUAL_BACK_CONVEX.explain':
+    'Mit der von Ihnen vorgegebenen Basiskurve ist die Vorderfläche für diese Plus-Wirkung zu flach, deshalb wölbt sich die Rückfläche zum Auge hin. Übliche Gläser haben eine nach innen gewölbte (konkave) Rückfläche.',
+  'diag.MANUAL_BACK_CONVEX.suggest': 'Eine stärker gewölbte (höhere) Basiskurve wählen oder das Feld leer lassen.',
 
   'tech.summary': 'Technische Angaben',
   // Bench readouts (01-14): numbers and the case come in as parameters, never as text (MINOR-5).

@@ -11,7 +11,8 @@
  * @property {{ shape: string, A: number, B: number, DBL: number }} frame mm
  * @property {number} monoPD mm
  * @property {number|null} fittingHeight mm from the bottom of the box (D-04), null = box centre
- * @property {number|null} baseCurve manual front power D1 (dpt), null = automatic (id 'thinnest': D-01 + D-C, flattest front within τ of the thinnest)
+ * @property {number|null} baseCurve manual front power D1 (dpt), ≥ 0 (MAT-03), null = automatic (id 'thinnest': D-01 + D-C,
+ *   flattest front within τ of the thinnest)
  * @property {number|null} minCT mm, null = material default
  * @property {number|null} minET mm, null = material default
  */
@@ -51,7 +52,7 @@ import { nasalSign } from './conventions.js';
 import { MATERIALS } from './materials.js';
 import { diag, STOCK_BLANK_MAX_MM } from './diagnostics.js';
 import { sphericalEquivalent, baseCurveAuto } from './power.js';
-import { solveCT, optimiseBaseCurve } from './solve.js';
+import { solveCT, optimiseBaseCurve, BACK_CONVEX_MAX_DPT } from './solve.js';
 import { computeMetrics, maxRadiusFromOC, extremeIndices, farthestIndexFromOC } from './metrics.js';
 import { frontSagAt, backSagAt } from './design.js';
 import { frameOutline } from './frame/outline.js';
@@ -59,6 +60,9 @@ import { SHAPES } from './frame/shapes.js';
 
 const fin = Number.isFinite;
 const optPositive = (v) => v == null || (fin(v) && v > 0);
+// Manual base curve (MAT-03 range 0,00…+10,00, the UI validates the range): 0 is a plano front,
+// which the engine handles (sphereSag(0, r²) = 0, radius(0) = null).
+const optNonNeg = (v) => v == null || (fin(v) && v >= 0);
 
 function fail(eye, diagnostics) {
   return { ok: false, eye, diagnostics, metrics: null, intermediates: null, surfaces: null };
@@ -76,7 +80,7 @@ function invalidReason(spec) {
   if (!Object.hasOwn(SHAPES, f.shape)) return 'unknown-shape';
   if (!Object.hasOwn(MATERIALS, spec.materialId)) return 'material';
   if (!(spec.fittingHeight == null || fin(spec.fittingHeight))) return 'fitting-height';
-  if (!optPositive(spec.baseCurve)) return 'base-curve';
+  if (!optNonNeg(spec.baseCurve)) return 'base-curve';
   if (!optPositive(spec.minCT) || !optPositive(spec.minET)) return 'min-thickness';
   // Minus-cylinder form only; the UI transposes plus-cylinder input (src/state/transpose.js, 01-09).
   if (spec.cyl > 0) return 'plus-cyl-must-be-transposed';
@@ -201,6 +205,10 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
   }
   const diagnostics = [diag(r.binding === 'minCT' ? 'CT_SET_BY_MIN_CT' : 'CT_SET_BY_MIN_ET', {})];
   // Warnings keep the numbers (D-01: computable but oversized is never an error).
+  // Manual base curve only (MAT-03): solveCT does not reject a convex back, the automatic search
+  // never returns one (RESEARCH Pitfall 2). D2 = Sph − D1v, so only a higher D1 clears it.
+  const D2max = Math.max(s.D2a, s.D2b);
+  if (baseCurveRule === 'manual' && D2max > BACK_CONVEX_MAX_DPT) diagnostics.push(diag('MANUAL_BACK_CONVEX', { D2max }));
   if (!insideOutline(outline, oc.x, oc.y)) diagnostics.push(diag('OC_OUTSIDE_OUTLINE', { x: oc.x, y: oc.y }));
   if (metrics.mbsMm > STOCK_BLANK_MAX_MM) {
     diagnostics.push(diag('BLANK_EXCEEDS_STOCK', { mbsMm: metrics.mbsMm, stockMm: STOCK_BLANK_MAX_MM }));
