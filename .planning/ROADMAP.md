@@ -206,7 +206,7 @@ Plans:
 
 **Wave 20** *(blocked on Wave 19 completion)*
 
-- [ ] 02-20-PLAN.md — M4: profile the 4× input frame, move compare-job building out of it, re-measure ≥ 3 runs; ENG-09 Pending if (a) is not met (ENG-09)
+- [x] 02-20-PLAN.md — M4: profile the 4× input frame, move compare-job building out of it, re-measure ≥ 3 runs; ENG-09 Pending if (a) is not met (ENG-09)
 
 **Wave 21** *(blocked on Wave 20 completion)*
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 18/21 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 19/21 | In Progress|  |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
