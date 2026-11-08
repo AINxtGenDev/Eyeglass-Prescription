@@ -284,7 +284,7 @@ Plans:
 
 **Wave 12**
 
-- [ ] 03-14-PLAN.md — A/B in 3D: side-by-side scissor viewports, phone toggle, shared heat scale
+- [x] 03-14-PLAN.md — A/B in 3D: side-by-side scissor viewports, phone toggle, shared heat scale
 
 **Wave 13**
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 13/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 14/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
