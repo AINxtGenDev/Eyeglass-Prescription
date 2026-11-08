@@ -198,15 +198,21 @@ export async function without3d(page) {
  * Register the smoke.spec guard harness for the calling spec file: every test fails on a 4xx/5xx
  * response, a failed request, a request to another origin or a CSP console message. Each test
  * starts on the app page ('./'). 03-05: without the 3D view unless `view: true` (without3d).
+ * 03-06: the returned allowFailed(re) exempts failed requests whose URL matches re, for the
+ * current test only (a test that aborts a request on purpose).
  * @param {typeof import('@playwright/test').test} test
  * @param {{ view?: boolean }} [opts]
+ * @returns {{ allowFailed: (re: RegExp) => void }}
  */
 export function guardPage(test, { view = false } = {}) {
   /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
   let seen;
+  /** @type {RegExp[]} */
+  let allowed = [];
   test.beforeEach(async ({ page, baseURL }) => {
     const origin = new URL(baseURL).origin;
     seen = { bad: [], failed: [], foreign: [], csp: [] };
+    allowed = [];
     page.on('response', (r) => {
       if (r.status() >= 400) seen.bad.push(`${r.status()} ${r.url()}`);
     });
@@ -224,10 +230,16 @@ export function guardPage(test, { view = false } = {}) {
   });
   test.afterEach(() => {
     expect(seen.bad, 'responses with status >= 400').toEqual([]);
-    expect(seen.failed, 'failed requests').toEqual([]);
+    const failed = seen.failed.filter((f) => !allowed.some((re) => re.test(f.split(' ').at(-1) ?? '')));
+    expect(failed, 'failed requests').toEqual([]);
     expect(seen.foreign, 'requests to other origins').toEqual([]);
     expect(seen.csp, 'CSP violations').toEqual([]);
   });
+  return {
+    allowFailed: (re) => {
+      allowed.push(re);
+    },
+  };
 }
 
 /**

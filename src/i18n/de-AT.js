@@ -616,8 +616,7 @@ export default Object.freeze({
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',
 
-  // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View"). The state strings
-  // (view.eye.*, view.empty, view.loadFailed, view.retry, view.noWebgl) come with 03-06.
+  // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View").
   'view.title': '3D-Ansicht Ihrer Brille',
   'view.stage.label': '3D-Ansicht steuern',
   'view.badge.glass': 'Visueller Eindruck',
@@ -625,6 +624,17 @@ export default Object.freeze({
   'view.caption.glass':
     'Visueller Eindruck – die Lichtbrechung im Glas ist nur angenähert. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
   'view.loading': '3D-Ansicht wird aufgebaut …',
+  // 03-06 (D-17, UI-SPEC States): eye labels and the blocked, empty, load-failure and no-WebGL states.
+  'view.eye.od': 'R',
+  'view.eye.os': 'L',
+  'view.eye.blocked': '{eye} – nicht berechnet',
+  'view.empty': 'Noch keine Gläser – tragen Sie den Sph-Wert ein.',
+  // UI-SPEC says 'Die berechneten Werte darunter …'; below 900 px the values sit ABOVE the view
+  // (view-place.js, MAJOR 5), so the position word is dropped.
+  'view.loadFailed': 'Die 3D-Ansicht konnte nicht geladen werden. Die berechneten Werte gelten unverändert.',
+  'view.retry': 'Erneut versuchen',
+  'view.noWebgl':
+    'Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem.',
 
   // Querschnitt (02-13, ANA-01, D-30, D-37). Numbers are formatted outside the strings.
   'xs.title': 'Querschnitt',

@@ -12,16 +12,35 @@
 //   is attached (e2e settledView).
 // - window.__eyeglassView: frozen, read-only test handle (T-03-16). It returns counters, the
 //   glass ior, test-only geometry maxima and pixels; never Rx values or renderer strings.
+// 03-06 (D-17, UI-SPEC States): without WebGL2 the stage shows the plain-German note and the
+// numbers path is untouched. Eye labels R / L sit 6 mm below each lens's lowest outline point
+// (boxing box bottom, y = −B/2); a blocked eye is not drawn and reads '{eye} – nicht berechnet';
+// with no computable eye the caption reads view.empty and no label is shown.
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
 import { $, setText } from '../dom.js';
+import { icon } from '../icons.js';
+import { boxingCentreX } from '../../engine/mesh/frame.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
+import { createLabels, place } from './labels.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
 const BADGE_AFTER_MS = 100;
+/** Eye label gap below the lowest outline point (mm). */
+const LABEL_GAP_MM = 6;
+const EYE_KEY = { OD: 'view.eye.od', OS: 'view.eye.os' };
+
+/** The no-WebGL note in the stage (D-17): info icon + text, textContent only. */
+function showNoWebgl() {
+  const status = $('view-status');
+  const text = document.createElement('span');
+  text.textContent = t('view.noWebgl');
+  status.classList.add('view-note');
+  status.replaceChildren(icon('info'), text);
+}
 
 /**
  * @typedef {{ result: any, frame: { shape: string, A: number, B: number, DBL: number } | null } | null} ViewEye
@@ -45,12 +64,26 @@ export function mountView({ slot }) {
 
   const view = createScene(/** @type {HTMLCanvasElement} */ ($('view-canvas')), $('view-stage'));
   if (view === null) {
-    // 03-06 shows the no-WebGL note; the numbers are unaffected.
+    // D-17: the note replaces the view; numbers, comparison and cross-section are unaffected.
+    showNoWebgl();
     setPending('');
     return { update: () => setPending('') };
   }
   setText('view-caption', t('view.caption.glass'));
   const lenses = createLensSlots(view.scene, [...SLOTS]);
+  const labelsEl = $('view-labels');
+  const labels = createLabels(labelsEl, SLOTS.length);
+  /** Per eye: label anchor (world mm) or null. */
+  const anchors = { OD: null, OS: null };
+  let labelKey = null;
+  /** Last frame seen on any eye: a blocked eye (no input spec) has none of its own. */
+  let knownFrame = null;
+  view.afterRender(() => {
+    const size = { width: labelsEl.clientWidth, height: labelsEl.clientHeight };
+    SLOTS.forEach((eye, i) => {
+      if (anchors[eye]) place(labels.pool[i], anchors[eye], view.camera, size);
+    });
+  });
   // Compile the glass and edge programs while the mesh worker builds the first lenses.
   // compileAsync prepares every mesh's material, visible or not (WebGLRenderer r187 scene.traverse).
   // Without KHR_parallel_shader_compile it compiles synchronously and warns, so the first render
@@ -155,6 +188,7 @@ export function mountView({ slot }) {
       if (it.ok && it.finite) drawn.add(it.slot);
     }
     for (const s of SLOTS) if (!drawn.has(s)) lenses.hide(s);
+    updateLabels(drawn); // a mesh that came back not drawable reads 'nicht berechnet' too
     refit();
     attachedOnce = true;
     retryLeft = true;
@@ -174,6 +208,26 @@ export function mountView({ slot }) {
     if (r > 0) view.fit(r);
   }
 
+  /** Eye labels and caption for the eyes drawn (ok) and not drawn (blocked). */
+  function updateLabels(drawnEyes) {
+    const any = drawnEyes.size > 0;
+    const parts = [];
+    SLOTS.forEach((eye, i) => {
+      const f = placement[eye] ?? knownFrame;
+      const eyeText = t(EYE_KEY[eye]);
+      const text = !any || !f ? '' : drawnEyes.has(eye) ? eyeText : t('view.eye.blocked', { eye: eyeText });
+      anchors[eye] = text && f ? { x: boxingCentreX(eye, f.A, f.DBL), y: -f.B / 2 - LABEL_GAP_MM, z: 0 } : null;
+      labels.setText(i, text);
+      parts.push(text, anchors[eye] && [anchors[eye].x, anchors[eye].y]);
+    });
+    setText('view-caption', t(any ? 'view.caption.glass' : 'view.empty'));
+    const key = JSON.stringify(parts);
+    if (key !== labelKey) {
+      labelKey = key;
+      view.requestRender();
+    }
+  }
+
   /** @param {ViewInputs} inputs */
   function update(inputs) {
     last = inputs;
@@ -181,6 +235,7 @@ export function mountView({ slot }) {
     for (const eye of SLOTS) {
       const e = inputs.eyes[eye];
       placement[eye] = e?.frame ?? null;
+      if (e?.frame) knownFrame = e.frame;
       if (e?.result?.ok && e.frame) {
         const { shape, A, B } = e.frame;
         want.push({ slot: eye, eye, surfaces: e.result.surfaces, frame: { shape, A, B } });
@@ -188,6 +243,7 @@ export function mountView({ slot }) {
         lenses.hide(eye);
       }
     }
+    updateLabels(new Set(want.map((w) => w.eye)));
     const key = JSON.stringify(want);
     if (key === lastKey) {
       // Same meshes: only the placement can differ (DBL).

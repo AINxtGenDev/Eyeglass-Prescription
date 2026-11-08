@@ -179,6 +179,8 @@ function paintDeliveries() {
 /** @type {{ update: (inputs: object) => void } | null} */
 let view = null;
 let viewLoading = false;
+/** The chunk failed to load and the retry button is shown (03-06). */
+let viewFailed = false;
 let viewTimer = null;
 /** Frame of the last shown key per eye (the key is the spec's JSON). */
 const viewFrames = { OD: { key: null, frame: null }, OS: { key: null, frame: null } };
@@ -224,20 +226,51 @@ export function refreshView() {
       view.update(viewInputs());
       return;
     }
-    if (viewLoading) return;
+    if (viewLoading) {
+      // While the failure message is shown nothing is queued for the view.
+      if (viewFailed) $('view').dataset.pending = '';
+      return;
+    }
     viewLoading = true;
     $('view-slot').hidden = false;
-    import('./view/view.js')
-      .then(({ mountView }) => {
-        view = mountView({ slot: $('view-slot') });
-        view.update(viewInputs());
-      })
-      .catch((err) => {
-        // 03-06 adds the visible message and 'Erneut versuchen'.
-        console.warn('3D view could not load', err);
-        $('view').dataset.pending = '';
-      });
+    loadView();
   }, 0);
+}
+
+/** Import the view chunk; on failure show the message with 'Erneut versuchen' (03-06, D-16). */
+function loadView() {
+  import('./view/view.js')
+    .then(({ mountView }) => {
+      view = mountView({ slot: $('view-slot') });
+      view.update(viewInputs());
+    })
+    .catch((err) => {
+      console.warn('3D view could not load', err);
+      viewFailed = true;
+      $('view').dataset.pending = '';
+      showLoadFailed();
+    });
+}
+
+/** Fehler-tier box in the stage (UI-SPEC States): message + secondary button, textContent only. */
+function showLoadFailed() {
+  const status = $('view-status');
+  const msg = document.createElement('span');
+  msg.textContent = t('view.loadFailed');
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.textContent = t('view.retry');
+  retry.addEventListener('click', () => {
+    // The button goes away: keep keyboard focus in the view instead of dropping it to <body>.
+    $('view-stage').focus();
+    status.classList.remove('view-failed');
+    status.textContent = t('view.loading');
+    $('view').dataset.pending = 'load';
+    viewFailed = false;
+    loadView();
+  });
+  status.classList.add('view-failed');
+  status.replaceChildren(msg, retry);
 }
 
 function onResults({ results, openTs, computeMs, current }) {
