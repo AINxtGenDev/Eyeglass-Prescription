@@ -6,8 +6,8 @@
 // connected there at rest).
 import { test, expect } from '@playwright/test';
 import { boxingCentreX } from '../src/engine/mesh/frame.js';
-import { settled, settledView, guardPage, noThreeWarnings, isChartish } from './helpers.js';
-/* global window, document, requestAnimationFrame */
+import { settled, settledView, guardPage, noThreeWarnings, isChartish, MESH_WORKER_URL } from './helpers.js';
+/* global window, document, requestAnimationFrame, self, KeyboardEvent */
 
 let threeWarnings;
 test.beforeEach(({ page }) => {
@@ -144,6 +144,48 @@ test.describe('VIZ-03 reduced motion', () => {
 
 test.describe('VIZ-03 keyboard', () => {
   test.use({ reducedMotion: 'reduce' });
+  // B-WR-08 (code review): a key on the stage before the first mesh attach must not turn the
+  // placeholder pose 'free' (that suppressed the A1 default fit of the first attach).
+  test('B-WR-08 keys before the first attach do not suppress the default fit', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page); // the first load finishes before the reload (no aborted request)
+    // The mesh worker holds its replies from the start (READY passes), so the first attach waits.
+    const patch =
+      '{const post = self.postMessage.bind(self); const q = []; self.__hold = true;' +
+      'self.__release = () => { self.__hold = false; while (q.length) post(...q.shift()); };' +
+      "self.postMessage = (m, ...rest) => { if (self.__hold && m && m.type === 'mesh') q.push([m, ...rest]); else post(m, ...rest); };}\n";
+    await page.route(MESH_WORKER_URL, async (route) => {
+      const body = await (await route.fetch()).text();
+      await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
+    });
+    await page.reload();
+    await expect(page.locator('#view')).toHaveAttribute('data-pending', 'mesh', { timeout: 15_000 });
+    await expect(preset(page, 'front')).toBeDisabled();
+    const stage = page.locator('#view-stage');
+    await stage.focus();
+    // In one task, so no attach can come in between (under load the 10 s mesh watchdog may fire
+    // later and attach through the sync fallback; that is fine for the rest of the test).
+    const pre = await ev(page, () => {
+      const v = window.__eyeglassView;
+      const key = (c) => [c.position.x, c.position.y, c.position.z, c.target.x, c.target.y, c.target.z].join();
+      const pending = document.getElementById('view').dataset.pending;
+      const c0 = key(v.camera());
+      const st = document.getElementById('view-stage');
+      for (const k of ['ArrowRight', 'Home']) st.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+      return { pending, same: key(v.camera()) === c0, name: v.viewName() };
+    });
+    expect(pre, 'no camera move before the first attach').toEqual({ pending: 'mesh', same: true, name: 'default' });
+    const w = page.workers().find((x) => MESH_WORKER_URL.test(new URL(x.url()).pathname));
+    await w?.evaluate(() => self.__release()).catch(() => {}); // gone if the watchdog already fell back
+    await settledView(page);
+    expect(await viewName(page)).toBe('default');
+    expectDir(await cam(page), DEFAULT_DIR, 1e-3);
+    // After the attach the keys work.
+    await stage.focus();
+    await page.keyboard.press('ArrowRight');
+    expect(await viewName(page)).toBe('free');
+  });
+
   test('arrows, zoom, pan, Pos1 and the Tab order', async ({ page }) => {
     test.setTimeout(90_000);
     await settledView(page);

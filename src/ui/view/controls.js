@@ -57,6 +57,11 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   controls.minPolarAngle = POLAR_MIN;
   controls.maxPolarAngle = POLAR_MAX;
   controls.enableZoom = false;
+  // B-WR-08: no user input before the first mesh attach (enable(), view.js, with the preset
+  // buttons). A key or drag on the placeholder pose made the view 'free', so the first attach
+  // skipped the A1 default fit (and Pos1 with no frame data put the camera at the origin).
+  controls.enabled = false;
+  let inputEnabled = false;
   reduced.addEventListener('change', () => {
     controls.enableDamping = !reduced.matches;
   });
@@ -266,7 +271,7 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   stage.addEventListener('blur', syncZoom);
 
   stage.addEventListener('keydown', (e) => {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!inputEnabled || e.altKey || e.ctrlKey || e.metaKey) return;
     const s = sphericalNow();
     const step = keyStep(e.key, { azimuth: s.theta, polar: s.phi, distance: s.radius, ...limits }, { shift: e.shiftKey });
     if (step === null) return;
@@ -293,6 +298,11 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
 
   return {
     goTo,
+    /** B-WR-08: accept keys and drags (view.js calls it on the first mesh attach). */
+    enable() {
+      inputEnabled = true;
+      controls.enabled = true;
+    },
     /** Frame attach or resize: new limits; a preset view (not 'free') follows its new pose. */
     refresh() {
       applyLimits();

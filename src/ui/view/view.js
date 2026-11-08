@@ -570,6 +570,7 @@ function mount({ slot }) {
     syncCompare();
     refresh();
     for (const b of presetButtons) b.disabled = false;
+    controls.enable();
     for (const r of modeRadios) r.disabled = false;
     paintHeat();
     retryLeft = true;
