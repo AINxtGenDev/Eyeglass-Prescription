@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-09-PLAN.md
-last_updated: "2026-11-08T16:25:45.431Z"
+last_updated: "2026-11-08T16:59:21.572Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 47
+  completed_plans: 48
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 11 of 17
+Plan: 12 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -93,6 +93,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P08 | 35min | 2 tasks | 14 files |
 | Phase 03 P09 | ~60 min | 2 tasks | 20 files |
 | Phase 03 P10 | 45min | 2 tasks | 7 files |
+| Phase 03 P11 | 35min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-08: VIZ-06 left Pending: its GPU-leak test (03-15) and the 4x-throttled phone trace are not done yet
 - [Phase 03]: 03-09 A1/A2: default and Oben fit the projected frame silhouette (centred, aspect-aware; 103,6 px R-L at 412x915); chart plane sized by chartRect to fill the stage over the zoom range
 - [Phase 03]: 03-10: touch path enableZoom follows '3D drehen' (r187 pinch dolly needs enableZoom); pressed state shows the check icon (accent item 9); touch e2e uses CDP dispatchTouchEvent
+- [Phase 03]: 03-11: view.aria.glass composed from {od} {os} eye parts so a blocked eye reads 'nicht berechnet'; equals the UI-SPEC example
+- [Phase 03]: 03-11: hidden faded-material carriers compiled with sync renderer.compile when KHR_parallel_shader_compile is missing (first Seite builds no program)
 
 ### Pending Todos
 
@@ -221,6 +224,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T16:25:40.502Z
+Last session: 2026-11-08T16:59:16.833Z
 Stopped at: Completed 03-09-PLAN.md
 Resume file: None
