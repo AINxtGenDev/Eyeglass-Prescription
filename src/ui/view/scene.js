@@ -25,8 +25,9 @@
 // spec (view.js: phone width, not while the camera moves, a frame-front box exists) is a thumbnail
 // frame: thumbnail pose → pass → copy → restore → pass, all in one task with no await, so it costs
 // exactly 2 passes (round 2 MINOR 1; the old main → thumbnail → main order cost 3). The copy is
-// ctx.drawImage(renderer.domElement, …) right after the pass (RESEARCH Pattern 9: the drawing
-// buffer still holds the pixels in the same task; no preserveDrawingBuffer). The canvas is
+// a 2D drawImage of the WebGL canvas right after the pass (RESEARCH Pattern 9: the drawing
+// buffer still holds the pixels in the same task, so the renderer keeps its default drawing
+// buffer that is cleared after compositing). The canvas is
 // composited after the task, so the user only ever sees pass 2. The thumbnail pass uses the screen
 // layout unchanged (the same viewports as the main pass; split A/B is cropped by the source
 // rectangle), so the per-camera transmission target, which r187 sizes from the active viewport
