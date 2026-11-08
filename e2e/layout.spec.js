@@ -3,9 +3,14 @@
 // Pinned values: 02-01-SUMMARY Task 2 table (example 4,597 / 4,597 mm, 6,86 / 6,75 g; R +3,00 CT
 // 3,902, 7,23 g; L +2,75 CT 3,737, 7,00 g; CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
-import { settled, settledXsec, settledView, slowWorker, plain, guardPage } from './helpers.js';
+import { settled, settledXsec, settledView, slowWorker, plain, guardPage, noThreeWarnings, etmaxOf } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
+// Registered before guardPage, so it listens before guardPage's page.goto (03-06 breakpoint test).
+let threeWarnings;
+test.beforeEach(({ page }) => {
+  threeWarnings = noThreeWarnings(page);
+});
 guardPage(test, { view: true });
 
 const noHorizontalScroll = (page) =>
@@ -21,6 +26,53 @@ async function expectNoHorizontalScroll(page, when) {
 
 const barValues = async (page) => plain(await page.locator('#summary-bar-values').textContent());
 
+const nextFrame = (page) => page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+
+/** Wait until window.scrollY is the same over 3 frames (smooth scrolling has ended). */
+async function scrollSettled(page) {
+  let last = null;
+  let same = 0;
+  for (let i = 0; i < 200 && same < 3; i++) {
+    await nextFrame(page);
+    const y = await page.evaluate(() => window.scrollY);
+    same = y === last ? same + 1 : 0;
+    last = y;
+  }
+}
+
+/**
+ * lens-critic MAJOR 5 pass/fail: #result-od-thick lies fully inside the viewport and above the
+ * summary bar (when the bar is shown). Returns the measured box for the record.
+ */
+async function expectFirstValueInView(page, when) {
+  const m = await page.evaluate(() => {
+    const r = document.getElementById('result-od-thick').getBoundingClientRect();
+    const bar = document.getElementById('summary-bar');
+    const barTop = bar.hidden ? window.innerHeight : bar.getBoundingClientRect().top;
+    return { top: r.top, bottom: r.bottom, limit: Math.min(window.innerHeight, barTop), barHidden: bar.hidden };
+  });
+  expect(m.top, `#result-od-thick top >= 0 ${when} (${JSON.stringify(m)})`).toBeGreaterThanOrEqual(0);
+  expect(m.bottom, `#result-od-thick bottom <= viewport / bar top ${when} (${JSON.stringify(m)})`).toBeLessThanOrEqual(m.limit);
+  return m;
+}
+
+/** MAJOR 5 test body, shared by 320 × 640 and 360 × 780. */
+async function numbersBeforeView(page) {
+  await settledView(page);
+  expect(await page.locator('#view-slot').evaluate((el) => el.previousElementSibling?.id ?? null)).toBe('result');
+  // Where a user arriving at the results lands: the results region at the top of the viewport.
+  await page.evaluate(() => window.scrollTo(0, document.querySelector('.col-results').getBoundingClientRect().top + window.scrollY));
+  await nextFrame(page);
+  await expectFirstValueInView(page, 'with the results region at the top');
+  // From the inputs, a tap on the summary bar scrolls to the result.
+  await page.locator('#rx-od-sph').scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('#summary-bar')).toBeVisible();
+  await page.locator('#summary-bar').click();
+  await scrollSettled(page);
+  await expectFirstValueInView(page, 'after a summary-bar tap');
+}
+
 test('viewport meta resizes the content for the on-screen keyboard', async ({ page }) => {
   const content = await page.locator('meta[name="viewport"]').getAttribute('content');
   expect(content).toContain('interactive-widget=resizes-content');
@@ -28,6 +80,11 @@ test('viewport meta resizes the content for the on-screen keyboard', async ({ pa
 
 test.describe('320 × 640', () => {
   test.use({ viewport: { width: 320, height: 640 } });
+
+  test('MAJOR 5 numbers come before the 3D view', async ({ page }) => {
+    await numbersBeforeView(page);
+    await expectNoHorizontalScroll(page, 'at 320 px with the 3D view');
+  });
 
   test('never scrolls horizontally, also with a long value and without hyphenation', async ({ page }) => {
     await settled(page);
@@ -128,8 +185,52 @@ test.describe('360 × 780', () => {
   });
 });
 
+test.describe('360 × 780, 3D view placement', () => {
+  test.use({ viewport: { width: 360, height: 780 } });
+
+  test('MAJOR 5 numbers come before the 3D view', async ({ page }) => {
+    await numbersBeforeView(page);
+    await expectNoHorizontalScroll(page, 'at 360 px with the 3D view');
+  });
+});
+
 test.describe('1280 × 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('D-13 view stays first on desktop', async ({ page }) => {
+    await settledView(page);
+    expect(await page.locator('.col-results').evaluate((el) => el.firstElementChild?.id ?? null)).toBe('view-slot');
+  });
+
+  test('breakpoint change keeps the view', async ({ page }) => {
+    await settledView(page);
+    await page.locator('#view-canvas').evaluate((c) => {
+      window.__lost = 0;
+      c.addEventListener('webglcontextlost', () => window.__lost++);
+    });
+    const check = async (when, prev) => {
+      await settledView(page);
+      await nextFrame(page);
+      const place = await page.locator('#view-slot').evaluate((el) => ({
+        prev: el.previousElementSibling?.id ?? null,
+        first: el.parentElement?.firstElementChild === el,
+      }));
+      if (prev) expect(place.prev, when).toBe(prev);
+      else expect(place.first, when).toBe(true);
+      const mesh = await page.evaluate(() => window.__eyeglassView.edgeMax('OD'));
+      expect(Math.round(mesh * 10) / 10, `OD mesh = card ${when}`).toBe(await etmaxOf(page, 'od'));
+      // A fresh render still draws: the corner shows the clear colour #f3f4f6.
+      const px = await page.evaluate(() => window.__eyeglassView.pixel(2, 2));
+      for (const [i, want] of [243, 244, 246].entries()) expect(Math.abs(px[i] - want), `${when} channel ${i}: ${px}`).toBeLessThanOrEqual(2);
+      expect(await page.evaluate(() => window.__lost), `webglcontextlost events ${when}`).toBe(0);
+    };
+    await check('at 1280 px', null);
+    await page.setViewportSize({ width: 360, height: 780 });
+    await check('after 1280 → 360', 'result');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await check('after 360 → 1280', null);
+    expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
+  });
 
   test('two columns: sticky results with the 3D view first, no bar', async ({ page }) => {
     await settled(page);

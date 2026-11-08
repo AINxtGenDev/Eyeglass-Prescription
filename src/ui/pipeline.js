@@ -38,6 +38,7 @@ import {
 } from './compare-view.js';
 import { renderMaterialLine } from './material-input.js';
 import { renderGlassSettings, isExpert } from './expert.js';
+import { placeViewSlot } from './view-place.js';
 import { renderCrossSection, renderCrossSectionEmpty, renderCrossSectionPending, renderMeridianOptions } from './cross-section.js';
 import { renderRim } from './frame-input.js';
 
@@ -232,6 +233,7 @@ export function refreshView() {
       return;
     }
     viewLoading = true;
+    placeViewSlot(); // 03-06 (MAJOR 5): below 900 px after #result, before it is first shown
     $('view-slot').hidden = false;
     loadView();
   }, 0);
