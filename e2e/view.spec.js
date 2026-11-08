@@ -174,6 +174,34 @@ test('A-WR-02 mount or update error: no retry, no second mount', async ({ page }
   expect(await page.evaluate(() => window.__mounts)).toBe(1);
 });
 
+// B-WR-06 (code review): a mesh job that is lost twice (no mesh worker, and the main-thread
+// fallback chunk does not load either) shows the load-failure message instead of 'wird aufgebaut'
+// forever; the next input builds again and clears it.
+test('B-WR-06 mesh build failing twice shows the failure, the next input recovers', async ({ page }) => {
+  test.setTimeout(90_000);
+  await settledView(page);
+  const SYNC_CHUNK = '**/assets/mesh-protocol-*.js';
+  guard.allowFailed(MESH_WORKER_URL);
+  guard.allowFailed(/\/assets\/mesh-protocol-[^/]*\.js$/);
+  await page.route('**/assets/mesh.worker-*.js', (route) => route.abort());
+  await page.route(SYNC_CHUNK, (route) => route.abort());
+  await page.goto('./');
+  await settledView(page);
+  const status = page.locator('#view-status');
+  await expect(status).toHaveText('Die 3D-Ansicht konnte nicht geladen werden. Die berechneten Werte gelten unverändert.');
+  // In Technische Angaben (collapsed): shown means not [hidden].
+  await expect(page.locator('#tech-view-unavailable')).not.toHaveAttribute('hidden', /.*/);
+  await expect(page.locator('#tech-view-unavailable')).toHaveText('3D-Ansicht nicht verfügbar: Fehler beim Aufbau der Ansicht');
+  await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d\smm$/);
+  await page.unroute(SYNC_CHUNK);
+  await page.locator('#rx-od-sph').fill('-3');
+  await settledView(page);
+  await expect(status).toHaveText('');
+  await expect(page.locator('#tech-view-unavailable')).toHaveAttribute('hidden', '');
+  expect(await page.evaluate(() => window.__eyeglassView.meshMode())).toBe('sync');
+  expect(round1(await edgeMax(page, 'OD'))).toBe(await etmaxOf(page, 'od'));
+});
+
 test('VIZ-01 blocked eye: not drawn, labelled, the other eye renders', async ({ page }) => {
   await settledView(page);
   await expect(page.locator('#view-labels .view-label:visible')).toHaveText(['R', 'L']);

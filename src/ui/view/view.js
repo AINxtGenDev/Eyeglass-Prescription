@@ -424,6 +424,8 @@ function mount({ slot }) {
   const jobLog = [];
   let attachedOnce = false;
   let retryLeft = true;
+  /** B-WR-06: the last mesh job was lost twice and #view-status shows the failure. */
+  let meshFailed = false;
   /** Request data per mesh generation (the reply carries slot and buffers only). */
   const metaByGen = new Map();
   /** performance.now() of each requestMesh, for the re-mesh time (Pitfall 12: 3D only). */
@@ -490,8 +492,18 @@ function mount({ slot }) {
         retryLeft = false;
         update(last);
       } else if (d.current) {
+        // B-WR-06: lost twice. Say so (the UI-SPEC load-failure text, Fehler tier) instead of
+        // 'wird aufgebaut' or a stale 'wird aktualisiert' forever; an old mesh stays drawn. The next
+        // input builds again, and its attach clears the message (paintMesh).
         clearBadgeTimer();
         setPending('');
+        if (attachedOnce) setBadge(modeBadge());
+        if (!contextLost) {
+          meshFailed = true;
+          $('view-status').classList.add('view-failed');
+          setText('view-status', t('view.loadFailed'));
+          showUnavailable('tech.view.reason.error');
+        }
       }
       return;
     }
@@ -563,6 +575,11 @@ function mount({ slot }) {
     retryLeft = true;
     clearBadgeTimer();
     if (!contextLost) setText('view-status', '');
+    if (meshFailed && !contextLost) {
+      meshFailed = false;
+      $('view-status').classList.remove('view-failed');
+      showUnavailable(null);
+    }
     setBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
     setPending('');
     // Carried by the render below (2 passes, scene.js). B-WR-03: a reply is attached only when it is
