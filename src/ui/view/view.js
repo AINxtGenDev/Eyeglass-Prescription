@@ -35,6 +35,13 @@
 // view freely, the current preset pose (A1 default fit). The side eye is the eye with the larger
 // total edge protrusion bevelSplit(etMax).front + .back at the current rim depth (MINOR 13). The
 // chart is hidden when the camera is more than 70° from its normal (Seite, Oben).
+// 03-11 (D-19, D-29): #view-protrusion states per computed eye how far the thickest edge stands
+// out of the rim (bevelSplit) and how far the front surface leads the rim (frontLeadMm with the
+// eye's frameOutline), the same helpers and rim depth as the Expert rim lines, computed once per
+// delivery or display change (memo key), never per frame. Within 30° of a side view the near temple
+// and hinge are faded (frame.setFade, chosen before each render). #view-canvas gets a German
+// aria-label from the strings painted on the result cards (results.js cardStrings), the view
+// name, the frame and the material, debounced to 500 ms (one timer, latest wins).
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
@@ -42,7 +49,10 @@ import { $, setText } from '../dom.js';
 import { icon } from '../icons.js';
 import { fmtMm, fmtMs } from '../../i18n/format.js';
 import { boxingCentreX, FRAME_FACE_MM, TEMPLE_DEFAULT_MM, TEMPLE_RANGE_MM } from '../../engine/mesh/frame.js';
-import { bevelSplit } from '../../engine/rim.js';
+import { bevelSplit, frontLeadMm } from '../../engine/rim.js';
+import { frameOutline } from '../../engine/frame/outline.js';
+import { cardStrings } from '../results.js';
+import { protrusionLines, ariaGlass } from './text.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
 import { createFrame } from './frame.js';
@@ -50,7 +60,7 @@ import { createChart, createShadow } from './backdrop.js';
 import { TIER_SETTINGS } from './tiers.js';
 import { createLabels, place } from './labels.js';
 import { createControls } from './controls.js';
-import { cameraContext, presetPoses, chartRect, chartHidden, sideEye } from './camera-math.js';
+import { cameraContext, presetPoses, chartRect, chartHidden, sideEye, nearTempleFade } from './camera-math.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -60,6 +70,8 @@ const LABEL_GAP_MM = 6;
 const EYE_KEY = { OD: 'view.eye.od', OS: 'view.eye.os' };
 /** Mesh jobs kept for the test handle meshJobs(). */
 const JOB_LOG = 10;
+/** Canvas accessible-name debounce (UI-SPEC Canvas accessible name: 500 ms). */
+const ARIA_DEBOUNCE_MS = 500;
 
 // Test-only (?failframe=<mm>, read once like ?perfmarks): a frame item whose rim depth equals this
 // value is sent with rimDepthMm −1, so the worker's own validation returns ok: false through the
@@ -92,7 +104,7 @@ function showUnavailable(reasonKey) {
 /**
  * @typedef {{ shape: string, A: number, B: number, DBL: number }} ViewFrame
  * @typedef {{ result: any, frame: ViewFrame | null } | null} ViewEye
- * @typedef {{ rimDepthMm: number, templeMm: number | null, templeSource: 'stamp' | 'assumed' }} ViewDisplay
+ * @typedef {{ rimDepthMm: number, rimAssumed?: boolean, templeMm: number | null, templeSource: 'stamp' | 'assumed' }} ViewDisplay
  *   templeMm null = no temple on the stamp (TEMPLE_DEFAULT_MM, 'angenommener Wert')
  * @typedef {{ eyes: { OD: ViewEye, OS: ViewEye }, frame?: ViewFrame | null, display?: ViewDisplay,
  *   current: boolean }} ViewInputs
@@ -168,9 +180,24 @@ export function mountView({ slot }) {
   let knownFrame = null;
   view.afterRender(() => {
     const size = { width: labelsEl.clientWidth, height: labelsEl.clientHeight };
-    SLOTS.forEach((eye, i) => {
-      if (anchors[eye]) place(labels.pool[i], anchors[eye], view.camera, size);
-    });
+    const shown = SLOTS.map((eye, i) => anchors[eye] !== null && place(labels.pool[i], anchors[eye], view.camera, size));
+    // 03-11: from the side both labels project onto almost one point and the farther one covered
+    // the nearer one ('L' over 'R' in Seite). Within the side-view cone (nearTempleFade) and only
+    // when the two overlap, the label of the eye nearer to the camera is shown; that eye's lens is
+    // the one in front. Outside that cone both stay (a wide 'L – nicht berechnet' may touch 'R'
+    // on a phone in the default view; hiding it there would lose the blocked-eye text).
+    const c = view.camera.position;
+    const sideCone = () => {
+      const tg = controls.state().target;
+      return nearTempleFade({ x: c.x - tg.x, y: c.y - tg.y, z: c.z - tg.z }) !== null;
+    };
+    if (shown[0] && shown[1] && sideCone()) {
+      const [a, b] = labels.pool.map((el) => el.getBoundingClientRect());
+      if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+        const d = (eye) => Math.hypot(anchors[eye].x - c.x, anchors[eye].y - c.y, anchors[eye].z - c.z);
+        labels.pool[d('OD') <= d('OS') ? 1 : 0].hidden = true;
+      }
+    }
   });
   // Compile the glass and edge programs while the mesh worker builds the first lenses.
   // compileAsync prepares every mesh's material, visible or not (WebGLRenderer r187 scene.traverse).
@@ -178,6 +205,10 @@ export function mountView({ slot }) {
   // compiles instead (SwiftShader in headless Chromium has no such extension).
   if (view.renderer.extensions.has('KHR_parallel_shader_compile')) {
     view.renderer.compileAsync(view.scene, view.camera).then(view.requestRender, (err) => console.warn('3D view: compile', err));
+  } else {
+    // 03-11: the faded temple materials are only rendered after a side view; compile their hidden
+    // carriers now (synchronous compile(), no warning), so the first Seite builds no program.
+    view.renderer.compile(frame.fadeCarrier, view.camera, view.scene);
   }
 
   let workerReallocs = 0;
@@ -316,6 +347,7 @@ export function mountView({ slot }) {
     setPending('');
     view.render();
     if (sentAt !== undefined) setText('tech-view-remesh', t('tech.view.remesh', { ms: fmtMs(performance.now() - sentAt) }));
+    scheduleAria();
   }
 
   const drawnLenses = () => new Set(SLOTS.filter((s) => lenses.visible(s)));
@@ -364,6 +396,73 @@ export function mountView({ slot }) {
     view.requestRender();
   }
 
+  /** Protrusion block (D-19): memo key of the last painted state. */
+  let protrusionKey = null;
+  const leadMemo = { OD: { key: null, value: NaN }, OS: { key: null, value: NaN } };
+  function paintProtrusion() {
+    const disp = last?.display;
+    const rim = disp?.rimDepthMm;
+    const eyes = { OD: null, OS: null };
+    if (rim > 0) {
+      for (const eye of SLOTS) {
+        const e = last.eyes[eye];
+        if (!e?.result?.ok || !e.frame) continue;
+        const { shape, A, B } = e.frame;
+        const key = JSON.stringify([e.result.surfaces, shape, A, B, rim]);
+        if (leadMemo[eye].key !== key) {
+          leadMemo[eye] = { key, value: frontLeadMm(e.result.surfaces, frameOutline(shape, A, B, eye), rim).value };
+        }
+        eyes[eye] = { etMax: e.result.metrics.etMax.value, lead: leadMemo[eye].value };
+      }
+    }
+    const key = JSON.stringify([eyes, rim, disp?.rimAssumed]);
+    if (key === protrusionKey) return;
+    protrusionKey = key;
+    const any = eyes.OD !== null || eyes.OS !== null;
+    $('view-protrusion').hidden = !any;
+    if (!any) return;
+    const p = protrusionLines(eyes, { rimDepthMm: rim, rimAssumed: disp.rimAssumed !== false });
+    let i = 0;
+    for (const eye of SLOTS) {
+      const has = eyes[eye] !== null;
+      setText(`view-protrusion-${eye.toLowerCase()}`, has ? p.lines[i] : '');
+      setText(`view-protrusion-lead-${eye.toLowerCase()}`, has ? p.leads[i] : '');
+      if (has) i++;
+    }
+    setText('view-protrusion-assumed', p.assumed ?? '');
+    setText('view-protrusion-bevel', p.bevel);
+  }
+
+  /** The view name in words (view.viewName.*); Seite names the side eye. */
+  function viewNameText() {
+    const name = controls.viewName();
+    if (name !== 'side') return t(`view.viewName.${name}`);
+    return t('view.viewName.side', { eye: t(currentSideEye() === 'OS' ? 'view.viewName.os' : 'view.viewName.od') });
+  }
+
+  /** #view-canvas accessible name (D-29) from the painted card strings; setAttribute only (T-03-29). */
+  const canvasEl = $('view-canvas');
+  let ariaTimer = null;
+  function writeAria() {
+    ariaTimer = null;
+    const OD = cardStrings('OD');
+    const OS = cardStrings('OS');
+    const f = last ? frameFor(last) : null;
+    const materialId = (OD ?? OS)?.materialId;
+    const label = ariaGlass({
+      viewName: viewNameText(),
+      OD,
+      OS,
+      frame: f ? { shape: t(`frame.shape.${f.shape}`), A: f.A, DBL: f.DBL } : null,
+      material: materialId ? t(`material.${materialId}.title`) : '–',
+    });
+    if (canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
+  }
+  function scheduleAria() {
+    if (ariaTimer !== null) clearTimeout(ariaTimer);
+    ariaTimer = setTimeout(writeAria, ARIA_DEBOUNCE_MS);
+  }
+
   const sideNote = $('view-side-note');
   const controls = createControls({
     camera: view.camera,
@@ -375,6 +474,7 @@ export function mountView({ slot }) {
       if (name === 'side') {
         setText('view-side-note', t('view.side.note', { eye: t(currentSideEye() === 'OS' ? 'view.side.os' : 'view.side.od') }));
       }
+      if (attachedOnce) scheduleAria();
     },
   });
   if (controls.pointer) setText('view-hint', t('view.hint.pointer'));
@@ -385,7 +485,9 @@ export function mountView({ slot }) {
   view.beforeRender(() => {
     const p = view.camera.position;
     const tg = controls.state().target;
-    chart.mesh.visible = !chartHidden({ x: p.x - tg.x, y: p.y - tg.y, z: p.z - tg.z });
+    const dir = { x: p.x - tg.x, y: p.y - tg.y, z: p.z - tg.z };
+    chart.mesh.visible = !chartHidden(dir);
+    frame.setFade(nearTempleFade(dir));
   });
   view.onResize(() => {
     if (attachedOnce) refresh();
@@ -417,6 +519,8 @@ export function mountView({ slot }) {
   /** @param {ViewInputs} inputs */
   function update(inputs) {
     last = inputs;
+    paintProtrusion();
+    if (attachedOnce) scheduleAria();
     /** slot → { item (without buffers), meta (with key) } */
     const want = {};
     for (const eye of SLOTS) {

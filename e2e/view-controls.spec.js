@@ -505,3 +505,103 @@ test('VIZ-03 3D drehen is hidden on the pointer path', async ({ page }, testInfo
   await expect(page.locator('#view-rotate')).toBeHidden();
   expect(await ev(page, () => document.getElementById('view-stage').classList.contains('view-stage--static'))).toBe(false);
 });
+
+// ---- 03-11 (D-19, D-29): protrusion as text, the Seite note and fade, the canvas aria summary ----
+const NBSP = ' ';
+const plainText = async (page, sel) => (await page.locator(sel).textContent()).replaceAll(NBSP, ' ');
+const mmOf = (s) => s.match(/(\d+,\d) mm/)?.[1] ?? null;
+
+test.describe('VIZ-03 protrusion as text (03-11)', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('edge and lead lines equal the Expert rim rule', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    const block = page.locator('#view-protrusion');
+    await expect(block).toBeVisible();
+    await expect(block.locator('.view-protrusion-title')).toHaveText('Überstand am dicksten Glasrand');
+    // Example etMax 4,597 mm (03-01): back 1,565 → 1,6 mm, front 0,032 → bündig; lead OD 0,515 → 0,5 mm.
+    await expect(page.locator('#view-protrusion-od')).toHaveText(`Rechts: Glasrand hinten 1,6${NBSP}mm aus der Fassung, vorne bündig`);
+    await expect(page.locator('#view-protrusion-lead-od')).toHaveText(`Rechts: Vorderfläche bis zu 0,5${NBSP}mm vor der Fassung`);
+    await expect(page.locator('#view-protrusion-os')).toHaveText(`Links: Glasrand hinten 1,6${NBSP}mm aus der Fassung, vorne bündig`);
+    await expect(page.locator('#view-protrusion-lead-os')).toHaveText(`Links: Vorderfläche bis zu 0,5${NBSP}mm vor der Fassung`);
+    await expect(page.locator('#view-protrusion-assumed')).toContainText('in der Experten-Ansicht änderbar');
+    await expect(page.locator('#view-protrusion-assumed')).toContainText(`Randtiefe 3,0${NBSP}mm`);
+    await expect(page.locator('#view-protrusion-bevel')).toHaveText('Die Aufteilung nach vorne und hinten ist angenommen.');
+    // Expert on: same numbers as the Expert rim lines (one helper, one rim depth).
+    await page.locator('#expert').check();
+    await expect(page.locator('#frame-rim-lead-od')).not.toHaveText('');
+    for (const eye of ['od', 'os']) {
+      expect(mmOf(await plainText(page, `#view-protrusion-lead-${eye}`))).toBe(mmOf(await plainText(page, `#frame-rim-lead-${eye}`)));
+      expect(mmOf(await plainText(page, `#view-protrusion-${eye}`))).toBe(mmOf(await plainText(page, `#frame-rim-result-${eye}`)));
+    }
+    // An own rim depth: 10 mm → the edge fits, no lead, no 'angenommener Wert' sentence.
+    await page.locator('#frame-rim').fill('10');
+    await expect(page.locator('#frame-rim-result-od')).toContainText('passt');
+    await expect(page.locator('#view-protrusion-od')).toHaveText('Rechts: Glasrand passt ganz in die Fassung');
+    await expect(page.locator('#view-protrusion-lead-od')).toHaveText('Rechts: Vorderfläche nicht vor der Fassung');
+    await expect(page.locator('#view-protrusion-assumed')).toBeHidden();
+    // 5 mm: back 3,065 − 2,5 = 0,565 → 0,6 mm, as the Expert line.
+    await page.locator('#frame-rim').fill('5');
+    await expect(page.locator('#frame-rim-result-od')).toContainText(`hinten 0,6${NBSP}mm`);
+    await expect(page.locator('#view-protrusion-od')).toHaveText(`Rechts: Glasrand hinten 0,6${NBSP}mm aus der Fassung, vorne bündig`);
+  });
+});
+
+test.describe('VIZ-03 Seite note and fade (03-11)', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('side note names the eye, near temple faded, no new program', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await frameRender(page);
+    const info = () => ev(page, () => window.__eyeglassView.frameInfo().fadedSide);
+    expect(await info()).toBeNull();
+    const before = await ev(page, () => window.__eyeglassView.memory());
+    await go(page, 'side');
+    await frameRender(page);
+    // Example: equal total edge protrusion (both 4,597 mm) → the right eye (MINOR 13).
+    await expect(page.locator('#view-side-note')).toBeVisible();
+    await expect(page.locator('#view-side-note')).toContainText('rechten');
+    expect(await info()).toBe('OD');
+    // From the side the two eye labels overlap: only the near eye's label stays (no 'L' over 'R').
+    await expect(page.locator('#view-labels .view-label:visible')).toHaveText(['R']);
+    const after = await ev(page, () => window.__eyeglassView.memory());
+    // MINOR 1 rebuttal: the faded materials were compiled while hidden.
+    expect(after.programs).toBe(before.programs);
+    await go(page, 'front');
+    await frameRender(page);
+    await expect(page.locator('#view-side-note')).toBeHidden();
+    expect(await info()).toBeNull();
+    await expect(page.locator('#view-labels .view-label:visible')).toHaveText(['R', 'L']);
+  });
+});
+
+test.describe('D-29 aria summary (03-11)', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('canvas label from the card strings, follows the view, blocked eye', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await page.waitForTimeout(600);
+    const label = async () => ((await page.locator('#view-canvas').getAttribute('aria-label')) ?? '').replaceAll(NBSP, ' ');
+    const thick = await plainText(page, '#result-od-thick');
+    const ct = await plainText(page, '#result-od-ct');
+    await expect.poll(label).toContain('3D-Ansicht der Brille, schräg von vorne.');
+    const l0 = await label();
+    expect(l0).toContain(`Rechtes Glas: dickste Stelle ${thick} `);
+    expect(l0).toContain(`Mitte ${ct}.`);
+    expect(l0).toContain('Fassung Rechteckig 52□18, Material 1,50 · Standard.');
+    await go(page, 'front');
+    await expect.poll(label).toContain('3D-Ansicht der Brille, von vorne.');
+    await go(page, 'side');
+    await expect.poll(label).toContain('von der Seite (rechtes Glas).');
+    // Zyl set and Achse empty: the left eye has a field error, so it is not computed.
+    await page.locator('#rx-os-cyl').fill('-1,00');
+    await page.locator('#rx-os-axis').fill('');
+    await page.locator('#rx-os-axis').blur();
+    await settledView(page);
+    await expect.poll(label).toContain('Linkes Glas: nicht berechnet.');
+    expect(await label()).toContain(`Rechtes Glas: dickste Stelle ${thick} `);
+    // the blocked eye has no protrusion lines
+    await expect(page.locator('#view-protrusion-os')).toBeHidden();
+    await expect(page.locator('#view-protrusion-od')).toBeVisible();
+  });
+});

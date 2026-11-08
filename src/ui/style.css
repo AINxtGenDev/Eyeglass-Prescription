@@ -1828,6 +1828,28 @@ td:has(.msg-out) input[aria-invalid='true'] {
   color: var(--muted);
 }
 
+/* 03-11 (D-19, UI-SPEC Protrusion): always shown under the caption; the text is the value. */
+#view-protrusion {
+  margin-block: var(--space-4) 0;
+  font-size: 0.875rem;
+}
+
+#view-protrusion p {
+  margin-block: 0 var(--space-1);
+}
+
+#view-protrusion .view-protrusion-title {
+  font-weight: 600;
+}
+
+#view-protrusion .small {
+  color: var(--muted);
+}
+
+#view-protrusion p:empty {
+  display: none;
+}
+
 @media (max-width: 899.98px) {
   #view-stage {
     width: 100%;

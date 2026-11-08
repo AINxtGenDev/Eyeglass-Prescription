@@ -20,6 +20,12 @@
 // not jump while the frame is missing; with the rims hidden no lens/rim disagreement can be seen;
 // the next ok frame item sets the common plane again. Resetting to 0 would move anisometropic
 // lenses for a state that has no rim to align with.
+//
+// 03-11 (UI-SPEC "Seite near-temple fade"): setFade(eye) swaps the temple and hinge of that eye to
+// pre-built faded clones (TEMPLE_FADE_OPACITY, transparent, depthWrite false) by assigning
+// mesh.material; no material flag is ever toggled (that would force a program rebuild). The faded
+// clones sit on hidden one-triangle carrier meshes from the start, so the renderer's compile()
+// (r187 walks scene.traverse, hidden meshes included) prepares their programs before first use.
 import { BufferGeometry, BufferAttribute, Group, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, Sphere, Vector3 } from 'three';
 import {
   allocFrameBuffers,
@@ -33,6 +39,7 @@ import {
   TEMPLE_RINGS,
 } from '../../engine/mesh/frame.js';
 import { createBufferPool } from './lenses.js';
+import { TEMPLE_FADE_OPACITY } from './camera-math.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
@@ -70,6 +77,13 @@ export function createFrame(scene, lensGroups) {
     acetate: new MeshPhysicalMaterial({ color: '#221e1c', roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.08 }),
     hinge: new MeshStandardMaterial({ color: '#9a9a9a', metalness: 1, roughness: 0.3 }),
   };
+  // Set once at creation; never toggled afterwards.
+  const fadedOf = (m) => {
+    const f = m.clone();
+    f.setValues({ transparent: true, opacity: TEMPLE_FADE_OPACITY, depthWrite: false });
+    return f;
+  };
+  const faded = { acetate: fadedOf(materials.acetate), hinge: fadedOf(materials.hinge) };
   const pool = createBufferPool(allocFrameBuffers, FRAME_LENGTHS);
   const initial = pool.take();
   pool.giveBack(pool.take()); // one spare set from the start
@@ -85,6 +99,8 @@ export function createFrame(scene, lensGroups) {
   }
   /** @type {Record<string, BufferGeometry>} */
   const geo = {};
+  /** @type {Record<string, Mesh>} */
+  const meshes = {};
   for (const [part, [pos, nrm, index, mat, rimEye]] of Object.entries(PARTS)) {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(initial[pos], 3));
@@ -92,9 +108,23 @@ export function createFrame(scene, lensGroups) {
     g.setIndex(new BufferAttribute(index, 1));
     g.boundingSphere = new Sphere(new Vector3(), 0);
     geo[part] = g;
-    (rimEye ? rimGroups[rimEye] : root).add(new Mesh(g, materials[mat]));
+    meshes[part] = new Mesh(g, materials[mat]);
+    (rimEye ? rimGroups[rimEye] : root).add(meshes[part]);
   }
   scene.add(root);
+  // Hidden carriers of the faded materials (same attribute set as the temple: position + normal).
+  const fadeCarrier = new Group();
+  fadeCarrier.name = 'frameFadeCarrier';
+  fadeCarrier.visible = false;
+  for (const m of Object.values(faded)) {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(new Float32Array(9), 3));
+    g.setAttribute('normal', new BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]), 3));
+    fadeCarrier.add(new Mesh(g, m));
+  }
+  scene.add(fadeCarrier);
+  /** Eye whose temple and hinge are faded (null = none). */
+  let fadedSide = null;
 
   /** lensZ of the last drawable frame item (MINOR 7: kept while the frame is missing). */
   let lastLensZ = { OD: 0, OS: 0 };
@@ -118,6 +148,21 @@ export function createFrame(scene, lensGroups) {
     lose: () => pool.lose(),
     allocCount: () => pool.allocCount(),
     hide,
+    /** The hidden carrier group of the faded materials (view.js compiles it without the extension). */
+    fadeCarrier,
+    /**
+     * Fade the temple and hinge of one eye (the camera side), or none; swaps mesh.material only.
+     * @param {'OD' | 'OS' | null} eye
+     */
+    setFade(eye) {
+      if (eye === fadedSide) return;
+      fadedSide = eye;
+      for (const e of EYES) {
+        const on = e === eye;
+        meshes[`temple${e}`].material = on ? faded.acetate : materials.acetate;
+        meshes[`hinge${e}`].material = on ? faded.hinge : materials.hinge;
+      }
+    },
     /**
      * Swap a built frame item's arrays in; the previous arrays go to the pool.
      * @param {any} item the worker's frame item
@@ -199,6 +244,7 @@ export function createFrame(scene, lensGroups) {
         sideTarget: last?.item.sideTarget ?? null,
         eyeBox: last?.item.eyeBox ?? null,
         boundingBox: last?.item.boundingBox ?? null,
+        fadedSide,
       };
     },
   };
