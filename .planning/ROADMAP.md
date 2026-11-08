@@ -252,7 +252,7 @@ Plans:
 
 **Wave 4**
 
-- [ ] 03-06-PLAN.md — View states (no WebGL, load failure/retry, blocked, empty) and numbers first on phones (view below the result section)
+- [x] 03-06-PLAN.md — View states (no WebGL, load failure/retry, blocked, empty) and numbers first on phones (view below the result section)
 
 **Wave 5**
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 5/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 6/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-11-08T13:23:15.237Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-11-08T13:46:06.809Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 42
+  completed_plans: 43
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 6 of 17
+Plan: 7 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -88,6 +88,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P01 | 15min | 2 tasks | 8 files |
 | Phase 03 P02 | 20min | 3 tasks | 6 files |
 | Phase 03 P05 | 55 min | 2 tasks | 17 files |
+| Phase 03 P06 | 45min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-05: e2e specs not about the 3D view run without it (without3d); view/layout/a11y opt in — SwiftShader CPU rendering starved parallel timing tests
 - [Phase 03]: 03-05: lens buffer pool cap 3 spare sets per slot (bounded 4 sets/slot), not refill-when-empty
 - [Phase 03]: 03-05: mesh client watchdog gets the compute-client hidden/late re-arm rule plus resume()
+- [Phase 03]: 03-06 (D-14 revised, MAJOR 5): below 900 px #view-slot moves after section#result (view-place.js); >= 900 px stays first in .col-results
+- [Phase 03]: 03-06: view.loadFailed drops 'darunter' because on phones the values sit above the view (UI-SPEC copy to amend)
 
 ### Pending Todos
 
@@ -205,6 +208,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T13:23:15.232Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-11-08T13:46:06.804Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
