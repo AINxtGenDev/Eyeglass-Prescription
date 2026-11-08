@@ -694,7 +694,8 @@ export function mountView({ slot }) {
       if (canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
       return;
     }
-    if (mode === 'heat' && heatState) {
+    // B-CR-01: no drawable eye → no scale; the Glas name below says both eyes are not computed.
+    if (mode === 'heat' && heatState?.scale) {
       const label = t('view.aria.heat', { viewName: viewNameText(), min: fmtMm(heatState.scale.min), max: fmtMm(heatState.scale.max) });
       if (canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
       return;

@@ -472,3 +472,23 @@ test('VIZ-05 labels do not leak over Glas ↔ Dickenkarte and eye switches', asy
   // Glas: no heat label is visible, only eye labels.
   expect((await labelsInfo(page)).labels.every((l) => l.kind === 'eye')).toBe(true);
 });
+
+// B-CR-01 (code review): Dickenkarte with no drawable eye stores a heat state without a scale. The
+// debounced accessible name must not throw on it, and must not keep the old thickness numbers.
+test('B-CR-01 Dickenkarte with both eyes cleared: no page error, accessible name updated', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await settledView(page);
+  await expertOn(page);
+  await heatOn(page);
+  await expect(page.locator('#view-canvas')).toHaveAttribute('aria-label', /^Dickenkarte, von vorne\. Dünnste Stelle /, { timeout: 5000 });
+  await page.locator('#rx-od-sph').fill('');
+  await page.locator('#rx-os-sph').fill('');
+  await settledView(page);
+  await expect(page.locator('#view-canvas')).not.toHaveAttribute('aria-label', /Dünnste Stelle/, { timeout: 5000 });
+  const aria = plain(await page.locator('#view-canvas').getAttribute('aria-label'));
+  expect(aria).toContain('Rechtes Glas: nicht berechnet.');
+  expect(aria).toContain('Linkes Glas: nicht berechnet.');
+  await page.waitForTimeout(700); // past the 500 ms aria debounce of every scheduled write
+  expect(errors, 'page errors').toEqual([]);
+});
