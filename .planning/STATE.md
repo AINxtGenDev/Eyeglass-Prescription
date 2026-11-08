@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-11-08T11:51:06.136Z"
+last_updated: "2026-11-08T12:12:50.031Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 38
+  completed_plans: 39
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 2 of 17
+Plan: 3 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -86,6 +86,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 02 P20 | 45 min | 3 tasks | 8 files |
 | Phase 02 P21 | 15 min | 2 tasks | 2 files |
 | Phase 03 P01 | 15min | 2 tasks | 8 files |
+| Phase 03 P02 | 20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-22]: ENG-09 proxy uses the quiet method (user decision 'Fix the measurement'; no DevTools command inside a measured frame, trace-proven 0 DevToolsSession tasks); 4× proxy (a) PASS 3/3 (case A max 7,4/10,0/8,4, case B 9,1/8,4/7,6 ms), legacy re-run 19,9/19,6 ms FAIL; ENG-09 stays Pending for the 02-15 phone check
 - [Phase 03]: [03-01]: bevel rule '1:2' (apex t/3 from the front, Essilor US 8 388 133 B2) for all lenses [ASSUMED]; rim spans apex ± D/2 (A1); 'bündig' ≤ 0,05 mm
 - [Phase 03]: [03-01]: frontLeadMm (front vertex ahead of the rim front face) shown as its own Expert line; example OD 0,5152 / OS 0,5282 mm at D 3; edgeBeyondRim and frame.rim.over removed (deliberate Phase-2 change)
+- [Phase 03]: [03-02]: lens mesh = 64 rim-graded rings (g 2,5) x 720 spokes about the boxing centre, outer ring = engine outline; 46 081 vertices/surface, Uint16 indices; D-04(a) worst 1,33e-6 mm, build 12,7 ms/lens (Node desktop)
+- [Phase 03]: [03-02]: D-04(c) strict worst 0,0074 mm; low-index custom scan worst 0,0231 mm of the documented 0,025 (ne 1,43, -6 -3 x 45, rechteckig 62x55/14 PD 25); VIZ-01 stays Pending until 03-05 draws it
 
 ### Pending Todos
 
@@ -198,6 +201,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T11:50:59.077Z
+Last session: 2026-11-08T12:12:38.000Z
 Stopped at: Phase 3 UI-SPEC approved
 Resume file: None
