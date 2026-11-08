@@ -709,6 +709,11 @@ export default Object.freeze({
   'view.heatEye.legend': 'Zahlen am Glas für',
   'view.heatEye.od': 'Rechtes Glas',
   'view.heatEye.os': 'Linkes Glas',
+  // 03-13 (VIZ-05, D-22; UI-SPEC Heatmap): on-lens callouts, {mm} = fmtMm of a heatCallouts value.
+  'view.callout.thickest': 'dickste {mm}',
+  'view.callout.thickestSuffix': '{mm} · dickste',
+  // lens-critic MAJOR 4: shown when not every callout fits (then none is shown).
+  'view.callout.tableOnly': 'Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle.',
   'view.legend.title': 'Dicke in mm',
   'view.legend.thin': 'dünner',
   'view.legend.thick': 'dicker',

@@ -26,6 +26,12 @@ export const CAMERA_NEAR_MM = 10;
 export const CAMERA_FAR_MM = 6000;
 /** Margin around every fit (UI-SPEC Camera: + 8 %) [BP]. */
 export const FIT_MARGIN = 1.08;
+/**
+ * Dickenkarte fit margin (03-13 deviation, design value [BP], no optical meaning): with 1,08 the
+ * heat eye's rim touched the stage edges, so the on-lens callouts (8 px gap + a 31 px pill) and
+ * the 'Dickenkarte' badge had no room and a 412 px phone fell back to the table-only note.
+ */
+export const HEAT_FIT_MARGIN = 1.3;
 /** Default 3/4 view: azimuth toward the wearer's right (−x) and elevation (UI-SPEC Camera table) [BP]. */
 export const DEFAULT_AZ_DEG = 35;
 export const DEFAULT_EL_DEG = 15;
@@ -92,9 +98,9 @@ export function fitDistance(r, fovDeg = FOV_DEG) {
   return (FIT_MARGIN * r) / Math.sin((fovDeg / 2) * RAD);
 }
 
-/** Box fit in the target plane: distance = 1,08 · max(halfV, halfH / aspect) / tan(fov/2). */
-export function fitBoxDistance(halfV, halfH, aspect, fovDeg = FOV_DEG) {
-  return (FIT_MARGIN * Math.max(halfV, halfH / aspect)) / Math.tan((fovDeg / 2) * RAD);
+/** Box fit in the target plane: distance = margin (1,08) · max(halfV, halfH / aspect) / tan(fov/2). */
+export function fitBoxDistance(halfV, halfH, aspect, fovDeg = FOV_DEG, margin = FIT_MARGIN) {
+  return (margin * Math.max(halfV, halfH / aspect)) / Math.tan((fovDeg / 2) * RAD);
 }
 
 /**
@@ -210,7 +216,7 @@ export function presetPose(name, ctx, eye = 'OD') {
     case 'heat': {
       if (!ctx.eyeBox) return sphere(FRONT_DIR, ctx.front.r);
       const b = ctx.eyeBox[eye];
-      return { target: boxCentre(b), dir: { ...FRONT_DIR }, distance: fitBoxDistance(half(b, 'y'), half(b, 'x'), ctx.aspect) };
+      return { target: boxCentre(b), dir: { ...FRONT_DIR }, distance: fitBoxDistance(half(b, 'y'), half(b, 'x'), ctx.aspect, FOV_DEG, HEAT_FIT_MARGIN) };
     }
     default:
       throw new Error(`presetPose: unknown preset ${name}`);

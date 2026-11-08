@@ -428,6 +428,12 @@
               </div>
               <div id="view-heat">
                 <div id="view-legend" hidden></div>
+                <fieldset id="view-heat-eye" class="segmented" hidden>
+                  <legend data-i18n="view.heatEye.legend"></legend>
+                  <label><input type="radio" name="view-heat-eye" value="OD" checked><span data-i18n="view.heatEye.od"></span></label>
+                  <label><input type="radio" name="view-heat-eye" value="OS"><span data-i18n="view.heatEye.os"></span></label>
+                </fieldset>
+                <p id="view-callout-note" class="small" role="status"></p>
                 <table id="view-heat-table" class="cmp-table" hidden>
                   <caption data-i18n="view.table.caption"></caption>
                   <thead></thead>

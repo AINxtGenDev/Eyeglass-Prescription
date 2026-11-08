@@ -1822,6 +1822,24 @@ td:has(.msg-out) input[aria-invalid='true'] {
   white-space: nowrap;
 }
 
+/* 03-13 (VIZ-05, UI-SPEC Heatmap): callout marker (8 px outer, 4 px --fg fill in a 2 px white
+   ring) and the iso-line labels (same pill as the callouts, weight 400). */
+.view-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--fg);
+}
+
+.view-label--iso {
+  font-weight: 400;
+}
+
 #view-caption {
   margin-block: var(--space-2) 0;
   font-size: 0.875rem;
@@ -1867,6 +1885,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
 
 /* .segmented (flex) and the stacked table (block) would beat the UA [hidden] rule. */
 #view-mode[hidden],
+#view-heat-eye[hidden],
 #view-heat-table[hidden] {
   display: none !important;
 }
@@ -1925,6 +1944,20 @@ td:has(.msg-out) input[aria-invalid='true'] {
 /* The thickest cell carries its location word: it may wrap (the mm value keeps its NBSP). */
 #view-heat-table td.num {
   white-space: normal;
+}
+
+#view-heat-eye {
+  margin-block: var(--space-4) 0;
+}
+
+/* role=status stays in the DOM (a live region must exist before its text changes); empty = hidden. */
+#view-callout-note {
+  margin-block: var(--space-2) 0;
+  font-size: 0.875rem;
+}
+
+#view-callout-note:empty {
+  display: none;
 }
 
 #view-heat-nochord {

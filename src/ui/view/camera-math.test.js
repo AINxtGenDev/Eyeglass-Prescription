@@ -21,6 +21,7 @@ import {
   createFrameMonitor,
   basisOf,
   FIT_MARGIN,
+  HEAT_FIT_MARGIN,
   FOV_DEG,
   POLAR_MIN,
   POLAR_MAX,
@@ -170,7 +171,9 @@ describe('VIZ-03 camera math (03-09)', () => {
     const eo = res.eyeBox.OS;
     closeVec(h.target, { x: (eo.min.x + eo.max.x) / 2, y: (eo.min.y + eo.max.y) / 2, z: (eo.min.z + eo.max.z) / 2 });
     closeVec(h.dir, { x: 0, y: 0, z: 1 });
-    expect(h.distance).toBeCloseTo(fitBoxDistance((eo.max.y - eo.min.y) / 2, (eo.max.x - eo.min.x) / 2, 4 / 3), 9);
+    // 03-13: the Dickenkarte fit uses HEAT_FIT_MARGIN (room for the on-lens callouts and the badge).
+    expect(h.distance).toBeCloseTo(fitBoxDistance((eo.max.y - eo.min.y) / 2, (eo.max.x - eo.min.x) / 2, 4 / 3, FOV_DEG, HEAT_FIT_MARGIN), 9);
+    expect(h.distance / fitBoxDistance((eo.max.y - eo.min.y) / 2, (eo.max.x - eo.min.x) / 2, 4 / 3)).toBeCloseTo(HEAT_FIT_MARGIN / FIT_MARGIN, 9);
   });
 
   test('without frame data the poses fall back to the lens sphere about the origin', () => {

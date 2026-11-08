@@ -41,8 +41,14 @@ const RAD = Math.PI / 180;
  *   getContext: () => ReturnType<typeof import('./camera-math.js').cameraContext>,
  *   onPose?: (name: string) => void }} o
  *   onPose: called with the view name after it changes (view.js: side note)
+ * @param {(inRender: boolean) => void} [o.onSettle] 03-13 (round 2 MINOR 5): the camera came to rest
+ *   after a user or preset move: OrbitControls 'end' (with damping: once update() reports no more
+ *   motion after it), a preset tween's last step, a cut, a keyboard step. inRender = called from
+ *   inside a render (beforeRender), so that render's afterRender sees it; never called per frame.
+ *   The r187 OrbitControls key listener is not used (own keydown handler below), so the key path
+ *   calls onSettle itself: its step is applied at once (flush, then place), no damping follows.
  */
-export function createControls({ camera, stage, scene, getContext, onPose = () => {} }) {
+export function createControls({ camera, stage, scene, getContext, onPose = () => {}, onSettle = () => {} }) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const controls = new OrbitControls(camera);
   controls.enableDamping = !reduced.matches;
@@ -60,6 +66,8 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   let tween = null;
   let dragging = false;
   let dragFrom = null;
+  /** 03-13: an 'end' arrived with damping on; settle once update() stops moving. */
+  let settleAfterDamp = false;
   let limits = { minDistance: 0, maxDistance: Infinity, maxTargetRadius: Infinity };
 
   // 03-12: the Dickenkarte pose is a front view (UI-SPEC: 'Entering Dickenkarte animates the camera
@@ -116,6 +124,7 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       place(to.target, to.s);
       setName(next);
       scene.requestRender();
+      onSettle(false);
       return;
     }
     const s = sphericalNow();
@@ -139,6 +148,7 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       const done = tween.name;
       tween = null;
       setName(done);
+      onSettle(true);
       return false;
     }
     place(target, s);
@@ -152,6 +162,10 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       if (moving) scene.requestRender();
     } else {
       moving = controls.update(); // dispatches 'change' (→ next frame) while damping moves
+      if (settleAfterDamp && !moving && !dragging) {
+        settleAfterDamp = false;
+        onSettle(true);
+      }
     }
     scene.setInteracting(dragging || (moving && !tween && name === 'free'));
   });
@@ -159,6 +173,7 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   controls.addEventListener('change', () => scene.requestRender());
   controls.addEventListener('start', () => {
     tween = null;
+    settleAfterDamp = false;
     dragging = true;
     dragFrom = { p: camera.position.clone(), t: controls.target.clone() };
     scene.setInteracting(true);
@@ -169,6 +184,10 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       setName('free');
     }
     dragFrom = null;
+    if (controls.enableDamping) {
+      settleAfterDamp = true;
+      scene.requestRender(); // one update() at least, which reports whether damping still moves
+    } else onSettle(false);
   });
 
   // Pointer path only without any coarse pointer (MINOR 8, see the header).
@@ -204,6 +223,7 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
           dragging = false;
           dragFrom = null;
           scene.setInteracting(false);
+          onSettle(false);
         }
       }
       syncZoom();
@@ -249,6 +269,7 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
     place(target, new Spherical(step.distance, step.polar, step.azimuth));
     setName('free');
     scene.requestRender();
+    onSettle(false);
   });
 
   return {

@@ -50,6 +50,12 @@
 // metrics, isoLevels for the step (engine, D-23). Legend and table (legend.js) come from the same
 // engine values (heatCallouts), computed once per delivery (memo key), never per orbit frame.
 // Expert off returns to Glas. Without WebGL the switch is removed (UI-SPEC States).
+// 03-13 (VIZ-05, D-22 as amended, lens-critic MAJOR 4, round 2 MINOR 5): in Dickenkarte the
+// selected eye ('Zahlen am Glas für', #view-heat-eye; default the heat eye) carries the engine
+// callouts and iso labels (labels.js), laid out on every render with the eye labels by one
+// priority rule (label-layout.js) around the badge and the keyboard hint. Picking an eye frames it
+// (goTo('heat', eye)); the table is unchanged. #view-callout-note (all callouts or none) is written
+// only at settle points (requestSettle: controls onSettle, eye / mode / text / size changes).
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
@@ -69,7 +75,7 @@ import { heatScale, isoLevels, heatCallouts } from '../../engine/mesh/heat.js';
 import { createFrame } from './frame.js';
 import { createChart, createShadow } from './backdrop.js';
 import { TIER_SETTINGS } from './tiers.js';
-import { createLabels, place } from './labels.js';
+import { createLabels, place, initHeatLabels, setHeatLabels, clearHeatLabels, layoutHeatLabels, setLabelAvoid, settleNote, calloutsFit } from './labels.js';
 import { createControls } from './controls.js';
 import { cameraContext, presetPoses, chartRect, chartHidden, sideEye, nearTempleFade } from './camera-math.js';
 
@@ -134,8 +140,35 @@ export function mountView({ slot }) {
   const badge = /** @type {HTMLElement} */ (slot.querySelector('.view-badge'));
   const setBadge = (key) => {
     const text = key ? t(key) : '';
-    if (badge.textContent !== text) badge.textContent = text;
+    if (badge.textContent !== text) {
+      badge.textContent = text;
+      if (avoidReady) updateAvoid();
+    }
   };
+  let avoidReady = false;
+  let avoidKey = '';
+  const keysEl = /** @type {HTMLElement} */ (slot.querySelector('#view-keys'));
+  /**
+   * 03-13: stage boxes no label may cover: the badge, and the keyboard hint while it is shown
+   * (#view-stage:focus-visible). Measured on badge text, focus and size changes, never per frame.
+   */
+  function updateAvoid(inRender = false) {
+    const stageEl = $('view-stage');
+    const boxes = [];
+    if (badge.offsetWidth > 0) boxes.push({ x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight });
+    if (stageEl.matches(':focus-visible')) {
+      const s = stageEl.getBoundingClientRect();
+      const k = keysEl.getBoundingClientRect();
+      const top = Math.max(k.top, s.top) - s.top;
+      const bottom = Math.min(k.bottom, s.bottom) - s.top;
+      if (bottom > top) boxes.push({ x: Math.max(k.left, s.left) - s.left, y: top, w: Math.min(k.right, s.right) - Math.max(k.left, s.left), h: bottom - top });
+    }
+    const key = JSON.stringify(boxes);
+    if (key === avoidKey) return; // a mouse focus shows no hint: nothing to settle mid-drag
+    avoidKey = key;
+    setLabelAvoid(boxes);
+    if (mode === 'heat') requestSettle(inRender);
+  }
 
   const view = createScene(/** @type {HTMLCanvasElement} */ ($('view-canvas')), $('view-stage'));
   if (view === null) {
@@ -189,6 +222,14 @@ export function mountView({ slot }) {
   });
   const labelsEl = $('view-labels');
   const labels = createLabels(labelsEl, SLOTS.length);
+  initHeatLabels(labelsEl, $('view-callout-note'));
+  /** 03-13 (MINOR 5): write #view-callout-note after the next layout (a settle point). */
+  let settlePending = false;
+  /** @param {boolean} [inRender] called inside a render: its afterRender runs the settle */
+  const requestSettle = (inRender = false) => {
+    settlePending = true;
+    if (!inRender) view.requestRender();
+  };
   /** Per eye: label anchor (world mm) or null. */
   const anchors = { OD: null, OS: null };
   let labelKey = null;
@@ -196,6 +237,15 @@ export function mountView({ slot }) {
   let knownFrame = null;
   view.afterRender(() => {
     const size = { width: labelsEl.clientWidth, height: labelsEl.clientHeight };
+    if (mode === 'heat') {
+      // 03-13: one layout for callouts > eye labels > iso labels (labels.js, label-layout.js).
+      layoutHeatLabels(view.camera, size, SLOTS.map((eye, i) => ({ el: labels.pool[i], world: anchors[eye] })));
+    }
+    if (settlePending) {
+      settlePending = false;
+      settleNote();
+    }
+    if (mode === 'heat') return;
     const shown = SLOTS.map((eye, i) => anchors[eye] !== null && place(labels.pool[i], anchors[eye], view.camera, size));
     // 03-11: from the side both labels project onto almost one point and the farther one covered
     // the nearer one ('L' over 'R' in Seite). Within the side-view cone (nearTempleFade) and only
@@ -494,6 +544,7 @@ export function mountView({ slot }) {
     stage: $('view-stage'),
     scene: view,
     getContext: cameraCtx,
+    onSettle: requestSettle,
     onPose: (name) => {
       sideNote.hidden = name !== 'side';
       if (name === 'side') {
@@ -525,8 +576,42 @@ export function mountView({ slot }) {
   });
   /** null until the first heat paint: { key, scale, levels, eye } of the last painted state. */
   let heatState = null;
-  /** The eye picked by 03-13's picker (null: the default rule applies on each delivery). */
+  /** The eye picked in #view-heat-eye (null: the default rule applies on each delivery). */
   let pickedEye = null;
+  const heatEyeEl = $('view-heat-eye');
+  const heatEyeRadios = /** @type {HTMLInputElement[]} */ ([...heatEyeEl.querySelectorAll('input[name=view-heat-eye]')]);
+  for (const r of heatEyeRadios) {
+    r.after(icon('check'));
+    r.addEventListener('change', () => {
+      if (r.checked) pickHeatEye(/** @type {'OD' | 'OS'} */ (r.value));
+    });
+  }
+  /** 03-13: the picker moves the callouts, iso labels and the camera framing; the table stays. */
+  function pickHeatEye(eye) {
+    pickedEye = eye;
+    if (mode !== 'heat' || !heatState?.table?.[eye] || heatState.eye === eye) return;
+    heatState.eye = eye;
+    applyHeatLabels();
+    controls.goTo('heat', eye);
+    scheduleAria();
+  }
+  /** Callouts and iso labels for heatState.eye (text-change path), picker state, then a settle. */
+  function applyHeatLabels() {
+    const eye = heatState?.eye;
+    const v = eye ? heatState.table?.[eye] : null;
+    if (!v) {
+      clearHeatLabels();
+      heatEyeEl.hidden = true;
+    } else {
+      setHeatLabels({ eye, lens: v.lens, metrics: v.metrics, callouts: v.callouts, levels: heatState.levels, group: lenses.group(eye) });
+      heatEyeEl.hidden = false;
+      for (const r of heatEyeRadios) {
+        r.checked = r.value === eye;
+        r.disabled = !heatState.table[r.value];
+      }
+    }
+    requestSettle();
+  }
 
   /** Drawn eyes with an ok result: { eye: { result, frame } }. */
   const heatEyes = () => SLOTS.filter((e) => last?.eyes[e]?.result?.ok && last.eyes[e].frame && lenses.visible(e));
@@ -554,10 +639,11 @@ export function mountView({ slot }) {
     const eye = pickedEye && eyes.includes(pickedEye) ? pickedEye : defaultHeatEye(eyes);
     const prevEye = heatState?.eye;
     if (eyes.length === 0) {
-      heatState = { key, scale: null, levels: null, eye };
+      heatState = { key, scale: null, levels: null, eye, table: null };
       $('view-legend').hidden = true;
       $('view-heat-table').hidden = true;
       $('view-heat-nochord').hidden = true;
+      applyHeatLabels();
       return;
     }
     const scale = heatScale(eyes.map((e) => last.eyes[e].result.metrics));
@@ -566,13 +652,15 @@ export function mountView({ slot }) {
     const table = { OD: null, OS: null };
     for (const e of eyes) {
       const { result, frame: f } = last.eyes[e];
-      table[e] = { callouts: heatCallouts({ surfaces: result.surfaces, frame: { shape: f.shape, A: f.A, B: f.B }, eye: e }, result.metrics), metrics: result.metrics };
+      const lens = { surfaces: result.surfaces, frame: { shape: f.shape, A: f.A, B: f.B }, eye: e };
+      table[e] = { callouts: heatCallouts(lens, result.metrics), metrics: result.metrics, lens };
     }
-    heatState = { key, scale, levels, eye };
+    heatState = { key, scale, levels, eye, table };
     $('view-legend').hidden = false;
     $('view-heat-table').hidden = false;
     renderLegend({ min: scale.min, max: scale.max, levels });
     renderHeatTable(table);
+    applyHeatLabels();
     // A new heat eye while the camera is still on the heat pose: frame it (no tween on re-mesh).
     if (prevEye !== undefined && prevEye !== eye && controls.preset() === 'heat') controls.goTo('heat', eye, { cut: true });
     view.requestRender();
@@ -587,6 +675,9 @@ export function mountView({ slot }) {
     const isHeat = next === 'heat';
     if (!isHeat) {
       heatState = null;
+      clearHeatLabels();
+      heatEyeEl.hidden = true;
+      requestSettle();
       $('view-legend').hidden = true;
       $('view-heat-table').hidden = true;
       $('view-heat-nochord').hidden = true;
@@ -610,7 +701,12 @@ export function mountView({ slot }) {
   });
   view.onResize(() => {
     if (attachedOnce) refresh();
+    updateAvoid(true);
+    requestSettle(true);
   });
+  for (const type of ['focus', 'blur', 'keydown']) $('view-stage').addEventListener(type, () => updateAvoid());
+  avoidReady = true;
+  updateAvoid();
 
   /** Eye labels and caption for the eyes drawn (ok) and not drawn (blocked). */
   function updateLabels(drawnEyes) {
@@ -735,6 +831,18 @@ export function mountView({ slot }) {
       const g = lenses.group(e).position;
       return [g.x + r.surfaces.oc.x, g.y + r.surfaces.oc.y, g.z, r.metrics.ct];
     },
+    /** 03-13 test-only: the visible projected labels (kind, callout key, text, viewport rect) and calloutsFit. */
+    labelsInfo: () => ({
+      labels: [...labelsEl.children]
+        .filter((el) => !(/** @type {HTMLElement} */ (el).hidden))
+        .map((el) => {
+          const c = el.classList;
+          const r = el.getBoundingClientRect();
+          const kind = c.contains('view-dot') ? 'dot' : c.contains('view-label--callout') ? 'callout' : c.contains('view-label--iso') ? 'iso' : 'eye';
+          return { kind, key: /** @type {HTMLElement} */ (el).dataset.key ?? null, text: el.textContent, rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
+        }),
+      calloutsFit: calloutsFit(),
+    }),
     /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
     rotateActive: () => controls.rotateActive(),
     /** 03-09: camera state, derived limits and the side eye. */
