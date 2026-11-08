@@ -264,7 +264,7 @@ Plans:
 
 **Wave 7**
 
-- [ ] 03-09-PLAN.md — Mouse/keyboard orbit, pan, zoom; presets Vorne/Seite/Oben with eye-fitted Seite and derived limits
+- [x] 03-09-PLAN.md — Mouse/keyboard orbit, pan, zoom; presets Vorne/Seite/Oben with eye-fitted Seite and derived limits
 
 **Wave 8**
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 8/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 9/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
