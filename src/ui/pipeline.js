@@ -70,6 +70,7 @@ export function initPipeline(hooks) {
   $('cmp-show').addEventListener('change', (e) => {
     showA = /** @type {HTMLInputElement} */ (e.target).value === 'a';
     paintCards();
+    refreshView(); // 03-14: below 360 px the 3D view follows Vorher | Nachher
   });
   writeComparePending();
   for (const radio of document.querySelectorAll('#xsec-eye input')) {
@@ -210,7 +211,14 @@ function viewInputs() {
   }
   // 03-07 (VIZ-02): the frame of the last input (drawn alone when no eye is computable) and the
   // display-only rim depth and temple length.
-  return { eyes, current, frame: currentConfig?.().frame ?? null, display: displayFrame() };
+  // 03-14 (RES-03): the comparison for the 3D A/B layout (A null while computing or on error).
+  return {
+    eyes,
+    current,
+    frame: currentConfig?.().frame ?? null,
+    display: displayFrame(),
+    compare: configA ? { A: resultA ?? null, specA, showA } : null,
+  };
 }
 
 // Test-only (03-05): e2e specs that are not about the view set this with an init script
@@ -661,6 +669,7 @@ function paintCompare() {
   if (configA) {
     renderConfigCompare({ config: configA, A: resultA === null ? { OD: null, OS: null } : resultA, B: selected, same: sameConfig() });
     if (showA) paintCards();
+    refreshView(); // 03-14: the A lens for the 3D comparison
   }
   for (const id of compareDelivered) comparePending.delete(id);
   compareDelivered.clear();
@@ -857,6 +866,7 @@ function startConfigCompare() {
   renderConfigCompare({ config: configA, A: undefined, B: {}, same: sameConfig() });
   $('cmp-diff').focus();
   startCompare(requested);
+  refreshView(); // 03-14: the 3D view switches to the A/B layout
 }
 
 /** 'Vergleich beenden': back to one configuration (B stays current), focus on the CTA. */
@@ -867,5 +877,6 @@ function endConfigCompare() {
   setConfigActive(false);
   paintCards();
   updateXsec();
+  refreshView(); // 03-14: back to the full-glasses view
   $('cmp-start').focus();
 }

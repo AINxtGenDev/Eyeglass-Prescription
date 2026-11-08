@@ -107,53 +107,68 @@ const hide = (el) => {
   if (!el.hidden) el.hidden = true;
 };
 
+// 03-14 (RES-03, D-25, lens-critic round 2 MINOR 4): two label sets with the same fixed pool, 'B'
+// (the main lenses, used outside a comparison too) and 'A' (Vorher, compare Dickenkarte only).
+// In a split comparison each half is laid out inside its own half bounds, and the all-or-nothing
+// rule is decided ONCE across both halves: if either half cannot fit all its callouts, neither
+// half shows a callout (one #view-callout-note). Set A's nodes carry data-half="A"; set B's carry
+// data-half="B" only while split.
+
 /**
- * @type {null | { note: HTMLElement, callouts: Array<{ pill: HTMLSpanElement, dot: HTMLSpanElement }>,
- *   isos: HTMLSpanElement[], active: boolean, group: { position: { x: number, y: number, z: number } } | null,
+ * @typedef {{ callouts: Array<{ pill: HTMLSpanElement, dot: HTMLSpanElement }>, isos: HTMLSpanElement[],
+ *   active: boolean, group: { position: { x: number, y: number, z: number } } | null,
  *   points: { callouts: Array<{ key: string, local: { x: number, y: number, z: number } } | null>,
- *     isos: Array<{ local: { x: number, y: number, z: number } } | null> },
- *   calloutsFit: boolean, avoid: Array<{ x: number, y: number, w: number, h: number }> }}
+ *     isos: Array<{ local: { x: number, y: number, z: number } } | null> } }} HeatSet
+ * @type {null | { note: HTMLElement, sets: { A: HeatSet, B: HeatSet }, calloutsFit: boolean,
+ *   avoid: Array<{ x: number, y: number, w: number, h: number }> }}
  */
 let heat = null;
 
 /**
- * Create the Dickenkarte label pool in #view-labels.
+ * Create the Dickenkarte label pools (sets B and A) in #view-labels.
  * @param {HTMLElement} container #view-labels
  * @param {HTMLElement} note #view-callout-note (role=status)
  */
 export function initHeatLabels(container, note) {
-  const span = (cls) => {
-    const el = document.createElement('span');
-    el.className = cls;
-    el.hidden = true;
-    container.append(el);
-    return el;
+  const makeSet = (half) => {
+    const span = (cls) => {
+      const el = document.createElement('span');
+      el.className = cls;
+      el.hidden = true;
+      if (half) el.dataset.half = half;
+      container.append(el);
+      return el;
+    };
+    const callouts = CALLOUT_KEYS.map((key) => {
+      const dot = span('view-dot');
+      const pill = span('view-label view-label--callout');
+      pill.dataset.key = key;
+      return { pill, dot };
+    });
+    const isos = Array.from({ length: ISO_MAX }, () => span('view-label view-label--iso'));
+    return { callouts, isos, active: false, group: null, points: { callouts: [], isos: [] } };
   };
-  const callouts = CALLOUT_KEYS.map((key) => {
-    const dot = span('view-dot');
-    const pill = span('view-label view-label--callout');
-    pill.dataset.key = key;
-    return { pill, dot };
-  });
-  const isos = Array.from({ length: ISO_MAX }, () => span('view-label view-label--iso'));
-  heat = { note, callouts, isos, active: false, group: null, points: { callouts: [], isos: [] }, calloutsFit: true, avoid: [] };
+  heat = { note, sets: { B: makeSet(null), A: makeSet('A') }, calloutsFit: true, avoid: [] };
 }
 
 /**
- * Set the callouts and iso labels of the selected eye (text-change path: once per delivery, eye
- * or mode change, never per frame).
+ * Set the callouts and iso labels of one lens (text-change path: once per delivery, eye or mode
+ * change, never per frame).
  * @param {{ eye: 'OD' | 'OS', lens: { surfaces: object, frame: object, eye: 'OD' | 'OS' }, metrics: object,
  *   callouts: ReturnType<typeof import('../../engine/mesh/heat.js').heatCallouts>,
  *   levels: { values: number[] }, group: { position: { x: number, y: number, z: number } } }} o
- *   group = the eye's lens group (its position is read on every render: DBL and the frame's z)
+ *   group = the eye's lens group (its position is read on every render: DBL and the frame's z), or
+ *   in a comparison an object whose position is the recentred lens position (compare3d.js)
+ * @param {'A' | 'B'} [which] the label set (03-14; default B, the main lenses)
  */
-export function setHeatLabels({ lens, metrics, callouts, levels, group }) {
+export function setHeatLabels({ lens, metrics, callouts, levels, group }, which = 'B') {
   if (!heat) return;
+  const set = heat.sets[which];
   const s = lens.surfaces;
   const at = (p) => ({ x: p.x, y: p.y, z: -frontSagAt(s, p.x, p.y) });
   const th = callouts.thickest;
-  heat.points.callouts = CALLOUT_KEYS.map((key, i) => {
-    const { pill } = heat.callouts[i];
+  set.points.callouts = CALLOUT_KEYS.map((key, i) => {
+    const { pill } = set.callouts[i];
     let text = '';
     let p = null;
     if (key === 'thickest') {
@@ -170,23 +185,29 @@ export function setHeatLabels({ lens, metrics, callouts, levels, group }) {
     return p ? { key, local: at(p) } : null;
   });
   const pts = isoLabelPoints(lens, metrics, levels.values, callouts);
-  heat.points.isos = heat.isos.map((el, i) => {
+  set.points.isos = set.isos.map((el, i) => {
     const p = i < pts.length ? pts[i] : null;
     const text = p ? fmtIsoValue(levels.values[i]) : '';
     if (el.textContent !== text) el.textContent = text;
     return p ? { local: at(p) } : null;
   });
-  heat.group = group;
-  heat.active = true;
+  set.group = group;
+  set.active = true;
 }
 
-/** Leave Dickenkarte (or no drawable heat eye): hide every heat label. */
-export function clearHeatLabels() {
+/**
+ * Hide every heat label of one set, or of both (leave Dickenkarte, no drawable heat eye).
+ * @param {'A' | 'B'} [which] default both
+ */
+export function clearHeatLabels(which) {
   if (!heat) return;
-  heat.active = false;
-  heat.points = { callouts: [], isos: [] };
-  for (const c of heat.callouts) hide(c.pill), hide(c.dot);
-  for (const el of heat.isos) hide(el);
+  for (const name of which ? [which] : ['A', 'B']) {
+    const set = heat.sets[name];
+    set.active = false;
+    set.points = { callouts: [], isos: [] };
+    for (const c of set.callouts) hide(c.pill), hide(c.dot);
+    for (const el of set.isos) hide(el);
+  }
 }
 
 /** Boxes in stage px that no label may cover (the badge, the keyboard hint while shown). */
@@ -203,23 +224,25 @@ function toStage(x, y, z, camera, size) {
 }
 
 /**
- * Per-render layout in Dickenkarte (afterRender): callouts, the given eye labels and iso labels
- * through layoutLabels, then transforms and hidden flags. Never writes the note.
+ * Project one set's anchors with the camera as it is now (03-14: compare3d sets the half aspect
+ * first) into layout items. Returns null when the set is not active.
+ * @param {'A' | 'B'} which
  * @param {import('three').Camera} camera
- * @param {{ width: number, height: number }} size stage size in CSS px
+ * @param {{ width: number, height: number }} size the (half) stage size in CSS px
  * @param {Array<{ el: HTMLElement, world: { x: number, y: number, z: number } | null }>} eyes eye labels
  */
-export function layoutHeatLabels(camera, size, eyes) {
-  if (!heat?.active || !heat.group) return;
-  const g = heat.group.position;
+export function prepareHeatLabels(which, camera, size, eyes) {
+  const set = heat?.sets[which];
+  if (!set?.active || !set.group) return null;
+  const g = set.group.position;
   const proj = (l) => toStage(g.x + l.x, g.y + l.y, g.z + l.z, camera, size);
   /** @type {import('./label-layout.js').LabelItem[]} */
   const items = [];
   const els = new Map();
-  const centre = heat.points.callouts[0] ? proj(heat.points.callouts[0].local) : { x: NaN, y: NaN };
-  heat.points.callouts.forEach((p, i) => {
+  const centre = set.points.callouts[0] ? proj(set.points.callouts[0].local) : { x: NaN, y: NaN };
+  set.points.callouts.forEach((p, i) => {
     if (!p) return;
-    const { pill } = heat.callouts[i];
+    const { pill } = set.callouts[i];
     const a = proj(p.local);
     const { w, h } = sizeOf(pill);
     let dx = a.x - centre.x;
@@ -235,7 +258,7 @@ export function layoutHeatLabels(camera, size, eyes) {
     }
     const id = `c${i}`;
     items.push({ id, priority: 0, order: i, anchor: a, size: { w, h }, offset, dot: DOT_PX });
-    els.set(id, { el: pill, dot: heat.callouts[i].dot, anchor: a });
+    els.set(id, { el: pill, dot: set.callouts[i].dot, anchor: a });
   });
   eyes.forEach((e, i) => {
     if (!e.world || e.el.textContent === '') return;
@@ -245,27 +268,80 @@ export function layoutHeatLabels(camera, size, eyes) {
     items.push({ id, priority: 1, order: i, anchor: toStage(e.world.x, e.world.y, e.world.z, camera, size), size: { w, h }, offset: { dx: 0, dy: h / 2 } });
     els.set(id, { el: e.el });
   });
-  heat.points.isos.forEach((p, i) => {
+  set.points.isos.forEach((p, i) => {
     if (!p) return;
-    const el = heat.isos[i];
+    const el = set.isos[i];
     const { w, h } = sizeOf(el);
     const id = `i${i}`;
     items.push({ id, priority: 2, order: i, anchor: proj(p.local), size: { w, h }, offset: { dx: 0, dy: 0 } });
     els.set(id, { el });
   });
-  // ?calloutsoff: the callouts are left out as if they did not fit (MINOR 6).
-  const laid = layoutLabels(CALLOUTS_OFF ? items.filter((it) => it.priority !== 0) : items, { w: size.width, h: size.height, avoid: heat.avoid });
-  heat.calloutsFit = laid.calloutsFit && !CALLOUTS_OFF;
+  return { which, set, items, els, size, eyes };
+}
+
+/**
+ * Lay out prepared sets and write the transforms (03-14: one call for both halves). The callout
+ * decision is made once across all parts: if any part cannot fit its callouts, every part is
+ * laid out again without callouts (round 2 MINOR 4). Never writes the note.
+ * @param {Array<{ prep: ReturnType<typeof prepareHeatLabels>, offsetX?: number, half?: 'A' | 'B' | null,
+ *   avoid?: Array<{ x: number, y: number, w: number, h: number }> }>} parts
+ *   offsetX = the part's left edge in the stage; avoid = extra stage boxes (the A/B captions)
+ */
+export function commitHeatLabels(parts) {
+  if (!heat) return;
+  const live = parts.filter((p) => p.prep);
+  const run = (part, withCallouts) => {
+    const { items, size } = part.prep;
+    const ox = part.offsetX ?? 0;
+    // Stage boxes in this part's own coordinates; boxes outside it never collide.
+    const avoid = [...heat.avoid, ...(part.avoid ?? [])].map((b) => ({ ...b, x: b.x - ox }));
+    // ?calloutsoff: the callouts are left out as if they did not fit (MINOR 6).
+    const use = withCallouts && !CALLOUTS_OFF ? items : items.filter((it) => it.priority !== 0);
+    return layoutLabels(use, { w: size.width, h: size.height, avoid });
+  };
+  let laid = live.map((p) => run(p, true));
+  let fit = !CALLOUTS_OFF && laid.every((l) => l.calloutsFit);
+  if (!fit && live.length > 1) laid = live.map((p) => run(p, false));
+  heat.calloutsFit = fit;
   const shown = new Set();
-  for (const [id, q] of els) {
-    const p = laid.placed.get(id);
-    if (!p) continue;
-    moveTo(q.el, p.x, p.y);
-    shown.add(q.el);
-    if (q.dot) moveTo(q.dot, q.anchor.x - DOT_PX / 2, q.anchor.y - DOT_PX / 2), shown.add(q.dot);
+  live.forEach((part, k) => {
+    const ox = part.offsetX ?? 0;
+    const half = part.half ?? null;
+    for (const [id, q] of part.prep.els) {
+      const p = laid[k].placed.get(id);
+      if (!p) continue;
+      moveTo(q.el, p.x + ox, p.y);
+      setHalf(q.el, half);
+      shown.add(q.el);
+      if (q.dot) moveTo(q.dot, q.anchor.x + ox - DOT_PX / 2, q.anchor.y - DOT_PX / 2), setHalf(q.dot, half), shown.add(q.dot);
+    }
+  });
+  for (const set of Object.values(heat.sets)) {
+    for (const c of set.callouts) for (const el of [c.pill, c.dot]) if (!shown.has(el)) hide(el);
+    for (const el of set.isos) if (!shown.has(el)) hide(el);
   }
-  for (const c of heat.callouts) for (const el of [c.pill, c.dot]) if (!shown.has(el)) hide(el);
-  for (const el of [...heat.isos, ...eyes.map((e) => e.el)]) if (!shown.has(el)) hide(el);
+  for (const part of live) for (const e of part.prep.eyes) if (!shown.has(e.el)) hide(e.el);
+}
+
+/** data-half on a placed node: set A always carries 'A'; set B carries 'B' only while split. */
+function setHalf(el, half) {
+  if (el.dataset.half === 'A') return;
+  if (half === 'B') {
+    if (el.dataset.half !== 'B') el.dataset.half = 'B';
+  } else if (el.dataset.half !== undefined) delete el.dataset.half;
+}
+
+/**
+ * Per-render layout in Dickenkarte (afterRender) outside a comparison: set B over the whole stage
+ * with the given eye labels. Never writes the note.
+ * @param {import('three').Camera} camera
+ * @param {{ width: number, height: number }} size stage size in CSS px
+ * @param {Array<{ el: HTMLElement, world: { x: number, y: number, z: number } | null }>} eyes eye labels
+ */
+export function layoutHeatLabels(camera, size, eyes) {
+  const prep = prepareHeatLabels('B', camera, size, eyes);
+  if (!prep) return;
+  commitHeatLabels([{ prep }]);
 }
 
 /**
@@ -276,7 +352,8 @@ export function layoutHeatLabels(camera, size, eyes) {
  */
 export function settleNote() {
   if (!heat) return;
-  const text = heat.active && !heat.calloutsFit ? t('view.callout.tableOnly') : '';
+  const active = heat.sets.A.active || heat.sets.B.active;
+  const text = active && !heat.calloutsFit ? t('view.callout.tableOnly') : '';
   if (heat.note.textContent !== text) heat.note.textContent = text;
 }
 

@@ -168,21 +168,33 @@ function paintLegend(root, { min, max, levels }) {
 
 /**
  * Paint #view-heat-table (the text equivalent of the map) and #view-heat-nochord.
- * @param {{ OD: { callouts: any, metrics: any } | null, OS: { callouts: any, metrics: any } | null }} eyes
- *   callouts = heatCallouts(…) of the eye (engine), metrics = its LensResult.metrics; null = blocked
+ * 03-14 (D-25, UI-SPEC Heatmap table): in a comparison the columns are Stelle · Vorher (A) ·
+ * Nachher (B) for the compared eye, and the caption names the eye.
+ * @param {{ OD?: { callouts: any, metrics: any } | null, OS?: { callouts: any, metrics: any } | null,
+ *   compare?: { eye: 'OD' | 'OS', A: { callouts: any, metrics: any } | null, B: { callouts: any, metrics: any } | null } }} eyes
+ *   callouts = heatCallouts(…) of the lens (engine), metrics = its LensResult.metrics; null = blocked
  */
 export function renderHeatTable(eyes) {
   const table = /** @type {HTMLTableElement} */ ($('view-heat-table'));
+  const cmp = eyes.compare ?? null;
+  /** Column id → [header text, column data] */
+  const cols = cmp
+    ? [
+        ['A', t('view.table.col.a'), cmp.A],
+        ['B', t('view.table.col.b'), cmp.B],
+      ]
+    : EYES.map((e) => [e, t(e === 'OD' ? 'view.heatEye.od' : 'view.heatEye.os'), eyes[e] ?? null]);
+  const caption = cmp ? t('view.table.caption.compare', { eye: t(cmp.eye === 'OS' ? 'view.viewName.os' : 'view.viewName.od') }) : t('view.table.caption');
+  if (table.caption && table.caption.textContent !== caption) table.caption.textContent = caption;
   const head = htmlEl('tr');
   head.append(htmlEl('th', { scope: 'col' }, t('view.table.col.where')));
-  for (const e of EYES) head.append(htmlEl('th', { scope: 'col' }, t(e === 'OD' ? 'view.heatEye.od' : 'view.heatEye.os')));
+  for (const [, title] of cols) head.append(htmlEl('th', { scope: 'col' }, title));
   table.tHead?.replaceChildren(head);
   let noChord = false;
   const body = ROWS.map((row) => {
     const tr = htmlEl('tr');
     tr.append(htmlEl('th', { scope: 'row' }, t(`view.table.row.${row}`)));
-    for (const e of EYES) {
-      const v = eyes[e];
+    for (const [col, title, v] of cols) {
       let text = DASH;
       if (v) {
         const c = v.callouts;
@@ -193,11 +205,8 @@ export function renderHeatTable(eyes) {
         } else if (c.ok) text = fmtMm(c[row].t);
         else if (EDGE_ROWS.has(row)) noChord = true;
       }
-      const td = htmlEl('td', { 'data-row': row, 'data-col': e, class: 'num' });
-      td.append(
-        htmlEl('span', { class: 'cell-label', 'aria-hidden': 'true' }, t(e === 'OD' ? 'view.heatEye.od' : 'view.heatEye.os')),
-        htmlEl('span', { class: 'cell-val' }, text),
-      );
+      const td = htmlEl('td', { 'data-row': row, 'data-col': col, class: 'num' });
+      td.append(htmlEl('span', { class: 'cell-label', 'aria-hidden': 'true' }, title), htmlEl('span', { class: 'cell-val' }, text));
       tr.append(td);
     }
     return tr;

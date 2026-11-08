@@ -56,6 +56,15 @@
 // priority rule (label-layout.js) around the badge and the keyboard hint. Picking an eye frames it
 // (goTo('heat', eye)); the table is unchanged. #view-callout-note (all callouts or none) is written
 // only at settle points (requestSettle: controls onSettle, eye / mode / text / size changes).
+// 03-14 (RES-03, D-24 as amended, D-25, lens-critic round 2 MINOR 4): inputs.compare (pipeline)
+// switches to the A/B layout (compare3d.js): the compared eye (compareEye over thickest(m) of A
+// and B) as Vorher (A) | Nachher (B) side by side in two scissor halves of the one renderer with
+// the one camera (stage ≥ 360 px), else one viewport following #cmp-show. The A lens ('A') and
+// its rim ('frameA', a second createFrame) are one more pair of items in the same latest-wins mesh
+// job, each with its own key (T-03-38). In Dickenkarte A and B share one heatScale over all four
+// lenses, the table shows Vorher (A) · Nachher (B) for the compared eye and the callout rule is
+// decided once across both halves. Starting or ending a comparison creates no GPU resource: the A
+// slot is uploaded by a warm-up render after the first attach and afterwards only made visible.
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
@@ -75,9 +84,23 @@ import { heatScale, isoLevels, heatCallouts } from '../../engine/mesh/heat.js';
 import { createFrame } from './frame.js';
 import { createChart, createShadow } from './backdrop.js';
 import { TIER_SETTINGS } from './tiers.js';
-import { createLabels, place, initHeatLabels, setHeatLabels, clearHeatLabels, layoutHeatLabels, setLabelAvoid, settleNote, calloutsFit } from './labels.js';
+import {
+  createLabels,
+  place,
+  initHeatLabels,
+  setHeatLabels,
+  clearHeatLabels,
+  layoutHeatLabels,
+  prepareHeatLabels,
+  commitHeatLabels,
+  setLabelAvoid,
+  settleNote,
+  calloutsFit,
+} from './labels.js';
 import { createControls } from './controls.js';
-import { cameraContext, presetPoses, chartRect, chartHidden, sideEye, nearTempleFade } from './camera-math.js';
+import { cameraContext, compareContext, compareEye, presetPoses, chartRect, chartHidden, sideEye, nearTempleFade } from './camera-math.js';
+import { createCompare3d } from './compare3d.js';
+import { thickest } from '../../state/compare.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -98,7 +121,7 @@ const FAIL_FRAME = (() => {
   return Number.isFinite(v) && v > 0 ? v : null;
 })();
 
-/** Lens key: the eye, every surfaces field, the shape, A and B (not DBL: a DBL change only moves). */
+/** Lens key: the eye, every surfaces field, the shape, A and B (not DBL: a DBL change only moves; the A slot is recentred). */
 const lensKey = (eye, surfaces, f) => JSON.stringify([eye, surfaces, f.shape, f.A, f.B]);
 
 /** The no-WebGL note in the stage (D-17): info icon + text, textContent only. */
@@ -123,8 +146,11 @@ function showUnavailable(reasonKey) {
  * @typedef {{ result: any, frame: ViewFrame | null } | null} ViewEye
  * @typedef {{ rimDepthMm: number, rimAssumed?: boolean, templeMm: number | null, templeSource: 'stamp' | 'assumed' }} ViewDisplay
  *   templeMm null = no temple on the stamp (TEMPLE_DEFAULT_MM, 'angenommener Wert')
+ * @typedef {{ A: { OD: any, OS: any } | null, specA: { OD: { frame: ViewFrame } | null, OS: { frame: ViewFrame } | null },
+ *   showA: boolean }} ViewCompare
+ *   03-14: A = the LensResults of configuration A (null while computing or on error), specA its specs
  * @typedef {{ eyes: { OD: ViewEye, OS: ViewEye }, frame?: ViewFrame | null, display?: ViewDisplay,
- *   current: boolean }} ViewInputs
+ *   current: boolean, compare?: ViewCompare | null }} ViewInputs
  *   frame = the frame of the last input (drawn alone when no eye has a shown result)
  */
 
@@ -147,6 +173,8 @@ export function mountView({ slot }) {
   };
   let avoidReady = false;
   let avoidKey = '';
+  /** 03-14: the badge box (stage px) of the last measure, for the A/B captions. */
+  let badgeBox = null;
   const keysEl = /** @type {HTMLElement} */ (slot.querySelector('#view-keys'));
   /**
    * 03-13: stage boxes no label may cover: the badge, and the keyboard hint while it is shown
@@ -155,7 +183,8 @@ export function mountView({ slot }) {
   function updateAvoid(inRender = false) {
     const stageEl = $('view-stage');
     const boxes = [];
-    if (badge.offsetWidth > 0) boxes.push({ x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight });
+    badgeBox = badge.offsetWidth > 0 ? { x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight } : null;
+    if (badgeBox) boxes.push(badgeBox);
     if (stageEl.matches(':focus-visible')) {
       const s = stageEl.getBoundingClientRect();
       const k = keysEl.getBoundingClientRect();
@@ -168,6 +197,7 @@ export function mountView({ slot }) {
     avoidKey = key;
     setLabelAvoid(boxes);
     if (mode === 'heat') requestSettle(inRender);
+    else if (!inRender) view?.requestRender();
   }
 
   const view = createScene(/** @type {HTMLCanvasElement} */ ($('view-canvas')), $('view-stage'));
@@ -180,15 +210,20 @@ export function mountView({ slot }) {
   }
   setText('view-caption', t('view.caption.glass'));
   const heat = createHeat(view.scene);
-  const lenses = createLensSlots(view.scene, [...SLOTS], heat.material);
+  const lenses = createLensSlots(view.scene, [...SLOTS, 'A'], heat.material);
   /** 03-12: 'glass' | 'heat' (not persisted; Glas is the default). */
   let mode = 'glass';
   const modeBadge = () => (mode === 'heat' ? 'view.badge.heat' : 'view.badge.glass');
   const frame = createFrame(view.scene, { OD: lenses.group('OD'), OS: lenses.group('OS') });
   const chart = createChart(view.scene, view.renderer, TIER_SETTINGS[view.tier()].chart);
   const shadow = createShadow(view.scene);
+  // 03-14: the compare frame (configuration A); its lens z is set by compare3d from lensZ().
+  const frameA = createFrame(view.scene, {});
+  const labelsEl = $('view-labels');
+  /** 03-14: the comparison of the last input (null: none): { eye, A, specA, showA }. */
+  let cmp = null;
   /** νe per slot of the last input (null: none, e.g. a custom material without νe). */
-  let abbe = { OD: null, OS: null };
+  let abbe = { OD: null, OS: null, A: null };
   /** Technische Angaben tier line; dispersion 'on' only when a slot actually gets dispersion. */
   const writeTier = () => {
     const tier = view.tier();
@@ -220,9 +255,21 @@ export function mountView({ slot }) {
       showUnavailable(null);
     }
   });
-  const labelsEl = $('view-labels');
   const labels = createLabels(labelsEl, SLOTS.length);
   initHeatLabels(labelsEl, $('view-callout-note'));
+  // 03-14: after the label pools, so the eye labels stay the first .view-label nodes (e2e order).
+  const compare3d = createCompare3d({
+    renderer: view.renderer,
+    scene: view.scene,
+    camera: view.camera,
+    lenses,
+    frame,
+    frameA,
+    shadow,
+    labelsEl,
+    stageEl: $('view-stage'),
+  });
+  view.setPass(compare3d.renderPass);
   /** 03-13 (MINOR 5): write #view-callout-note after the next layout (a settle point). */
   let settlePending = false;
   /** @param {boolean} [inRender] called inside a render: its afterRender runs the settle */
@@ -237,6 +284,28 @@ export function mountView({ slot }) {
   let knownFrame = null;
   view.afterRender(() => {
     const size = { width: labelsEl.clientWidth, height: labelsEl.clientHeight };
+    const cs = compare3d.state();
+    const caps = compare3d.layoutCaptions(badgeBox);
+    if (cs.active) {
+      // 03-14: no eye labels in the A/B layout (one eye, two configurations; the captions say which).
+      for (const el of labels.pool) if (!el.hidden) el.hidden = true;
+      if (mode === 'heat') {
+        // Round 2 MINOR 4: both halves are laid out first, then the callouts are decided once.
+        const halves = cs.split ? ['A', 'B'] : [cs.shown];
+        commitHeatLabels(
+          halves.map((half) => {
+            const b = compare3d.halfBox(half);
+            const prep = compare3d.withHalf(half, () => prepareHeatLabels(half, view.camera, { width: b.w, height: b.h }, []));
+            return { prep, offsetX: b.x, half: cs.split ? half : null, avoid: caps };
+          }),
+        );
+      }
+      if (settlePending) {
+        settlePending = false;
+        settleNote();
+      }
+      return;
+    }
     if (mode === 'heat') {
       // 03-13: one layout for callouts > eye labels > iso labels (labels.js, label-layout.js).
       layoutHeatLabels(view.camera, size, SLOTS.map((eye, i) => ({ el: labels.pool[i], world: anchors[eye] })));
@@ -283,7 +352,11 @@ export function mountView({ slot }) {
   /** @type {ViewInputs | null} */
   let last = null;
   /** Key of the item last attached per slot from a current reply (null = nothing attached). */
-  const attachedKey = { OD: null, OS: null, frame: null };
+  const attachedKey = { OD: null, OS: null, A: null, frame: null, frameA: null };
+  /** 03-14: the eye the attached A lens / frameA rim were built for. */
+  const attachedEyeA = { A: null, frameA: null };
+  /** 03-14: the keys the current comparison wants in the A slots (null: none). */
+  const wantKey = { A: null, frameA: null };
   /** The last requestMesh without its reply yet: { gen, sig } (sig = the sent slots and keys). */
   let outstanding = null;
   /** Slot lists of the last JOB_LOG jobs sent (test handle meshJobs). */
@@ -304,6 +377,7 @@ export function mountView({ slot }) {
     for (const it of items ?? []) {
       if (!it) continue;
       if (it.slot === 'frame') frame.giveBack(it.buffers);
+      else if (it.slot === 'frameA') frameA.giveBack(it.buffers);
       else lenses.giveBack(it.slot, it.buffers);
     }
   };
@@ -343,6 +417,7 @@ export function mountView({ slot }) {
       // the current request once, so the view does not keep an old mesh until the next input.
       for (const slotName of Object.keys(metaByGen.get(d.gen) ?? {})) {
         if (slotName === 'frame') frame.lose();
+        else if (slotName === 'frameA') frameA.lose();
         else lenses.lose(slotName);
       }
       metaByGen.delete(d.gen);
@@ -381,7 +456,8 @@ export function mountView({ slot }) {
     for (const g of sentAtByGen.keys()) if (g <= d.gen) sentAtByGen.delete(g);
     if (outstanding?.gen === d.gen) outstanding = null;
     // Lenses first, then the frame: the frame sets both lens groups' z in this same paint frame.
-    const items = [...d.items].sort((a, b) => (a?.slot === 'frame') - (b?.slot === 'frame'));
+    const isFrame = (it) => it?.slot === 'frame' || it?.slot === 'frameA';
+    const items = [...d.items].sort((a, b) => isFrame(a) - isFrame(b));
     for (const it of items) {
       const m = meta[it?.slot];
       if (!m) {
@@ -393,6 +469,12 @@ export function mountView({ slot }) {
         writeTech(frame.visible() ? it : null, m);
         if (frame.visible()) shadow.fit(it.boundingSphere, m.B);
         else shadow.hide();
+      } else if (it.slot === 'frameA') {
+        frameA.attach(it, m);
+        attachedEyeA.frameA = m.eye;
+      } else if (it.slot === 'A') {
+        lenses.attach('A', it, { surfaces: m.surfaces, eye: m.eye, A: m.frame.A, DBL: m.DBL });
+        attachedEyeA.A = m.eye;
       } else {
         const p = placement[m.eye];
         lenses.attach(it.slot, it, { surfaces: m.surfaces, eye: m.eye, A: m.frame.A, DBL: p?.DBL ?? m.DBL });
@@ -405,7 +487,9 @@ export function mountView({ slot }) {
       if (p) lenses.place(s, s, p.A, p.DBL);
     }
     updateLabels(drawnLenses()); // a mesh that came back not drawable reads 'nicht berechnet' too
+    if (!attachedOnce) compare3d.warmUp();
     attachedOnce = true;
+    syncCompare();
     refresh();
     for (const b of presetButtons) b.disabled = false;
     for (const r of modeRadios) r.disabled = false;
@@ -441,8 +525,9 @@ export function mountView({ slot }) {
     setText('tech-view-rimface', t('tech.view.rimFace', { w: fmtMm(FRAME_FACE_MM) }));
   }
 
-  /** Side eye (MINOR 13): larger total edge protrusion at the current rim depth; ties → OD. */
+  /** Side eye (MINOR 13): larger total edge protrusion at the current rim depth; ties → OD. In A/B the compared eye. */
   function currentSideEye() {
+    if (cmp) return cmp.eye;
     const rim = last?.display?.rimDepthMm;
     const total = (eye) => {
       const r = last?.eyes[eye]?.result;
@@ -453,8 +538,26 @@ export function mountView({ slot }) {
     return sideEye({ OD: total('OD'), OS: total('OS') });
   }
 
+  /** 03-14: lens-local camera data of the A (Vorher) and B (Nachher) lens of the compared eye. */
+  function compareCtx() {
+    const eye = cmp.eye;
+    const aReady = attachedEyeA.A === eye && attachedEyeA.frameA === eye;
+    const local = (sphere, z) => (sphere ? { ...sphere, z: sphere.z + z } : null);
+    const fa = aReady ? frameA.localEye(eye) : null;
+    const fb = frame.localEye(eye);
+    return compareContext({
+      aspect: compare3d.aspect(),
+      eye,
+      lensSpheres: [aReady ? local(lenses.sphere('A'), frameA.lensZ()[eye]) : null, local(lenses.sphere(eye), lenses.group(eye).position.z)],
+      sideTargets: { A: fa?.sideTarget ?? null, B: fb?.sideTarget ?? null },
+      eyeBoxes: { A: fa?.box ?? null, B: fb?.box ?? null },
+    });
+  }
+
   const cameraCtx = () =>
-    cameraContext({ frameData: frame.cameraData(), lensRadius: lenses.unionRadius(), aspect: view.camera.aspect, side: currentSideEye() });
+    compare3d.state().active
+      ? compareCtx()
+      : cameraContext({ frameData: frame.cameraData(), lensRadius: lenses.unionRadius(SLOTS), aspect: view.camera.aspect, side: currentSideEye() });
 
   /** New limits (R1-4), chart rectangle (A2) and, unless turned freely, the current preset pose. */
   function refresh() {
@@ -515,6 +618,18 @@ export function mountView({ slot }) {
   let ariaTimer = null;
   function writeAria() {
     ariaTimer = null;
+    if (cmp) {
+      // 03-14: thickest(m) of the compared eye per configuration, the card rule (fmtMm).
+      const th = (r) => (r?.ok ? fmtMm(thickest(r.metrics).value) : '–');
+      const label = t('view.aria.compare', {
+        eye: t(cmp.eye === 'OS' ? 'view.viewName.os' : 'view.viewName.od'),
+        viewName: viewNameText(),
+        a: th(cmp.A?.[cmp.eye]),
+        b: th(last?.eyes[cmp.eye]?.result),
+      });
+      if (canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
+      return;
+    }
     if (mode === 'heat' && heatState) {
       const label = t('view.aria.heat', { viewName: viewNameText(), min: fmtMm(heatState.scale.min), max: fmtMm(heatState.scale.max) });
       if (canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
@@ -589,20 +704,45 @@ export function mountView({ slot }) {
   /** 03-13: the picker moves the callouts, iso labels and the camera framing; the table stays. */
   function pickHeatEye(eye) {
     pickedEye = eye;
-    if (mode !== 'heat' || !heatState?.table?.[eye] || heatState.eye === eye) return;
+    if (cmp || mode !== 'heat' || !heatState?.table?.[eye] || heatState.eye === eye) return;
     heatState.eye = eye;
     applyHeatLabels();
     controls.goTo('heat', eye);
     scheduleAria();
   }
+  /** 03-14: a lens group's position as drawn in the A/B pass (recentred, x = 0). */
+  const centred = (get) => ({
+    get position() {
+      const p = get();
+      return { x: 0, y: p.y, z: p.z };
+    },
+  });
+  const centredB = centred(() => lenses.group(cmp?.eye ?? 'OD').position);
+  const centredA = centred(() => ({ y: 0, z: frameA.lensZ()[cmp?.eye ?? 'OD'] }));
+
   /** Callouts and iso labels for heatState.eye (text-change path), picker state, then a settle. */
   function applyHeatLabels() {
+    if (heatState?.compare) {
+      // 03-14: Vorher (A) and Nachher (B) of the compared eye; only the shown one below 360 px.
+      const c = heatState.compare;
+      const cs = compare3d.state();
+      heatEyeEl.hidden = true;
+      for (const half of /** @type {const} */ (['A', 'B'])) {
+        const v = c[half];
+        if (v && (half === 'B' || c.aDrawn) && (cs.split || cs.shown === half)) {
+          setHeatLabels({ eye: c.eye, lens: v.lens, metrics: v.metrics, callouts: v.callouts, levels: heatState.levels, group: half === 'A' ? centredA : centredB }, half);
+        } else clearHeatLabels(half);
+      }
+      requestSettle();
+      return;
+    }
     const eye = heatState?.eye;
     const v = eye ? heatState.table?.[eye] : null;
     if (!v) {
       clearHeatLabels();
       heatEyeEl.hidden = true;
     } else {
+      clearHeatLabels('A');
       setHeatLabels({ eye, lens: v.lens, metrics: v.metrics, callouts: v.callouts, levels: heatState.levels, group: lenses.group(eye) });
       heatEyeEl.hidden = false;
       for (const r of heatEyeRadios) {
@@ -633,6 +773,10 @@ export function mountView({ slot }) {
   /** Scale, levels, legend and table from the engine for the drawn eyes (memo key per delivery). */
   function paintHeat() {
     if (mode !== 'heat') return;
+    if (cmp) {
+      paintHeatCompare();
+      return;
+    }
     const eyes = heatEyes();
     const key = JSON.stringify(eyes.map((e) => [e, last.eyes[e].result.surfaces, last.eyes[e].result.metrics, last.eyes[e].frame]));
     if (heatState?.key === key) return;
@@ -667,6 +811,60 @@ export function mountView({ slot }) {
     scheduleAria();
   }
 
+  /**
+   * 03-14 (D-25): A/B Dickenkarte. One heatScale over all four lenses (A OD/OS when computed, the
+   * drawn B eyes), isoLevels for the step; the table and the callouts for the compared eye.
+   */
+  function paintHeatCompare() {
+    const eye = cmp.eye;
+    const cs = compare3d.state();
+    const bEyes = heatEyes();
+    const aEyes = SLOTS.filter((e) => cmp.A?.[e]?.ok && cmp.specA[e]?.frame);
+    const aDrawn = attachedEyeA.A === eye && lenses.visible('A');
+    const entry = (result, f) => {
+      const lens = { surfaces: result.surfaces, frame: { shape: f.shape, A: f.A, B: f.B }, eye };
+      return { callouts: heatCallouts(lens, result.metrics), metrics: result.metrics, lens };
+    };
+    const key = JSON.stringify([
+      'cmp',
+      eye,
+      cs.split,
+      cs.shown,
+      aDrawn,
+      aEyes.map((e) => [e, cmp.A[e].surfaces, cmp.A[e].metrics, cmp.specA[e].frame]),
+      bEyes.map((e) => [e, last.eyes[e].result.surfaces, last.eyes[e].result.metrics, last.eyes[e].frame]),
+    ]);
+    if (heatState?.key === key) return;
+    const metrics = [...aEyes.map((e) => cmp.A[e].metrics), ...bEyes.map((e) => last.eyes[e].result.metrics)];
+    if (metrics.length === 0) {
+      heatState = { key, scale: null, levels: null, eye, table: null, compare: null };
+      $('view-legend').hidden = true;
+      $('view-heat-table').hidden = true;
+      $('view-heat-nochord').hidden = true;
+      clearHeatLabels();
+      heatEyeEl.hidden = true;
+      requestSettle();
+      return;
+    }
+    const scale = heatScale(metrics);
+    const levels = isoLevels(scale.min, scale.max);
+    heat.setScale(levels);
+    const compare = {
+      eye,
+      A: aEyes.includes(eye) ? entry(cmp.A[eye], cmp.specA[eye].frame) : null,
+      B: bEyes.includes(eye) ? entry(last.eyes[eye].result, last.eyes[eye].frame) : null,
+      aDrawn,
+    };
+    heatState = { key, scale, levels, eye, table: null, compare };
+    $('view-legend').hidden = false;
+    $('view-heat-table').hidden = false;
+    renderLegend({ min: scale.min, max: scale.max, levels });
+    renderHeatTable({ compare });
+    applyHeatLabels();
+    view.requestRender();
+    scheduleAria();
+  }
+
   /** @param {'glass' | 'heat'} next */
   function setMode(next) {
     if (next === mode) return;
@@ -686,7 +884,7 @@ export function mountView({ slot }) {
     updateLabels(drawnLenses());
     if (isHeat) {
       paintHeat();
-      controls.goTo('heat', heatState?.eye ?? 'OD');
+      controls.goTo('heat', heatState?.eye ?? cmp?.eye ?? 'OD');
     }
     view.requestRender();
     scheduleAria();
@@ -700,10 +898,12 @@ export function mountView({ slot }) {
     frame.setFade(nearTempleFade(dir));
   });
   view.onResize(() => {
+    syncCompare(true); // the split depends on the stage width
     if (attachedOnce) refresh();
     updateAvoid(true);
     requestSettle(true);
   });
+
   for (const type of ['focus', 'blur', 'keydown']) $('view-stage').addEventListener(type, () => updateAvoid());
   avoidReady = true;
   updateAvoid();
@@ -720,12 +920,60 @@ export function mountView({ slot }) {
       labels.setText(i, text);
       parts.push(text, anchors[eye] && [anchors[eye].x, anchors[eye].y]);
     });
-    setText('view-caption', t(!any ? 'view.empty' : mode === 'heat' ? 'view.caption.heat' : 'view.caption.glass'));
+    const caption = !any
+      ? t('view.empty')
+      : cmp
+        ? t('view.caption.compare', { eye: t(cmp.eye === 'OS' ? 'view.aria.eye.os' : 'view.aria.eye.od') })
+        : t(mode === 'heat' ? 'view.caption.heat' : 'view.caption.glass');
+    setText('view-caption', caption);
     const key = JSON.stringify(parts);
     if (key !== labelKey) {
       labelKey = key;
       view.requestRender();
     }
+  }
+
+  /**
+   * 03-14: push the comparison state to compare3d. Entering or leaving the comparison resets the
+   * camera (default, or the Dickenkarte pose of the compared / heat eye); "Vergleich beenden"
+   * therefore returns to the full-glasses default view. The A half is drawn only once the A lens
+   * and rim of the current A input are attached (no stale A mesh, T-03-38).
+   * @param {boolean} [fromResize] the caller (onResize) refreshes the camera itself
+   */
+  function syncCompare(fromResize = false) {
+    const was = compare3d.state();
+    const aOk = cmp !== null && wantKey.A !== null && attachedKey.A === wantKey.A && (wantKey.frameA === null || attachedKey.frameA === wantKey.frameA);
+    const changed = compare3d.setState({
+      active: cmp !== null,
+      eye: cmp?.eye,
+      stageWidth: $('view-stage').clientWidth,
+      shown: cmp?.showA ? 'A' : 'B',
+      aEye: aOk ? cmp.eye : null,
+    });
+    if (!changed) return;
+    const now = compare3d.state();
+    if (now.active) heatEyeEl.hidden = true;
+    if (!attachedOnce) {
+      view.requestRender();
+      return;
+    }
+    if (was.active !== now.active) {
+      updateLabels(drawnLenses());
+      heatState = null; // repaint the map, table and callouts in the new layout
+      if (mode === 'heat') {
+        clearHeatLabels();
+        paintHeat();
+      }
+      refresh();
+      if (mode === 'heat') controls.goTo('heat', heatState?.eye ?? now.eye, { cut: true });
+      else controls.goTo('default', 'OD', { cut: true });
+    } else {
+      if (was.eye !== now.eye) updateLabels(drawnLenses());
+      if (!fromResize && (was.eye !== now.eye || was.split !== now.split || was.aEye !== now.aEye)) refresh();
+      if (mode === 'heat') paintHeat();
+    }
+    view.requestRender();
+    scheduleAria();
   }
 
   /** The frame the view draws: the shown eyes' frame, else the frame of the last input. */
@@ -751,6 +999,41 @@ export function mountView({ slot }) {
         attachedKey[eye] = null;
       }
     }
+    // 03-14 (RES-03): the A lens and its rim for the compared eye, in the same latest-wins job.
+    cmp = null;
+    wantKey.A = null;
+    wantKey.frameA = null;
+    const c = inputs.compare ?? null;
+    let rA = null;
+    if (c) {
+      const th = (r) => (r?.ok ? thickest(r.metrics).value : null);
+      const eye = compareEye({
+        A: c.A ? { OD: th(c.A.OD), OS: th(c.A.OS) } : null,
+        B: { OD: th(inputs.eyes.OD?.result), OS: th(inputs.eyes.OS?.result) },
+      });
+      cmp = { eye, A: c.A, specA: c.specA, showA: c.showA };
+      rA = c.A?.[eye] ?? null;
+      const fA = c.specA?.[eye]?.frame ?? null;
+      const dispA = inputs.display;
+      if (rA?.ok && fA) {
+        const { shape, A, B, DBL } = fA;
+        const item = { slot: 'A', eye, surfaces: rA.surfaces, frame: { shape, A, B } };
+        want.A = { item, meta: { ...item, key: lensKey(eye, rA.surfaces, fA), DBL } };
+        wantKey.A = want.A.meta.key;
+        if (dispA) {
+          const other = eye === 'OD' ? 'OS' : 'OD';
+          const eyes = /** @type {{ OD: any, OS: any }} */ ({ [eye]: rA.surfaces, [other]: null });
+          const { rimDepthMm } = dispA;
+          const templeMm = dispA.templeMm ?? TEMPLE_DEFAULT_MM;
+          const key = JSON.stringify(['A', shape, A, B, DBL, eye, rA.surfaces, rimDepthMm, templeMm]);
+          want.frameA = {
+            item: { slot: 'frameA', frame: { shape, A, B, DBL }, eyes, rimDepthMm, templeMm },
+            meta: { key, eye, A, B, DBL, rimDepthMm, templeMm },
+          };
+          wantKey.frameA = key;
+        }
+      }
+    }
     const f = frameFor(inputs);
     const disp = inputs.display;
     if (f && disp) {
@@ -771,12 +1054,15 @@ export function mountView({ slot }) {
       attachedKey.frame = null;
     }
     updateLabels(new Set(SLOTS.filter((s) => want[s])));
-    const nextAbbe = { OD: inputs.eyes.OD?.result?.intermediates?.abbe ?? null, OS: inputs.eyes.OS?.result?.intermediates?.abbe ?? null };
-    if (nextAbbe.OD !== abbe.OD || nextAbbe.OS !== abbe.OS) {
+    const nextAbbe = { OD: inputs.eyes.OD?.result?.intermediates?.abbe ?? null, OS: inputs.eyes.OS?.result?.intermediates?.abbe ?? null, A: null };
+    // 03-14: outside a comparison the A glass mirrors OD, so the warm-up compiles no extra program.
+    nextAbbe.A = rA?.ok ? (rA.intermediates?.abbe ?? null) : nextAbbe.OD;
+    if (nextAbbe.OD !== abbe.OD || nextAbbe.OS !== abbe.OS || nextAbbe.A !== abbe.A) {
       abbe = nextAbbe;
       setDispersion();
     }
 
+    syncCompare();
     const send = Object.entries(want).filter(([slotName, w]) => w.meta.key !== attachedKey[slotName]);
     const sig = JSON.stringify(send.map(([slotName, w]) => [slotName, w.meta.key]));
     if (outstanding !== null && outstanding.sig === sig) {
@@ -796,7 +1082,8 @@ export function mountView({ slot }) {
       return;
     }
     // Changed items, or nothing changed but a job is outstanding: requestMesh([]) makes it stale.
-    const items = send.map(([slotName, w]) => ({ ...w.item, buffers: slotName === 'frame' ? frame.take() : lenses.takeSpare(slotName) }));
+    const take = (slotName) => (slotName === 'frame' ? frame.take() : slotName === 'frameA' ? frameA.take() : lenses.takeSpare(slotName));
+    const items = send.map(([slotName, w]) => ({ ...w.item, buffers: take(slotName) }));
     const { gen, dropped } = client.requestMesh(items);
     giveBackAll(dropped);
     outstanding = { gen, sig };
@@ -838,11 +1125,38 @@ export function mountView({ slot }) {
         .map((el) => {
           const c = el.classList;
           const r = el.getBoundingClientRect();
-          const kind = c.contains('view-dot') ? 'dot' : c.contains('view-label--callout') ? 'callout' : c.contains('view-label--iso') ? 'iso' : 'eye';
-          return { kind, key: /** @type {HTMLElement} */ (el).dataset.key ?? null, text: el.textContent, rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
+          const kind = c.contains('view-dot')
+            ? 'dot'
+            : c.contains('view-label--callout')
+              ? 'callout'
+              : c.contains('view-label--iso')
+                ? 'iso'
+                : c.contains('view-label--caption')
+                  ? 'caption'
+                  : 'eye';
+          const d = /** @type {HTMLElement} */ (el).dataset;
+          return { kind, key: d.key ?? null, half: d.half ?? null, text: el.textContent, rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
         }),
       calloutsFit: calloutsFit(),
     }),
+    /** 03-14 test-only: the A/B state and the projected outline width (CSS px) of each half's lens. */
+    compareInfo: () => {
+      const cs = compare3d.state();
+      const widthPx = { A: null, B: null };
+      if (cmp) {
+        const eye = cmp.eye;
+        const fa = cmp.specA?.[eye]?.frame;
+        const fb = last?.eyes[eye]?.frame;
+        const halves = cs.split ? ['A', 'B'] : [cs.shown];
+        if (halves.includes('A') && fa && cs.aEye === eye && lenses.visible('A')) {
+          widthPx.A = compare3d.widthPx('A', frameOutline(fa.shape, fa.A, fa.B, eye), frameA.lensZ()[eye]);
+        }
+        if (halves.includes('B') && fb && lenses.visible(eye)) {
+          widthPx.B = compare3d.widthPx('B', frameOutline(fb.shape, fb.A, fb.B, eye), lenses.group(eye).position.z);
+        }
+      }
+      return { active: cs.active, split: cs.split, eye: cs.eye, shown: cs.shown, aReady: cs.aEye === cs.eye, widthPx };
+    },
     /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
     rotateActive: () => controls.rotateActive(),
     /** 03-09: camera state, derived limits and the side eye. */

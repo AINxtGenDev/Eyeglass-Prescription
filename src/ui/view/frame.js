@@ -26,6 +26,11 @@
 // mesh.material; no material flag is ever toggled (that would force a program rebuild). The faded
 // clones sit on hidden one-triangle carrier meshes from the start, so the renderer's compile()
 // (r187 walks scene.traverse, hidden meshes included) prepares their programs before first use.
+//
+// 03-14 (RES-03): view.js creates a second instance for configuration A ('frameA') with no lens
+// groups (compare3d.js sets the A lens z from lensZ()). compareParts(eye) hands compare3d the rim
+// group of one eye and every other part, so its render pass can show one rim, recentred, and
+// restore everything afterwards. No mesh, geometry or material is created or disposed for that.
 import { BufferGeometry, BufferAttribute, Group, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, Sphere, Vector3 } from 'three';
 import {
   allocFrameBuffers,
@@ -70,7 +75,8 @@ function ringCentre(pos, rings, k) {
 
 /**
  * @param {import('three').Scene} scene
- * @param {{ OD: import('three').Group, OS: import('three').Group }} lensGroups the lens slot groups
+ * @param {{ OD?: import('three').Group, OS?: import('three').Group }} lensGroups the lens slot groups
+ *   (none for the compare frame 'frameA', 03-14)
  */
 export function createFrame(scene, lensGroups) {
   const materials = {
@@ -132,7 +138,7 @@ export function createFrame(scene, lensGroups) {
   let last = null;
 
   const applyLensZ = () => {
-    for (const eye of EYES) lensGroups[eye].position.z = lastLensZ[eye];
+    for (const eye of EYES) if (lensGroups[eye]) lensGroups[eye].position.z = lastLensZ[eye];
   };
 
   /** Hide the frame (no frame inputs, or a frame that is not drawable); lens z stays. */
@@ -201,6 +207,40 @@ export function createFrame(scene, lensGroups) {
       return true;
     },
     visible: () => root.visible,
+    /** 03-14: the common-rim-plane z of each lens of the last drawable item. */
+    lensZ: () => ({ ...lastLensZ }),
+    /**
+     * 03-14: the parts compare3d.js toggles in its render pass: the root, the rim group of `eye`
+     * and every mesh that is not that eye's rim (bridge, temples, hinges, the other rim).
+     * @param {'OD' | 'OS'} eye
+     */
+    compareParts: (eye) => ({
+      root,
+      rim: rimGroups[eye],
+      others: Object.entries(meshes)
+        .filter(([part]) => part !== `rim${eye}`)
+        .map(([, m]) => m),
+      rimGroups: Object.values(rimGroups),
+      /** bridge, temples and hinges (never shown in a comparison) */
+      nonRim: Object.entries(meshes)
+        .filter(([part]) => !part.startsWith('rim'))
+        .map(([, m]) => m),
+    }),
+    /**
+     * 03-14: the eye's lens + rim box and temporal rim point of the last drawable item in
+     * lens-local coordinates (the boxing centre subtracted from x), or null.
+     * @param {'OD' | 'OS'} eye
+     */
+    localEye(eye) {
+      if (!root.visible || !last?.item.eyeBox || !last.item.sideTarget) return null;
+      const bx = boxingCentreX(eye, last.meta.A, last.meta.DBL);
+      const b = last.item.eyeBox[eye];
+      const st = last.item.sideTarget[eye];
+      return {
+        box: { min: { ...b.min, x: b.min.x - bx }, max: { ...b.max, x: b.max.x - bx } },
+        sideTarget: { ...st, x: st.x - bx },
+      };
+    },
     /** Camera data of the last drawable item (03-09, 03-12), or null. */
     cameraData: () =>
       root.visible && last
@@ -240,7 +280,7 @@ export function createFrame(scene, lensGroups) {
         rimDepth: last?.meta.rimDepthMm ?? null,
         rimVisible: { OD: shown && rimGroups.OD.visible, OS: shown && rimGroups.OS.visible },
         lensZ: last?.item.lensZ ?? null,
-        lensGroupZ: { OD: lensGroups.OD.position.z, OS: lensGroups.OS.position.z },
+        lensGroupZ: { OD: lensGroups.OD?.position.z ?? null, OS: lensGroups.OS?.position.z ?? null },
         sideTarget: last?.item.sideTarget ?? null,
         eyeBox: last?.item.eyeBox ?? null,
         boundingBox: last?.item.boundingBox ?? null,

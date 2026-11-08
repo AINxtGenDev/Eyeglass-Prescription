@@ -735,6 +735,16 @@ export default Object.freeze({
     'Der optische Mittelpunkt liegt außerhalb der Fassungsform, deshalb gibt es keine Randwerte durch die Mitte.',
   'view.aria.heat':
     'Dickenkarte, {viewName}. Dünnste Stelle {min}, dickste Stelle {max}. Die Werte an markanten Stellen stehen in der Tabelle unter der Ansicht.',
+  // 03-14 (RES-03, D-24/D-25; UI-SPEC "A/B in 3D" and Copywriting). {eye} in view.caption.compare
+  // = view.aria.eye.* ('Rechtes'/'Linkes'); in view.aria.compare and view.table.caption.compare
+  // = view.viewName.od/os ('rechtes'/'linkes'). {a}/{b} = fmtMm of thickest(m) (the card rule).
+  'view.caption.compare': '{eye} Glas im Vergleich – gleicher Maßstab, gleicher Blickwinkel.',
+  'view.ab.a': 'Vorher (A)',
+  'view.ab.b': 'Nachher (B)',
+  'view.aria.compare': 'Vergleich {eye} Glas, {viewName}. Vorher (A): dickste Stelle {a}. Nachher (B): dickste Stelle {b}.',
+  'view.table.caption.compare': 'Dicke an markanten Stellen – {eye} Glas',
+  'view.table.col.a': 'Vorher (A)',
+  'view.table.col.b': 'Nachher (B)',
   'view.noWebgl':
     'Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem.',
 

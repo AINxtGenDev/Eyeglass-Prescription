@@ -15,6 +15,9 @@
 // `thick` array, swapped in attach like the others, so one GPU buffer). setMode swaps the face
 // meshes' material between the slot's glass material and the shared heat material; both are
 // created once and never recreated.
+// 03-14 (RES-03): the 'A' slot (Vorher) is created at mount like OD/OS. `visible(name)` keeps
+// meaning "drawn" (attached and drawable); compare3d.js toggles group.visible only inside its own
+// render pass and restores it, so nothing outside the pass sees the per-half state.
 import { BufferGeometry, BufferAttribute, Group, Mesh, MeshPhysicalMaterial, Sphere, Vector3, FrontSide } from 'three';
 import { allocLensBuffers, LENS_LENGTHS } from '../../engine/mesh/lens.js';
 import { FRONT_INDEX, BACK_INDEX, BAND_INDEX } from '../../engine/mesh/topology.js';
@@ -169,15 +172,25 @@ export function createLensSlots(scene, slotNames, heatMaterial) {
     place(name, eye, A, DBL) {
       slots[name].group.position.x = boxingCentreX(eye, A, DBL);
     },
-    /** Radius about the origin of the union of the visible slots' spheres (world, mm); 0 if none. */
-    unionRadius() {
+    /**
+     * Radius about the origin of the union of the visible slots' spheres (world, mm); 0 if none.
+     * @param {string[]} [names] the slots to include (default all; view.js passes OD/OS, 03-14)
+     */
+    unionRadius(names = Object.keys(slots)) {
       let r = 0;
-      for (const s of Object.values(slots)) {
+      for (const s of names.map((n) => slots[n])) {
         if (!s.group.visible || !s.sphere) continue;
         const c = s.sphere.center;
         r = Math.max(r, Math.hypot(c.x + s.group.position.x, c.y, c.z + s.group.position.z) + s.sphere.radius);
       }
       return r;
+    },
+    /** 03-14: the attached lens-local bounding sphere { x, y, z, r } (z without the group z), or null. */
+    sphere(name) {
+      const s = slots[name];
+      if (!s.group.visible || !s.sphere) return null;
+      const c = s.sphere.center;
+      return { x: c.x, y: c.y, z: c.z, r: s.sphere.radius };
     },
     /** Test-only: max over the attached band of front z − back z, or null when hidden. */
     edgeMax(name) {

@@ -1840,6 +1840,23 @@ td:has(.msg-out) input[aria-invalid='true'] {
   font-weight: 400;
 }
 
+/* 03-14 (RES-03, UI-SPEC "A/B in 3D"): the 2 px divider between the Vorher and Nachher halves;
+   the captions reuse the .view-label pill (14 px 600 on --bg). */
+.view-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--line);
+  pointer-events: none;
+}
+
+.view-divider[hidden] {
+  display: none;
+}
+
 #view-caption {
   margin-block: var(--space-2) 0;
   font-size: 0.875rem;

@@ -18,6 +18,8 @@
 // - Context loss (Pitfall 7): three.js prevents the default and re-inits its GL state on restore;
 //   the PMREM environment is a render target, so it is lost and regenerated here; canvas textures
 //   re-upload from their canvas (onContext 'restored' hooks). No restore within 5 s → 'gone'.
+// 03-14 (RES-03): setPass(fn) replaces the single renderer.render(scene, camera) of render() by
+// compare3d.js's pass (two scissor halves with the same camera); hooks run once around it.
 // 03-09 (VIZ-03): the camera poses live in camera-math.js and controls.js (fit() is gone).
 // - beforeRender hooks run before each render (controls.update / preset tween, chart fade);
 //   onResize hooks run after a stage resize, before its render (limits and preset refit).
@@ -112,6 +114,7 @@ export function createScene(canvas, stage) {
   let interacting = false;
   let lastRenderAt = null;
   let stepPending = false;
+  let pass = () => renderer.render(scene, camera);
 
   /** Interaction frame time → monitor; one step down when the median is too slow. */
   function sample() {
@@ -133,7 +136,7 @@ export function createScene(canvas, stage) {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
     for (const fn of preHooks) fn();
-    renderer.render(scene, camera);
+    pass();
     sample();
     for (const fn of hooks) fn();
   }
@@ -194,6 +197,10 @@ export function createScene(canvas, stage) {
     render,
     requestRender,
     afterRender: (fn) => hooks.push(fn),
+    /** 03-14: the draw step of render() (default: one renderer.render with the one camera). */
+    setPass: (fn) => {
+      pass = fn;
+    },
     beforeRender: (fn) => preHooks.push(fn),
     onResize: (fn) => resizeHooks.push(fn),
     /** 03-09: true while the user drags or damping still moves (frame-time monitor). */
