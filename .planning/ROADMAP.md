@@ -238,7 +238,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Bevel split (D-05) and front-surface lead in the engine; Expert rim lines show front/back protrusion and the lead (deliberate phase-2 change)
+- [x] 03-01-PLAN.md — Bevel split (D-05) and front-surface lead in the engine; Expert rim lines show front/back protrusion and the lead (deliberate phase-2 change)
 - [ ] 03-02-PLAN.md — Three.js lint boundary; fixed-topology lens mesh builder with D-04 (a)–(d) and the tessellation bound (10-point probe)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 0/TBD | Not started | - |
+| 3. 3D Lenses & Frame | 1/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
