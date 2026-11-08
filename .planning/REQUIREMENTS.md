@@ -71,7 +71,7 @@
 ### Explanations & Usability (UX)
 
 - [x] **UX-01**: Every technical term (Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration) has a one- or two-sentence German explanation that opens by tap (not hover-only) and by keyboard.
-- [x] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06). (2026-11-07, lens-critic m1: everything except the heatmap is delivered in phase 2; the heatmap follows in phase 3 with the 3D view. Pending until then.)
+- [ ] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06). (2026-11-07, lens-critic m1: everything except the heatmap is delivered in phase 2; the heatmap follows in phase 3 with the 3D view. Pending until then.)
 - [ ] **UX-03**: Layout works on phone (from 320 px width), tablet and desktop; on phones the lens view stays visible while editing inputs; long German compound words never overflow. (2026-11-07, lens-critic m1: phone/tablet/desktop layout and German word wrapping are delivered in phase 2; the lens view that stays visible while editing on phones needs the phase-3 3D view (#bar-view-slot). Pending until then.)
 - [x] **UX-04**: Fully keyboard operable; all inputs labelled; WCAG AA contrast; no information conveyed by colour alone; automated accessibility checks pass in CI.
 - [x] **UX-05**: Terminology avoids ambiguous words (e.g. "Stärke" for both power and thickness): power is "Dioptrien (dpt)", thickness is "Mittendicke"/"Randdicke".
@@ -185,7 +185,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-05 | Phase 2 | Complete |
 | RES-06 | Phase 1 | Complete |
 | UX-01 | Phase 2 | Complete |
-| UX-02 | Phase 2 + 3 | Complete |
+| UX-02 | Phase 2 + 3 | Pending |
 | UX-03 | Phase 2 + 3 | Pending |
 | UX-04 | Phase 2 | Complete |
 | UX-05 | Phase 2 | Complete |
