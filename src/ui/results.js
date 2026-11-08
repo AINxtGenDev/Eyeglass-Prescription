@@ -69,6 +69,21 @@ export function setCardConfig(config) {
  */
 const lastLoc = { OD: null, OS: null };
 
+/**
+ * 03-11 (D-29): the strings the last card paint wrote per eye, so the 3D view's accessible name
+ * repeats the card instead of formatting numbers again; null = no result painted on that card.
+ * config = the configuration the card showed ('a' = Vorher (A), null = the current input).
+ */
+const painted = { OD: null, OS: null };
+
+/**
+ * @param {'OD'|'OS'} eye
+ * @returns {{ thick: string, thickLoc: string, ct: string, materialId: string | null, config: 'a' | null } | null}
+ */
+export function cardStrings(eye) {
+  return painted[eye] ? { ...painted[eye] } : null;
+}
+
 /** Lay location word, plus the technical term in parentheses in the Experten-Ansicht. */
 const locText = (code) => t('loc.' + code) + (isExpert() ? ' (' + t('loc.tech.' + code) + ')' : '');
 
@@ -103,6 +118,7 @@ function noResult(eye) {
   customLabel(eye, false);
   displayed[eye] = null;
   lastLoc[eye] = null;
+  painted[eye] = null;
   for (const c of CELLS) setText(`${p}-${c}`, DASH);
   thinEdge(eye, '');
   clearZwischenwerte(eye);
@@ -277,6 +293,7 @@ export function renderResult(eye, res, spec) {
   // The headline keeps the lay words only; the spans get the Expert suffix (writeLocs).
   const thickLoc = t('loc.' + lastLoc[eye].thick);
   const thinLoc = t('loc.' + lastLoc[eye].thin);
+  painted[eye] = { thick, thickLoc, ct, materialId: spec?.materialId ?? null, config: cardConfig };
   $(`${p}-grid`).hidden = false;
   $(`${p}-empty`).hidden = true;
   setText(`${p}-thick`, thick);

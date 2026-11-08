@@ -678,6 +678,27 @@ export default Object.freeze({
   'view.viewName.free': 'frei gedreht',
   'view.viewName.od': 'rechtes',
   'view.viewName.os': 'linkes',
+  // 03-11, D-19 (UI-SPEC Protrusion with Revision 1 R1-7); {front}/{back} = fmtMm(bevelSplit(...)),
+  // {lead} = fmtMm(frontLeadMm(...).value), the same helpers and rim depth as the Expert rim lines.
+  'view.protrusion.title': 'Überstand am dicksten Glasrand',
+  'view.protrusion.both': '{eye}: Glasrand vorne {front}, hinten {back} aus der Fassung',
+  'view.protrusion.front': '{eye}: Glasrand vorne {front} aus der Fassung, hinten bündig',
+  'view.protrusion.back': '{eye}: Glasrand hinten {back} aus der Fassung, vorne bündig',
+  'view.protrusion.none': '{eye}: Glasrand passt ganz in die Fassung',
+  'view.protrusion.lead': '{eye}: Vorderfläche bis zu {lead} vor der Fassung',
+  'view.protrusion.leadNone': '{eye}: Vorderfläche nicht vor der Fassung',
+  'view.protrusion.assumed': 'Berechnet mit Randtiefe {rim} (angenommener Wert, keine Herstellerangabe; in der Experten-Ansicht änderbar).',
+  'view.protrusion.bevelAssumed': 'Die Aufteilung nach vorne und hinten ist angenommen.',
+  'view.protrusion.eye.od': 'Rechts',
+  'view.protrusion.eye.os': 'Links',
+  // 03-11, D-29 (UI-SPEC Canvas accessible name): view.aria.glass is the UI-SPEC sentence with the
+  // two eye parts as {od} {os}, so a blocked eye can replace its part (view.aria.eyeBlocked). All
+  // numbers and location words are the strings painted on the result cards (results.js cardStrings).
+  'view.aria.glass': '3D-Ansicht der Brille, {viewName}. {od} {os} Fassung {shape} {A}□{DBL}, Material {material}.',
+  'view.aria.eyeGlass': '{eye} Glas: dickste Stelle {thick} {loc}, Mitte {ct}.',
+  'view.aria.eyeBlocked': '{eye} Glas: nicht berechnet.',
+  'view.aria.eye.od': 'Rechtes',
+  'view.aria.eye.os': 'Linkes',
   'view.noWebgl':
     'Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem.',
 

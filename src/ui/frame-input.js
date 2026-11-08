@@ -49,6 +49,14 @@ let onShown = () => {};
 let onDisplayChange = () => {};
 /** Last valid Expert rim depth (display only, 03-07). */
 let rimDepthShown = RIM_DEPTH_DEFAULT_MM;
+/** The last valid rim depth came from an empty field (the assumed default), 03-11. */
+let rimAssumedShown = true;
+/**
+ * A protrusion or lead counts only when its shown 0,1 mm value is not 0,0 (fmtMm rounds 0,05 up),
+ * else 'bündig'. Same rule as view/text.js PROTRUSION_FLUSH_MM (03-11; text.test.js asserts they
+ * agree; not imported, so this module stays free of view imports).
+ */
+const RIM_FLUSH_MM = 0.05;
 
 const stampText = (A, DBL, len) => `${numNf.format(A)}${SQUARE}${numNf.format(DBL)}${len === null ? '' : ' ' + len}`;
 
@@ -85,15 +93,15 @@ export function paintRim() {
       // D-05: front/back split of the thickest edge point by the assumed bevel rule. A side
       // counts only when the shown 0,1 mm value is not 0,0 (fmtMm rounds 0,05 up), else 'bündig'.
       const { front, back } = bevelSplit(p.metrics.etMax.value, depth);
-      const f = front >= 0.05;
-      const b = back >= 0.05;
+      const f = front >= RIM_FLUSH_MM;
+      const b = back >= RIM_FLUSH_MM;
       const key = f && b ? 'frame.rim.both' : f ? 'frame.rim.front' : b ? 'frame.rim.back' : 'frame.rim.fits';
       text = t(key, { glass, front: fmtMm(front), back: fmtMm(back) });
       // lens-critic MAJOR 1: the front surface can bulge ahead of the rim even when the edge is
       // flush at the front; same 0,05 mm threshold.
       const { shape, A, B } = p.frame;
       const lead = frontLeadMm(p.surfaces, frameOutline(shape, A, B, eye), depth).value;
-      leadText = lead >= 0.05 ? t('frame.rim.lead', { glass, lead: fmtMm(lead) }) : t('frame.rim.leadNone', { glass });
+      leadText = lead >= RIM_FLUSH_MM ? t('frame.rim.lead', { glass, lead: fmtMm(lead) }) : t('frame.rim.leadNone', { glass });
       any = true;
     }
     setText(`${RIM_ID}-result-${eye.toLowerCase()}`, text);
@@ -114,18 +122,25 @@ export function paintRim() {
  *   engine's TEMPLE_DEFAULT_MM (importing engine/mesh/frame.js here would put the mesh builder
  *   into the entry bundle, +8 kB). The example stamp "52□18 140" at load counts as 'stamp'. The
  *   drawing may clamp it (engine TEMPLE_RANGE_MM); the view states that.
- * @returns {{ rimDepthMm: number, templeMm: number | null, templeSource: 'stamp' | 'assumed' }}
+ * - rimAssumed (03-11): the rim depth is the assumed default (switch off, or the valid field value
+ *   was empty), so the view states 'angenommener Wert'.
+ * @returns {{ rimDepthMm: number, rimAssumed: boolean, templeMm: number | null, templeSource: 'stamp' | 'assumed' }}
  */
 export function displayFrame() {
   let rimDepthMm = RIM_DEPTH_DEFAULT_MM;
+  let rimAssumed = true;
   if (isExpert()) {
     const r = validateRimDepth(input(RIM_ID).value);
-    if (!r.msg) rimDepthShown = r.value ?? RIM_DEPTH_DEFAULT_MM;
+    if (!r.msg) {
+      rimDepthShown = r.value ?? RIM_DEPTH_DEFAULT_MM;
+      rimAssumedShown = r.value == null;
+    }
     rimDepthMm = rimDepthShown;
+    rimAssumed = rimAssumedShown;
   }
   return temple === null
-    ? { rimDepthMm, templeMm: null, templeSource: 'assumed' }
-    : { rimDepthMm, templeMm: temple, templeSource: 'stamp' };
+    ? { rimDepthMm, rimAssumed, templeMm: null, templeSource: 'assumed' }
+    : { rimDepthMm, rimAssumed, templeMm: temple, templeSource: 'stamp' };
 }
 
 /** Selected id, guarded to a SHAPES key (T-01-21). */

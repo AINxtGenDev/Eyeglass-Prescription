@@ -55,6 +55,9 @@ export const POLAR_MAX = Math.PI - 0.05;
 /** A2: chart extent padding and snap (one checker period, so the 10 mm squares keep their phase) [BP]. */
 export const CHART_PAD_MM = 20;
 export const CHART_SNAP_MM = 20;
+/** Seite near-temple fade: within this angle of a pure side view, at this opacity (UI-SPEC Lighting, 03-11) [BP]. */
+export const TEMPLE_FADE_DEG = 30;
+export const TEMPLE_FADE_OPACITY = 0.25;
 /** Chart plane z (mm): CHART_DISTANCE_MM behind the frame front (03-08). */
 const CHART_Z_MM = -CHART_DISTANCE_MM;
 
@@ -274,6 +277,23 @@ export function keyStep(key, st, { shift = false } = {}) {
   if (key === '+' || key === '=') return out({ distance: Math.max(st.minDistance, st.distance / KEY_ZOOM) });
   if (key === '-') return out({ distance: Math.min(st.maxDistance, st.distance * KEY_ZOOM) });
   if (key === 'Home') return 'reset';
+  return null;
+}
+
+/**
+ * Near-temple fade (03-11, UI-SPEC "Seite near-temple fade"): the temple and hinge on the camera
+ * side render faded when the camera direction is within TEMPLE_FADE_DEG of a pure side view. The
+ * angle is the full 3D angle to the ±x axis, so a steep view from above or below does not fade.
+ * OD's temple is on −x (the wearer's right), OS's on +x (conventions as presetPose 'side').
+ * @param {{ x: number, y: number, z: number }} dir target → camera (any length)
+ * @returns {'OD' | 'OS' | null}
+ */
+export function nearTempleFade(dir) {
+  const l = len(dir);
+  if (!(l > 0)) return null;
+  const c = Math.cos(TEMPLE_FADE_DEG * RAD);
+  if (-dir.x / l >= c) return 'OD';
+  if (dir.x / l >= c) return 'OS';
   return null;
 }
 

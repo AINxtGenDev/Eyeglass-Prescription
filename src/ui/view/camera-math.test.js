@@ -26,6 +26,9 @@ import {
   POLAR_MAX,
   CAMERA_FAR_MM,
   CHART_SNAP_MM,
+  nearTempleFade,
+  TEMPLE_FADE_DEG,
+  TEMPLE_FADE_OPACITY,
 } from './camera-math.js';
 
 const RAD = Math.PI / 180;
@@ -321,5 +324,31 @@ describe('VIZ-03 camera math (03-09)', () => {
     // only the last 30 count
     for (let i = 0; i < 30; i++) m.push(21);
     expect(m.shouldStepDown()).toBe(true);
+  });
+});
+
+describe('Seite near-temple fade (03-11, UI-SPEC)', () => {
+  const at = (deg, el = 0) => {
+    const a = (deg * Math.PI) / 180;
+    const e = (el * Math.PI) / 180;
+    // azimuth from +z toward −x (the wearer's right), as the default 3/4 view
+    return { x: -Math.sin(a) * Math.cos(e), y: Math.sin(e), z: Math.cos(a) * Math.cos(e) };
+  };
+  test('constants', () => {
+    expect(TEMPLE_FADE_DEG).toBe(30);
+    expect(TEMPLE_FADE_OPACITY).toBe(0.25);
+  });
+  test('within 30° of −x → OD, of +x → OS, else null', () => {
+    expect(nearTempleFade({ x: -1, y: 0, z: 0 })).toBe('OD');
+    expect(nearTempleFade({ x: 250, y: 0, z: 0 })).toBe('OS');
+    expect(nearTempleFade(at(90 - 29.9))).toBe('OD');
+    expect(nearTempleFade(at(90 - 30.1))).toBeNull();
+    expect(nearTempleFade(at(-90 + 29.9))).toBe('OS');
+    expect(nearTempleFade(at(35, 15))).toBeNull(); // default 3/4 view
+    expect(nearTempleFade({ x: 0, y: 0, z: 1 })).toBeNull(); // Vorne
+    expect(nearTempleFade({ x: 0, y: 1, z: 0.09 })).toBeNull(); // Oben
+    expect(nearTempleFade(at(90, 29.9))).toBe('OD');
+    expect(nearTempleFade(at(90, 30.1))).toBeNull();
+    expect(nearTempleFade({ x: 0, y: 0, z: 0 })).toBeNull();
   });
 });
