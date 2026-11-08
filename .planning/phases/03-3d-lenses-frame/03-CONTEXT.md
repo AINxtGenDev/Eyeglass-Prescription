@@ -92,6 +92,16 @@ Not in this phase: physically traced refraction through the real surfaces ("Durc
 ### Accessibility
 - **D-29:** The canvas has `role="img"` and a dynamic German `aria-label` summary, for example "3D-Ansicht: rechtes Glas, dickste Stelle 4,1 mm außen …". All information in the view also exists as text: callouts, protrusion, legend. axe runs on Simple, Expert, heatmap and compare modes at 320 px and desktop. Every new string goes into `de-AT.js`, and "Stärke" stays banned.
 
+### Live verification with the chrome-devtools MCP (user instruction 2026-11-08, mandatory)
+- **D-30:** **Every plan that touches the UI or the 3D view is verified with the chrome-devtools MCP, in addition to Playwright/Vitest.** The executor and the verifier do this, and it belongs in each plan's `<verify>` steps.
+  - **Setup:** open the built page with `vite preview` at `/Eyeglass-Prescription/` (or the live site after deploy). Emulate 412×915 (Pixel 7 Pro) and 320 px, plus one desktop width.
+  - **Checks:**
+    - a screenshot of the default view, each preset (Vorne / Seite / Oben), the heatmap and A/B mode;
+    - `list_console_messages` with no WebGL errors or warnings;
+    - `performance_start_trace` / `performance_stop_trace` with 4× CPU throttling during a re-mesh and an orbit;
+    - `evaluate_script` reading `renderer.info.memory` before and after repeated input changes (backs D-27).
+  - **Reporting:** report what the screenshots actually show. A task is not done on a passing test alone.
+
 ### Claude's Discretion
 - Exact tessellation counts within the D-04(c) error bound.
 - The tone-mapping operator, exposure, light rig and contact-shadow technique.
