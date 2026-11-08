@@ -10,7 +10,10 @@
 // - No buffer is lost silently: a job whose buffers went to a worker that errored or went silent
 //   is reported as { items: null, error: true } so the page re-allocates.
 // - Watchdog: no READY, or no reply to a job, within MESH_WATCHDOG_MS → onFallback('timeout');
-//   workerError() → onFallback('error'). Either switches to sync mode for good.
+//   workerError() → onFallback('error'). Either switches to sync mode for good. 03-05: the
+//   compute-client rule applies (once the page owns a mesh worker, a frozen background tab can
+//   reach it): a firing while the tab is hidden, or one more than LATE_MS late (suspended
+//   timers), re-arms instead; resume() re-arms on visibilitychange.
 // - Sync mode: the handler (loadSyncHandler(), a dynamic import) runs on the main thread ONE ITEM
 //   PER MACROTASK, so an input waits for at most one lens build (lens-critic MINOR 7; Open
 //   Question 4). The job's generation is re-checked before each item; a stale job stops early and
@@ -18,6 +21,8 @@
 
 /** Same value and reason as compute-client WATCHDOG_MS. */
 export const MESH_WATCHDOG_MS = 10_000;
+// A watchdog that fires this much later than asked was suspended, not timed out (compute-client).
+const LATE_MS = 1000;
 
 /**
  * @param {object} o
@@ -28,6 +33,8 @@ export const MESH_WATCHDOG_MS = 10_000;
  * @param {(fn: () => void, ms: number) => any} [o.setTimeoutFn]
  * @param {(h: any) => void} [o.clearTimeoutFn]
  * @param {number} [o.watchdogMs]
+ * @param {() => number} [o.now]
+ * @param {() => boolean} [o.isHidden]
  */
 export function createMeshClient({
   send,
@@ -37,6 +44,8 @@ export function createMeshClient({
   setTimeoutFn = (fn, ms) => globalThis.setTimeout(fn, ms),
   clearTimeoutFn = (h) => globalThis.clearTimeout(h),
   watchdogMs = MESH_WATCHDOG_MS,
+  now = () => globalThis.performance.now(),
+  isHidden = () => false,
 }) {
   /** @type {'worker' | 'sync'} */
   let mode = 'worker';
@@ -58,8 +67,13 @@ export function createMeshClient({
 
   function arm() {
     disarm();
+    const start = now();
     watch = setTimeoutFn(() => {
       watch = null;
+      if (isHidden() || now() - start > watchdogMs + LATE_MS) {
+        arm();
+        return;
+      }
       fallback('timeout');
     }, watchdogMs);
   }
@@ -165,6 +179,10 @@ export function createMeshClient({
       if (msg.type === 'mesh') deliver(job, msg.items);
       else deliver(job, null, { error: true });
       pump();
+    },
+    /** visibilitychange back to visible: a running watchdog restarts with a fresh watchdogMs. */
+    resume() {
+      if (watch !== null) arm();
     },
     /** Worker 'error'/'messageerror' or a throwing constructor. */
     workerError() {
