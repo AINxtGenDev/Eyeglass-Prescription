@@ -588,21 +588,26 @@ catch { showNoWebgl(); return; }   // D-17: numbers, compare and cross-section k
 | A10 | Dispersion from νₑ as an approximation of V_d (KHR defines V_d) | Pattern 5 | Cosmetic only, hoch tier |
 | A11 | The lazy three chunk is about 130–170 KB gzip | Env | Slower first 3D on slow networks. Measure in build output |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **D-04(c) for custom nₑ < 1,49**
    - What we know: 64 × 720 rim-graded meets ≤ 0,0078 mm for all sourced materials and Expert overrides with nₑ ≥ 1,49. Custom nₑ 1,40–1,43 gives 0,020 mm (0,0127 even at 128 rings), on lenses with 43–45 mm edges.
    - What's unclear: whether the user accepts the domain split, or wants adaptive refinement.
    - Recommendation: test-assert ≤ 0,01 mm for nₑ ≥ 1,49 (the UI's own hint floor, `validate.js` ne hint [1,49, 1,9]) and ≤ 0,025 mm below that. Put it to lens-critic and the user as an explicit acceptance item.
+   - RESOLVED: user accepted the split on 2026-11-08 (≤ 0,01 mm for nₑ ≥ 1,49, ≤ 0,025 mm below); asserted in 03-02 Task 3.
 2. **Bevel default**
    - Question: '1:2' everywhere vs. minus → '1:2' and plus → '1:1' (forum practice, LOW).
    - Recommendation: one rule ('1:2', cited option) for simplicity. Plus edges rarely exceed 0,75·D anyway.
+   - RESOLVED: user chose '1:2' for all lenses on 2026-11-08, marked as an assumption; implemented in 03-01.
 3. **Callouts when the OC lies outside the outline** (`meridianProfile` → `NO_CHORD`).
    - Recommendation: the table shows "–" with a sentence, and the heatmap still renders (the scale is still valid).
+   - RESOLVED: adopted as recommended; engine side in 03-03, table "–" and sentence in 03-10.
 4. **Sync-mode (no worker) 3D**
    - Choice: build on the main thread after the result paint, or hold like compare jobs.
    - Recommendation: build after paint, in its own task, and accept the frame, because sync mode is a rare fallback already labelled in Technische Angaben.
+   - RESOLVED: adopted as recommended; implemented and tested in 03-13.
 5. **m6 thick-result note** (deferred): the probes show computable lenses with 41–45 mm edges (−10 in 62×55 CR-39). The 3D view will make that visible. Planner: keep it deferred unless a sourced threshold is found; no source was found in this research.
+   - RESOLVED: stays deferred (no sourced threshold); recorded in 03-14.
 
 ## Environment Availability
 

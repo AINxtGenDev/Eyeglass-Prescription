@@ -232,8 +232,59 @@ Plans:
   4. Changing any input re-meshes with no visible lag on a real mid-range phone (measured and recorded), and repeated changes do not grow GPU memory.
   5. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
-**Plans**: TBD
+**Plans**: 14 plans in 12 waves (planned 2026-11-08; engine-first 03-02/03-03 per CLAUDE.md, then vertical slices; D-04(c) split tolerance and the '1:2' bevel change per user decisions 2026-11-08)
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Bevel split (D-05) in the engine; Expert rim lines show front/back protrusion (deliberate phase-2 change)
+- [ ] 03-02-PLAN.md — Three.js lint boundary; fixed-topology lens mesh builder with D-04 (a)–(d) and the tessellation bound
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — Engine frame builder (rims on the bevel curve, bridge = DBL, temples) and heat values (scale, iso levels, callouts)
+- [ ] 03-04-PLAN.md — Worker mesh lane: 'mesh' message, transferred buffers, latest-wins client lane
+
+**Wave 3**
+
+- [ ] 03-05-PLAN.md — First 3D view: both lenses as glass at engine thickness, lazy three.js, no-WebGL and load-failure states
+
+**Wave 4**
+
+- [ ] 03-06-PLAN.md — Parametric acetate frame in 3D from the same inputs (rim depth, temple), Technische Angaben design values
+
+**Wave 5**
+
+- [ ] 03-07-PLAN.md — Studio look: eye chart, contact shadow, quality tiers, dispersion, context-loss recovery
+
+**Wave 6**
+
+- [ ] 03-08-PLAN.md — Orbit/pan/zoom (mouse, keyboard, touch toggle), presets Vorne/Seite/Oben, scroll safety
+
+**Wave 7**
+
+- [ ] 03-09-PLAN.md — Seite protrusion as text, side note, near-temple fade, dynamic aria summary
+
+**Wave 8**
+
+- [ ] 03-10-PLAN.md — Expert Dickenkarte: cividis map, shared scale, iso-lines, legend and value table
+
+**Wave 9**
+
+- [ ] 03-11-PLAN.md — Projected callouts and iso labels with collision priority, eye picker
+
+**Wave 10**
+
+- [ ] 03-12-PLAN.md — A/B in 3D: side-by-side scissor viewports, phone toggle, shared heat scale
+
+**Wave 11**
+
+- [ ] 03-13-PLAN.md — Phone bar thumbnail (UX-03), D-27 leak test, 4× proxy 3D timings, a11y matrix
+
+**Wave 12**
+
+- [ ] 03-14-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live check, Pixel 7 Pro measurement
 
 ### Phase 4: Refraction View & Offline
 
