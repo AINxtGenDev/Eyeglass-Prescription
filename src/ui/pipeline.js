@@ -218,6 +218,8 @@ function viewInputs() {
     frame: currentConfig?.().frame ?? null,
     display: displayFrame(),
     compare: configA ? { A: resultA ?? null, specA, showA } : null,
+    // 03-15: test-only, behind ?perfmarks (the view's u:view-input-paint user timing).
+    ...(PERF_MARKS ? { inputTs: lastInputTs } : {}),
   };
 }
 
@@ -369,9 +371,13 @@ let requestedKeys = { OD: null, OS: null };
 /** The main result painted per eye with the key it was computed for (null result = failed). */
 const shown = { OD: null, OS: null };
 
+/** 03-15 (?perfmarks only): the input event time of the latest main request, for u:view-input-paint. */
+let lastInputTs = null;
+
 /** Request the main result: remember the specs (for isCurrent deliveries), then send them. */
 export function requestMain(specs, inputTs) {
   let t0 = PERF_MARKS ? performance.now() : 0;
+  if (PERF_MARKS) lastInputTs = inputTs;
   requested = specs;
   requestedKeys = { OD: specs.OD ? JSON.stringify(specs.OD) : null, OS: specs.OS ? JSON.stringify(specs.OS) : null };
   if (PERF_MARKS) t0 = lap('u:rm.keys', t0);

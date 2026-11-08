@@ -5,7 +5,19 @@
 // here), and assert the stored pair differs before the main assertion.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, settledCompare, thickOf, sphOnly, slowWorker, holdWorker, without3d, WORKER_URL } from './helpers.js';
+import {
+  settled,
+  settledCompare,
+  settledView,
+  thickOf,
+  etmaxOf,
+  sphOnly,
+  slowWorker,
+  holdWorker,
+  without3d,
+  WORKER_URL,
+  MESH_WORKER_URL,
+} from './helpers.js';
 /* global window, document, MutationObserver -- page.evaluate bodies run in the browser */
 
 // Must equal vite.config.js CSP exactly (T-01-39).
@@ -16,7 +28,7 @@ const CSP =
 /** @type {string[]} */
 let consoleErrors;
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
   consoleErrors = [];
   page.on('console', (m) => {
     if (m.type() === 'error') consoleErrors.push(m.text());
@@ -26,7 +38,9 @@ test.beforeEach(async ({ page }) => {
     window.__csp = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
   });
-  await without3d(page); // 03-05: the mesh worker is covered by view.spec.js (helpers.js without3d)
+  // 03-05: the mesh worker is covered by view.spec.js (helpers.js without3d); 03-15: the tests
+  // tagged @view load the 3D view (sync modes and the CSP with the 3D chunk and the mesh worker).
+  if (!testInfo.tags.includes('@view')) await without3d(page);
 });
 
 const sph = (page) => page.locator('#rx-od-sph');
@@ -344,4 +358,66 @@ test('worker failure shows a German message, never NaN', async ({ page }) => {
   }
   await expect(page.locator('body')).not.toContainText('NaN');
   await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
+});
+
+// ---- 03-15 (VIZ-06, Open Question 4, T-03-42): sync modes and the CSP with the 3D view ----
+const round1 = (v) => Math.round(v * 10) / 10;
+const edgeMaxOD = (page) => page.evaluate(() => window.__eyeglassView.edgeMax('OD'));
+
+test('mesh worker blocked: 3D builds on the page, numbers stay in the worker (03-15, Open Question 4)', { tag: '@view' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route(MESH_WORKER_URL, (route) => route.abort());
+  await page.goto('./');
+  await settledView(page, { timeout: 60_000 });
+  await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
+  expect(await page.evaluate(() => window.__eyeglassView.meshMode())).toBe('sync');
+  expect(round1(await edgeMaxOD(page))).toBe(await etmaxOf(page, 'od'));
+  // The 3D view follows an edit after the result paint.
+  await sph(page).fill('-4');
+  await settledView(page, { timeout: 60_000 });
+  expect(round1(await edgeMaxOD(page))).toBe(await etmaxOf(page, 'od'));
+  expect(await page.evaluate(() => window.__csp)).toEqual([]);
+  // The aborted mesh worker request is logged as a failed load; nothing else may error.
+  expect(consoleErrors.filter((e) => !/mesh\.worker|Failed to load|net::ERR_FAILED/.test(e))).toEqual([]);
+});
+
+test('both workers blocked: sync numbers and sync 3D (03-15)', { tag: '@view' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route(WORKER_URL, (route) => route.abort());
+  await page.route(MESH_WORKER_URL, (route) => route.abort());
+  await page.goto('./');
+  await settledView(page, { timeout: 60_000 });
+  await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'sync');
+  expect(await page.evaluate(() => window.__eyeglassView.meshMode())).toBe('sync');
+  expect(round1(await edgeMaxOD(page))).toBe(await etmaxOf(page, 'od'));
+  await sph(page).fill('-4');
+  await settledView(page, { timeout: 60_000 });
+  expect(round1(await edgeMaxOD(page))).toBe(await etmaxOf(page, 'od'));
+  expect(await page.evaluate(() => window.__csp)).toEqual([]);
+  expect(consoleErrors.filter((e) => !/worker|Failed to load|net::ERR_FAILED/.test(e))).toEqual([]);
+});
+
+test('CSP holds with the 3D chunk and the mesh worker (03-15, T-03-42)', { tag: '@view' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  /** @type {string[]} */
+  const assets = [];
+  const cspMessages = [];
+  page.on('response', (r) => {
+    const path = new URL(r.url()).pathname;
+    if (/\/assets\/(view|three|mesh\.worker)[^/]*\.js$/.test(path)) assets.push(`${r.status()} ${path}`);
+  });
+  page.on('console', (m) => {
+    if (m.text().includes('Content Security Policy')) cspMessages.push(m.text());
+  });
+  await page.goto('./');
+  await settledView(page, { timeout: 60_000 });
+  expect(await page.evaluate(() => window.__eyeglassView.meshMode())).toBe('worker');
+  expect(page.workers().some((w) => MESH_WORKER_URL.test(new URL(w.url()).pathname))).toBe(true);
+  expect(assets.some((a) => /^200 \/Eyeglass-Prescription\/assets\/view-/.test(a)), assets.join(', ')).toBe(true);
+  expect(assets.some((a) => /^200 \/Eyeglass-Prescription\/assets\/mesh\.worker/.test(a)), assets.join(', ')).toBe(true);
+  for (const a of assets) expect(a).toMatch(/^200 \/Eyeglass-Prescription\/assets\//);
+  expect(await page.evaluate(() => window.__csp)).toEqual([]);
+  expect(cspMessages).toEqual([]);
+  expect(consoleErrors).toEqual([]);
+  expect(await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).toBe(CSP);
 });

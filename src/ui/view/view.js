@@ -137,6 +137,10 @@ const THUMB_ASPECT = 4 / 3;
 /** Below the desktop breakpoint, the query of summary-bar.js NARROW (the bar exists only there). */
 const NARROW = '(max-width: 899.98px)';
 const RAD = Math.PI / 180;
+// 03-15 test-only user timings (?perfmarks, as pipeline.js since 02-20): 'u:view-remesh' =
+// requestMesh → the render that shows the attached mesh, 'u:view-input-paint' = the input event of
+// the request → that render (once per input). Not emitted without the flag.
+const PERF_MARKS = location.search.includes('perfmarks');
 
 // Test-only (?failframe=<mm>, read once like ?perfmarks): a frame item whose rim depth equals this
 // value is sent with rimDepthMm −1, so the worker's own validation returns ok: false through the
@@ -175,7 +179,8 @@ function showUnavailable(reasonKey) {
  *   showA: boolean }} ViewCompare
  *   03-14: A = the LensResults of configuration A (null while computing or on error), specA its specs
  * @typedef {{ eyes: { OD: ViewEye, OS: ViewEye }, frame?: ViewFrame | null, display?: ViewDisplay,
- *   current: boolean, compare?: ViewCompare | null }} ViewInputs
+ *   current: boolean, compare?: ViewCompare | null, inputTs?: number | null }} ViewInputs
+ *   inputTs = ?perfmarks only (03-15): the input event time of the latest main request
  *   frame = the frame of the last input (drawn alone when no eye has a shown result)
  */
 
@@ -409,6 +414,9 @@ export function mountView({ slot }) {
   const metaByGen = new Map();
   /** performance.now() of each requestMesh, for the re-mesh time (Pitfall 12: 3D only). */
   const sentAtByGen = new Map();
+  /** ?perfmarks: input event time per mesh generation, and the last input already measured. */
+  const inputAtByGen = new Map();
+  let measuredInput = null;
   /** Latest boxing placement per eye (a DBL change moves the lens without a re-mesh). */
   const placement = { OD: null, OS: null };
   let badgeTimer = null;
@@ -496,6 +504,8 @@ export function mountView({ slot }) {
     for (const g of metaByGen.keys()) if (g <= d.gen) metaByGen.delete(g);
     const sentAt = sentAtByGen.get(d.gen);
     for (const g of sentAtByGen.keys()) if (g <= d.gen) sentAtByGen.delete(g);
+    const inputAt = inputAtByGen.get(d.gen);
+    for (const g of inputAtByGen.keys()) if (g <= d.gen) inputAtByGen.delete(g);
     if (outstanding?.gen === d.gen) outstanding = null;
     // Lenses first, then the frame: the frame sets both lens groups' z in this same paint frame.
     const isFrame = (it) => it?.slot === 'frame' || it?.slot === 'frameA';
@@ -543,6 +553,14 @@ export function mountView({ slot }) {
     setPending('');
     requestThumb(true); // carried by the render below (2 passes), see scene.js
     view.render();
+    if (PERF_MARKS) {
+      const end = performance.now();
+      if (sentAt !== undefined) performance.measure('u:view-remesh', { start: sentAt, end });
+      if (typeof inputAt === 'number' && inputAt !== measuredInput) {
+        measuredInput = inputAt;
+        performance.measure('u:view-input-paint', { start: inputAt, end });
+      }
+    }
     if (sentAt !== undefined) setText('tech-view-remesh', t('tech.view.remesh', { ms: fmtMs(performance.now() - sentAt) }));
     scheduleAria();
   }
@@ -1254,6 +1272,7 @@ export function mountView({ slot }) {
     if (jobLog.length > JOB_LOG) jobLog.shift();
     metaByGen.set(gen, Object.fromEntries(send.map(([slotName, w]) => [slotName, w.meta])));
     sentAtByGen.set(gen, performance.now());
+    if (PERF_MARKS) inputAtByGen.set(gen, inputs.inputTs);
     setPending('mesh');
     if (attachedOnce && badgeTimer === null) {
       badgeTimer = setTimeout(() => {
@@ -1265,7 +1284,8 @@ export function mountView({ slot }) {
 
   window.__eyeglassView = Object.freeze({
     memory: () => ({ ...view.renderer.info.memory, programs: view.renderer.info.programs?.length ?? 0 }),
-    allocs: () => ({ page: lenses.allocCount() + frame.allocCount(), worker: workerReallocs }),
+    /** 03-15: buffer-set allocations of every page pool (lens slots incl. A, frame, frameA) and worker re-allocations. */
+    allocs: () => ({ page: lenses.allocCount() + frame.allocCount() + frameA.allocCount(), worker: workerReallocs }),
     meshMode: () => client.mode(),
     viewName: () => controls.viewName(),
     /** 03-12: 'glass' | 'heat', and the engine scale / levels / heat eye of the painted map (null in Glas). */

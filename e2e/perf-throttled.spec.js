@@ -17,12 +17,12 @@
 // - browserContext.newCDPSession(page: Page|Frame): Promise<CDPSession>, "CDP sessions are only
 //   supported on Chromium-based browsers" (node_modules/playwright-core/types/types.d.ts, 1.65.0).
 import { test, expect } from '@playwright/test';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { settled, settledCompare, etmaxOf } from './helpers.js';
-/* global document -- page.evaluate bodies run in the browser */
+import { settled, settledCompare, settledView, etmaxOf } from './helpers.js';
+/* global document, window, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.PERF_OUT ?? path.join(ROOT, 'test-results', 'perf-throttled.json');
@@ -132,14 +132,17 @@ function computeBenchmarkIndex() {
 }
 
 const num = (s) => Number(s.replace(/\s/g, '').replace(',', '.'));
-const READOUT = /Median\s([\d,]+)\sms, p95\s([\d,]+)\sms/;
+// 03-15 (Rule 1): a readout of 1 000 ms or more carries a digit-group space ('2 547,50 ms', de-AT
+// Intl.NumberFormat); `[\d,]+` did not match it, so the run stopped at readResult. Since the 3D view
+// loads in this spec (03-05), a SwiftShader render can hold a result paint that long at 1×.
+const READOUT = /Median\s(\d+(?:\s\d{3})*(?:,\d+)?)\sms, p95\s(\d+(?:\s\d{3})*(?:,\d+)?)\sms/;
 const INPUT_RE =
-  /letzte (\d+) Eingaben\): Median ([\d,]+)\sms, längste ([\d,]+)\sms; Hauptthread je Eingabe einschließlich Darstellung: Median ([\d,]+)\sms, längste ([\d,]+)\sms/;
+  /letzte (\d+) Eingaben\): Median (\d+(?:\s\d{3})*(?:,\d+)?)\sms, längste (\d+(?:\s\d{3})*(?:,\d+)?)\sms; Hauptthread je Eingabe einschließlich Darstellung: Median (\d+(?:\s\d{3})*(?:,\d+)?)\sms, längste (\d+(?:\s\d{3})*(?:,\d+)?)\sms/;
 const RESULT_RE =
-  /letzte (\d+) Ergebnisse\): Median ([\d,]+)\sms, längste ([\d,]+)\sms; Darstellung des Ergebnisses längstens ([\d,]+)\sms; davon Rechnen: Median ([\d,]+)\sms/;
-const BUSY_RE = /angezeigt seit dem Laden: ([\d.\s]+)-mal; längste Wartezeit auf ein Ergebnis: (?:([\d,]+)\sms|–)/;
-const COMPARE_RE = /\(letzte (\d+)\): Median ([\d,]+)\sms, längste ([\d,]+)\sms/;
-const EVENT_RE = /\(Event Timing, letzte (\d+)\): ([\d,]+)\sms/;
+  /letzte (\d+) Ergebnisse\): Median (\d+(?:\s\d{3})*(?:,\d+)?)\sms, längste (\d+(?:\s\d{3})*(?:,\d+)?)\sms; Darstellung des Ergebnisses längstens (\d+(?:\s\d{3})*(?:,\d+)?)\sms; davon Rechnen: Median (\d+(?:\s\d{3})*(?:,\d+)?)\sms/;
+const BUSY_RE = /angezeigt seit dem Laden: ([\d.\s]+)-mal; längste Wartezeit auf ein Ergebnis: (?:(\d+(?:\s\d{3})*(?:,\d+)?)\sms|–)/;
+const COMPARE_RE = /\(letzte (\d+)\): Median (\d+(?:\s\d{3})*(?:,\d+)?)\sms, längste (\d+(?:\s\d{3})*(?:,\d+)?)\sms/;
+const EVENT_RE = /\(Event Timing, letzte (\d+)\): (\d+(?:\s\d{3})*(?:,\d+)?)\sms/;
 const READOUT_IDS = { normal: 'timing', frameMiss: 'timing-frame', grenzfall: 'timing-worst', rescan: 'timing-rescan' };
 
 function parseReadout(text) {
@@ -574,3 +577,170 @@ test('CPU-throttled phone proxy (ENG-09 restated, 01-15)', async ({ page, browse
     console.info(`perf-throttled trace attribution written to ${TRACE_OUT}`);
   }
 });
+
+// ---- 03-15 (VIZ-06 proxy part, D-28; lens-critic MAJOR 3, MINOR 4, R1-9) ----
+// Informational, never fails on time. Same session (this file, after the unchanged ENG-09 test
+// above), so the ENG-09 blocks show that they did not regress (RESEARCH Pitfall 12).
+// - '3D-Neuaufbau' (remesh): the ?perfmarks user timing u:view-input-paint = the input event of an
+//   Rx edit → the render that shows its re-meshed lenses (view.js), 10 Sph edits per layout at 4×,
+//   at 1280 × 800 and in the phone layout at 412 × 915 (there each re-mesh frame also carries the
+//   bar thumbnail: 2 passes). Target ≤ 200 ms = the INP 'good' threshold
+//   (https://web.dev/articles/inp), as for ENG-09 (b); not a RAIL number (lens-critic MINOR 4).
+// - Orbit: a 3 s synthetic mouse drag on #view-stage (pointer path); the intervals between
+//   consecutive requestAnimationFrame callbacks (each frame renders, render on demand), median and
+//   p95. Target ≤ 16,7 ms = one 60 Hz frame.
+// - ENG-09 (c) with 3D (MAJOR 3): 3D view loaded and a configuration comparison active (A = CR-39,
+//   B = 1,67, so A and the frame A rim exist and compare jobs run behind every edit), 10 case A
+//   edits with the quiet method, read exactly like the ENG-09 (c) block above: the measured input →
+//   result painted (#timing-result) and the estimate (overhead + COMPUTE14_P95[4].normal). Target
+//   ≤ 100 ms (RAIL response, https://web.dev/articles/rail).
+// Limits, stated with every number: CDP CPU throttling reaches neither the workers (01-15) nor
+// SwiftShader, the software WebGL of headless Chromium, which renders on CPU threads of the GPU
+// process (≈ 0,15–0,9 s per frame measured in 03-14). So the 3D numbers are software-rendered and
+// say nothing about a phone GPU; the real-phone numbers are measured in 03-17.
+const WORKER_NOTE = 'worker unthrottled (CDP CPU throttling does not reach workers, 01-15)';
+const SOFTWARE_NOTE = 'software-rendered (SwiftShader, headless Chromium); not a phone GPU number';
+/** Quiet window after a 3D edit (Node timer, no browser command): SwiftShader re-mesh + render [BP]. */
+const VIEW_QUIET_MS = Number(process.env.PERF_VIEW_QUIET_MS ?? 4000);
+const ORBIT_MS = 3000;
+const stats = (xs) => {
+  const v = [...xs].sort((a, b) => a - b);
+  if (v.length === 0) return { n: 0, median: null, p95: null, max: null };
+  const q = (p) => v[Math.min(v.length - 1, Math.ceil(p * v.length) - 1)];
+  const median = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
+  return { n: v.length, median: r1(median), p95: r1(q(0.95)), max: r1(v.at(-1)) };
+};
+
+/** 10 quiet Sph edits; returns the u:view-input-paint durations (ms) they produced. */
+async function viewEditRun(page, values) {
+  await page.evaluate(() => performance.clearMeasures('u:view-input-paint'));
+  const sph = page.locator('#rx-od-sph');
+  for (let i = 0; i < EDITS; i++) {
+    await sph.selectText();
+    await page.evaluate(() => 0);
+    await sleep(50);
+    await page.keyboard.insertText(values[i % 2]);
+    await sleep(VIEW_QUIET_MS);
+    await settledView(page, { timeout: 120_000 });
+  }
+  return page.evaluate(() => performance.getEntriesByName('u:view-input-paint').map((e) => e.duration));
+}
+
+/** rAF intervals (ms) during a ORBIT_MS mouse drag across the stage. */
+async function orbitRun(page) {
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  const box = await page.locator('#view-stage').boundingBox();
+  const x0 = box.x + box.width / 2;
+  const y0 = box.y + box.height / 2;
+  await page.evaluate(() => {
+    window.__rafTimes = [];
+    window.__rafOn = true;
+    const tick = (t) => {
+      window.__rafTimes.push(t);
+      if (window.__rafOn) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.mouse.move(x0, y0);
+  await page.mouse.down();
+  const t0 = Date.now();
+  let k = 0;
+  while (Date.now() - t0 < ORBIT_MS) {
+    k++;
+    await page.mouse.move(x0 + 60 * Math.sin(k / 8), y0 + 20 * Math.sin(k / 13));
+  }
+  await page.mouse.up();
+  const times = await page.evaluate(() => {
+    window.__rafOn = false;
+    return window.__rafTimes;
+  });
+  const gaps = [];
+  for (let i = 1; i < times.length; i++) gaps.push(times[i] - times[i - 1]);
+  return { moves: k, ...stats(gaps) };
+}
+
+test('3D-Neuaufbau, orbit and ENG-09 (c) with 3D on the 4× proxy (03-15, informational)', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'CDP sessions are Chromium-only');
+  test.setTimeout(30 * 60_000);
+  const rate = 4;
+  const view3d = {
+    rate,
+    workerThrottled: false,
+    note: WORKER_NOTE,
+    rendering: SOFTWARE_NOTE,
+    targets: { remeshMs: 200, remeshSource: 'INP good, https://web.dev/articles/inp', orbitFrameMs: 16.7, eng09cMs: 100, eng09cSource: 'RAIL response, https://web.dev/articles/rail' },
+    remesh: {},
+    orbit: {},
+  };
+  for (const [name, vp] of [
+    ['desktop1280x800', { width: 1280, height: 800 }],
+    ['phone412x915', { width: 412, height: 915 }],
+  ]) {
+    await page.setViewportSize(vp);
+    await page.goto('./?perfmarks');
+    await settledView(page, { timeout: 120_000 });
+    // Phone layout: the edits happen with the Rx fields on screen, so the bar (and its thumbnail) shows.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+    const paints = await viewEditRun(page, ['-4,25', '-4,00']);
+    const thumb = await page.evaluate(() => window.__eyeglassView.thumbInfo());
+    view3d.remesh[name] = {
+      workerThrottled: false,
+      note: WORKER_NOTE,
+      rendering: SOFTWARE_NOTE,
+      inputToPaintMs: stats(paints),
+      samples: paints.map(r1),
+      barShown: await page.evaluate(() => !document.getElementById('summary-bar').hidden),
+      thumbCopies: thumb.copies,
+      passesPerThumbFrame: thumb.passesPerThumbFrame,
+    };
+    view3d.orbit[name] = { workerThrottled: false, note: WORKER_NOTE, rendering: SOFTWARE_NOTE, frameMs: await orbitRun(page) };
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await cdp.detach();
+    console.info(`3D-Neuaufbau ${name} 4×: input → 3D paint ${JSON.stringify(view3d.remesh[name].inputToPaintMs)} (target ≤ 200 ms, INP good) — ${WORKER_NOTE}; ${SOFTWARE_NOTE}`);
+    console.info(`Orbit ${name} 4×: rAF frame ${JSON.stringify(view3d.orbit[name].frameMs)} (target ≤ 16,7 ms) — ${WORKER_NOTE}; ${SOFTWARE_NOTE}`);
+  }
+
+  // ENG-09 (c) with the 3D view loaded and a configuration comparison active (MAJOR 3), 1280 × 800.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('./');
+  await settledView(page, { timeout: 120_000 });
+  await typePair(page, CASE_A);
+  await page.locator('#cmp-start').click();
+  await settledCompare(page, { timeout: 60_000 });
+  await page.locator('input[name=material][value=idx167]').check();
+  await settledCompare(page, { timeout: 60_000 });
+  await settledView(page, { timeout: 120_000 });
+  await page.waitForFunction(() => window.__eyeglassView.compareInfo().active && window.__eyeglassView.compareInfo().aReady, null, { timeout: 120_000 });
+  await expect(page.locator('#compute-mode')).toHaveAttribute('data-mode', 'worker');
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+  const run = await editRun(page, ['-4,25', '-4,00']);
+  await settledCompare(page, { timeout: 60_000 });
+  await settledView(page, { timeout: 120_000 });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await cdp.detach();
+  const overhead = run.result.max - run.result.computeMed;
+  view3d.eng09cWith3d = {
+    workerThrottled: false,
+    note: WORKER_NOTE,
+    compareActive: await page.evaluate(() => window.__eyeglassView.compareInfo().active),
+    ...run,
+    measuredInputToResultMs: { median: run.result.med, max: run.result.max },
+    c: { estimated: true, overheadMs: overhead, estimateMs: overhead + COMPUTE14_P95[rate].normal, pass: overhead + COMPUTE14_P95[rate].normal <= 100 },
+  };
+  console.info(
+    `ENG-09 (c) with 3D + comparison 4×: input → result painted median ${run.result.med} ms, longest ${run.result.max} ms; ` +
+      `estimate ${r1(view3d.eng09cWith3d.c.estimateMs)} ms (target ≤ 100 ms, RAIL) — ${WORKER_NOTE}`,
+  );
+  const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : {};
+  writeFileSync(OUT, JSON.stringify({ ...prev, view3d }, null, 2));
+  console.info(`view3d results added to ${OUT}`);
+  expect(paintsOk(view3d)).toBe(true);
+});
+
+/** The numbers parse (the only assertion of this informational block). */
+function paintsOk(v) {
+  return Object.values(v.remesh).every((r) => r.inputToPaintMs.n > 0) && Number.isFinite(v.eng09cWith3d.result.med);
+}
