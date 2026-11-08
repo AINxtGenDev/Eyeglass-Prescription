@@ -6,6 +6,13 @@
 //   no coarse pointer exists at all, `!matchMedia('(any-pointer: coarse)')`. A hybrid laptop with a
 //   touch screen reports a fine PRIMARY pointer, but its touch screen must still scroll the page, so
 //   every device with any touch input takes the 03-10 '3D drehen' path instead.
+// - Touch path (03-10, D-15, R1-6): static at rest (class view-stage--static: touch-action pan-y
+//   pinch-zoom; controls not connected), so one-finger page scrolling passes through. The
+//   #view-rotate toggle (aria-pressed) connects OrbitControls (r187 connect() sets touch-action none
+//   on the stage only; one finger rotates, two fingers dolly + pan, so enableZoom follows the toggle)
+//   and disconnect() restores ''. It turns off on a second tap or when less than 50 % of the stage
+//   is in the viewport (IntersectionObserver threshold 0.5), so the canvas never traps scrolling.
+//   On a hybrid laptop the mouse also rotates only after '3D drehen'.
 // - Wheel (D-15 as amended): enableZoom is true only while #view-stage has focus. r187's wheel
 //   handler returns before preventDefault when enableZoom is false, so the page scrolls. A
 //   pointerdown focuses the stage first (preventScroll), so a click then a wheel zooms.
@@ -19,6 +26,9 @@
 //   moves, update() dispatches 'change', which requests the next frame (official r187 pattern).
 import { Spherical, Vector3 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { t } from '../../i18n/t.js';
+import { $, setText } from '../dom.js';
+import { icon } from '../icons.js';
 import { presetPose, presetPoses, controlLimits, keyStep, easeInOutCubic, basisOf, TWEEN_MS, POLAR_MIN, POLAR_MAX } from './camera-math.js';
 
 const DAMPING = 0.08;
@@ -165,9 +175,50 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       if (document.activeElement !== stage) stage.focus({ preventScroll: true });
     });
   }
+  let active = false;
   const syncZoom = () => {
-    controls.enableZoom = pointer && document.activeElement === stage;
+    controls.enableZoom = pointer ? document.activeElement === stage : active;
   };
+  if (!pointer) {
+    const button = $('view-rotate');
+    // UI-SPEC accent item 9: the pressed state shows the check icon instead of rotate.
+    const setIcon = () => {
+      button.querySelector('svg')?.remove();
+      button.prepend(icon(active ? 'check' : 'rotate'));
+    };
+    const setActive = (on) => {
+      if (on === active) return;
+      active = on;
+      if (on) {
+        controls.connect(stage);
+        stage.classList.remove('view-stage--static');
+      } else {
+        controls.disconnect();
+        stage.classList.add('view-stage--static');
+        // A disconnect in the middle of a gesture never sends 'end'.
+        if (dragging) {
+          dragging = false;
+          dragFrom = null;
+          scene.setInteracting(false);
+        }
+      }
+      syncZoom();
+      button.setAttribute('aria-pressed', String(on));
+      setIcon();
+      setText('view-hint', t(on ? 'view.hint.touchOn' : 'view.hint.touchOff'));
+    };
+    stage.classList.add('view-stage--static');
+    button.hidden = false;
+    setIcon();
+    setText('view-hint', t('view.hint.touchOff'));
+    button.addEventListener('click', () => setActive(!active));
+    new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (active && e.intersectionRatio < 0.5) setActive(false);
+      },
+      { threshold: [0.5] },
+    ).observe(stage);
+  }
   stage.addEventListener('focus', syncZoom);
   stage.addEventListener('blur', syncZoom);
 
@@ -210,6 +261,8 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
     viewName: () => name,
     limits: () => ({ ...limits }),
     pointer,
+    /** Touch path: '3D drehen' is on (OrbitControls connected). Always false on the pointer path. */
+    rotateActive: () => active,
     /** Test handle: the camera state. */
     state() {
       const t = controls.target;

@@ -1720,6 +1720,20 @@ td:has(.msg-out) input[aria-invalid='true'] {
   font-weight: 600;
 }
 
+/* 03-10 (VIZ-03, D-15, UI-SPEC accent item 9): '3D drehen' is outlined at rest and accent-filled
+   with white text while pressed. The icon-to-text gap (--space-1) comes from .icon. */
+#view-rotate[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Touch path at rest: one-finger page scrolling and browser pinch-zoom pass through the stage.
+   OrbitControls.connect() sets an inline touch-action: none while '3D drehen' is on. */
+.view-stage--static {
+  touch-action: pan-y pinch-zoom;
+}
+
 #view-hint,
 #view-side-note {
   margin-block: var(--space-2) 0;

@@ -498,6 +498,8 @@ export function mountView({ slot }) {
     allocs: () => ({ page: lenses.allocCount() + frame.allocCount(), worker: workerReallocs }),
     meshMode: () => client.mode(),
     viewName: () => controls.viewName(),
+    /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
+    rotateActive: () => controls.rotateActive(),
     /** 03-09: camera state, derived limits and the side eye. */
     camera: () => controls.state(),
     limits: () => controls.limits(),

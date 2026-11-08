@@ -1,4 +1,4 @@
-// Six 16×16 inline SVG icons (UI-SPEC "Icon library"). Built with createElementNS and
+// Seven 16×16 inline SVG icons (UI-SPEC "Icon library"). Built with createElementNS and
 // presentation attributes only: no style attribute and no <style> element (CSP, T-02-11).
 // Decorative: the text label next to an icon always carries the meaning.
 const NS = 'http://www.w3.org/2000/svg';
@@ -26,6 +26,11 @@ const SHAPES = {
   ],
   check: [['path', { d: 'M3 8.5 6.5 12 13 4.5', 'stroke-linejoin': 'round' }]],
   chevron: [['path', { d: 'M4 6l4 4 4-4', 'stroke-linejoin': 'round' }]],
+  // 03-10: icon('rotate') for '3D drehen'. A 330° arc (centre 8/8, r 5.5) with an arrowhead at its upper end.
+  rotate: [
+    ['path', { d: 'M12.76 5.25A5.5 5.5 0 1 0 13.5 8' }],
+    ['path', { d: 'M13.25 2.25v3.25H10', 'stroke-linejoin': 'round' }],
+  ],
 };
 
 /**
