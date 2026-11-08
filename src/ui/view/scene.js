@@ -174,13 +174,21 @@ export function createScene(canvas, stage) {
     camera.updateMatrixWorld();
     const hide = thumb.hide ?? [];
     const wasVisible = hide.map((o) => o.visible);
-    for (const o of hide) o.visible = false;
-    runPass();
-    hide.forEach((o, i) => (o.visible = wasVisible[i]));
-    copyThumb(spec.src);
-    camera.position.copy(savedPos);
-    camera.quaternion.copy(savedQuat);
-    camera.updateMatrixWorld();
+    // B-WR-01: a throwing pass or copy must not leave the camera at the thumbnail pose (the next
+    // controls.update() would adopt it) or the contact shadow hidden for good.
+    try {
+      try {
+        for (const o of hide) o.visible = false;
+        runPass();
+      } finally {
+        hide.forEach((o, i) => (o.visible = wasVisible[i]));
+      }
+      copyThumb(spec.src);
+    } finally {
+      camera.position.copy(savedPos);
+      camera.quaternion.copy(savedQuat);
+      camera.updateMatrixWorld();
+    }
     thumb.onCopy(spec);
     runPass();
     thumbStats.passesPerThumbFrame = passes - p0;
