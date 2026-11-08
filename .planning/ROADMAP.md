@@ -243,8 +243,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-03-PLAN.md — Engine frame builder (rims on the bevel curve, common rim plane, bridge = DBL, temples, eye boxes) and heat values (scale, iso levels, callouts)
-- [ ] 03-04-PLAN.md — Dedicated mesh worker: import-free transferOf, validated mesh protocol, latest-wins mesh client with one-item-per-macrotask sync fallback
+- [x] 03-03-PLAN.md — Engine frame builder (rims on the bevel curve, common rim plane, bridge = DBL, temples, eye boxes) and heat values (scale, iso levels, callouts)
+- [x] 03-04-PLAN.md — Dedicated mesh worker: import-free transferOf, validated mesh protocol, latest-wins mesh client with one-item-per-macrotask sync fallback
 
 **Wave 3**
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 2/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 4/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
