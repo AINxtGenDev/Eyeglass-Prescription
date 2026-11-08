@@ -180,10 +180,16 @@ export default Object.freeze({
   // 02-11 (FRAME-02, UI-SPEC "Randtiefe"): display only, never in the LensSpec.
   'frame.rim.label': 'Randtiefe der Fassung (mm)',
   'frame.rim.note': 'Standard {value} (angenommener Wert, keine Herstellerangabe). Die Randtiefe ändert Dicke und Gewicht nicht.',
-  // {glass} = result.glass.*, {excess} = fmtMm(edgeBeyondRim): uses etMax, never the centre.
-  'frame.rim.over':
-    '{glass}: Der Glasrand ist an seiner dicksten Stelle {excess} dicker als die Fassung tief ist (vorne und hinten zusammen).',
+  // {glass} = result.glass.*; {front}/{back} = fmtMm(bevelSplit(etMax.value, depth)) (03-01, D-05):
+  // uses etMax, never the centre; a side ≤ 0,05 mm is 'bündig'.
+  'frame.rim.both': '{glass}: Der Glasrand steht an seiner dicksten Stelle vorne {front} und hinten {back} aus der Fassung.',
+  'frame.rim.front': '{glass}: Der Glasrand steht an seiner dicksten Stelle vorne {front} aus der Fassung, hinten ist er bündig.',
+  'frame.rim.back': '{glass}: Der Glasrand steht an seiner dicksten Stelle hinten {back} aus der Fassung, vorne ist er bündig.',
   'frame.rim.fits': '{glass}: Der Glasrand passt in die Tiefe der Fassung.',
+  'frame.rim.bevel': 'Die Aufteilung nach vorne und hinten ist angenommen: Facette bei einem Drittel der Randdicke von vorne.',
+  // lens-critic MAJOR 1: {lead} = fmtMm(frontLeadMm(...).value); ≤ 0,05 mm → leadNone.
+  'frame.rim.lead': '{glass}: Die Vorderfläche wölbt sich bis zu {lead} vor die Fassung.',
+  'frame.rim.leadNone': '{glass}: Die Vorderfläche wölbt sich nicht vor die Fassung.',
   'tip.rim.name': 'Erklärung: Randtiefe',
   'tip.rim.text': 'Wie tief der Rand der Fassung ist, der das Glas hält. Ein dickerer Glasrand steht vorne oder hinten heraus.',
 

@@ -9,7 +9,7 @@ import { frameOutline } from '../engine/frame/outline.js';
 import { parseMm, parseStamp, PARSE_CODES, STAMP_CODES } from '../state/parse.js';
 import { estimateB } from '../state/frame.js';
 import { validateFrame, validateRimDepth, TIERS } from '../state/validate.js';
-import { RIM_DEPTH_DEFAULT_MM, edgeBeyondRim } from '../engine/rim.js';
+import { RIM_DEPTH_DEFAULT_MM, bevelSplit, frontLeadMm } from '../engine/rim.js';
 import { t } from '../i18n/t.js';
 import { fmtMm } from '../i18n/format.js';
 import { $, setText } from './dom.js';
@@ -50,16 +50,18 @@ const stampText = (A, DBL, len) => `${numNf.format(A)}${SQUARE}${numNf.format(DB
 
 const RIM_ID = 'frame-rim';
 const RIM_GLASS = { OD: 'result.glass.od', OS: 'result.glass.os' };
-/** Metrics of the painted main result per eye (null = no result). */
-const rimMetrics = { OD: null, OS: null };
+/** The painted main result per eye: { metrics, surfaces, frame } (null = no result). */
+const rimPainted = { OD: null, OS: null };
 
 /**
- * Rim lines from the painted metrics (pipeline.js, main lane, after renderResult). Nothing is
+ * Rim lines from the painted result (pipeline.js, main lane, after renderResult). Nothing is
  * written while the switch is off; turning it on calls paintRim.
- * @param {'OD'|'OS'} eye @param {object|null} metrics LensResult.metrics of the painted result
+ * @param {'OD'|'OS'} eye
+ * @param {{ metrics: object, surfaces: object, frame: { shape: string, A: number, B: number } }|null} painted
+ *   LensResult.metrics and .surfaces of the painted result plus the frame of its spec
  */
-export function renderRim(eye, metrics) {
-  rimMetrics[eye] = metrics;
+export function renderRim(eye, painted) {
+  rimPainted[eye] = painted;
   if (isExpert()) paintRim();
 }
 
@@ -69,17 +71,31 @@ export function paintRim() {
   showFieldMessage(RIM_ID, r.msg, { kind: 'mm', blocks: false, apply: null });
   const depth = r.msg ? null : (r.value ?? RIM_DEPTH_DEFAULT_MM);
   setText(`${RIM_ID}-echo`, depth === null ? '' : fmtMm(depth));
+  let any = false;
   for (const eye of /** @type {const} */ (['OD', 'OS'])) {
-    const m = rimMetrics[eye];
+    const p = rimPainted[eye];
     let text = '';
-    if (m && depth !== null) {
-      const excess = edgeBeyondRim(m, depth);
+    let leadText = '';
+    if (p && depth !== null) {
       const glass = t(RIM_GLASS[eye]);
-      // 'dicker' only when the shown 0,1 mm value is not 0,0 (fmtMm rounds 0,05 up).
-      text = excess >= 0.05 ? t('frame.rim.over', { glass, excess: fmtMm(excess) }) : t('frame.rim.fits', { glass });
+      // D-05: front/back split of the thickest edge point by the assumed bevel rule. A side
+      // counts only when the shown 0,1 mm value is not 0,0 (fmtMm rounds 0,05 up), else 'bündig'.
+      const { front, back } = bevelSplit(p.metrics.etMax.value, depth);
+      const f = front >= 0.05;
+      const b = back >= 0.05;
+      const key = f && b ? 'frame.rim.both' : f ? 'frame.rim.front' : b ? 'frame.rim.back' : 'frame.rim.fits';
+      text = t(key, { glass, front: fmtMm(front), back: fmtMm(back) });
+      // lens-critic MAJOR 1: the front surface can bulge ahead of the rim even when the edge is
+      // flush at the front; same 0,05 mm threshold.
+      const { shape, A, B } = p.frame;
+      const lead = frontLeadMm(p.surfaces, frameOutline(shape, A, B, eye), depth).value;
+      leadText = lead >= 0.05 ? t('frame.rim.lead', { glass, lead: fmtMm(lead) }) : t('frame.rim.leadNone', { glass });
+      any = true;
     }
     setText(`${RIM_ID}-result-${eye.toLowerCase()}`, text);
+    setText(`${RIM_ID}-lead-${eye.toLowerCase()}`, leadText);
   }
+  $(`${RIM_ID}-bevel`).hidden = !any;
 }
 
 /** Selected id, guarded to a SHAPES key (T-01-21). */

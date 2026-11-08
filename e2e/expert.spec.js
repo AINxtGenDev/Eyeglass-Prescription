@@ -372,7 +372,7 @@ test('k range: −6, 0 and −0,5 are Außerhalb des Modells; −1 and −5 comp
   await expect(kField(page)).toHaveValue('+5,00');
 });
 
-test('Randtiefe: default 3,0 mm, the example edge is 1,6 mm deeper, 5 fits, no recompute', async ({ page }) => {
+test('Randtiefe: default 3,0 mm, the example edge stands out 1,6 mm at the back, 10 fits, no recompute', async ({ page }) => {
   await settled(page);
   // same compute-message counter as the toggle test above
   await page.addInitScript(() => {
@@ -393,15 +393,30 @@ test('Randtiefe: default 3,0 mm, the example edge is 1,6 mm deeper, 5 fits, no r
   const rim = page.locator('#frame-rim');
   await expect(rim).toHaveValue('3,0');
   await expect(page.locator('#frame-rim-note')).toContainText('angenommener Wert, keine Herstellerangabe');
-  // example etMax 4,597 mm (OD) and 4,597 mm (OS): 4,6 − 3,0 = 1,6 mm
+  // 03-01 (D-05, bevel '1:2'): example etMax 4,597 mm (OD and OS): back 4,597·2/3 − 1,5 = 1,565
+  // → 1,6 mm, front 4,597/3 − 1,5 = 0,032 → bündig. Front-surface lead OD 0,515, OS 0,528 → 0,5 mm.
   await expect(page.locator('#frame-rim-result-od')).toHaveText(
-    'Rechtes Glas: Der Glasrand ist an seiner dicksten Stelle 1,6 mm dicker als die Fassung tief ist (vorne und hinten zusammen).',
+    'Rechtes Glas: Der Glasrand steht an seiner dicksten Stelle hinten 1,6 mm aus der Fassung, vorne ist er bündig.',
   );
-  await expect(page.locator('#frame-rim-result-os')).toContainText('Linkes Glas: Der Glasrand ist an seiner dicksten Stelle 1,6 mm');
+  await expect(page.locator('#frame-rim-result-os')).toContainText('hinten 1,6 mm');
+  await expect(page.locator('#frame-rim-lead-od')).toHaveText(
+    'Rechtes Glas: Die Vorderfläche wölbt sich bis zu 0,5 mm vor die Fassung.',
+  );
+  await expect(page.locator('#frame-rim-lead-os')).toContainText('bis zu 0,5 mm');
+  await expect(page.locator('#frame-rim-bevel')).toBeVisible();
+  await expect(page.locator('#frame-rim-bevel')).toContainText('angenommen');
   const ct = await text(page, '#result-od-ct');
   const weight = await text(page, '#result-od-weight');
   await rim.fill('5');
+  // back 3,065 − 2,5 = 0,565 → 0,6 mm; lead 0,515 − 1 < 0
+  await expect(page.locator('#frame-rim-result-od')).toContainText('hinten 0,6 mm');
+  for (const eye of ['od', 'os']) {
+    await expect(page.locator(`#frame-rim-lead-${eye}`)).toContainText('Die Vorderfläche wölbt sich nicht vor die Fassung.');
+  }
+  await rim.fill('10');
   await expect(page.locator('#frame-rim-result-od')).toHaveText('Rechtes Glas: Der Glasrand passt in die Tiefe der Fassung.');
+  await expect(page.locator('#frame-rim-lead-od')).toHaveText('Rechtes Glas: Die Vorderfläche wölbt sich nicht vor die Fassung.');
+  await expect(page.locator('#frame-rim-lead-os')).toHaveText('Linkes Glas: Die Vorderfläche wölbt sich nicht vor die Fassung.');
   // display only: never a compute job, so never 'rechnet …' and no pending result
   await expect(page.locator('#result-od-status')).not.toHaveText('rechnet …');
   await page.waitForTimeout(200);
@@ -413,6 +428,8 @@ test('Randtiefe: default 3,0 mm, the example edge is 1,6 mm deeper, 5 fits, no r
   await rim.blur();
   await expect(page.locator('#frame-rim-err')).toContainText('Außerhalb des Modells');
   await expect(page.locator('#frame-rim-result-od')).toHaveText('');
+  await expect(page.locator('#frame-rim-lead-od')).toHaveText('');
+  await expect(page.locator('#frame-rim-bevel')).toBeHidden();
   // it never blocks an eye
   await expect(page.locator('#result-od-ct')).toHaveText(ct);
 });

@@ -152,8 +152,9 @@ function paintDeliveries() {
       // this input is painted (paintCompare → paintCards).
       if (showA) setStale(eye, true);
       else renderResult(eye, d.result, requested[eye]);
-      // 02-11: rim lines from the painted main result (never the Vorher card values).
-      renderRim(eye, d.result?.ok ? d.result.metrics : null);
+      // 02-11: rim lines from the painted main result (never the Vorher card values); 03-01 adds
+      // its surfaces and its spec's frame for the front-surface lead.
+      renderRim(eye, d.result?.ok ? { metrics: d.result.metrics, surfaces: d.result.surfaces, frame: requested[eye].frame } : null);
       shown[eye] = { key: requestedKeys[eye], result: d.result };
       painted++;
     }

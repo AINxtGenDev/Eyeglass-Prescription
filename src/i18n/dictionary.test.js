@@ -399,11 +399,18 @@ describe('02-11 aspheric front and rim depth copy (MAT-05, FRAME-02)', () => {
     expect(dict['expert.asph.note']).toContain('vor allem Plusgläser');
     expect(dict['basecurve.sphericalBasis']).toBe('(für sphärische Vorderfläche bestimmt)');
   });
-  test('rim depth: assumed default, no effect on thickness or weight, {glass} and {excess} only', () => {
+  test('rim depth: assumed default, no effect on thickness or weight, split and lead placeholders', () => {
     expect(dict['frame.rim.note']).toContain('angenommener Wert, keine Herstellerangabe');
     expect(dict['frame.rim.note']).toContain('ändert Dicke und Gewicht nicht');
     const ph = (k) => [...dict[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
-    expect(ph('frame.rim.over')).toEqual(['excess', 'glass']);
+    // 03-01 (D-05): frame.rim.over replaced by the front/back split and the front-surface lead
+    expect(dict).not.toHaveProperty(['frame.rim.over']);
+    expect(ph('frame.rim.both')).toEqual(['back', 'front', 'glass']);
+    expect(ph('frame.rim.front')).toEqual(['front', 'glass']);
+    expect(ph('frame.rim.back')).toEqual(['back', 'glass']);
+    expect(ph('frame.rim.lead')).toEqual(['glass', 'lead']);
+    expect(ph('frame.rim.leadNone')).toEqual(['glass']);
+    expect(dict['frame.rim.bevel']).toContain('angenommen');
     expect(ph('frame.rim.fits')).toEqual(['glass']);
     expect(ph('frame.rim.note')).toEqual(['value']);
   });
