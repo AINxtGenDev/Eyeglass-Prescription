@@ -10,7 +10,7 @@
 // - No buffer is lost silently: a job whose buffers went to a worker that errored or went silent
 //   is reported as { items: null, error: true } so the page re-allocates.
 // - Watchdog: no READY, or no reply to a job, within MESH_WATCHDOG_MS → onFallback('timeout');
-//   workerError() → onFallback('error'). Either switches to sync mode for good. 03-05: the
+//   workerError() or a throwing send → onFallback('error'). Either switches to sync mode for good. 03-05: the
 //   compute-client rule applies (once the page owns a mesh worker, a frozen background tab can
 //   reach it): a firing while the tab is hidden, or one more than LATE_MS late (suspended
 //   timers), re-arms instead; resume() re-arms on visibilitychange.
@@ -103,7 +103,14 @@ export function createMeshClient({
     inFlight = job;
     if (mode === 'worker') {
       arm();
-      send({ type: 'mesh', id: job.id, items: job.items });
+      try {
+        send({ type: 'mesh', id: job.id, items: job.items });
+      } catch {
+        // A-WR-01: postMessage threw (e.g. DataCloneError), so no reply will come. Treat it as a
+        // worker error in a following task: the caller records the request before the job is
+        // reported lost, and the queue re-runs in sync mode instead of waiting for the watchdog.
+        setTimeoutFn(() => fallback('error'), 0);
+      }
     } else {
       runSync(job);
     }

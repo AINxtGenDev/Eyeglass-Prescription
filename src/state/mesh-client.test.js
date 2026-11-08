@@ -55,7 +55,7 @@ const flush = async () => {
 
 const it3 = (tag) => ['OD', 'OS', 'A'].map((slot) => ({ slot, tag, buffers: { front: new Float32Array(3) } }));
 
-function setup({ ready = true, loadSyncHandler } = {}) {
+function setup({ ready = true, loadSyncHandler, send } = {}) {
   const ft = fakeTimers();
   const state = { hidden: false };
   const sent = [];
@@ -69,7 +69,7 @@ function setup({ ready = true, loadSyncHandler } = {}) {
   const load = vi.fn(loadSyncHandler ?? (async () => syncHandler));
   const cb = { onMesh: vi.fn(), onFallback: vi.fn() };
   const client = createMeshClient({
-    send: (m) => sent.push(m),
+    send: send ?? ((m) => sent.push(m)),
     ...cb,
     loadSyncHandler: load,
     setTimeoutFn: ft.setTimeoutFn,
@@ -235,6 +235,33 @@ describe('mesh client (03-04, VIZ-06, MAJOR 3 / MINOR 7)', () => {
     expect(client.mode()).toBe('sync');
     client.workerError();
     ft.advance(MESH_WATCHDOG_MS);
+    expect(cb.onFallback).toHaveBeenCalledTimes(1);
+  });
+
+  test('A-WR-01: a throwing send → no throw into requestMesh; the job is reported lost in a later task, sync mode', async () => {
+    const send = vi.fn(() => {
+      throw new DOMException('Cannot transfer object of unsupported type.', 'DataCloneError');
+    });
+    const { ft, client, cb, handled } = setup({ send });
+    let r;
+    expect(() => {
+      r = client.requestMesh(it3('a'));
+    }).not.toThrow();
+    expect(send).toHaveBeenCalledTimes(1);
+    // Not re-entrant: the caller records the request (gen, meta) before the loss is reported.
+    expect(cb.onMesh).not.toHaveBeenCalled();
+    expect(ft.runOneZero()).toBe(true);
+    expect(cb.onMesh).toHaveBeenCalledWith({ gen: r.gen, items: null, error: true, current: true });
+    expect(cb.onFallback).toHaveBeenCalledWith('error');
+    expect(cb.onFallback).toHaveBeenCalledTimes(1);
+    expect(client.mode()).toBe('sync');
+    // No 10 s wedge: the next request is built in sync mode at once.
+    const g2 = client.requestMesh(it3('b')).gen;
+    await flush();
+    while (ft.runOneZero()) await flush();
+    expect(handled).toEqual(['b:OD', 'b:OS', 'b:A']);
+    expect(cb.onMesh).toHaveBeenLastCalledWith({ gen: g2, items: expect.any(Array), current: true });
+    ft.advance(MESH_WATCHDOG_MS * 2);
     expect(cb.onFallback).toHaveBeenCalledTimes(1);
   });
 
