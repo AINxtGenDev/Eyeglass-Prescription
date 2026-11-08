@@ -19,6 +19,27 @@ let narrow = null;
 
 function updateVisibility() {
   $('summary-bar').hidden = resultInView || !narrow?.matches;
+  fitThumb();
+}
+
+/**
+ * 03-15 (Rule 1): the numbers are never clipped. With the thumbnail the values line is 56 px
+ * narrower; below 400 px style.css shrinks the side padding and the values font for it (the
+ * longest realistic line, 'R 16,3 mm · 15 g | L 17,2 mm · 16 g', measured 237 px at 14 px against
+ * 240 px free at 320 px). If the line still does not fit (another font, a longer value), the
+ * thumbnail steps aside (class thumb-off) and the bar is the phase-2 text bar. Measured on text,
+ * visibility and size changes only, with the thumbnail layout applied.
+ */
+function fitThumb() {
+  const bar = $('summary-bar');
+  if (!bar.classList.contains('has-thumb') || bar.hidden) return;
+  bar.classList.remove('thumb-off');
+  const values = $('summary-bar-values');
+  const range = document.createRange();
+  range.selectNodeContents(values);
+  const fits = range.getBoundingClientRect().width <= values.clientWidth + 0.5;
+  bar.classList.toggle('thumb-off', !fits);
+  $('bar-view-slot').hidden = !fits;
 }
 
 /** Observe #result and the breakpoint; a tap scrolls to the result and focuses its heading. */
@@ -37,6 +58,7 @@ export function initSummaryBar() {
   });
   updateSummaryBar({ OD: null, OS: null, busy: false, stale: false });
   updateVisibility();
+  window.addEventListener('resize', fitThumb);
 }
 
 /**
@@ -47,6 +69,7 @@ export function initSummaryBar() {
 export function enableBarThumb() {
   $('bar-view-slot').hidden = false;
   $('summary-bar').classList.add('has-thumb');
+  fitThumb();
 }
 
 const pair = (v) => (v ? t('bar.eye', { thick: v.thick, weight: v.weight }) : DASH);
@@ -65,4 +88,5 @@ export function updateSummaryBar({ OD, OS, busy, stale, config = null }) {
   const values = $('summary-bar-values');
   if (stale) values.dataset.stale = 'true';
   else delete values.dataset.stale;
+  fitThumb();
 }

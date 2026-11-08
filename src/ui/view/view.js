@@ -746,7 +746,7 @@ export function mountView({ slot }) {
    * Only below 900 px with the bar shown, never while the camera moves (controls.busy()).
    */
   function thumbSpec() {
-    if (!narrowMq.matches || barEl.hidden || contextLost || !attachedOnce || controls.busy()) return null;
+    if (!narrowMq.matches || barEl.hidden || barEl.classList.contains('thumb-off') || contextLost || !attachedOnce || controls.busy()) return null;
     const ctx = cameraCtx();
     const e = ctx.eyeBox;
     const box = ctx.compare ? ctx.box : e ? { min: minOf(e.OD.min, e.OS.min, Math.min), max: minOf(e.OD.max, e.OS.max, Math.max) } : null;
@@ -796,9 +796,9 @@ export function mountView({ slot }) {
     });
     // A thumbnail asked for while the bar was hidden (or on a wide screen) is made when it shows.
     const reask = () => {
-      if (thumbDirty && narrowMq.matches && !barEl.hidden) view.requestThumb();
+      if (thumbDirty && narrowMq.matches && !barEl.hidden && !barEl.classList.contains('thumb-off')) view.requestThumb();
     };
-    new MutationObserver(reask).observe(barEl, { attributes: true, attributeFilter: ['hidden'] });
+    new MutationObserver(reask).observe(barEl, { attributes: true, attributeFilter: ['hidden', 'class'] });
     narrowMq.addEventListener('change', reask);
   }
   const presetButtons = [...document.querySelectorAll('#view-tools [data-preset]')];

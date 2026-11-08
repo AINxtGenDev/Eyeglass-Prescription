@@ -142,7 +142,7 @@ footer {
 
 /* 03-15 (UX-03, UI-SPEC Phone): the lens thumbnail in column 1, the two text lines in column 2.
    :not([hidden]) so the [hidden] rule above keeps winning. */
-#summary-bar.has-thumb:not([hidden]) {
+#summary-bar.has-thumb:not(.thumb-off):not([hidden]) {
   display: grid;
   grid-template-columns: 48px 1fr;
   column-gap: 8px;
@@ -159,6 +159,19 @@ footer {
 #summary-bar.has-thumb .bar-values {
   grid-column: 2;
   min-width: 0;
+}
+
+/* Below 400 px the values line next to the thumbnail gets 12 px side padding and the label's
+   0,875rem, so the longest realistic line fits at 320 px (summary-bar.js fitThumb; if it still does
+   not fit, the thumbnail steps aside: .thumb-off). */
+@media (max-width: 399.98px) {
+  #summary-bar.has-thumb:not(.thumb-off):not([hidden]) {
+    padding-inline: 12px;
+  }
+
+  #summary-bar.has-thumb:not(.thumb-off) .bar-values {
+    font-size: 0.875rem;
+  }
 }
 
 /* 96 × 72 backing canvas (2×) shown at 48 × 36 px incl. the 1 px border (11,7:1 on the bar). */

@@ -601,6 +601,35 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
     });
   });
 
+  test.describe('320 px', () => {
+    test.use({ viewport: { width: 320, height: 640 } });
+
+    test('UX-03 the values are never clipped next to the thumbnail (03-15)', async ({ page }) => {
+      test.setTimeout(90_000);
+      await settledView(page);
+      await barShown(page);
+      // The longest realistic line: two-digit mm and g on both eyes.
+      for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('-12');
+      await settledView(page);
+      await barShown(page);
+      await expect(page.locator('#bar-view-slot')).toBeVisible();
+      const fit = await page.evaluate(() => {
+        const v = document.getElementById('summary-bar-values');
+        const r = document.createRange();
+        r.selectNodeContents(v);
+        const bar = document.getElementById('summary-bar').getBoundingClientRect();
+        return { text: v.textContent, need: r.getBoundingClientRect().width, have: v.clientWidth, barH: bar.height, right: r.getBoundingClientRect().right, sw: document.documentElement.scrollWidth };
+      });
+      test.info().annotations.push({ type: 'fit 320', description: JSON.stringify(fit) });
+      expect(plain(fit.text)).toMatch(/^R \d+,\d mm · \d+ g \| L \d+,\d mm · \d+ g$/);
+      expect(fit.need).toBeLessThanOrEqual(fit.have + 0.5);
+      expect(fit.right).toBeLessThanOrEqual(320);
+      expect(fit.sw).toBe(320);
+      // Not taller than the phase-2 text bar (59,6 px: 8 px padding, 19,6 px label, 24 px values).
+      expect(fit.barH).toBeLessThanOrEqual(59.6);
+    });
+  });
+
   test('UX-03 no WebGL: the thumbnail slot stays hidden', async ({ page }) => {
     await settledView(page);
     const all = threeWarnings;
