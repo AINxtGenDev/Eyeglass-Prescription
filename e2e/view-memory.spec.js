@@ -34,7 +34,7 @@
 //   DFG LUT DataTexture of the physical materials (WebGLRenderer.js line 2756, getDFGLUT())     1
 //                                                                                          T = 6
 import { test, expect } from '@playwright/test';
-import { settledView, settledCompare, settledXsec, guardPage, noThreeWarnings } from './helpers.js';
+import { settledView, settledXsec, guardPage, noThreeWarnings } from './helpers.js';
 /* global window */
 
 const EXPECTED = { geometries: 21, textures: 6 };
@@ -59,32 +59,38 @@ test('D-27 no GPU memory, program or buffer growth over 50+ changes', async ({ p
   test.skip(testInfo.project.name !== 'desktop', 'one run is enough (desktop project)');
   test.setTimeout(480_000);
   let changes = 0;
+  // Every lane idle (result, comparison, cross-section), then the view: one change never overlaps
+  // the mesh job of the previous one. Overlapping jobs need extra buffer sets by design (the pools
+  // grow to the input rate, lenses.js), which is not the growth this test is about.
+  const idle = async () => {
+    await settledXsec(page);
+    await settledView(page);
+  };
   const radio = (name, value) => page.locator(`input[name=${name}][value=${value}]`);
   const fill = async (sel, v) => {
     await page.locator(sel).fill(v);
-    await settledView(page);
+    await idle();
     changes++;
   };
   const check = async (loc) => {
     await loc.check();
-    await settledView(page);
+    await idle();
     changes++;
   };
   const mode = async (name) => {
     await page.locator('#view-mode label', { hasText: name }).click();
     await page.waitForFunction((heat) => window.__eyeglassView.mode() === (heat ? 'heat' : 'glass'), name === 'Dickenkarte');
-    await settledView(page);
+    await idle();
     changes++;
   };
   const preset = async (p) => {
     await page.locator(`#view-tools [data-preset=${p}]`).click();
-    await settledView(page);
+    await idle();
     changes++;
   };
   const compare = async () => {
     await page.locator('#cmp-start').click();
-    await settledCompare(page);
-    await settledView(page);
+    await idle();
     await page.waitForFunction(() => {
       const c = window.__eyeglassView.compareInfo();
       return c.active && c.aReady;
@@ -92,7 +98,7 @@ test('D-27 no GPU memory, program or buffer growth over 50+ changes', async ({ p
     changes++;
     await page.locator('#cmp-end').click();
     await page.waitForFunction(() => !window.__eyeglassView.compareInfo().active);
-    await settledView(page);
+    await idle();
     changes++;
   };
 
@@ -115,9 +121,10 @@ test('D-27 no GPU memory, program or buffer growth over 50+ changes', async ({ p
   // ---- 50+ changes ----
   const sph = ['-1', '-1,5', '-2', '-3', '-4,25', '-6', '+1', '+2,5', '-0,5', '-2', '-3,5', '-2'];
   for (let i = 0; i < sph.length; i++) await fill(i % 2 ? '#rx-os-sph' : '#rx-od-sph', sph[i]);
+  // Zyl and Achse as separate changes (each settled), so no two Rx inputs share one mesh job window.
   for (const [cyl, axis] of [['-1,00', '90'], ['-2,00', '45'], ['-0,75', '180'], ['-1,50', '10']]) {
-    await page.locator('#rx-od-axis').fill(axis);
     await fill('#rx-od-cyl', cyl);
+    await fill('#rx-od-axis', axis);
   }
   for (const [sel, v] of [['#frame-a', '50'], ['#frame-b', '36'], ['#frame-dbl', '20'], ['#frame-a', '54'], ['#frame-b', '40'], ['#frame-dbl', '17']]) {
     await fill(sel, v);

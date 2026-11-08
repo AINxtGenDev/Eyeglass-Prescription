@@ -551,7 +551,10 @@ export function mountView({ slot }) {
     if (!contextLost) setText('view-status', '');
     setBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
     setPending('');
-    requestThumb(true); // carried by the render below (2 passes), see scene.js
+    // Carried by the render below (2 passes, scene.js), unless a newer mesh job is already in flight
+    // (typing): then the attach of that job carries it, and no keystroke frame pays the copy.
+    if (outstanding === null) requestThumb(true);
+    else if (thumbCanvas) thumbDirty = true;
     view.render();
     if (PERF_MARKS) {
       const end = performance.now();

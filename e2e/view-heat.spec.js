@@ -395,6 +395,10 @@ test.describe('320×640 desktop pointer', () => {
 
   test('VIZ-05 callouts note only at settle (round 2 MINOR 5)', async ({ page }, info) => {
     test.skip(info.project.name !== 'desktop', 'fine pointer (mouse orbit) only');
+    // 03-15: at 320 px the bar thumbnail is on (Expert re-mesh and the Dickenkarte settle each carry
+    // one, 2 passes, the copy waits for SwiftShader): measured 23,3 → 28,0 s with 4 parallel runs,
+    // too close to the 30 s default.
+    test.setTimeout(60_000);
     await settledView(page);
     await expertOn(page);
     await heatOn(page);
