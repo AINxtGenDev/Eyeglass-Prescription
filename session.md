@@ -211,5 +211,17 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - For lens-critic: blurred (not minified) checker through the lenses on tier 'mittel'; orbit pivot ~41 mm from the bridge centre (A1); with '3D drehen' on, the mouse wheel zooms without focus on hybrid laptops.
 - VIZ-03 Pending until the 03-11 side view; VIZ-06 Pending until the real-device check.
 
+- **03-11** Seite protrusion text + near-temple fade + dynamic canvas aria-label. VIZ-03 Complete. The 0,5 mm front-surface lead is text-only (the rim front face hides it in the silhouette).
+- **03-12** Dickenkarte (cividis, iso lines every 0,5 mm, mm legend, value table). Orchestrator re-opened UX-02 (completes with VIZ-05).
+- **03-13** on-lens callouts (all-or-nothing), eye picker; HEAT_FIT_MARGIN 1,08 → 1,3. VIZ-05 + UX-02 Complete. 320 px → table-only note.
+- **03-14** A/B side by side (one renderer, scissor halves, shared camera, width ratio 0,882 vs 0,885). Amendment A3: keyboard hint fades after 4 s so the callouts come back. Load-time regression (3,35 → 6,86 s) found and fixed (3,47 s). RES-03 Complete.
+- **03-15** phone-bar thumbnail (2 passes, crop of the shown half in split), D-27 leak test (21 geom / 6 tex / 11 programs flat over 56 changes). UX-03 Complete. The thumbnail drawImage stalls on the GPU (SwiftShader ~1,3 s/re-mesh in phone layout): measure on the Pixel.
+- **03-16** axe: 0 violations in every 3D state at 320 and 1280; keyboard order matches the visual order. Amendment A4: thumbnail drawn without chart and shadow (recognisable glasses).
+- Orchestrator chrome-devtools checks at 412 px after 03-09, 03-10, 03-15: no console errors, renderer memory flat, heap 24 MB after 24 edits.
+
+### Open items (added)
+- For lens-critic: no on-lens callouts in split Dickenkarte at ≥ 360 px; sparse iso labels on phones (1 of 6); front lead text-only in Seite; #view-protrusion describes B during compare; 'Nachher (B):' bar prefix missing; camera stays on the heat pose after leaving Dickenkarte; layout.spec.js:302 flake (~1/16).
+- Pixel 7 Pro (03-17): re-mesh latency with the bar thumbnail visible, orbit frames, ENG-09 (c) with 3D + compare.
+
 ### Next step
-03-11 (text in the view, side view showing lens protrusion).
+Phase code review (two parallel reviewers), then 03-17 Task 1 (gate, trace, MCP matrix), lens-critic result review, push approval.
