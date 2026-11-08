@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-22-PLAN.md
-last_updated: "2026-11-07T20:04:58.000Z"
-last_activity: 2026-11-07
+status: ready_to_plan
+stopped_at: Phase 2 complete (02-15 closed 2026-11-08)
+last_updated: "2026-11-08T08:30:00.000Z"
+last_activity: 2026-11-08
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 37
-  completed_plans: 36
-  percent: 25
+  completed_plans: 37
+  percent: 50
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-06)
 
 **Core value:** A non-expert can type in their paper prescription and, within a few minutes, see correctly computed lens thickness and weight for their frame — and how material or frame choice changes it.
-**Current focus:** Phase 02 — lay-first-german-input-results-comparison
+**Current focus:** Phase 03 — 3D lenses & frame (not yet planned)
 
 ## Current Position
 
-Phase: 02 (lay-first-german-input-results-comparison) — EXECUTING
-Plan: 22 of 22 (gap closure done incl. 02-22 quiet ENG-09 proxy: 4× proxy (a) PASS 3/3; next: lens-critic re-review of 12219a5..HEAD, then 02-15 Tasks 2–3 (02-15 still open); ENG-09 Pending until the 02-15 real-phone check, lens-critic M4 to be re-reviewed there)
-Status: In progress — awaiting lens-critic re-review and the 02-15 checkpoint
-Last activity: 2026-11-07
+Phase: 03 (3D lenses & frame) — NOT STARTED
+Plan: — (phase 2 complete 2026-11-08: live at 976629f, Pixel 7 Pro checked, ENG-09 (a) accepted by the user)
+Status: Ready to discuss/plan phase 3
+Last activity: 2026-11-08
 
-Progress: [██▌░░░░░░░] 25% (1 of 4 phases)
+Progress: [█████░░░░░] 50% (2 of 4 phases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 15
+- Total plans completed: 37 (phase 1: 15, phase 2: 22)
 - Average duration: -
 - Total execution time: 0.0 hours
 

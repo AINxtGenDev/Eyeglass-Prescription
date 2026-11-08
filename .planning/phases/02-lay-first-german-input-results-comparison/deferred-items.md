@@ -69,3 +69,20 @@ The plan for 02-19 asked to mark these as "accepted for later, needs user confir
 
 - Asked in chat with manifest (121 commits, 12219a5..HEAD), gate green, lens-critic re-review "NEEDS WORK, safe to push now: yes", rollback path.
 - **Chosen: "Push now, fix typing after (Recommended)".** User accepts as open for the push: lens-critic **M4 / ENG-09 (a)** (key-by-key typing on the 4× proxy up to 22,2 ms) and **MINOR-1** (card/bar empty and refill on incomplete entries). ENG-09 stays Pending; a follow-up plan addresses both after the live and Pixel check.
+
+## User decision 2026-11-08 — ENG-09 (a) accepted after the Pixel check (lens-critic M4)
+
+- Pixel 7 Pro / Android 17 / Chrome 156 on the live site 976629f, typing key by key with the comparison running:
+  - (a) input frame max 27,4 ms, result paint max 20,8 ms, compare frame max 19,4 ms (medians 6,3 / 4,1 ms)
+  - (b) reaction max 32,6 ms, Event Timing max 72 ms
+  - (c) result visible max 56,2 ms
+  - (d) „rechnet …“ shown 2 times, longest wait 59 ms
+  - The user reported that typing "work fine".
+- User, in chat: **"im satfied with the current speed"**, answering the line "some frames are still slower than the limit (max 27,4 ms against 16,7 ms). That stays open for the planned typing fix".
+- Effect:
+  - lens-critic **M4 is closed by user acceptance** (CLAUDE.md lens-critic gate), not by a fix.
+  - The planned typing-speed follow-up plan is dropped.
+  - ENG-09 is marked Complete, with the note that (a) is accepted unmet on the slowest frames.
+- **MINOR-1** (card and bar empty and refill on incomplete entries such as "-" and "-4,") moves to the backlog as a usability item. It is no longer tied to speed.
+- **MINOR-2** (narrow bar test fixture, style.css:112 comment, 200 % text size) moves to the backlog.
+- Still unverified: the Android bar over the focused L PD field (02-15 Task 3 (ii); the user answered "?"). TalkBack (iv) was not run. Both belong to UX-03, which stays Pending "Phase 2 + 3", so they are re-checked with the phase-3 UI.

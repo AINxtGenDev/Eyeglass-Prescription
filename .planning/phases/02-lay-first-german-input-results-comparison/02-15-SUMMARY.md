@@ -22,13 +22,13 @@ decisions:
   - "Trace rows whose test titles carry no requirement ID were run at file level (the spec or test file named in the 02-VALIDATION map); they are marked 'file' in the table"
 metrics:
   duration: "Task 1 without lens-critic: about 16 min (16:31–16:47 UTC)"
-  completed: "DRAFT — Task 1 done except step 4; Tasks 2 and 3 not started"
-status: draft
+  completed: "2026-11-08"
+status: complete
 ---
 
-# Phase 2 Plan 15: Phase gate, requirement trace and lens-critic review — Summary (DRAFT)
+# Phase 2 Plan 15: Phase gate, requirement trace and lens-critic review — Summary
 
-**Status: draft.** Task 1 is done except step 4 (the orchestrator runs lens-critic and inserts the review below). Task 2 (push approval) and Task 3 (push, live check, phone checks, REQUIREMENTS.md update) have not started. Nothing has been pushed.
+**Status: complete (2026-11-08).** All three tasks are done: gate and trace, push approval, live and Pixel checks. The final section below has the outcome. *Earlier status, kept for the record:* Task 1 is done except step 4 (the orchestrator runs lens-critic and inserts the review below). Task 2 (push approval) and Task 3 (push, live check, phone checks, REQUIREMENTS.md update) have not started. Nothing has been pushed.
 
 **Watch first:**
 - The ENG-09 proxy has four open findings (ENG09-PROXY-1…4). The 4× case A input frame is 19,5–19,9 ms, above the 16,7 ms limit. Only the Task 3 phone check can settle ENG-09 (a)/(c) with the comparison running.
@@ -272,3 +272,9 @@ The phone ran the live build (footer 976629f), so the stale-app risk is ruled ou
 - Levers for the follow-up plan: keep the last valid values instead of emptying and refilling on incomplete keystrokes (MINOR-1), coalesce the compare paint, and update fewer cells per frame.
 
 **Status.** ENG-09 stays Pending and M4 stays open. The user accepted both for the push and decided "fix typing after" (deferred-items.md). Item (ii) is re-asked. Item (iv) is recorded as unverified, not as pass.
+
+### Closure, 2026-11-08
+- User: "im satfied with the current speed". ENG-09 (a) is accepted unmet on the slowest frames, lens-critic M4 is closed by user acceptance, and ENG-09 is Complete. The typing-speed follow-up plan is dropped (deferred-items.md).
+- lens-critic gate: re-review verdict NEEDS WORK with 1 MAJOR (M4). M4 is now accepted by the user. MINOR-1 and MINOR-2 go to the backlog, and MINOR-3 is ruled out by the phone footer (976629f). MINOR-4 is fixed in STATE.md.
+- Still open, carried with UX-03 (Pending "Phase 2 + 3"): (ii) the bar over the L PD field is unverified, and (iv) TalkBack was not run.
+- Phase 2 is complete.

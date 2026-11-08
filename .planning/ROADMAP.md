@@ -16,7 +16,7 @@ Every phase is gated by the project-local `lens-critic` agent (`.claude/agents/l
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Verified Engine & Live Pipeline** - Pure-JS optics engine with tiered validation, gated GitHub Actions deploy to Pages, minimal live German result page (completed 2026-11-07)
-- [ ] **Phase 2: Lay-First German Input, Results & Comparison** - Paper-shaped Rx entry, frame and material choice, plain-German results, mm/g comparison, Expert view with 2D cross-section, accessibility
+- [x] **Phase 2: Lay-First German Input, Results & Comparison** - Paper-shaped Rx entry, frame and material choice, plain-German results, mm/g comparison, Expert view with 2D cross-section, accessibility
 - [ ] **Phase 3: 3D Lenses & Frame** - Procedural lens meshes and parametric frame from engine data, camera presets, glass impression, thickness heatmap, smooth re-meshing on phones
 - [ ] **Phase 4: Refraction View & Offline** - Ray-traced "Durchblick" view through the real lens surfaces, graceful mobile degradation, offline service worker with update prompt
 
@@ -186,7 +186,7 @@ Plans:
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
-- [ ] 02-15-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live and real-phone checks *(Task 1 done; Tasks 2–3 resume after 02-21 and the lens-critic re-review)*
+- [x] 02-15-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live and real-phone checks *(done 2026-11-08; Pixel 7 Pro; ENG-09 (a) accepted by the user)*
 
 **Wave 16** *(gap closure; after 02-15 Task 1)*
 
@@ -259,6 +259,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
-| 2. Lay-First German Input, Results & Comparison | 21/22 | In Progress|  |
+| 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 0/TBD | Not started | - |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

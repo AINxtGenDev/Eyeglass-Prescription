@@ -151,3 +151,29 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 
 ### Next step
 02-15: gate, lens-critic result review, push approval (user), live + real-phone check (Pixel).
+
+## 2026-11-07/08 — Phase 2 gate, push, live and Pixel check (complete)
+
+### Done
+- **lens-critic result review:** NEEDS WORK. The gap plans 02-16..02-22 fixed B1, M1, M2 and M3. In 02-22 the 4× proxy harness was made quiet (user: "Fix the measurement").
+- **Push approved** ("Push now, fix typing after"). Two CI-only fixes followed:
+  - font-independent phone layout (`66a9a68`, DejaVu metrics on the runner)
+  - layout spec timing (`976629f`)
+- Deploy run 42415734158 is green (build, deploy, verify-live). The live site serves `976629f`. Live e2e: 389 passed, 1 skipped.
+- **Pixel 7 Pro / Android 17 / Chrome 156:**
+  - ± works; no overflow; typing feels smooth.
+  - ENG-09 (a) input frame max 27,4 ms (limit 16,7 ms; median 6,3 ms).
+  - (b) 72 ms, (c) 56,2 ms and (d) all pass.
+- **User accepted the speed** ("im satfied with the current speed"). ENG-09 is Complete with (a) accepted unmet, and lens-critic M4 is closed by acceptance. Phase 2 is complete (`0e5e9f9` and the close-out commit).
+- New colourful README with badges (`d3667a5`).
+
+### Open items
+- Unverified on a phone: whether the sticky bar covers the focused L PD field on Android, and a TalkBack pass. Both are carried with UX-03 (Pending "Phase 2 + 3").
+- Backlog:
+  - MINOR-1: card and bar empty on incomplete entries such as "-" and "-4,".
+  - MINOR-2: narrow bar test fixture, style.css:112 comment, 200 % text size.
+  - m5–m7: example tag, lay note for thick lenses, shorter Simple view.
+  - Engine property tests near their timeouts.
+
+### Next step
+`/clear`, then `/gsd-discuss-phase 3` (3D lenses and frame, thickness heatmap).
