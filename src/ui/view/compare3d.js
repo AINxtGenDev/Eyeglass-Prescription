@@ -160,8 +160,12 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
       }
       const { W, H } = stageSize();
       viewports.push({ w: W, h: H });
-      renderer.render(scene, camera);
-      restore();
+      // B-WR-02: a throwing render must not leave the A slot visible or with drawRange 0.
+      try {
+        renderer.render(scene, camera);
+      } finally {
+        restore();
+      }
       return;
     }
     const eye = state.eye;
@@ -173,42 +177,48 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
       A: [aReady && LA.visible, aReady && fA.root.visible],
       B: [LB.visible, fB.root.visible],
     };
-    set(lenses.group(other), 'visible', false);
-    set(shadow.mesh, 'visible', false);
-    for (const m of [...fB.others, ...fA.others]) set(m, 'visible', false);
-    set(LB.position, 'x', 0);
-    set(fB.rim.position, 'x', 0);
-    set(LA.position, 'x', 0);
-    set(LA.position, 'z', frameA.lensZ()[eye]);
-    set(fA.rim.position, 'x', 0);
-    const show = (half) => {
-      const a = half === 'A';
-      set(LA, 'visible', a && drawn.A[0]);
-      set(fA.root, 'visible', a && drawn.A[1]);
-      set(LB, 'visible', !a && drawn.B[0]);
-      set(fB.root, 'visible', !a && drawn.B[1]);
-    };
-    if (state.split) {
-      const { W, H } = stageSize();
-      renderer.clear();
-      renderer.setScissorTest(true);
-      for (const half of HALVES) {
-        const b = halfBox(half);
-        renderer.setViewport(b.x, 0, b.w, b.h);
-        renderer.setScissor(b.x, 0, b.w, b.h);
-        viewports.push({ w: b.w, h: b.h });
-        show(half);
-        withHalf(half, () => renderer.render(scene, camera));
+    // B-WR-02: everything changed below (visibility, positions, scissor, viewport) is restored even
+    // when a render throws, so a later non-split pass never draws into one half only.
+    const { W, H } = stageSize();
+    try {
+      set(lenses.group(other), 'visible', false);
+      set(shadow.mesh, 'visible', false);
+      for (const m of [...fB.others, ...fA.others]) set(m, 'visible', false);
+      set(LB.position, 'x', 0);
+      set(fB.rim.position, 'x', 0);
+      set(LA.position, 'x', 0);
+      set(LA.position, 'z', frameA.lensZ()[eye]);
+      set(fA.rim.position, 'x', 0);
+      const show = (half) => {
+        const a = half === 'A';
+        set(LA, 'visible', a && drawn.A[0]);
+        set(fA.root, 'visible', a && drawn.A[1]);
+        set(LB, 'visible', !a && drawn.B[0]);
+        set(fB.root, 'visible', !a && drawn.B[1]);
+      };
+      if (state.split) {
+        renderer.clear();
+        renderer.setScissorTest(true);
+        for (const half of HALVES) {
+          const b = halfBox(half);
+          renderer.setViewport(b.x, 0, b.w, b.h);
+          renderer.setScissor(b.x, 0, b.w, b.h);
+          viewports.push({ w: b.w, h: b.h });
+          show(half);
+          withHalf(half, () => renderer.render(scene, camera));
+        }
+      } else {
+        viewports.push({ w: W, h: H });
+        show(state.shown);
+        renderer.render(scene, camera);
       }
-      renderer.setScissorTest(false);
-      renderer.setViewport(0, 0, W, H);
-    } else {
-      const { W, H } = stageSize();
-      viewports.push({ w: W, h: H });
-      show(state.shown);
-      renderer.render(scene, camera);
+    } finally {
+      if (state.split) {
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, W, H);
+      }
+      restore();
     }
-    restore();
   }
 
   /**
