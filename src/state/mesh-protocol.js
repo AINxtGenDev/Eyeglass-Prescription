@@ -19,48 +19,39 @@
 //
 // lens-critic MAJOR 3: meshes run in this DEDICATED worker, not in the engine worker, so a
 // numbers result never waits behind a mesh build (ENG-09 (c)).
-import {
-  buildLensMesh,
-  allocLensBuffers,
-  LENS_LENGTHS,
-} from "../engine/mesh/lens.js";
-import { frameOutline } from "../engine/frame/outline.js";
-import { SHAPES } from "../engine/frame/shapes.js";
-import {
-  buildFrameMesh,
-  allocFrameBuffers,
-  FRAME_LENGTHS,
-} from "../engine/mesh/frame.js";
-import { BEVEL_RULE } from "../engine/rim.js";
+import { buildLensMesh, allocLensBuffers, LENS_LENGTHS } from '../engine/mesh/lens.js';
+import { frameOutline } from '../engine/frame/outline.js';
+import { SHAPES } from '../engine/frame/shapes.js';
+import { buildFrameMesh, allocFrameBuffers, FRAME_LENGTHS } from '../engine/mesh/frame.js';
+import { BEVEL_RULE } from '../engine/rim.js';
 
-export const READY = Object.freeze({ type: "ready" });
+export const READY = Object.freeze({ type: 'ready' });
 /** OD, OS = the two main lenses; A = the compare lens (03-14); frame = the frame (03-07). */
-export const MESH_SLOTS = Object.freeze(["OD", "OS", "A", "frame"]);
+export const MESH_SLOTS = Object.freeze(['OD', 'OS', 'A', 'frame']);
 
-const EYES = ["OD", "OS"];
-const SURFACE_KEYS = ["n", "ct", "c1", "k1", "ca", "cb", "axisRad"];
+const EYES = ['OD', 'OS'];
+const SURFACE_KEYS = ['n', 'ct', 'c1', 'k1', 'ca', 'cb', 'axisRad'];
 
-const isNum = (v) => typeof v === "number" && Number.isFinite(v);
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
 function invalidShapeSize(f) {
-  if (!f || typeof f.shape !== "string" || !Object.hasOwn(SHAPES, f.shape))
-    return "shape";
-  if (!isNum(f.A) || f.A <= 0 || !isNum(f.B) || f.B <= 0) return "frame size";
+  if (!f || typeof f.shape !== 'string' || !Object.hasOwn(SHAPES, f.shape)) return 'shape';
+  if (!isNum(f.A) || f.A <= 0 || !isNum(f.B) || f.B <= 0) return 'frame size';
   return null;
 }
 
 function invalidSurfaces(s) {
-  if (!s || typeof s !== "object") return "surfaces";
+  if (!s || typeof s !== 'object') return 'surfaces';
   for (const k of SURFACE_KEYS) if (!isNum(s[k])) return `surfaces.${k}`;
-  if (!s.oc || !isNum(s.oc.x) || !isNum(s.oc.y)) return "surfaces.oc";
+  if (!s.oc || !isNum(s.oc.x) || !isNum(s.oc.y)) return 'surfaces.oc';
   return null;
 }
 
 /** @returns {string|null} why the lens item is invalid, or null */
 function invalid(item) {
-  if (!item || typeof item !== "object") return "item";
-  if (!MESH_SLOTS.includes(item.slot) || item.slot === "frame") return "slot";
-  if (!EYES.includes(item.eye)) return "eye";
+  if (!item || typeof item !== 'object') return 'item';
+  if (!MESH_SLOTS.includes(item.slot) || item.slot === 'frame') return 'slot';
+  if (!EYES.includes(item.eye)) return 'eye';
   return invalidShapeSize(item.frame) ?? invalidSurfaces(item.surfaces);
 }
 
@@ -69,21 +60,18 @@ function invalidFrame(item) {
   const f = item.frame;
   const bad = invalidShapeSize(f);
   if (bad !== null) return bad;
-  if (!isNum(f.DBL) || f.DBL < 0) return "DBL";
-  if (!isNum(item.rimDepthMm) || item.rimDepthMm <= 0) return "rimDepthMm";
-  if (!isNum(item.templeMm) || item.templeMm <= 0) return "templeMm";
+  if (!isNum(f.DBL) || f.DBL < 0) return 'DBL';
+  if (!isNum(item.rimDepthMm) || item.rimDepthMm <= 0) return 'rimDepthMm';
+  if (!isNum(item.templeMm) || item.templeMm <= 0) return 'templeMm';
   const eyes = item.eyes;
-  if (!eyes || typeof eyes !== "object") return "eyes";
-  for (const eye of EYES) {
-    if (eyes[eye] != null && invalidSurfaces(eyes[eye]) !== null)
-      return `eyes.${eye}`;
-  }
+  if (!eyes || typeof eyes !== 'object') return 'eyes';
+  for (const eye of EYES) if (eyes[eye] != null && invalidSurfaces(eyes[eye]) !== null) return `eyes.${eye}`;
   return null;
 }
 
 /** Keep each right-length Float32Array, allocate the rest. */
 function normalise(given, lengths, alloc) {
-  const src = given && typeof given === "object" ? given : {};
+  const src = given && typeof given === 'object' ? given : {};
   const buffers = {};
   let reallocated = false;
   let fresh = null;
@@ -103,11 +91,7 @@ function normalise(given, lengths, alloc) {
  * @param {{ meshFn?: typeof buildLensMesh, frameFn?: typeof buildFrameMesh, now?: () => number }} [deps]
  * @returns {(msg: any) => object}
  */
-export function createMeshHandler({
-  meshFn = buildLensMesh,
-  frameFn = buildFrameMesh,
-  now = () => globalThis.performance.now(),
-} = {}) {
+export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrameMesh, now = () => globalThis.performance.now() } = {}) {
   const fail = (item, buffers, reallocated) => ({
     slot: item?.slot ?? null,
     ok: false,
@@ -118,7 +102,7 @@ export function createMeshHandler({
   });
 
   const failFrame = (buffers, reallocated) => ({
-    ...fail({ slot: "frame" }, buffers, reallocated),
+    ...fail({ slot: 'frame' }, buffers, reallocated),
     frontBoundingSphere: null,
     sideTarget: null,
     eyeBox: null,
@@ -128,25 +112,14 @@ export function createMeshHandler({
 
   const buildFrame = (item) => {
     if (invalidFrame(item) !== null) return failFrame(item.buffers, false);
-    const { buffers, reallocated } = normalise(
-      item.buffers,
-      FRAME_LENGTHS,
-      allocFrameBuffers,
-    );
+    const { buffers, reallocated } = normalise(item.buffers, FRAME_LENGTHS, allocFrameBuffers);
     try {
       const { shape, A, B, DBL } = item.frame;
-      const r = frameFn(
-        {
-          frame: { shape, A, B, DBL },
-          eyes: { OD: item.eyes.OD ?? null, OS: item.eyes.OS ?? null },
-          rimDepthMm: item.rimDepthMm,
-          templeMm: item.templeMm,
-          rule: BEVEL_RULE,
-        },
-        buffers,
-      );
+      const eyes = { OD: item.eyes.OD ?? null, OS: item.eyes.OS ?? null };
+      const { rimDepthMm, templeMm } = item;
+      const r = frameFn({ frame: { shape, A, B, DBL }, eyes, rimDepthMm, templeMm, rule: BEVEL_RULE }, buffers);
       return {
-        slot: "frame",
+        slot: 'frame',
         ok: true,
         finite: r.finite === true,
         reallocated,
@@ -164,28 +137,13 @@ export function createMeshHandler({
   };
 
   const buildItem = (item) => {
-    if (item?.slot === "frame") return buildFrame(item);
+    if (item?.slot === 'frame') return buildFrame(item);
     if (invalid(item) !== null) return fail(item, item?.buffers, false);
-    const { buffers, reallocated } = normalise(
-      item.buffers,
-      LENS_LENGTHS,
-      allocLensBuffers,
-    );
+    const { buffers, reallocated } = normalise(item.buffers, LENS_LENGTHS, allocLensBuffers);
     try {
       const { shape, A, B } = item.frame;
-      const r = meshFn(
-        item.surfaces,
-        frameOutline(shape, A, B, item.eye),
-        buffers,
-      );
-      return {
-        slot: item.slot,
-        ok: true,
-        finite: r.finite === true,
-        reallocated,
-        buffers,
-        boundingSphere: r.boundingSphere ?? null,
-      };
+      const r = meshFn(item.surfaces, frameOutline(shape, A, B, item.eye), buffers);
+      return { slot: item.slot, ok: true, finite: r.finite === true, reallocated, buffers, boundingSphere: r.boundingSphere ?? null };
     } catch {
       return fail(item, buffers, reallocated);
     }
@@ -194,14 +152,14 @@ export function createMeshHandler({
   return (msg) => {
     const id = msg?.id ?? null;
     try {
-      if (msg?.type === "mesh") {
+      if (msg?.type === 'mesh') {
         const t0 = now();
         const items = (msg.items ?? []).map(buildItem);
-        return { type: "mesh", id, items, computeMs: now() - t0 };
+        return { type: 'mesh', id, items, computeMs: now() - t0 };
       }
     } catch {
       // a malformed items list (not an array): fall through to the error reply
     }
-    return { type: "error", id, message: "mesh worker: unknown message" };
+    return { type: 'error', id, message: 'mesh worker: unknown message' };
   };
 }
