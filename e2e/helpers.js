@@ -52,8 +52,14 @@ export async function etmaxOf(page, eye) {
   return m ? Number(m[1].replace(',', '.')) : Number.NaN;
 }
 
-/** Worker bundle under the sub-path (vite names it engine.worker-<hash>.js). */
-export const WORKER_URL = /\/assets\/[^/]*worker[^/]*\.js$/;
+/** Engine worker bundle under the sub-path (vite names it engine.worker-<hash>.js). */
+export const WORKER_URL = /\/assets\/engine\.worker[^/]*\.js$/;
+/**
+ * Mesh worker bundle (03-04): a second worker, mesh.worker-<hash>.js. Tests that block or slow
+ * "the worker" mean the engine worker (WORKER_URL); tests that block both route both patterns.
+ * Nothing loads the mesh worker before 03-05.
+ */
+export const MESH_WORKER_URL = /\/assets\/mesh\.worker[^/]*\.js$/;
 
 /**
  * Serve the real worker with messages of the given types delayed by delayMs (default only

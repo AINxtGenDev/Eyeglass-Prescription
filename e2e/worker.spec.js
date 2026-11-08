@@ -40,7 +40,7 @@ async function etAt(page, value) {
 
 test('engine runs in a module worker under the sub-path (ENG-09)', async ({ page }) => {
   const workerResponse = page.waitForResponse((r) =>
-    /^\/Eyeglass-Prescription\/assets\/.*worker.*\.js$/.test(new URL(r.url()).pathname),
+    /^\/Eyeglass-Prescription\/assets\/engine\.worker.*\.js$/.test(new URL(r.url()).pathname),
   );
   await page.goto('./');
   const resp = await workerResponse;
