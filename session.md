@@ -190,5 +190,17 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - Tell lens-critic about the 0,0231 mm low-index margin in the result review.
 - Commit 143a039 (03-01) does not build: an intermediate state, which matters only for bisecting.
 
+- **Wave 2 in parallel worktrees:** 03-03 (frame + heat mesh) ∥ 03-04 (mesh worker). Clean merge; post-merge gate green (1718 unit, e2e 389/1 skipped).
+- **03-05** lazy 3D view: glass lenses from the mesh worker; mesh watchdog now honours hidden tabs and late timers. Most e2e specs now run `without3d` (SwiftShader rendering blocks ~0,4 s per re-render). Only the view, layout and a11y specs keep the view on.
+- **03-06** view states (no WebGL, load failure, blocked eye, empty eye); numbers first below 900 px (the view sits after the results). UI-SPEC load-failure string: "darunter" dropped.
+- **03-07** frame in 3D (rims, bridge, temples); Technische Angaben show the drawn temple length plus the clamp note (110–160 mm, assumed, unsourced). Playwright screenshot at 412 px: the frame renders correctly, but the glasses are small (each lens ≈ 35 px).
+- The chrome-devtools screenshot hangs once WebGL is mounted. Fallback: Playwright `locator('#view').screenshot()`.
+
+### Open items (added)
+- Default camera too far for judging thickness: decision passed to 03-09 (see below).
+- 3 unidentified unit-test failures only when coverage and full e2e run at the same time (alone 1730/1730). Probably timeouts.
+- View chunk 556 kB (Vite > 500 kB warning). Safari/Firefox retry of a failed chunk unverified. Phone users reach the 3D view only by scrolling until the 03-15 thumbnail.
+- For lens-critic: e2e `without3d` trade-off, unsourced temple range, the 0,0231 mm low-index margin.
+
 ### Next step
-Wave 2: 03-03 (frame + heat mesh) ∥ 03-04 (mesh worker), then 03-05 (first 3D view).
+03-08 (eye-chart backdrop, quality tiers), then 03-09 (camera presets + controls).
