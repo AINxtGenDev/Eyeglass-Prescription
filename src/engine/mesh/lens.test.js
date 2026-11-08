@@ -194,49 +194,56 @@ describe('VIZ-01 lens mesh (D-04)', () => {
     }
   });
 
-  it('D-04(a) outline vertex front z − back z = thicknessAt (≥ 100 lenses, both eyes, all shapes)', () => {
-    let checked = 0;
-    let worst = 0;
-    const out = allocLensBuffers();
-    fc.assert(
-      fc.property(
-        fc.record({
-          sph: quarter(-8, 8),
-          cyl: quarter(-4, 0),
-          axisDeg: fc.integer({ min: 0, max: 179 }),
-          shape: fc.constantFrom(...SHAPES4),
-          monoPD: fc.integer({ min: 26, max: 38 }),
-          eye: fc.constantFrom('OD', 'OS'),
-        }),
-        ({ sph, cyl, axisDeg, shape, monoPD, eye }) => {
-          const { A, B, DBL } = SHAPES[shape].defaults;
-          const spec = lens({ eye, sph, cyl, axisDeg, monoPD, frame: { shape, A, B, DBL } });
-          const r = evaluateLens(spec);
-          if (!r.ok) return;
-          checked++;
-          const s = r.surfaces;
-          const outline = outlineOf(spec);
-          expect(buildLensMesh(s, outline, out).finite).toBe(true);
-          for (let i = 0; i < SPOKES; i++) {
-            const p = rimVertex(i);
-            const x = outline[2 * i];
-            const y = outline[2 * i + 1];
-            const t = thicknessAt(s, x, y);
-            const d = Math.abs(out.front[3 * p + 2] - out.back[3 * p + 2] - t);
-            if (d > worst) worst = d;
-            if (!(d < 1e-3)) expect({ i, d }).toEqual({ i, d: '< 1e-3' });
-            if (!(Math.abs(out.thick[p] - t) < 1e-4)) expect({ i, thick: out.thick[p], t }).toBe(null);
-            // spoke i of the outer ring IS outline point i (D-03)
-            expect(out.front[3 * p]).toBe(Math.fround(x));
-            expect(out.front[3 * p + 1]).toBe(Math.fround(y));
+  // D-04(a) and finiteness run as deterministic fc.sample chunks (pattern of 02-19), so each `it`
+  // stays well under the 30 s testTimeout under v8 coverage. fc.sample does not shrink, so the
+  // failure messages carry the vertex index and spec.
+  const A_SAMPLES = fc.sample(
+    fc.record({
+      sph: quarter(-8, 8),
+      cyl: quarter(-4, 0),
+      axisDeg: fc.integer({ min: 0, max: 179 }),
+      shape: fc.constantFrom(...SHAPES4),
+      monoPD: fc.integer({ min: 26, max: 38 }),
+      eye: fc.constantFrom('OD', 'OS'),
+    }),
+    { numRuns: 160, seed: 30302 },
+  );
+  const CHUNK = 20;
+  const aState = { checked: 0, worst: 0 };
+  for (let from = 0; from < A_SAMPLES.length; from += CHUNK) {
+    const last = from + CHUNK >= A_SAMPLES.length;
+    it(`D-04(a) outline vertex front z − back z = thicknessAt (≥ 100 lenses of 160, both eyes, all shapes): samples ${from + 1}–${from + CHUNK}`, () => {
+      const out = allocLensBuffers();
+      for (const { sph, cyl, axisDeg, shape, monoPD, eye } of A_SAMPLES.slice(from, from + CHUNK)) {
+        const { A, B, DBL } = SHAPES[shape].defaults;
+        const spec = lens({ eye, sph, cyl, axisDeg, monoPD, frame: { shape, A, B, DBL } });
+        const r = evaluateLens(spec);
+        if (!r.ok) continue;
+        aState.checked++;
+        const s = r.surfaces;
+        const outline = outlineOf(spec);
+        expect(buildLensMesh(s, outline, out).finite).toBe(true);
+        for (let i = 0; i < SPOKES; i++) {
+          const p = rimVertex(i);
+          const x = outline[2 * i];
+          const y = outline[2 * i + 1];
+          const t = thicknessAt(s, x, y);
+          const d = Math.abs(out.front[3 * p + 2] - out.back[3 * p + 2] - t);
+          if (d > aState.worst) aState.worst = d;
+          if (!(d < 1e-3)) expect({ spec, i, d }).toEqual({ spec, i, d: '< 1e-3' });
+          if (!(Math.abs(out.thick[p] - t) < 1e-4)) expect({ spec, i, thick: out.thick[p], t }).toBe(null);
+          // spoke i of the outer ring IS outline point i (D-03)
+          if (out.front[3 * p] !== Math.fround(x) || out.front[3 * p + 1] !== Math.fround(y)) {
+            expect({ spec, i }).toBe('outer ring = outline point i');
           }
-        },
-      ),
-      { numRuns: 160, seed: 30302 },
-    );
-    console.info('[03-02] D-04(a) lenses', checked, 'worst |zF − zB − thicknessAt| mm', worst);
-    expect(checked).toBeGreaterThanOrEqual(100);
-  });
+        }
+      }
+      if (last) {
+        console.info('[03-02] D-04(a) lenses', aState.checked, 'worst |zF − zB − thicknessAt| mm', aState.worst);
+        expect(aState.checked).toBeGreaterThanOrEqual(100);
+      }
+    });
+  }
 
   describe('D-04(b) edge extremes and centre', () => {
     it.each([
@@ -335,23 +342,31 @@ describe('VIZ-01 lens mesh (D-04)', () => {
     }
   });
 
-  it('finiteness over the fuzz domain (≥ 100 computable lenses); NaN ct gives finite false', () => {
-    let checked = 0;
-    const out = allocLensBuffers();
-    fc.assert(
-      fc.property(specArb, (spec) => {
+  const F_SAMPLES = fc.sample(specArb, { numRuns: 200, seed: 30303 });
+  const fState = { checked: 0 };
+  for (let from = 0; from < F_SAMPLES.length; from += CHUNK) {
+    const last = from + CHUNK >= F_SAMPLES.length;
+    it(`finiteness over the fuzz domain (≥ 100 computable lenses of 200): samples ${from + 1}–${from + CHUNK}`, () => {
+      const out = allocLensBuffers();
+      for (const spec of F_SAMPLES.slice(from, from + CHUNK)) {
         const r = evaluateLens(spec);
-        if (!r.ok) return;
-        checked++;
+        if (!r.ok) continue;
+        fState.checked++;
         const res = buildLensMesh(r.surfaces, outlineOf(spec), out);
-        expect(res.finite).toBe(true);
+        if (res.finite !== true) expect({ spec }).toBe('finite');
         for (const k of Object.keys(LENS_LENGTHS)) {
           if (!out[k].every(Number.isFinite)) expect({ spec, k }).toBe('finite');
         }
-      }),
-      { numRuns: 200, seed: 30303 },
-    );
-    expect(checked).toBeGreaterThanOrEqual(100);
+      }
+      if (last) {
+        console.info('[03-02] finiteness: computable lenses', fState.checked, 'of', F_SAMPLES.length);
+        expect(fState.checked).toBeGreaterThanOrEqual(100);
+      }
+    });
+  }
+
+  it('surfaces with ct = NaN give finite false and do not throw', () => {
+    const out = allocLensBuffers();
     const { surfaces } = evaluateLens(EXAMPLE);
     const res = buildLensMesh({ ...surfaces, ct: NaN }, frameOutline('rechteckig', 52, 38, 'OD'), out);
     expect(res.finite).toBe(false);
