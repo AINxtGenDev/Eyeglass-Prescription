@@ -71,7 +71,7 @@
 ### Explanations & Usability (UX)
 
 - [x] **UX-01**: Every technical term (Sph, Zyl, Achse, PD, Brechungsindex, Basiskurve, Mittendicke, Randdicke, A, B, DBL, Dezentration) has a one- or two-sentence German explanation that opens by tap (not hover-only) and by keyboard.
-- [ ] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06). (2026-11-07, lens-critic m1: everything except the heatmap is delivered in phase 2; the heatmap follows in phase 3 with the 3D view. Pending until then.)
+- [x] **UX-02**: Simple view shows only prescription, frame, material, the views and the plain summary; an "Experten-Ansicht" switch reveals base curve, thickness constraints, asphericity, cross-section, heatmap, decentration and intermediate values. The Expert-view base curve includes the automatic value and the rule used (moved from MAT-02 on 2026-11-06). (2026-11-07, lens-critic m1: everything except the heatmap is delivered in phase 2; the heatmap follows in phase 3 with the 3D view. Pending until then.) (2026-11-08, 03-13: Complete together with VIZ-05; the Experten-Ansicht switch reveals the finished Dickenkarte; Simple never shows it, e2e view-heat.spec.js.)
 - [ ] **UX-03**: Layout works on phone (from 320 px width), tablet and desktop; on phones the lens view stays visible while editing inputs; long German compound words never overflow. (2026-11-07, lens-critic m1: phone/tablet/desktop layout and German word wrapping are delivered in phase 2; the lens view that stays visible while editing on phones needs the phase-3 3D view (#bar-view-slot). Pending until then.)
 - [x] **UX-04**: Fully keyboard operable; all inputs labelled; WCAG AA contrast; no information conveyed by colour alone; automated accessibility checks pass in CI.
 - [x] **UX-05**: Terminology avoids ambiguous words (e.g. "Stärke" for both power and thickness): power is "Dioptrien (dpt)", thickness is "Mittendicke"/"Randdicke".
@@ -92,7 +92,7 @@
 - [x] **VIZ-02**: A parametric frame (rim, bridge, simple temples) is rendered around the lenses.
 - [x] **VIZ-03**: User can rotate, pan and zoom (mouse and touch) and jump to Vorne / Seite / Oben camera presets; the side view shows protrusion beyond the rim.
 - [x] **VIZ-04**: Lenses use a transparent glass material with the material's index, over a high-contrast checkerboard / eye-chart background, labelled as a visual impression.
-- [ ] **VIZ-05**: Expert view shows a thickness heatmap on the lens with a mm legend and labelled iso-lines, plus numeric callouts at nasal/temporal/superior/inferior and centre.
+- [x] **VIZ-05**: Expert view shows a thickness heatmap on the lens with a mm legend and labelled iso-lines, plus numeric callouts at nasal/temporal/superior/inferior and centre. (2026-11-08, 03-12 + 03-13: cividis map, mm legend and table (03-12); on-lens callouts Mitte/innen/außen/oben/unten (+ dickste) equal to the table and engine, labelled iso lines where they fit, all-or-nothing callouts with the table-only note (03-13, e2e view-heat.spec.js). Caveats for lens-critic in 03-13-SUMMARY: table-only at 320 px and while the keyboard hint shows; iso labels sparse on phones.)
 - [ ] **VIZ-06**: Re-meshing after input changes shows no visible lag on a mid-range phone and does not leak GPU memory over repeated changes.
 
 ### Refraction Impression (REF)
@@ -185,7 +185,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-05 | Phase 2 | Complete |
 | RES-06 | Phase 1 | Complete |
 | UX-01 | Phase 2 | Complete |
-| UX-02 | Phase 2 + 3 | Pending |
+| UX-02 | Phase 2 + 3 | Complete |
 | UX-03 | Phase 2 + 3 | Pending |
 | UX-04 | Phase 2 | Complete |
 | UX-05 | Phase 2 | Complete |
@@ -197,7 +197,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIZ-02 | Phase 3 | Complete |
 | VIZ-03 | Phase 3 | Complete |
 | VIZ-04 | Phase 3 | Complete |
-| VIZ-05 | Phase 3 | Pending |
+| VIZ-05 | Phase 3 | Complete |
 | VIZ-06 | Phase 3 | Pending |
 | REF-01 | Phase 4 | Pending |
 | REF-02 | Phase 4 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-11-08T17:31:25.587Z"
+stopped_at: Completed 03-13-PLAN.md
+last_updated: "2026-11-08T18:13:19.334Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 49
+  completed_plans: 50
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 13 of 17
+Plan: 14 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -95,6 +95,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P10 | 45min | 2 tasks | 7 files |
 | Phase 03 P11 | 35min | 2 tasks | 12 files |
 | Phase 03 P12 | 29 min | 2 tasks | 13 files |
+| Phase 03 P13 | 45min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -208,6 +209,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-12: heat-eye ties within 0,05 mm (SIDE_TIE_MM) go to OD, same rule as Seite
 - [Phase ?]: 03-12: Dickenkarte pose reports viewName 'front' but keeps preset 'heat' for refresh re-fits
 - [Phase ?]: 03-12: thickest-row location sits in the table cell; table stacks below a 480 px container
+- [Phase 03]: 03-13: Dickenkarte fit margin HEAT_FIT_MARGIN 1,3 (design value); callouts all-or-nothing and avoid the badge and keyboard hint; 320 px and keyboard focus give the table-only note
 
 ### Pending Todos
 
@@ -228,6 +230,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T17:31:25.582Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-11-08T18:13:19.329Z
+Stopped at: Completed 03-13-PLAN.md
 Resume file: None

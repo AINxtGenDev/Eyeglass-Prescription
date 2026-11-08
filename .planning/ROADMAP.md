@@ -280,7 +280,7 @@ Plans:
 
 **Wave 11**
 
-- [ ] 03-13-PLAN.md — Projected callouts (all-or-nothing rule) and iso labels, eye picker
+- [x] 03-13-PLAN.md — Projected callouts (all-or-nothing rule) and iso labels, eye picker
 
 **Wave 12**
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 12/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 13/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |
