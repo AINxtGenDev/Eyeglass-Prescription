@@ -11,7 +11,8 @@
 //   #view-rotate toggle (aria-pressed) connects OrbitControls (r187 connect() sets touch-action none
 //   on the stage only; one finger rotates, two fingers dolly + pan, so enableZoom follows the toggle)
 //   and disconnect() restores ''. It turns off on a second tap or when less than 50 % of the stage
-//   is in the viewport (IntersectionObserver threshold 0.5), so the canvas never traps scrolling.
+//   is in the viewport (IntersectionObserver threshold 0.5), and it does not turn on while less
+//   than 50 % is visible (code review B-WR-07), so the canvas never traps scrolling.
 //   On a hybrid laptop the mouse also rotates only after '3D drehen'.
 // - Wheel (D-15 as amended): enableZoom is true only while #view-stage has focus. r187's wheel
 //   handler returns before preventDefault when enableZoom is false, so the page scrolls. A
@@ -217,8 +218,15 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       button.querySelector('svg')?.remove();
       button.prepend(icon(active ? 'check' : 'rotate'));
     };
+    /**
+     * B-WR-07: the stage's last intersectionRatio (null before the first callback). The observer
+     * fires only on a 0,5 crossing, so this tells the side of 0,5 at any time.
+     */
+    let ratio = null;
     const setActive = (on) => {
       if (on === active) return;
+      // Refused below half visibility: from there no crossing would ever switch it off again.
+      if (on && ratio !== null && ratio < 0.5) return;
       active = on;
       if (on) {
         controls.connect(stage);
@@ -246,7 +254,10 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
     button.addEventListener('click', () => setActive(!active));
     new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (active && e.intersectionRatio < 0.5) setActive(false);
+        for (const e of entries) {
+          ratio = e.intersectionRatio;
+          if (active && ratio < 0.5) setActive(false);
+        }
       },
       { threshold: [0.5] },
     ).observe(stage);

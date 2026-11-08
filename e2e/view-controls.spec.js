@@ -491,6 +491,35 @@ test.describe('VIZ-03 touch path (03-10)', () => {
     expect(await touchAction(page)).toContain('pan-y');
   });
 
+  // B-WR-07 (code review): with less than half of the stage on screen '3D drehen' does not switch
+  // on (the observer fires only on a 0,5 crossing, so it could never switch off again from there).
+  test('B-WR-07 3D drehen stays off while less than half of the stage is visible', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page);
+    await stageCentre(page);
+    // Scroll so that only the bottom ≈ 40 % of the stage is in the viewport (the toggle below it is).
+    const ratio = await ev(page, async () => {
+      const st = document.getElementById('view-stage');
+      const r = st.getBoundingClientRect();
+      window.scrollTo(0, window.scrollY + r.top + 0.6 * r.height);
+      await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, 50))));
+      const r2 = st.getBoundingClientRect();
+      return (Math.min(r2.bottom, window.innerHeight) - Math.max(r2.top, 0)) / r2.height;
+    });
+    expect(ratio).toBeGreaterThan(0.2);
+    expect(ratio).toBeLessThan(0.5);
+    await ev(page, () => document.getElementById('view-rotate').click());
+    await ev(page, () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 50))));
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false');
+    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(false);
+    expect(await touchAction(page)).toContain('pan-y');
+    // With the stage on screen again the toggle works.
+    await stageCentre(page);
+    await ev(page, () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 50))));
+    await rotate(page).tap();
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('VIZ-03 presets at rest', async ({ page }) => {
     test.setTimeout(90_000);
     await settledView(page);
