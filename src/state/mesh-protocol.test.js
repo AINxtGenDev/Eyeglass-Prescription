@@ -44,7 +44,7 @@ describe('mesh (03-04, VIZ-06)', () => {
   test('READY and MESH_SLOTS are frozen constants', () => {
     expect(READY).toEqual({ type: 'ready' });
     expect(Object.isFrozen(READY)).toBe(true);
-    expect(MESH_SLOTS).toEqual(['OD', 'OS', 'A', 'frame']);
+    expect(MESH_SLOTS).toEqual(['OD', 'OS', 'A', 'frame', 'frameA']);
     expect(Object.isFrozen(MESH_SLOTS)).toBe(true);
   });
 
@@ -294,5 +294,54 @@ describe('frame item (03-07, VIZ-02)', () => {
     const list = transferOf(r);
     for (const k of Object.keys(FRAME_LENGTHS)) expect(list).toContain(r.items[1].buffers[k].buffer);
     for (const k of Object.keys(LENS_LENGTHS)) expect(list).toContain(r.items[0].buffers[k].buffer);
+  });
+});
+
+describe("frameA item (03-14, RES-03): the compare rim, routed exactly like 'frame'", () => {
+  const fullFrame = { ...frame, DBL: 18 };
+  const frameItem = (slot, over = {}) => ({
+    slot,
+    frame: { ...fullFrame },
+    eyes: { OD: surf('OD'), OS: null },
+    rimDepthMm: 3,
+    templeMm: 140,
+    buffers: allocFrameBuffers(),
+    ...over,
+  });
+
+  test('frameA equals the frame item for the same input (bitwise), slot kept', () => {
+    const handle = createMeshHandler();
+    const a = handle({ type: 'mesh', id: 1, items: [frameItem('frameA')] }).items[0];
+    const f = handle({ type: 'mesh', id: 2, items: [frameItem('frame')] }).items[0];
+    expect(a).toMatchObject({ slot: 'frameA', ok: true, finite: true, reallocated: false });
+    for (const k of ['boundingSphere', 'frontBoundingSphere', 'boundingBox', 'sideTarget', 'eyeBox', 'lensZ', 'templeMm']) expect(a[k]).toEqual(f[k]);
+    for (const k of Object.keys(FRAME_LENGTHS)) bitwiseEqual(a.buffers[k], f.buffers[k]);
+  });
+
+  test('frameA uses the frame validation and FRAME_LENGTHS buffers', () => {
+    const bad = frameItem('frameA', { frame: { ...fullFrame, DBL: Number.NaN } });
+    const missing = frameItem('frameA', { buffers: undefined });
+    const r = createMeshHandler()({ type: 'mesh', id: 3, items: [bad, missing] });
+    expect(r.items[0]).toMatchObject({ slot: 'frameA', ok: false, finite: false, boundingSphere: null, lensZ: null, eyeBox: null });
+    for (const k of Object.keys(FRAME_LENGTHS)) expect(r.items[0].buffers[k]).toBe(bad.buffers[k]);
+    expect(r.items[1]).toMatchObject({ slot: 'frameA', ok: true, reallocated: true });
+    for (const [k, len] of Object.entries(FRAME_LENGTHS)) expect(r.items[1].buffers[k].length).toBe(len);
+  });
+
+  test('a compare job OD, OS, frame, A, frameA returns 5 items in order; an unknown slot stays ok false', () => {
+    const items = [item('OD'), item('OS'), frameItem('frame', { eyes: { OD: surf('OD'), OS: surf('OS') } }), item('A', 'OD'), frameItem('frameA')];
+    const r = createMeshHandler()({ type: 'mesh', id: 4, items });
+    expect(r.items.map((i) => [i.slot, i.ok])).toEqual([
+      ['OD', true],
+      ['OS', true],
+      ['frame', true],
+      ['A', true],
+      ['frameA', true],
+    ]);
+    const unknown = createMeshHandler()({ type: 'mesh', id: 5, items: [{ ...item('OD'), slot: 'frameB' }] });
+    expect(unknown.items[0]).toMatchObject({ slot: 'frameB', ok: false });
+    // a lens item may not use a frame slot name
+    const asLens = createMeshHandler()({ type: 'mesh', id: 6, items: [{ ...item('OD'), slot: 'frameA', eyes: undefined }] });
+    expect(asLens.items[0]).toMatchObject({ slot: 'frameA', ok: false });
   });
 });

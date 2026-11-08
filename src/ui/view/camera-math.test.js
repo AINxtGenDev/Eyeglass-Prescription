@@ -30,6 +30,9 @@ import {
   nearTempleFade,
   TEMPLE_FADE_DEG,
   TEMPLE_FADE_OPACITY,
+  compareEye,
+  compareContext,
+  SIDE_TIE_MM,
 } from './camera-math.js';
 
 const RAD = Math.PI / 180;
@@ -353,5 +356,104 @@ describe('Seite near-temple fade (03-11, UI-SPEC)', () => {
     expect(nearTempleFade(at(90, 29.9))).toBe('OD');
     expect(nearTempleFade(at(90, 30.1))).toBeNull();
     expect(nearTempleFade({ x: 0, y: 0, z: 0 })).toBeNull();
+  });
+});
+
+describe('RES-03 compare camera (03-14, D-24 as amended)', () => {
+  test('compareEye: larger thickest point across A and B; ties (within 0,05 mm) → OD; null ignored', () => {
+    expect(compareEye({ A: { OD: 4.1, OS: 4.4 }, B: { OD: 3.2, OS: 3.0 } })).toBe('OS');
+    expect(compareEye({ A: { OD: 4, OS: 4 }, B: { OD: 3, OS: 3 } })).toBe('OD');
+    expect(compareEye({ A: { OD: 4, OS: 4 + SIDE_TIE_MM / 2 }, B: { OD: 3, OS: 3 } })).toBe('OD');
+    expect(compareEye({ A: { OD: 3, OS: 2 }, B: { OD: 2, OS: 3.5 } })).toBe('OS');
+    expect(compareEye({ A: { OD: null, OS: 2 }, B: { OD: 3, OS: null } })).toBe('OD');
+    expect(compareEye({ A: { OD: null, OS: 5 }, B: { OD: 3, OS: null } })).toBe('OS');
+    expect(compareEye({ A: null, B: { OD: 2, OS: 2.5 } })).toBe('OS');
+    expect(compareEye({ A: { OD: null, OS: null }, B: { OD: null, OS: null } })).toBe('OD');
+  });
+
+  /** Lens-local (recentred) eye box and side target of one eye of a built frame. */
+  const localOf = (frame, eye) => {
+    const res = frameData(frame);
+    const bx = boxingCentreX(eye, frame.A, frame.DBL);
+    const b = res.eyeBox[eye];
+    const st = res.sideTarget[eye];
+    return {
+      box: { min: { ...b.min, x: b.min.x - bx }, max: { ...b.max, x: b.max.x - bx } },
+      side: { ...st, x: st.x - bx },
+    };
+  };
+  const A52 = localOf(EXAMPLE, 'OD');
+  const B46 = localOf({ ...EXAMPLE, A: 46 }, 'OD');
+  const sA = { x: 0.4, y: 0.1, z: -1.5, r: 32 };
+  const sB = { x: -0.2, y: 0, z: -1.2, r: 29 };
+  const ctxAB = (aspect = 191 / 287) =>
+    compareContext({ aspect, eye: 'OD', lensSpheres: [sA, sB], sideTargets: { A: A52.side, B: B46.side }, eyeBoxes: { A: A52.box, B: B46.box } });
+
+  test('compareContext: one fit radius (max of A and B), B side target, union eye box', () => {
+    const ctx = ctxAB();
+    expect(ctx.full.r).toBeCloseTo(Math.max(Math.hypot(0.4, 0.1, -1.5) + 32, Math.hypot(-0.2, 0, -1.2) + 29), 12);
+    expect(ctx.front.r).toBe(ctx.full.r);
+    expect(ctx.side).toBe('OD');
+    closeVec(ctx.sideTarget.OD, B46.side);
+    closeVec(ctx.sideTarget.OS, B46.side);
+    for (const k of ['x', 'y', 'z']) {
+      expect(ctx.eyeBox.OD.min[k]).toBe(Math.min(A52.box.min[k], B46.box.min[k]));
+      expect(ctx.eyeBox.OD.max[k]).toBe(Math.max(A52.box.max[k], B46.box.max[k]));
+    }
+    expect(ctx.eyeBox.OS).toEqual(ctx.eyeBox.OD);
+    // lens-local: the recentred boxes sit about x = 0
+    expect(Math.abs(ctx.eyeBox.OD.min.x + ctx.eyeBox.OD.max.x) / 2).toBeLessThan(3);
+  });
+
+  test('default, front and top point at the origin; every corner of both halves fits the half aspect', () => {
+    const aspect = 191 / 287;
+    const ctx = ctxAB(aspect);
+    const ref = cameraContext({ frameData: null, lensRadius: 60, aspect, side: 'OD' });
+    for (const name of ['default', 'front', 'top']) {
+      const p = presetPose(name, ctx);
+      closeVec(p.target, { x: 0, y: 0, z: 0 });
+      closeVec(p.dir, presetPose(name, ref).dir);
+      let worst = 0;
+      for (const c of corners(ctx.eyeBox.OD)) {
+        const q = ndc(p, aspect, c);
+        worst = Math.max(worst, Math.abs(q.x), Math.abs(q.y));
+      }
+      // perspective-exact fit about the origin with the 8 % margin: the extreme corner at 1 / 1,08
+      expect(worst, name).toBeCloseTo(1 / FIT_MARGIN, 9);
+    }
+  });
+
+  test('side and heat fit both halves at one scale; the compare limits keep every target inside', () => {
+    const aspect = 191 / 287;
+    const ctx = ctxAB(aspect);
+    const u = ctx.eyeBox.OD;
+    const s = presetPose('side', ctx);
+    closeVec(s.target, B46.side);
+    closeVec(s.dir, { x: -1, y: 0, z: 0 });
+    expect(s.distance).toBeCloseTo(fitBoxDistance((u.max.y - u.min.y) / 2, (u.max.z - u.min.z) / 2, aspect), 9);
+    const h = presetPose('heat', ctx, 'OD');
+    closeVec(h.target, { x: (u.min.x + u.max.x) / 2, y: (u.min.y + u.max.y) / 2, z: (u.min.z + u.max.z) / 2 });
+    expect(h.distance).toBeCloseTo(fitBoxDistance((u.max.y - u.min.y) / 2, (u.max.x - u.min.x) / 2, aspect, FOV_DEG, HEAT_FIT_MARGIN), 9);
+    // the larger lens (A, 52 mm) decides the distance, so B (46 mm) is not blown up
+    const onlyB = compareContext({ aspect, eye: 'OD', lensSpheres: [null, sB], sideTargets: { A: null, B: B46.side }, eyeBoxes: { A: null, B: B46.box } });
+    expect(h.distance).toBeGreaterThan(presetPose('heat', onlyB, 'OD').distance);
+    const poses = Object.values(presetPoses(ctx));
+    const L = controlLimits(poses);
+    for (const p of poses) {
+      expect(Math.hypot(p.target.x, p.target.y, p.target.z)).toBeLessThanOrEqual(L.maxTargetRadius);
+      expect(p.distance).toBeGreaterThanOrEqual(L.minDistance);
+      expect(p.distance).toBeLessThanOrEqual(L.maxDistance);
+    }
+  });
+
+  test('without any box the compare poses fall back to the sphere of the larger lens about the origin', () => {
+    const ctx = compareContext({ aspect: 4 / 3, eye: 'OS', lensSpheres: [sA, null], sideTargets: { A: null, B: null }, eyeBoxes: { A: null, B: null } });
+    expect(ctx.eyeBox).toBe(null);
+    expect(ctx.side).toBe('OS');
+    for (const name of ['default', 'front', 'top']) {
+      const p = presetPose(name, ctx);
+      closeVec(p.target, { x: 0, y: 0, z: 0 });
+      expect(p.distance).toBeCloseTo(fitDistance(ctx.full.r), 9);
+    }
   });
 });
