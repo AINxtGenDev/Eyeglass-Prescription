@@ -1,8 +1,9 @@
 // VIZ-03 camera controls, slice 7 (03-09; UI-SPEC "Camera and Controls" with R1-3, R1-4 and the
 // execution amendments A1, A2): presets, the eye-fitted Seite (lens-critic MAJOR 2), keyboard,
 // focus-gated wheel, the chart grazing fade, the A1 default fit and the A2 chart cover.
-// Touch ('3D drehen') is 03-10; the wheel/drag tests run on the desktop project only (the mobile
-// project has a coarse pointer, so the controls are not connected there).
+// Touch ('3D drehen', 03-10, D-15, R1-6) runs on the mobile project only; the wheel/drag tests run
+// on the desktop project only (the mobile project has a coarse pointer, so the controls are not
+// connected there at rest).
 import { test, expect } from '@playwright/test';
 import { boxingCentreX } from '../src/engine/mesh/frame.js';
 import { settled, settledView, guardPage, noThreeWarnings, isChartish } from './helpers.js';
@@ -174,11 +175,15 @@ test.describe('VIZ-03 keyboard', () => {
     const back = await cam(page);
     expectDir(back, DEFAULT_DIR);
     expect(back.distance).toBeCloseTo(c0.distance, 3);
-    // Tab order: stage → Vorne → Seite → Oben → Ansicht zurücksetzen
+    // Tab order: stage → Vorne → Seite → Oben → Ansicht zurücksetzen [→ touch: 3D drehen]
     await stage.focus();
     for (const b of ['front', 'side', 'top', 'reset']) {
       await page.keyboard.press('Tab');
       expect(await ev(page, () => document.activeElement?.getAttribute('data-preset'))).toBe(b);
+    }
+    if (await ev(page, () => window.matchMedia('(any-pointer: coarse)').matches)) {
+      await page.keyboard.press('Tab');
+      expect(await ev(page, () => document.activeElement?.id)).toBe('view-rotate');
     }
   });
 });
@@ -318,3 +323,185 @@ for (const vp of [
     });
   });
 }
+
+// ---- 03-10 touch path (mobile project: 360 × 780, isMobile, hasTouch) ----
+//
+// any-pointer: coarse is NOT emulated here: Playwright's hasTouch already makes Chromium report a
+// coarse pointer (it enables CDP Emulation.setTouchEmulationEnabled for the context), and the
+// first assertion of every test checks matchMedia('(any-pointer: coarse)').matches === true, so a
+// change in that behaviour fails loudly instead of silently testing the pointer path.
+// Gestures go through CDP Input.dispatchTouchEvent (real touch input, so the browser applies
+// touch-action) for one-finger drags and pinches; the same drag must scroll the page at rest and
+// must not scroll it while '3D drehen' is on.
+test.describe('VIZ-03 touch path (03-10)', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test.skip(({ isMobile }) => !isMobile, 'touch path: mobile project only');
+
+  const rotate = (page) => page.locator('#view-rotate');
+  const touchAction = (page) => ev(page, () => window.getComputedStyle(document.getElementById('view-stage')).touchAction);
+  const scrollSum = (page) =>
+    ev(page, () => {
+      let s = window.scrollY;
+      for (let el = document.getElementById('view-stage'); el; el = el.parentElement) s += el.scrollTop;
+      return s;
+    });
+  const camKey = (c) => [c.position.x, c.position.y, c.position.z, c.target.x, c.target.y, c.target.z].map((v) => v.toFixed(6)).join();
+
+  /** Stage centre in viewport CSS px, after putting the stage fully on screen. */
+  async function stageCentre(page) {
+    await ev(page, () => document.getElementById('view-stage').scrollIntoView({ block: 'center' }));
+    const box = await page.locator('#view-stage').boundingBox();
+    return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2), box };
+  }
+
+  /** One-finger CDP touch drag in `steps` moves. */
+  async function touchDrag(cdp, from, dx, dy, steps = 8) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y, id: 1 }] });
+    for (let i = 1; i <= steps; i++) {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: from.x + (dx * i) / steps, y: from.y + (dy * i) / steps, id: 1 }],
+      });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
+
+  test.beforeEach(async ({ page }) => {
+    expect(await ev(page, () => window.matchMedia('(any-pointer: coarse)').matches), 'mobile project reports any-pointer: coarse').toBe(true);
+  });
+
+  test('VIZ-03 touch at rest scrolls the page', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page);
+    await expect(rotate(page)).toBeVisible();
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#view-hint')).toHaveText('Tippen Sie auf „3D drehen“, um die Brille mit dem Finger zu drehen.');
+    expect(await touchAction(page)).toContain('pan-y');
+    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(false);
+    const { x, y } = await stageCentre(page);
+    const c0 = camKey(await cam(page));
+    const s0 = await scrollSum(page);
+    const cdp = await page.context().newCDPSession(page);
+    // A one-finger upward drag on the stage centre scrolls the page, not the camera. (CDP
+    // Input.synthesizeScrollGesture with gestureSourceType 'touch' was tried first, as the plan
+    // suggests: in this headless Chromium it scrolls nothing anywhere on the page, measured
+    // 2026-11-08, while 'default'/'mouse' scroll by wheel and would not exercise touch-action.)
+    await touchDrag(cdp, { x, y: y + 60 }, 0, -150, 10);
+    await expect.poll(() => scrollSum(page)).toBeGreaterThan(s0 + 50);
+    await frameRender(page);
+    expect(camKey(await cam(page)), 'camera unchanged by touch at rest').toBe(c0);
+  });
+
+  test('VIZ-03 3D drehen', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    const cdp = await page.context().newCDPSession(page);
+    await rotate(page).tap();
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'true');
+    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(true);
+    expect(await touchAction(page)).toBe('none');
+    await expect(page.locator('#view-hint')).toHaveText(
+      'Ein Finger dreht, zwei Finger zoomen und verschieben. Zum Weiterblättern wieder auf „3D drehen“ tippen.',
+    );
+    // UI-SPEC accent item 9: accent fill, white text
+    const look = await ev(page, () => {
+      const cs = window.getComputedStyle(document.getElementById('view-rotate'));
+      return { bg: cs.backgroundColor, fg: cs.color };
+    });
+    expect(look).toEqual({ bg: 'rgb(11, 87, 208)', fg: 'rgb(255, 255, 255)' });
+    // one finger: horizontal drag rotates the azimuth, the page does not scroll
+    let p = await stageCentre(page);
+    const c0 = await cam(page);
+    const s0 = await scrollSum(page);
+    await touchDrag(cdp, { x: p.x - 60, y: p.y }, 120, 0);
+    await expect.poll(async () => Math.abs((await cam(page)).azimuthDeg - c0.azimuthDeg)).toBeGreaterThan(5);
+    // a vertical drag changes the elevation and still does not scroll the page
+    const c1 = await cam(page);
+    await touchDrag(cdp, { x: p.x, y: p.y - 40 }, 0, 80);
+    await expect.poll(async () => Math.abs((await cam(page)).elevationDeg - c1.elevationDeg)).toBeGreaterThan(3);
+    expect(await scrollSum(page), 'page did not scroll while 3D drehen is on').toBe(s0);
+    expect(await viewName(page)).toBe('free');
+    // two fingers: pinch apart dollies in
+    p = await stageCentre(page);
+    const d0 = (await cam(page)).distance;
+    const pts = (k) => [
+      { x: p.x - 20 - k, y: p.y, id: 1 },
+      { x: p.x + 20 + k, y: p.y, id: 2 },
+    ];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pts(0) });
+    for (let k = 10; k <= 60; k += 10) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pts(k) });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(async () => (await cam(page)).distance).toBeLessThan(d0 - 1);
+    // second tap: off again
+    await rotate(page).tap();
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false');
+    expect(await touchAction(page)).toContain('pan-y');
+    await expect(page.locator('#view-hint')).toHaveText('Tippen Sie auf „3D drehen“, um die Brille mit dem Finger zu drehen.');
+  });
+
+  test('VIZ-03 auto-off', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page);
+    await stageCentre(page);
+    await rotate(page).tap();
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'true');
+    // scroll so that the stage is fully above the viewport
+    await ev(page, () => {
+      const r = document.getElementById('view-stage').getBoundingClientRect();
+      window.scrollTo(0, window.scrollY + r.bottom + 50);
+    });
+    expect(await ev(page, () => document.getElementById('view-stage').getBoundingClientRect().bottom)).toBeLessThan(0);
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false', { timeout: 1000 });
+    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(false);
+    expect(await touchAction(page)).toContain('pan-y');
+  });
+
+  test('VIZ-03 presets at rest', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page);
+    await preset(page, 'side').tap();
+    await page.waitForFunction(() => window.__eyeglassView.viewName() === 'side', null, { timeout: 30_000 });
+    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(false);
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false');
+    expect(await touchAction(page)).toContain('pan-y');
+  });
+});
+
+for (const vp of [
+  { width: 412, height: 915 },
+  { width: 320, height: 640 },
+]) {
+  test.describe(`VIZ-03 toolbar with 3D drehen at ${vp.width} × ${vp.height}`, () => {
+    test.use({ viewport: vp, screen: vp, reducedMotion: 'reduce' });
+    test.skip(({ isMobile }) => !isMobile, 'touch path: mobile project only');
+    test('wraps without horizontal scroll, targets ≥ 44 px', async ({ page }) => {
+      test.setTimeout(90_000);
+      await settledView(page);
+      for (const pressed of [false, true]) {
+        if (pressed) await page.locator('#view-rotate').tap();
+        await expect(page.locator('#view-rotate')).toHaveAttribute('aria-pressed', String(pressed));
+        const m = await ev(page, () => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          tools: document.getElementById('view-tools').getBoundingClientRect().toJSON(),
+          buttons: [...document.querySelectorAll('#view-tools button')].map((b) => b.getBoundingClientRect().toJSON()),
+        }));
+        expect(m.scrollWidth, 'no horizontal scroll').toBe(m.innerWidth);
+        expect(m.buttons).toHaveLength(5);
+        for (const b of m.buttons) {
+          expect(b.width).toBeGreaterThanOrEqual(44);
+          expect(b.height).toBeGreaterThanOrEqual(44);
+          expect(b.right).toBeLessThanOrEqual(m.tools.right + 0.5);
+        }
+      }
+    });
+  });
+}
+
+test('VIZ-03 3D drehen is hidden on the pointer path', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'pointer path: no coarse pointer');
+  await settledView(page);
+  expect(await ev(page, () => window.matchMedia('(any-pointer: coarse)').matches)).toBe(false);
+  await expect(page.locator('#view-rotate')).toBeHidden();
+  expect(await ev(page, () => document.getElementById('view-stage').classList.contains('view-stage--static'))).toBe(false);
+});
