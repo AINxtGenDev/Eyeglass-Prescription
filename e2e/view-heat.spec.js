@@ -492,3 +492,31 @@ test('B-CR-01 Dickenkarte with both eyes cleared: no page error, accessible name
   await page.waitForTimeout(700); // past the 500 ms aria debounce of every scheduled write
   expect(errors, 'page errors').toEqual([]);
 });
+
+// B-WR-04 (code review): leaving Dickenkarte (Glas, or Expert off) returns to the default pose with
+// the default fit, as 'Vergleich beenden' does; it never keeps the one-lens heat close-up.
+test('B-WR-04 leaving Dickenkarte returns to the default view', async ({ page }) => {
+  test.setTimeout(120_000);
+  const cam = () => ev(page, () => window.__eyeglassView.camera());
+  const near = (a, b) => ['x', 'y', 'z'].every((k) => Math.abs(a.position[k] - b.position[k]) < 0.01 && Math.abs(a.target[k] - b.target[k]) < 0.01);
+  await settledView(page);
+  await expertOn(page);
+  const home = await cam();
+  expect(await ev(page, () => window.__eyeglassView.viewName())).toBe('default');
+  await heatOn(page);
+  expect(near(await cam(), home), 'the heat pose differs from the default').toBe(false);
+  await glassOn(page);
+  expect(await ev(page, () => window.__eyeglassView.viewName())).toBe('default');
+  expect(near(await cam(), home), 'Glas: back at the default pose').toBe(true);
+  // Expert off while in Dickenkarte → Glas, default pose too.
+  await heatOn(page);
+  await page.locator('#expert').uncheck();
+  await page.waitForFunction(() => window.__eyeglassView.mode() === 'glass');
+  await frames(page);
+  expect(await ev(page, () => window.__eyeglassView.viewName())).toBe('default');
+  await settledView(page);
+  const simple = await cam();
+  await page.locator('#view-tools [data-preset=reset]').click();
+  await frames(page);
+  expect(near(await cam(), simple), 'Expert off: at the default pose').toBe(true);
+});

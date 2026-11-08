@@ -1041,6 +1041,10 @@ function mount({ slot }) {
     if (isHeat) {
       paintHeat();
       controls.goTo('heat', heatState?.eye ?? cmp?.eye ?? 'OD');
+    } else {
+      // B-WR-04: leaving Dickenkarte (Glas, or Expert off) returns to the default pose with the
+      // default fit, as 'Vergleich beenden' does; the one-lens heat close-up is not kept.
+      controls.goTo('default', 'OD');
     }
     view.requestRender();
     scheduleAria();
