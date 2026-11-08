@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-06-PLAN.md
-last_updated: "2026-11-08T13:46:06.809Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-11-08T14:20:28.158Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 43
+  completed_plans: 44
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 7 of 17
+Plan: 8 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -89,6 +89,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P02 | 20min | 3 tasks | 6 files |
 | Phase 03 P05 | 55 min | 2 tasks | 17 files |
 | Phase 03 P06 | 45min | 2 tasks | 9 files |
+| Phase 03 P07 | 75 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -188,6 +189,9 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-05: mesh client watchdog gets the compute-client hidden/late re-arm rule plus resume()
 - [Phase 03]: 03-06 (D-14 revised, MAJOR 5): below 900 px #view-slot moves after section#result (view-place.js); >= 900 px stays first in .col-results
 - [Phase 03]: 03-06: view.loadFailed drops 'darunter' because on phones the values sit above the view (UI-SPEC copy to amend)
+- [Phase ?]: 03-07: the 3D frame's rim depth follows the Expert field only while the switch is on (else RIM_DEPTH_DEFAULT_MM)
+- [Phase ?]: 03-07: a clamped stamp temple is named in Technische Angaben; TEMPLE_RANGE_MM stays [ASSUMED]
+- [Phase ?]: 03-07: per-item mesh keys against the attached key; requestMesh([]) stales an outstanding job; identical outstanding job is not resent
 
 ### Pending Todos
 
@@ -208,6 +212,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T13:46:06.804Z
-Stopped at: Completed 03-06-PLAN.md
+Last session: 2026-11-08T14:20:28.153Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None
