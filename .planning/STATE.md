@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-14-PLAN.md
-last_updated: "2026-11-08T19:51:33.482Z"
+stopped_at: Completed 03-15-PLAN.md
+last_updated: "2026-11-08T21:28:14.633Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 51
+  completed_plans: 52
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 15 of 17
+Plan: 16 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -97,6 +97,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P12 | 29 min | 2 tasks | 13 files |
 | Phase 03 P13 | 45min | 2 tasks | 11 files |
 | Phase 03 P14 | ~3h | 2 tasks | 17 files |
+| Phase 03 P15 | 210min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,10 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-13: Dickenkarte fit margin HEAT_FIT_MARGIN 1,3 (design value); callouts all-or-nothing and avoid the badge and keyboard hint; 320 px and keyboard focus give the table-only note
 - [Phase ?]: 03-14: compare default/Vorne/Oben fit the A∪B box about the origin, aspect-aware (sphere fit clips a lens in a 191 px half)
 - [Phase ?]: 03-14 A3: keyboard hint fades after 4 s; hidden hint is no label obstacle, callouts return
+- [Phase 03]: 03-15: bar thumbnail only while the bar is shown, not while the camera moves, and not on an attach with a newer mesh job in flight (drawImage is a GPU sync point; SwiftShader ~1,3 s per thumbnail frame)
+- [Phase 03]: 03-15: split A/B thumbnail = largest 4:3 crop of the shown half with the pose fitted to it (lens ~44 px of 48)
+- [Phase 03]: 03-15: below 400 px the bar uses 12 px padding and 0,875rem values next to the thumbnail; thumb-off fallback so numbers are never clipped
+- [Phase 03]: 03-15: D-27 EXPECTED 21 geometries / 6 textures derived from r187 source (DFG LUT counts as a texture); allocation counters equal over 56 sequential changes
 
 ### Pending Todos
 
@@ -233,6 +238,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T19:51:33.477Z
-Stopped at: Completed 03-14-PLAN.md
+Last session: 2026-11-08T21:28:14.628Z
+Stopped at: Completed 03-15-PLAN.md
 Resume file: None
