@@ -369,8 +369,26 @@ test('VIZ-02 failed frame keeps lensZ (round 2 MINOR 7)', async ({ page }) => {
 
 // ---- 03-08 (VIZ-04, D-10…D-12): studio backdrop, tiers, context loss ----
 const view = (page, fn, arg) => page.evaluate(fn, arg);
-/** A checker square centre (mm) above the frame and off to the side, clear of the glasses. */
-const CHART_PROBE = [255, 95, -200];
+/**
+ * A checker square centre (mm, z = −200) that projects at least 10 px inside the canvas, the one
+ * nearest the canvas top-left corner, which is clear of the glasses in the default 3/4 view.
+ * 03-09 (A1): the default view is framed closer, so the 03-08 fixed point (255, 95) left the
+ * canvas; the square centres of a 20 mm grid over the chart are searched instead.
+ */
+async function chartProbe(page) {
+  return page.evaluate(() => {
+    const c = document.getElementById('view-canvas');
+    const r = window.__eyeglassView.sceneInfo().chartRect;
+    let best = null;
+    for (let y = r.y1 - 5; y > r.y0; y -= 20) {
+      for (let x = r.x0 + 5; x < r.x1; x += 20) {
+        const [px, py] = window.__eyeglassView.project(x, y, -200);
+        if (px > 10 && px < c.clientWidth - 10 && py > 10 && py < c.clientHeight - 10 && (!best || px + py < best[0] + best[1])) best = [px, py];
+      }
+    }
+    return best;
+  });
+}
 
 test('VIZ-04 chart through the glasses', async ({ page }) => {
   await settledView(page);
@@ -380,9 +398,8 @@ test('VIZ-04 chart through the glasses', async ({ page }) => {
   expect(info.shadowVisible).toBe(true);
   // A square centre (not the plan's (250, 150) mm, which is a square corner where the texture
   // filter mixes ink and paper): its pixel is an untone-mapped chart colour.
-  const at = await view(page, (p) => window.__eyeglassView.project(...p), CHART_PROBE);
-  const size = await page.locator('#view-canvas').evaluate((c) => [c.clientWidth, c.clientHeight]);
-  expect(at[0] > 0 && at[0] < size[0] && at[1] > 0 && at[1] < size[1], `probe ${at} inside ${size}`).toBe(true);
+  const at = await chartProbe(page);
+  expect(at, 'a chart square centre inside the canvas').not.toBeNull();
   const px = await view(page, (p) => window.__eyeglassView.pixel(...p), at);
   expect(isChart(px), `chart pixel ${px}`).toBe(true);
   await backgroundProbe(page);
@@ -444,7 +461,7 @@ test('context loss', async ({ page }) => {
   await expect(page.locator('#tech-view-unavailable')).toBeHidden();
   await backgroundProbe(page);
   // The chart texture is drawn again after the restore.
-  const at = await view(page, (p) => window.__eyeglassView.project(...p), CHART_PROBE);
+  const at = await chartProbe(page);
   expect(isChart(await view(page, (p) => window.__eyeglassView.pixel(...p), at))).toBe(true);
   for (const eye of ['OD', 'OS']) expect(round1(await edgeMax(page, eye)), eye).toBe(await etmaxOf(page, eye.toLowerCase()));
   // The view keeps working after the restore.

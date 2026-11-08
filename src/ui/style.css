@@ -1658,7 +1658,77 @@ td:has(.msg-out) input[aria-invalid='true'] {
 }
 
 #view-stage:focus-visible {
+  outline: 3px solid var(--accent);
   outline-offset: -3px;
+}
+
+/* 03-09 (VIZ-03, UI-SPEC "DOM inside #view-slot"): the keyboard hint is visually hidden (still
+   the stage's description) until the stage has keyboard focus. */
+.view-keys {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shown as an overlay on the bottom edge of the stage (absolute at its static position, moved up
+   by its own height), so focusing or leaving the stage never shifts the toolbar under the pointer.
+   pointer-events: none keeps the canvas fully usable. */
+#view {
+  position: relative;
+}
+
+#view-stage:focus-visible ~ .view-keys {
+  left: 1px;
+  right: 1px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  transform: translateY(calc(-100% - 1px));
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 7px 7px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+#view-tools,
+#view-tools > [role='group'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+#view-tools {
+  margin-block-start: var(--space-2);
+}
+
+#view-tools button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+}
+
+#view-hint,
+#view-side-note {
+  margin-block: var(--space-2) 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+#view-hint:empty {
+  display: none;
 }
 
 /* Absolute, so the drawing-buffer size can never feed back into the stage height. */

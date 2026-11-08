@@ -18,6 +18,13 @@
 // - Context loss (Pitfall 7): three.js prevents the default and re-inits its GL state on restore;
 //   the PMREM environment is a render target, so it is lost and regenerated here; canvas textures
 //   re-upload from their canvas (onContext 'restored' hooks). No restore within 5 s → 'gone'.
+// 03-09 (VIZ-03): the camera poses live in camera-math.js and controls.js (fit() is gone).
+// - beforeRender hooks run before each render (controls.update / preset tween, chart fade);
+//   onResize hooks run after a stage resize, before its render (limits and preset refit).
+// - Runtime step-down (UI-SPEC Quality tiers, sparsam row): while setInteracting(true), the time
+//   between consecutive renders feeds createFrameMonitor; a median over the last 30 frames above
+//   20 ms steps the tier down once (hoch → mittel → sparsam), never back up. Gaps above
+//   IDLE_GAP_MS are idle time (the user held still), not frame time, and are not counted.
 import {
   WebGLRenderer,
   Scene,
@@ -29,16 +36,12 @@ import {
   Vector3,
 } from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { pickTier, TIER_SETTINGS } from './tiers.js';
+import { pickTier, stepDown, TIER_SETTINGS } from './tiers.js';
+import { FOV_DEG, CAMERA_NEAR_MM, CAMERA_FAR_MM, DEFAULT_AZ_DEG, DEFAULT_EL_DEG, createFrameMonitor } from './camera-math.js';
 
-/** Vertical field of view in degrees (UI-SPEC Camera: 20° in every view). */
-export const FOV_DEG = 20;
-/** Default 3/4 view: azimuth toward the wearer's right (−x) and elevation (UI-SPEC Camera table). */
-const AZIMUTH_DEG = 35;
-const ELEVATION_DEG = 15;
-/** Margin around the fitted bounding sphere. */
-const FIT_MARGIN = 1.08;
 const RAD = Math.PI / 180;
+/** Render gaps above this are idle time, not interaction frame time (ms) [BP]. */
+const IDLE_GAP_MS = 250;
 /** Context loss: 'gone' when no restore follows within this time (UI-SPEC States). */
 const RESTORE_WAIT_MS = 5000;
 
@@ -58,7 +61,8 @@ function makeEnvironment(renderer) {
  * @returns {null | {
  *   renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera,
  *   requestRender: () => void, render: () => void, afterRender: (fn: () => void) => void,
- *   fit: (r: number) => void, tier: () => 'hoch' | 'mittel' | 'sparsam',
+ *   beforeRender: (fn: () => void) => void, onResize: (fn: () => void) => void,
+ *   setInteracting: (on: boolean) => void, tier: () => 'hoch' | 'mittel' | 'sparsam',
  *   applyTier: (tier: 'hoch' | 'mittel' | 'sparsam') => void,
  *   onTier: (fn: (tier: string, settings: typeof TIER_SETTINGS.hoch) => void) => void,
  *   onContext: (fn: (state: 'lost' | 'gone' | 'restored') => void) => void,
@@ -89,25 +93,48 @@ export function createScene(canvas, stage) {
   scene.background = new Color('#f3f4f6');
   scene.environment = makeEnvironment(renderer);
 
-  const camera = new PerspectiveCamera(FOV_DEG, 16 / 10, 10, 6000);
-  const target = new Vector3(0, 0, 0);
-  const dir = new Vector3(
-    -Math.sin(AZIMUTH_DEG * RAD) * Math.cos(ELEVATION_DEG * RAD),
-    Math.sin(ELEVATION_DEG * RAD),
-    Math.cos(AZIMUTH_DEG * RAD) * Math.cos(ELEVATION_DEG * RAD),
-  );
-  camera.position.copy(dir).multiplyScalar(500);
-  camera.lookAt(target);
+  const camera = new PerspectiveCamera(FOV_DEG, 16 / 10, CAMERA_NEAR_MM, CAMERA_FAR_MM);
+  // Placeholder pose until controls.js places the default preset on the first frame attach.
+  camera.position.set(
+    -Math.sin(DEFAULT_AZ_DEG * RAD) * Math.cos(DEFAULT_EL_DEG * RAD),
+    Math.sin(DEFAULT_EL_DEG * RAD),
+    Math.cos(DEFAULT_AZ_DEG * RAD) * Math.cos(DEFAULT_EL_DEG * RAD),
+  ).multiplyScalar(500);
+  camera.lookAt(0, 0, 0);
 
   const hooks = [];
+  const preHooks = [];
+  const resizeHooks = [];
   const tierHooks = [];
   const contextHooks = [];
   let frame = null;
+  const monitor = createFrameMonitor();
+  let interacting = false;
+  let lastRenderAt = null;
+  let stepPending = false;
+
+  /** Interaction frame time → monitor; one step down when the median is too slow. */
+  function sample() {
+    const now = performance.now();
+    if (interacting && lastRenderAt !== null && now - lastRenderAt < IDLE_GAP_MS) monitor.push(now - lastRenderAt);
+    lastRenderAt = interacting ? now : null;
+    if (!stepPending && tier !== 'sparsam' && monitor.shouldStepDown()) {
+      stepPending = true;
+      monitor.reset();
+      // Outside this render: applyTier resizes and renders.
+      setTimeout(() => {
+        stepPending = false;
+        api.applyTier(stepDown(tier));
+      }, 0);
+    }
+  }
 
   function render() {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
+    for (const fn of preHooks) fn();
     renderer.render(scene, camera);
+    sample();
     for (const fn of hooks) fn();
   }
 
@@ -125,6 +152,7 @@ export function createScene(canvas, stage) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    for (const fn of resizeHooks) fn();
     render();
   }
   new ResizeObserver(() => {
@@ -159,13 +187,20 @@ export function createScene(canvas, stage) {
     render();
   });
 
-  return {
+  const api = {
     renderer,
     scene,
     camera,
     render,
     requestRender,
     afterRender: (fn) => hooks.push(fn),
+    beforeRender: (fn) => preHooks.push(fn),
+    onResize: (fn) => resizeHooks.push(fn),
+    /** 03-09: true while the user drags or damping still moves (frame-time monitor). */
+    setInteracting(on) {
+      if (!on) lastRenderAt = null;
+      interacting = on;
+    },
     tier: () => tier,
     onTier: (fn) => tierHooks.push(fn),
     onContext: (fn) => contextHooks.push(fn),
@@ -183,15 +218,6 @@ export function createScene(canvas, stage) {
       const v = new Vector3(x, y, z).project(camera);
       return [((v.x + 1) / 2) * canvas.clientWidth, ((1 - v.y) / 2) * canvas.clientHeight];
     },
-    /**
-     * Default 3/4 view about the target (0, 0, 0) (the bridge centre in the frame front plane),
-     * framing a sphere of radius r about it: distance = r · 1,08 / sin(FOV / 2).
-     */
-    fit(r) {
-      const d = (r * FIT_MARGIN) / Math.sin((FOV_DEG / 2) * RAD);
-      camera.position.copy(dir).multiplyScalar(d).add(target);
-      camera.lookAt(target);
-      requestRender();
-    },
   };
+  return api;
 }

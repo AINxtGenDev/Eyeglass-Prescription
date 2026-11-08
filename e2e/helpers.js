@@ -275,12 +275,18 @@ const INK = [26, 26, 26];
 const PAPER = [255, 255, 255];
 const near = (px, want, tol) => want.every((w, i) => Math.abs(px[i] - w) <= tol);
 export const isChart = (px) => near(px, INK, 3) || near(px, PAPER, 3);
-/** Chart plane corners (mm, z = −200): 600 × 400 about the origin. */
-const CHART_CORNERS = [
-  [-300, 200],
-  [300, 200],
-  [300, -200],
-  [-300, -200],
+/**
+ * 03-09 A2: a chart pixel seen at a distance can be a filtered mix of ink and paper (a neutral
+ * grey), but never the studio background: neutral (r, g, b within 4) and not #f3f4f6 ± 6.
+ */
+export const isChartish = (px) =>
+  !near(px, BACKGROUND, 6) && Math.abs(px[0] - px[1]) <= 4 && Math.abs(px[1] - px[2]) <= 4 && px[0] <= 255;
+/** Chart plane corners (mm, z = −200) from the view's current chart rectangle (03-09 A2). */
+const chartCorners = ({ x0, x1, y0, y1 }) => [
+  [x0, y1],
+  [x1, y1],
+  [x1, y0],
+  [x0, y0],
 ];
 /** Point-in-convex-quad: p on the same side of all four edges (either winding). */
 function inQuad(p, q) {
@@ -293,16 +299,18 @@ function inQuad(p, q) {
 
 /**
  * 03-08 background probe (lens-critic MINOR 12): the first canvas corner (2 px inset) outside the
- * projected chart quad must show #f3f4f6 ± 2. If the chart covers all 4 corners, the corner pixel
- * must be a chart colour instead, and the test is annotated.
+ * projected chart quad must show #f3f4f6 ± 2. If the chart covers all 4 corners (the 03-09 A2
+ * default), the corner pixel must be a chart pixel instead (isChartish: at a distance the
+ * mipmapped checker can read as a neutral grey), and the test is annotated.
  */
 export async function backgroundProbe(page) {
+  const rect = await page.evaluate(() => window.__eyeglassView.sceneInfo().chartRect);
   const { quad, size } = await page.evaluate(
     (corners) => ({
       quad: corners.map(([x, y]) => window.__eyeglassView.project(x, y, -200)),
       size: (({ clientWidth, clientHeight }) => [clientWidth, clientHeight])(document.getElementById('view-canvas')),
     }),
-    CHART_CORNERS,
+    chartCorners(rect),
   );
   const [w, h] = size;
   const canvasCorners = [
@@ -319,5 +327,5 @@ export async function backgroundProbe(page) {
   }
   test.info().annotations.push({ type: 'note', description: 'chart covers the canvas' });
   const px = await page.evaluate(() => window.__eyeglassView.pixel(2, 2));
-  expect(isChart(px), `chart colour at the corner: ${px}`).toBe(true);
+  expect(isChartish(px), `chart pixel at the corner: ${px}`).toBe(true);
 }

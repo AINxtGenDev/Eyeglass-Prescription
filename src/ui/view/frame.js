@@ -100,7 +100,6 @@ export function createFrame(scene, lensGroups) {
   let lastLensZ = { OD: 0, OS: 0 };
   /** The last attached item and its request data, for the camera presets and frameInfo(). */
   let last = null;
-  let sphere = null;
 
   const applyLensZ = () => {
     for (const eye of EYES) lensGroups[eye].position.z = lastLensZ[eye];
@@ -109,7 +108,6 @@ export function createFrame(scene, lensGroups) {
   /** Hide the frame (no frame inputs, or a frame that is not drawable); lens z stays. */
   function hide() {
     root.visible = false;
-    sphere = null;
     applyLensZ();
   }
 
@@ -154,17 +152,20 @@ export function createFrame(scene, lensGroups) {
       for (const eye of EYES) rimGroups[eye].position.x = bx[eye];
       lastLensZ = { OD: lz.OD, OS: lz.OS };
       applyLensZ();
-      sphere = new Sphere(new Vector3(b.x, b.y, b.z), b.r);
       root.visible = true;
       return true;
     },
     visible: () => root.visible,
-    /** Radius about the origin of the frame's bounding sphere (0 when hidden). */
-    radius: () => (root.visible && sphere ? sphere.center.length() + sphere.radius : 0),
     /** Camera data of the last drawable item (03-09, 03-12), or null. */
     cameraData: () =>
       root.visible && last
-        ? { frontBoundingSphere: last.item.frontBoundingSphere, sideTarget: last.item.sideTarget, eyeBox: last.item.eyeBox }
+        ? {
+            boundingSphere: last.item.boundingSphere,
+            frontBoundingSphere: last.item.frontBoundingSphere,
+            boundingBox: last.item.boundingBox,
+            sideTarget: last.item.sideTarget,
+            eyeBox: last.item.eyeBox,
+          }
         : null,
     /** Test-only: measured from the attached buffers (ring centres) and the last item. */
     info() {
@@ -197,6 +198,7 @@ export function createFrame(scene, lensGroups) {
         lensGroupZ: { OD: lensGroups.OD.position.z, OS: lensGroups.OS.position.z },
         sideTarget: last?.item.sideTarget ?? null,
         eyeBox: last?.item.eyeBox ?? null,
+        boundingBox: last?.item.boundingBox ?? null,
       };
     },
   };

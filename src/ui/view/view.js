@@ -29,6 +29,12 @@
 // Technische Angaben. The re-mesh time runs from requestMesh to the render that shows the attached
 // mesh; it is a 3D number of its own and never mixed into the ENG-09 timings (Pitfall 12). Context
 // loss and restore (scene.js) drive #view-status and the 'Grafik vom Browser angehalten' reason.
+// 03-09 (VIZ-03, D-15, D-18…D-20): camera controls (controls.js) on the one camera; preset buttons
+// in #view-tools are enabled after the first mesh attach. Every frame attach and stage resize
+// refreshes the derived limits (R1-4), the chart rectangle (A2) and, unless the user turned the
+// view freely, the current preset pose (A1 default fit). The side eye is the eye with the larger
+// total edge protrusion bevelSplit(etMax).front + .back at the current rim depth (MINOR 13). The
+// chart is hidden when the camera is more than 70° from its normal (Seite, Oben).
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
@@ -36,12 +42,15 @@ import { $, setText } from '../dom.js';
 import { icon } from '../icons.js';
 import { fmtMm, fmtMs } from '../../i18n/format.js';
 import { boxingCentreX, FRAME_FACE_MM, TEMPLE_DEFAULT_MM, TEMPLE_RANGE_MM } from '../../engine/mesh/frame.js';
+import { bevelSplit } from '../../engine/rim.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
 import { createFrame } from './frame.js';
 import { createChart, createShadow } from './backdrop.js';
 import { TIER_SETTINGS } from './tiers.js';
 import { createLabels, place } from './labels.js';
+import { createControls } from './controls.js';
+import { cameraContext, presetPoses, chartRect, chartHidden, sideEye } from './camera-math.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -180,7 +189,6 @@ export function mountView({ slot }) {
   let outstanding = null;
   /** Slot lists of the last JOB_LOG jobs sent (test handle meshJobs). */
   const jobLog = [];
-  let fitKey = null;
   let attachedOnce = false;
   let retryLeft = true;
   /** Request data per mesh generation (the reply carries slot and buffers only). */
@@ -298,8 +306,9 @@ export function mountView({ slot }) {
       if (p) lenses.place(s, s, p.A, p.DBL);
     }
     updateLabels(drawnLenses()); // a mesh that came back not drawable reads 'nicht berechnet' too
-    refit();
     attachedOnce = true;
+    refresh();
+    for (const b of presetButtons) b.disabled = false;
     retryLeft = true;
     clearBadgeTimer();
     if (!contextLost) setText('view-status', '');
@@ -330,18 +339,57 @@ export function mountView({ slot }) {
     setText('tech-view-rimface', t('tech.view.rimFace', { w: fmtMm(FRAME_FACE_MM) }));
   }
 
-  /**
-   * Default view refit when the frame (or the set of drawn lenses) changes. UI-SPEC Camera: the
-   * fit covers the frame bounding sphere (front + temples) and the lenses.
-   */
-  function refit() {
-    const fm = frame.visible() ? frame.info() : null;
-    const key = JSON.stringify([SLOTS.map((s) => (lenses.edgeMax(s) === null ? null : placement[s])), fm && fm.templeLen]);
-    if (key === fitKey) return;
-    fitKey = key;
-    const r = Math.max(lenses.unionRadius(), frame.radius());
-    if (r > 0) view.fit(r);
+  /** Side eye (MINOR 13): larger total edge protrusion at the current rim depth; ties → OD. */
+  function currentSideEye() {
+    const rim = last?.display?.rimDepthMm;
+    const total = (eye) => {
+      const r = last?.eyes[eye]?.result;
+      if (!r?.ok || !lenses.visible(eye) || !(rim > 0)) return null;
+      const s = bevelSplit(r.metrics.etMax.value, rim);
+      return s.front + s.back;
+    };
+    return sideEye({ OD: total('OD'), OS: total('OS') });
   }
+
+  const cameraCtx = () =>
+    cameraContext({ frameData: frame.cameraData(), lensRadius: lenses.unionRadius(), aspect: view.camera.aspect, side: currentSideEye() });
+
+  /** New limits (R1-4), chart rectangle (A2) and, unless turned freely, the current preset pose. */
+  function refresh() {
+    const ctx = cameraCtx();
+    if (!(ctx.full.r > 0)) return;
+    controls.refresh();
+    const p = presetPoses(ctx);
+    chart.setRect(chartRect([p.default, p.front, p.heatOD, p.heatOS], controls.limits(), ctx.aspect));
+    view.requestRender();
+  }
+
+  const sideNote = $('view-side-note');
+  const controls = createControls({
+    camera: view.camera,
+    stage: $('view-stage'),
+    scene: view,
+    getContext: cameraCtx,
+    onPose: (name) => {
+      sideNote.hidden = name !== 'side';
+      if (name === 'side') {
+        setText('view-side-note', t('view.side.note', { eye: t(currentSideEye() === 'OS' ? 'view.side.os' : 'view.side.od') }));
+      }
+    },
+  });
+  if (controls.pointer) setText('view-hint', t('view.hint.pointer'));
+  const presetButtons = [...document.querySelectorAll('#view-tools [data-preset]')];
+  for (const b of presetButtons) {
+    b.addEventListener('click', () => controls.goTo(b.dataset.preset === 'reset' ? 'default' : b.dataset.preset));
+  }
+  view.beforeRender(() => {
+    const p = view.camera.position;
+    const tg = controls.state().target;
+    chart.mesh.visible = !chartHidden({ x: p.x - tg.x, y: p.y - tg.y, z: p.z - tg.z });
+  });
+  view.onResize(() => {
+    if (attachedOnce) refresh();
+  });
 
   /** Eye labels and caption for the eyes drawn (ok) and not drawn (blocked). */
   function updateLabels(drawnEyes) {
@@ -420,7 +468,7 @@ export function mountView({ slot }) {
     if (send.length === 0 && outstanding === null) {
       // Same meshes as attached: only a lens placement could differ (DBL is in the frame key).
       for (const s of SLOTS) if (want[s]) lenses.place(s, s, want[s].item.frame.A, placement[s].DBL);
-      refit();
+      if (attachedOnce) refresh();
       view.requestRender();
       if (attachedOnce) setBadge(inputs.current ? 'view.badge.glass' : 'view.badge.updating');
       clearBadgeTimer();
@@ -449,7 +497,11 @@ export function mountView({ slot }) {
     memory: () => ({ ...view.renderer.info.memory, programs: view.renderer.info.programs?.length ?? 0 }),
     allocs: () => ({ page: lenses.allocCount() + frame.allocCount(), worker: workerReallocs }),
     meshMode: () => client.mode(),
-    viewName: () => 'default',
+    viewName: () => controls.viewName(),
+    /** 03-09: camera state, derived limits and the side eye. */
+    camera: () => controls.state(),
+    limits: () => controls.limits(),
+    sideEye: () => currentSideEye(),
     ior: (s) => lenses.ior(s),
     edgeMax: (s) => lenses.edgeMax(s),
     /** Test-only (03-07): frame measured from its attached buffers; lens group z (MINOR 9). */
@@ -462,7 +514,25 @@ export function mountView({ slot }) {
     /** World point (mm) → canvas CSS px [x, y] in the current view. */
     project: (x, y, z) => view.project(x, y, z),
     /** Test-only (03-08): chart and contact shadow state. */
-    sceneInfo: () => ({ chartVisible: chart.mesh.visible, chartZ: chart.mesh.position.z, chartSize: chart.size(), shadowVisible: shadow.mesh.visible }),
+    sceneInfo: () => ({
+      chartVisible: chart.mesh.visible,
+      chartZ: chart.mesh.position.z,
+      chartSize: chart.size(),
+      chartRect: chart.rect(),
+      shadowVisible: shadow.mesh.visible,
+    }),
+    /** 03-09: RGBA at several CSS pixels [[x, y], …] after ONE fresh render. */
+    pixels: (points) => {
+      view.render();
+      const gl = view.renderer.getContext();
+      const c = view.renderer.domElement;
+      const k = c.width / c.clientWidth;
+      return points.map(([x, y]) => {
+        const out = new Uint8Array(4);
+        gl.readPixels(Math.floor(x * k), c.height - 1 - Math.floor(y * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+        return [...out];
+      });
+    },
     /** RGBA at CSS pixel (x, y) of the canvas, read in the same task as a fresh render. */
     pixel: (x, y) => {
       view.render();

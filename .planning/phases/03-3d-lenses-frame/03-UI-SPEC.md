@@ -30,6 +30,8 @@ These override the rows they name; each affected row below carries an "(amended,
 - **R1-8 Thumbnail (MINOR 5, MINOR 11):** rendered with a front pose fitted to the frame-front box (lenses, rims, bridge; no temples), in the current screen layout; in split A/B the shown half is cropped with drawImage's source rectangle (no single full-frame render). The camera pose is restored and the main view re-rendered in the same task.
 - **R1-9 Timing labels (MINOR 4):** input → 3D paint ≤ 200 ms is the INP "good" threshold (web.dev/articles/inp), not RAIL; the RAIL response budget is ENG-09 (c)'s 100 ms, which is re-measured with the 3D view active (MAJOR 3). Proxy 3D numbers are labelled "worker unthrottled".
 - **R1-10 Lens depth (MINOR 9):** both lenses are referenced to one rim plane (each eye's mean bevel apex at z = 0); the frame's rims and bridge stay in that plane.
+- **A1 Default pose fit (03-09 execution amendment, 2026-11-08, usability):** the default and Oben distances fit the *projected silhouette* of the frame + temples (corners of the frame world AABB and both eye boxes) as seen from the preset direction, aspect-aware and perspective-exact, + 8 %. The target is the centre of that silhouette in the plane through the bridge centre normal to the view (not the bridge centre itself). Direction (35° / 15°; Oben 0° / 85°) and the 20° vertical FOV are unchanged. Reason: the sphere fit gave 42,6 px between the lens centres at 412×915 (≈ 35 px per lens); now ≈ 104 px. Pass/fail: e2e at 412×915, R–L ≥ 77 px and every frame AABB corner inside the stage.
+- **A2 Chart fills the stage (03-09 execution amendment, 2026-11-08):** the chart plane is no longer a fixed 600×400 mm. Its rectangle comes from the camera math: it covers the whole view in the default, Vorne and Dickenkarte poses over the zoom range [minDistance, maxDistance] at the current stage aspect (recomputed on frame attach and resize), padded 20 mm and snapped to the 20 mm checker period. The checker is a repeated one-period tile, so the squares stay 10 mm and sharp; the letter band (600×24 mm at y = 0) is a separate plane 0,5 mm in front. The tier texture sizes now mean px per 600 mm (2048 → 3,4 px/mm on hoch). Pass/fail: e2e, the four stage corners are chart pixels in default and Vorne, also at maxDistance, at 1280×800, 412×915 and 880×400.
 
 **Hard constraints carried in:**
 - The CSP stays unchanged: `img-src 'self' data:`, `style-src 'self'`, `script-src 'self'` (the `worker.spec.js` test checks the CSP string exactly).
@@ -225,7 +227,7 @@ The Glas and Dickenkarte materials are both created once and swapped. They are d
 
 ### Background chart (D-10) **[BP]**
 
-- One vertical plane, 600×400 mm, centred at (0, 0, −200) mm. It sits 200 mm behind the frame front, so it lies beyond the 140 mm temples plus the bend and no temple pierces it. The distance is documented as a design value.
+- One vertical plane at z = −200 mm, sized from the camera math so it fills the stage (amended, A2; was 600×400 mm about the origin). It sits 200 mm behind the frame front, so it lies beyond the 140 mm temples plus the bend and no temple pierces it. The distance is documented as a design value.
 - Texture drawn at runtime: a 10 mm checkerboard over the whole plane, crossed at y = 0 by a white band 24 mm high carrying the letter row `E F P T O Z L P E D` repeated, 12 mm cap height, `#1a1a1a`, weight 600 system sans-serif. Behind each lens you see straight checker edges (they show the bending) and letters (they show scale).
 - Texture size: 2048×1366 on the High tier, 1024×683 on Mittel and Sparsam. Mipmaps on, anisotropy `min(8, getMaxAnisotropy())`.
 - **Grazing fade:** the chart plane is hidden when the camera is more than 70° from the plane normal (Seite and Oben). Otherwise it shows as a distracting black-and-white sliver. In those views the glasses stand on the plain studio background.
@@ -255,10 +257,10 @@ A horizontal plane at y = −(B/2 + 25 mm), with the footprint of the frame fron
 
 | Preset | Target | Direction (azimuth / elevation) | Fits |
 |--------|--------|---------------------------------|------|
-| Default and "Ansicht zurücksetzen" | bridge centre | 35° toward the wearer's right side, 15° above | frame front + temples |
+| Default and "Ansicht zurücksetzen" | centre of the projected frame silhouette (amended, A1) | 35° toward the wearer's right side, 15° above | projected frame front + temples, aspect-aware (amended, A1) |
 | Vorne | bridge centre | 0° / 0° | frame front only |
 | Seite | temporal rim point of the **side eye** | 90° from the side eye's temporal side / 0° | side eye's lens + rim silhouette (amended, R1-3) |
-| Oben | bridge centre | 0° / 85° from above | frame front + temples |
+| Oben | centre of the projected frame silhouette (amended, A1) | 0° / 85° from above | projected frame front + temples, aspect-aware (amended, A1) |
 
 - **Side eye [BP]:** the eye whose thickest edge has the larger total protrusion, front + back (D-05 rule; amended, R1-3). Ties within 0,05 mm go to the right eye. In A/B mode it is the compared eye. `#view-side-note` then names it, because the view would otherwise look the same for either eye.
 - **Transition:** 450 ms ease-in-out (cubic) on position and target. Under `prefers-reduced-motion: reduce` it is an instant cut and damping is off. There is no auto-rotate anywhere.

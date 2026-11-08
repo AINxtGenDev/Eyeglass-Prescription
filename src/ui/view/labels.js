@@ -36,6 +36,9 @@ const v = new Vector3();
 /**
  * Project a world point to the stage and move the span there: the span's top edge is centred on
  * the point. Hidden when the point is outside the view volume or the span has no text.
+ * 03-09: the span is kept inside the stage (shifted, never clipped). With the closer A1 default
+ * fit a wide label such as 'L – nicht berechnet' under an outer lens would otherwise stick out of
+ * a 328 px phone stage, which clips it (overflow: hidden).
  * @param {HTMLElement} el
  * @param {{ x: number, y: number, z: number }} world
  * @param {import('three').Camera} camera
@@ -47,8 +50,10 @@ export function place(el, world, camera, size) {
   const inside = Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1;
   el.hidden = !inside || el.textContent === '';
   if (el.hidden) return false;
-  const x = ((v.x + 1) / 2) * size.width;
-  const y = ((1 - v.y) / 2) * size.height;
-  el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translateX(-50%)`;
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  const x = Math.min(Math.max(((v.x + 1) / 2) * size.width - w / 2, 0), Math.max(0, size.width - w));
+  const y = Math.min(((1 - v.y) / 2) * size.height, Math.max(0, size.height - h));
+  el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
   return true;
 }

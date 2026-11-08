@@ -657,6 +657,24 @@ export default Object.freeze({
   // 03-08 (UI-SPEC States): WebGL context loss and restore.
   'view.contextLost': 'Die 3D-Ansicht wird neu aufgebaut …',
   'view.contextGone': 'Die 3D-Ansicht ist vorübergehend nicht verfügbar. Laden Sie die Seite neu, um sie wieder zu sehen.',
+  // 03-09 (VIZ-03, UI-SPEC "Toolbar and hints", "Canvas accessible name" view names).
+  'view.presets.label': 'Blickrichtung',
+  'view.preset.front': 'Vorne',
+  'view.preset.side': 'Seite',
+  'view.preset.top': 'Oben',
+  'view.preset.reset': 'Ansicht zurücksetzen',
+  'view.hint.pointer': 'Ziehen dreht die Brille · Umschalt + Ziehen verschiebt · Mausrad zoomt, nachdem Sie in die Ansicht geklickt haben.',
+  'view.keys': 'Tastatur: Pfeiltasten drehen, Umschalt + Pfeiltasten verschieben, Plus und Minus zoomen, Pos1 setzt die Ansicht zurück.',
+  'view.side.note': 'Seite: Blick auf den äußeren Rand des {eye} Glases.',
+  'view.side.od': 'rechten',
+  'view.side.os': 'linken',
+  'view.viewName.default': 'schräg von vorne',
+  'view.viewName.front': 'von vorne',
+  'view.viewName.side': 'von der Seite ({eye} Glas)',
+  'view.viewName.top': 'von oben',
+  'view.viewName.free': 'frei gedreht',
+  'view.viewName.od': 'rechtes',
+  'view.viewName.os': 'linkes',
   'view.noWebgl':
     'Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem.',
 
