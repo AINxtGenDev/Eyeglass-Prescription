@@ -130,9 +130,9 @@ describe('VIZ-01 lens mesh (D-04)', () => {
       expect(FRONT_INDEX.length).toBe(3 * 91440);
       expect(BACK_INDEX.length).toBe(3 * 91440);
       expect(BAND_INDEX.length).toBe(3 * 1440);
-      expect(Math.max(...FRONT_INDEX)).toBe(VERTS - 1);
-      expect(Math.max(...BACK_INDEX)).toBe(VERTS - 1);
-      expect(Math.max(...BAND_INDEX)).toBe(2 * SPOKES - 1);
+      expect(FRONT_INDEX.reduce((a, b) => Math.max(a, b), 0)).toBe(VERTS - 1);
+      expect(BACK_INDEX.reduce((a, b) => Math.max(a, b), 0)).toBe(VERTS - 1);
+      expect(BAND_INDEX.reduce((a, b) => Math.max(a, b), 0)).toBe(2 * SPOKES - 1);
     });
 
     it('RING_FRAC: 0 … 1, strictly increasing, 1 − (1 − k/64)^2.5', () => {
