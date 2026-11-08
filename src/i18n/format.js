@@ -20,6 +20,12 @@ const msNf = new Intl.NumberFormat('de-AT', {
   maximumFractionDigits: 2,
 });
 const intNf = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 0 });
+// 03-12 iso lines: steps of 0,25 mm need 2 decimals; every thickness value stays on fmtMm (0,1).
+const isoNf = new Intl.NumberFormat('de-AT', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 2,
+  signDisplay: 'negative',
+});
 
 const typographicMinus = (s) => s.replace('-', MINUS);
 
@@ -56,4 +62,14 @@ export function fmtGramWhole(v) {
 /** Conic constant k, 1 decimal, no unit: −1 → "−1,0", 0 → "0,0" (MAT-05). */
 export function fmtConic(v) {
   return typographicMinus(oneDecimalNf.format(v));
+}
+
+/** Iso-line value, no unit (the legend says mm), 1–2 decimals: 2.5 → "2,5", 2.25 → "2,25", 3 → "3,0". */
+export function fmtIsoValue(v) {
+  return typographicMinus(isoNf.format(v));
+}
+
+/** Iso-line step with unit, 1–2 decimals: 0.25 → "0,25 mm", 1 → "1,0 mm". */
+export function fmtIsoStep(v) {
+  return typographicMinus(isoNf.format(v)) + NBSP + 'mm';
 }
