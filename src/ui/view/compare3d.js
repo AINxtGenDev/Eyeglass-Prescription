@@ -130,6 +130,12 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
         set(LA, 'visible', true);
         set(fA.root, 'visible', true);
         for (const m of fA.nonRim) set(m, 'visible', false);
+        // Draw nothing: drawRange count 0 still uploads the attributes (WebGLObjects.update runs
+        // before the draw), but SwiftShader no longer pushes the full index list of degenerate
+        // triangles through the glass and transmission passes (measured +3,3 s at the first load).
+        LA.traverse((o) => {
+          if (o.isMesh) set(o.geometry.drawRange, 'count', 0);
+        });
       } else {
         set(LA, 'visible', false);
         set(fA.root, 'visible', false);

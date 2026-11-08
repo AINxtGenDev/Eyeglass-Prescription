@@ -646,11 +646,15 @@ function paintCompare() {
   // task schedules this paint again.
   if (compareStartQueued) return;
   const frameStart = performance.now();
+  let aDelivered = false;
   for (const d of compareDeliveries.splice(0)) {
     if (!client.isCompareCurrent(d.gen)) continue;
     const id = jobMaterial.get(d.key);
     if (id === undefined) continue;
-    if (id === CONFIG_A) resultA = d.error ? null : d.results;
+    if (id === CONFIG_A) {
+      resultA = d.error ? null : d.results;
+      aDelivered = true;
+    }
     else if (id === AUTO_BC) resultAuto = d.error ? null : d.results;
     else others[id] = d.error ? null : d.results;
     compareDelivered.add(id);
@@ -669,7 +673,9 @@ function paintCompare() {
   if (configA) {
     renderConfigCompare({ config: configA, A: resultA === null ? { OD: null, OS: null } : resultA, B: selected, same: sameConfig() });
     if (showA) paintCards();
-    refreshView(); // 03-14: the A lens for the 3D comparison
+    // 03-14: the A lens for the 3D comparison; only when A itself arrived (the other material rows
+    // of this lane change nothing in the view, and a split render costs two passes).
+    if (aDelivered) refreshView();
   }
   for (const id of compareDelivered) comparePending.delete(id);
   compareDelivered.clear();

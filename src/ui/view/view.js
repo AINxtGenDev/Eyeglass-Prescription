@@ -206,7 +206,6 @@ export function mountView({ slot }) {
     avoidKey = key;
     setLabelAvoid(boxes);
     if (mode === 'heat') requestSettle(inRender);
-    else if (!inRender) view?.requestRender();
   }
 
   const view = createScene(/** @type {HTMLCanvasElement} */ ($('view-canvas')), $('view-stage'));
@@ -996,7 +995,7 @@ export function mountView({ slot }) {
       eye: cmp?.eye,
       stageWidth: $('view-stage').clientWidth,
       shown: cmp?.showA ? 'A' : 'B',
-      aEye: aOk ? cmp.eye : null,
+      aEye: aOk ? attachedEyeA.A : null, // the eye the attached A was built for (compare3d draws it only for cmp.eye)
     });
     if (!changed) return;
     const now = compare3d.state();
@@ -1048,10 +1047,16 @@ export function mountView({ slot }) {
       }
     }
     // 03-14 (RES-03): the A lens and its rim for the compared eye, in the same latest-wins job.
+    const wasCmp = cmp !== null;
     cmp = null;
-    wantKey.A = null;
-    wantKey.frameA = null;
     const c = inputs.compare ?? null;
+    // While A is recomputed (c.A null) inside a running comparison, the last A stays shown, as an old
+    // main mesh stays visible while a newer one is pending (UI-SPEC States); a new comparison starts
+    // with no A until its own A lens is attached.
+    if (!(c && c.A === null && wasCmp)) {
+      wantKey.A = null;
+      wantKey.frameA = null;
+    }
     let rA = null;
     if (c) {
       const th = (r) => (r?.ok ? thickest(r.metrics).value : null);
