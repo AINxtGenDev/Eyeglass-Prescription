@@ -202,5 +202,14 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - View chunk 556 kB (Vite > 500 kB warning). Safari/Firefox retry of a failed chunk unverified. Phone users reach the 3D view only by scrolling until the 03-15 thumbnail.
 - For lens-critic: e2e `without3d` trade-off, unsourced temple range, the 0,0231 mm low-index margin.
 
+- **03-08** eye-chart backdrop + quality tiers (hoch/mittel/niedrig, step-down after 30 interactive frames).
+- **03-09** camera presets (Vorne/Seite/Oben/zurücksetzen), mouse + keyboard. Amendments A1 (default view fitted to the frame silhouette: R–L lens centres 42,6 → 103,6 px at 412 px) and A2 (chart sized from the camera math, covers the whole stage at every zoom) recorded in 03-CONTEXT and the UI-SPEC. Phone check: renderer memory flat across preset switches (16 geometries / 6 textures / 8 programs), no console errors.
+- **03-10** '3D drehen' touch toggle (coarse pointer only): at rest one-finger drags scroll the page; when on, the stage gets touch-action none and one finger rotates, two fingers pinch/pan; auto-off below 50 % visible. e2e 464 passed / 10 skipped. Phone check confirmed toggle, auto-off on scroll-away, no overflow at 412/320 px.
+
+### Open items (added)
+- Orbit trace is not meaningful headless (SwiftShader ~0,87 s per frame, CPU throttle does not reach it); tier step-down never fired in a 9-frame trace. Real-phone measurement in 03-15/03-17.
+- For lens-critic: blurred (not minified) checker through the lenses on tier 'mittel'; orbit pivot ~41 mm from the bridge centre (A1); with '3D drehen' on, the mouse wheel zooms without focus on hybrid laptops.
+- VIZ-03 Pending until the 03-11 side view; VIZ-06 Pending until the real-device check.
+
 ### Next step
-03-08 (eye-chart backdrop, quality tiers), then 03-09 (camera presets + controls).
+03-11 (text in the view, side view showing lens protrusion).
