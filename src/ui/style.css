@@ -1702,6 +1702,31 @@ td:has(.msg-out) input[aria-invalid='true'] {
   pointer-events: none;
 }
 
+/* 03-14 A3 (orchestrator amendment): the hint fades out 4 s after a keyboard focus (view.js), then
+   returns to the visually hidden state above; it stays the stage's description. Under reduced
+   motion view.js skips the fading step, so nothing animates. */
+#view-stage:focus-visible ~ .view-keys.view-keys--fading {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+#view-stage:focus-visible ~ .view-keys.view-keys--hidden {
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-stage:focus-visible ~ .view-keys.view-keys--fading {
+    transition: none;
+  }
+}
+
 #view-tools,
 #view-tools > [role='group'] {
   display: flex;

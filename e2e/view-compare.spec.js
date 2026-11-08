@@ -1,4 +1,5 @@
-// RES-03 3D part (03-14; D-24 as amended, D-25; UI-SPEC "A/B in 3D"; lens-critic round 2 MINOR 4).
+// RES-03 3D part (03-14; D-24 as amended, D-25; UI-SPEC "A/B in 3D"; lens-critic round 2 MINOR 4)
+// and the 03-14 amendment A3 (keyboard hint fades, callouts return).
 // While 'Variante vergleichen' is active the view shows the compared eye as Vorher (A) | Nachher (B)
 // side by side (stage ≥ 360 px) or toggled by #cmp-show (below), one camera, one scale. Every
 // number asserted here is compared against the result cards or the heat table (engine values).
@@ -312,6 +313,52 @@ test('RES-03 no GPU churn over 5 compare start/end cycles (T-03-39)', async ({ p
   testInfo.annotations.push({ type: 'memory', description: JSON.stringify({ before, during, after }) });
   for (const m of [...during, ...after]) expect(m).toEqual(before);
 });
+
+// ---- A3 (03-14 orchestrator amendment): the keyboard hint fades, the callouts come back. ----
+for (const motion of /** @type {const} */ (['reduce', 'no-preference'])) {
+  test.describe(`A3 keyboard hint, motion ${motion}`, () => {
+    test.use({ viewport: { width: 412, height: 915 }, reducedMotion: motion });
+    test('hint shows on keyboard focus, then hides; the callouts return and equal the table', async ({ page }, testInfo) => {
+      desktopOnly(testInfo);
+      test.setTimeout(120_000);
+      await settledView(page);
+      await expertOn(page);
+      await heatOn(page);
+      await page.waitForFunction(() => window.__eyeglassView.labelsInfo().calloutsFit);
+      // Keyboard focus: the checked Darstellung radio, then Tab to the stage (D-39 order).
+      await page.locator('#view-mode input[value=heat]').focus();
+      await page.keyboard.press('Tab');
+      await expect(page.locator('#view-stage')).toBeFocused();
+      expect(await ev(page, () => document.getElementById('view-stage').matches(':focus-visible'))).toBe(true);
+      expect(await ev(page, () => window.__eyeglassView.keysHint())).toBe('shown');
+      await expect(page.locator('#view-keys')).toBeVisible();
+      const note = page.locator('#view-callout-note');
+      await expect(note).toBeVisible({ timeout: 15_000 });
+      expect((await labelsInfo(page)).labels.filter((l) => l.kind === 'callout')).toEqual([]);
+      // After KEYS_SHOW_MS (+ the 300 ms fade with motion) the hint is hidden and no obstacle.
+      await page.waitForFunction(() => window.__eyeglassView.keysHint() === 'hidden', null, { timeout: 15_000 });
+      await expect(note).toBeHidden({ timeout: 15_000 });
+      const li = await labelsInfo(page);
+      expect(li.calloutsFit).toBe(true);
+      const callouts = li.labels.filter((l) => l.kind === 'callout');
+      expect([5, 6]).toContain(callouts.length);
+      const eye = (await ev(page, () => window.__eyeglassView.heatScale())).eye;
+      for (const c of callouts) {
+        const v = plain(await cell(page, c.key, eye).textContent());
+        expect(plain(c.text).match(/\d+,\d+/)[0], c.key).toBe(v.match(/\d+,\d+/)[0]);
+      }
+      // Still the stage's description for screen readers; still focused.
+      await expect(page.locator('#view-stage')).toHaveAttribute('aria-describedby', 'view-keys');
+      await expect(page.locator('#view-keys')).toHaveText(/^Tastatur: Pfeiltasten drehen/);
+      await expect(page.locator('#view-stage')).toBeFocused();
+      // A new keyboard focus shows it again.
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      expect(await ev(page, () => window.__eyeglassView.keysHint())).toBe('shown');
+      await expect(page.locator('#view-keys')).toBeVisible();
+    });
+  });
+}
 
 for (const vp of [
   { width: 320, height: 640 },

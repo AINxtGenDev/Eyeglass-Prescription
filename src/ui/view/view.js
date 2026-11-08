@@ -65,6 +65,9 @@
 // lenses, the table shows Vorher (A) · Nachher (B) for the compared eye and the callout rule is
 // decided once across both halves. Starting or ending a comparison creates no GPU resource: the A
 // slot is uploaded by a warm-up render after the first attach and afterwards only made visible.
+// 03-14 A3 (orchestrator amendment): the keyboard hint shows on keyboard focus and fades out after
+// KEYS_SHOW_MS (no transition under reduced motion); once hidden it is no longer an obstacle for
+// the labels, so the callouts return. The text stays the stage's aria-describedby description.
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
@@ -112,6 +115,10 @@ const EYE_KEY = { OD: 'view.eye.od', OS: 'view.eye.os' };
 const JOB_LOG = 10;
 /** Canvas accessible-name debounce (UI-SPEC Canvas accessible name: 500 ms). */
 const ARIA_DEBOUNCE_MS = 500;
+/** A3 (03-14): the keyboard hint shows this long after a keyboard focus, then fades [BP]. */
+const KEYS_SHOW_MS = 4000;
+/** A3: fade-out duration (style.css .view-keys--fading uses the same 300 ms) [BP]. */
+const KEYS_FADE_MS = 300;
 
 // Test-only (?failframe=<mm>, read once like ?perfmarks): a frame item whose rim depth equals this
 // value is sent with rimDepthMm −1, so the worker's own validation returns ok: false through the
@@ -175,6 +182,8 @@ export function mountView({ slot }) {
   let avoidKey = '';
   /** 03-14: the badge box (stage px) of the last measure, for the A/B captions. */
   let badgeBox = null;
+  /** A3: keyboard hint 'off' (no keyboard focus) | 'shown' | 'fading' | 'hidden'. */
+  let keysState = 'off';
   const keysEl = /** @type {HTMLElement} */ (slot.querySelector('#view-keys'));
   /**
    * 03-13: stage boxes no label may cover: the badge, and the keyboard hint while it is shown
@@ -185,7 +194,7 @@ export function mountView({ slot }) {
     const boxes = [];
     badgeBox = badge.offsetWidth > 0 ? { x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight } : null;
     if (badgeBox) boxes.push(badgeBox);
-    if (stageEl.matches(':focus-visible')) {
+    if (stageEl.matches(':focus-visible') && keysState !== 'hidden') {
       const s = stageEl.getBoundingClientRect();
       const k = keysEl.getBoundingClientRect();
       const top = Math.max(k.top, s.top) - s.top;
@@ -904,7 +913,46 @@ export function mountView({ slot }) {
     requestSettle(true);
   });
 
-  for (const type of ['focus', 'blur', 'keydown']) $('view-stage').addEventListener(type, () => updateAvoid());
+  // A3 (03-14): the keyboard hint shows on a keyboard focus, then fades after KEYS_SHOW_MS (a plain
+  // hide under reduced motion) and shows again on the next focus. aria-describedby keeps the text.
+  const stageEl = $('view-stage');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let keysTimer = null;
+  const setKeys = (next) => {
+    keysState = next;
+    keysEl.classList.toggle('view-keys--fading', next === 'fading');
+    keysEl.classList.toggle('view-keys--hidden', next === 'hidden');
+    updateAvoid();
+  };
+  const clearKeysTimer = () => {
+    if (keysTimer !== null) clearTimeout(keysTimer);
+    keysTimer = null;
+  };
+  stageEl.addEventListener('focus', () => {
+    clearKeysTimer();
+    if (!stageEl.matches(':focus-visible')) {
+      setKeys('off');
+      return;
+    }
+    setKeys('shown');
+    keysTimer = setTimeout(() => {
+      if (reducedMotion.matches) {
+        keysTimer = null;
+        setKeys('hidden');
+        return;
+      }
+      setKeys('fading');
+      keysTimer = setTimeout(() => {
+        keysTimer = null;
+        setKeys('hidden');
+      }, KEYS_FADE_MS);
+    }, KEYS_SHOW_MS);
+  });
+  stageEl.addEventListener('blur', () => {
+    clearKeysTimer();
+    setKeys('off');
+  });
+  stageEl.addEventListener('keydown', () => updateAvoid());
   avoidReady = true;
   updateAvoid();
 
@@ -1157,6 +1205,8 @@ export function mountView({ slot }) {
       }
       return { active: cs.active, split: cs.split, eye: cs.eye, shown: cs.shown, aReady: cs.aEye === cs.eye, widthPx };
     },
+    /** 03-14 A3 test-only: keyboard hint 'off' | 'shown' | 'fading' | 'hidden'. */
+    keysHint: () => keysState,
     /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
     rotateActive: () => controls.rotateActive(),
     /** 03-09: camera state, derived limits and the side eye. */
