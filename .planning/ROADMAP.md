@@ -292,7 +292,7 @@ Plans:
 
 **Wave 14**
 
-- [ ] 03-16-PLAN.md — Accessibility matrix for every 3D state and the keyboard path at both widths
+- [x] 03-16-PLAN.md — Accessibility matrix for every 3D state and the keyboard path at both widths
 
 **Wave 15**
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 15/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 16/17 | In Progress|  |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-15-PLAN.md
-last_updated: "2026-11-08T21:28:14.633Z"
+stopped_at: Completed 03-16-PLAN.md
+last_updated: "2026-11-08T22:04:01.624Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 52
+  completed_plans: 53
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 16 of 17
+Plan: 17 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -98,6 +98,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P13 | 45min | 2 tasks | 11 files |
 | Phase 03 P14 | ~3h | 2 tasks | 17 files |
 | Phase 03 P15 | 210min | 2 tasks | 13 files |
+| Phase 03 P16 | 35min | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -218,6 +219,7 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-15: split A/B thumbnail = largest 4:3 crop of the shown half with the pose fitted to it (lens ~44 px of 48)
 - [Phase 03]: 03-15: below 400 px the bar uses 12 px padding and 0,875rem values next to the thumbnail; thumb-off fallback so numbers are never clipped
 - [Phase 03]: 03-15: D-27 EXPECTED 21 geometries / 6 textures derived from r187 source (DFG LUT counts as a texture); allocation counters equal over 56 sequential changes
+- [Phase 03]: 03-16 A4: the bar thumbnail pass hides the eye chart and the contact shadow (.visible, restored before pass 2); glasses on plain #f3f4f6, still 2 passes, no new GPU resources; the main view keeps the chart
 
 ### Pending Todos
 
@@ -238,6 +240,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T21:28:14.628Z
-Stopped at: Completed 03-15-PLAN.md
+Last session: 2026-11-08T22:04:01.619Z
+Stopped at: Completed 03-16-PLAN.md
 Resume file: None
