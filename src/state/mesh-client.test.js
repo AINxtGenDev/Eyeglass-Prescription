@@ -36,6 +36,15 @@ function fakeTimers() {
       return true;
     },
     zeroCount: () => [...timers.values()].filter((v) => v.ms === 0).length,
+    /** Fire every pending timer with the clock set to t (a late, suspended-tab firing). */
+    fireLateAt(t) {
+      clock = t;
+      for (const [id, v] of [...timers.entries()]) {
+        timers.delete(id);
+        v.fn();
+      }
+    },
+    now: () => clock,
     timers,
   };
 }
@@ -48,6 +57,7 @@ const it3 = (tag) => ['OD', 'OS', 'A'].map((slot) => ({ slot, tag, buffers: { fr
 
 function setup({ ready = true, loadSyncHandler } = {}) {
   const ft = fakeTimers();
+  const state = { hidden: false };
   const sent = [];
   const handled = [];
   const syncHandler = {
@@ -64,11 +74,13 @@ function setup({ ready = true, loadSyncHandler } = {}) {
     loadSyncHandler: load,
     setTimeoutFn: ft.setTimeoutFn,
     clearTimeoutFn: ft.clearTimeoutFn,
+    now: ft.now,
+    isHidden: () => state.hidden,
   });
   if (ready) client.receive({ type: 'ready' });
   const reply = (m, extra = {}) =>
     client.receive({ type: 'mesh', id: m.id, items: m.items.map((i) => ({ slot: i.slot, ok: true, built: i.tag })), computeMs: 1, ...extra });
-  return { ft, sent, handled, syncHandler, load, cb, client, reply };
+  return { ft, sent, handled, syncHandler, load, cb, client, reply, state };
 }
 
 describe('mesh client (03-04, VIZ-06, MAJOR 3 / MINOR 7)', () => {
@@ -163,6 +175,45 @@ describe('mesh client (03-04, VIZ-06, MAJOR 3 / MINOR 7)', () => {
     while (ft.runOneZero()) await flush();
     expect(cb.onMesh).toHaveBeenLastCalledWith({ gen: g2, items: expect.any(Array), current: true });
     expect(sent).toHaveLength(1);
+  });
+
+  // 03-05 (carried from 03-04): the compute-client rule. A backgrounded (frozen) tab must not
+  // push the mesh client into permanent sync mode.
+  test('watchdog: firing while hidden re-arms instead of falling back', () => {
+    const { ft, client, cb, state } = setup();
+    client.requestMesh(it3('a'));
+    state.hidden = true;
+    ft.advance(MESH_WATCHDOG_MS);
+    expect(cb.onFallback).not.toHaveBeenCalled();
+    state.hidden = false;
+    ft.advance(2 * MESH_WATCHDOG_MS);
+    expect(cb.onFallback).toHaveBeenCalledWith('timeout');
+  });
+
+  test('watchdog: a late firing (suspended timers) re-arms instead of falling back', () => {
+    const { ft, client, cb } = setup();
+    client.requestMesh(it3('a'));
+    ft.fireLateAt(MESH_WATCHDOG_MS + 5000);
+    expect(cb.onFallback).not.toHaveBeenCalled();
+    expect(client.mode()).toBe('worker');
+    expect([...ft.timers.values()].some((v) => v.ms === MESH_WATCHDOG_MS)).toBe(true);
+  });
+
+  test('watchdog: resume() re-arms with a fresh MESH_WATCHDOG_MS', () => {
+    const { ft, client, cb } = setup();
+    client.requestMesh(it3('a'));
+    ft.advance(MESH_WATCHDOG_MS - 100);
+    client.resume();
+    ft.advance(MESH_WATCHDOG_MS + 100);
+    expect(cb.onFallback).not.toHaveBeenCalled();
+    ft.advance(2 * MESH_WATCHDOG_MS - 100);
+    expect(cb.onFallback).toHaveBeenCalledWith('timeout');
+  });
+
+  test('resume() with nothing to watch arms nothing', () => {
+    const { ft, client } = setup();
+    client.resume();
+    expect(ft.timers.size).toBe(0);
   });
 
   test('a reply in time disarms the watchdog', () => {
