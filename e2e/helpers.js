@@ -41,6 +41,32 @@ export async function settledXsec(page, { timeout = 10_000 } = {}) {
 }
 
 /**
+ * settled(), then wait until the 3D view has nothing pending (03-05): #view[data-pending] = ''
+ * (the lazy chunk loaded and the latest mesh request is attached), then one more frame.
+ * Three.js and the first mesh can take a few seconds on CI, hence the 15 s default.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function settledView(page, { timeout = 15_000 } = {}) {
+  await settled(page, { timeout });
+  await expect(page.locator('#view')).toHaveAttribute('data-pending', '', { timeout });
+  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+}
+
+/**
+ * Collect console errors and warnings from Three.js or WebGL (03-05). Register before the page
+ * loads (a beforeEach that runs before guardPage's). Returns a getter for the collected texts.
+ * @param {import('@playwright/test').Page} page
+ * @returns {() => string[]}
+ */
+export function noThreeWarnings(page) {
+  const seen = [];
+  page.on('console', (m) => {
+    if ((m.type() === 'error' || m.type() === 'warning') && /THREE|WebGL|GL_/.test(m.text())) seen.push(`${m.type()}: ${m.text()}`);
+  });
+  return () => [...seen];
+}
+
+/**
  * Numeric value of #result-<eye>-etmax ("2,8 mm" → 2.8); NaN when the cell shows no number.
  * Since 02-01 this is the 'Dickster Rand' technical row (the edge value). Callers that mean the
  * shown thickest point use thickOf; perf-throttled discriminator() stays on the edge on purpose.
@@ -57,7 +83,7 @@ export const WORKER_URL = /\/assets\/engine\.worker[^/]*\.js$/;
 /**
  * Mesh worker bundle (03-04): a second worker, mesh.worker-<hash>.js. Tests that block or slow
  * "the worker" mean the engine worker (WORKER_URL); tests that block both route both patterns.
- * Nothing loads the mesh worker before 03-05.
+ * The lazy view chunk creates it after the first result paint (03-05).
  */
 export const MESH_WORKER_URL = /\/assets\/mesh\.worker[^/]*\.js$/;
 
@@ -100,6 +126,36 @@ export async function holdWorker(page) {
   const worker = () => {
     const w = page.workers().find((x) => WORKER_URL.test(new URL(x.url()).pathname));
     if (!w) throw new Error('holdWorker: engine worker not found');
+    return w;
+  };
+  return {
+    hold: () => worker().evaluate(() => {
+      self.__hold = true;
+    }),
+    release: () => worker().evaluate(() => self.__release()),
+  };
+}
+
+/**
+ * Serve the real mesh worker (03-04/03-05) with a test-controlled hold on its 'mesh' replies:
+ * while held, replies are queued inside the worker; release() posts them in order (with their
+ * transfer lists). READY is never held. Hold no longer than MESH_WATCHDOG_MS (10 s), or the mesh
+ * client falls back to the main thread. Must be called before page.goto.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function holdMeshWorker(page) {
+  const patch =
+    '{const post = self.postMessage.bind(self); const q = []; self.__hold = false;' +
+    'self.__release = () => { self.__hold = false; while (q.length) post(...q.shift()); };' +
+    "self.postMessage = (m, ...rest) => { if (self.__hold && m && m.type === 'mesh') q.push([m, ...rest]); else post(m, ...rest); };}\n";
+  await page.route(MESH_WORKER_URL, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
+  });
+  const worker = () => {
+    const w = page.workers().find((x) => MESH_WORKER_URL.test(new URL(x.url()).pathname));
+    if (!w) throw new Error('holdMeshWorker: mesh worker not found');
     return w;
   };
   return {

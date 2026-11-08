@@ -389,7 +389,18 @@
         </div>
 
         <div class="col-results" tabindex="0" role="region" data-i18n-aria-label="layout.results.region">
-          <div id="view-slot" hidden></div>
+          <div id="view-slot" hidden>
+            <section id="view" aria-labelledby="view-title" data-pending="load">
+              <h2 id="view-title" class="visually-hidden" data-i18n="view.title"></h2>
+              <div id="view-stage" tabindex="0" role="group" data-i18n-aria-label="view.stage.label">
+                <canvas id="view-canvas" role="img" data-i18n-aria-label="view.title"></canvas>
+                <span class="view-badge" aria-hidden="true"></span>
+                <div id="view-labels" aria-hidden="true"></div>
+                <p id="view-status" role="status" data-i18n="view.loading"></p>
+              </div>
+              <p id="view-caption"></p>
+            </section>
+          </div>
           <section id="result" aria-labelledby="result-title">
             <h2 id="result-title" tabindex="-1" data-i18n="result.title"></h2>
             <article id="result-od-card" class="result-card" aria-labelledby="result-od-title">

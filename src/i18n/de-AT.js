@@ -616,6 +616,16 @@ export default Object.freeze({
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',
 
+  // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View"). The state strings
+  // (view.eye.*, view.empty, view.loadFailed, view.retry, view.noWebgl) come with 03-06.
+  'view.title': '3D-Ansicht Ihrer Brille',
+  'view.stage.label': '3D-Ansicht steuern',
+  'view.badge.glass': 'Visueller Eindruck',
+  'view.badge.updating': '3D wird aktualisiert …',
+  'view.caption.glass':
+    'Visueller Eindruck – die Lichtbrechung im Glas ist nur angenähert. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
+  'view.loading': '3D-Ansicht wird aufgebaut …',
+
   // Querschnitt (02-13, ANA-01, D-30, D-37). Numbers are formatted outside the strings.
   'xs.title': 'Querschnitt',
   'xs.svgTitle': 'Querschnitt {eye}, Schnitt {angle}°',

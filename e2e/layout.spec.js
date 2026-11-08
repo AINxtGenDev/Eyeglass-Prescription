@@ -3,7 +3,7 @@
 // Pinned values: 02-01-SUMMARY Task 2 table (example 4,597 / 4,597 mm, 6,86 / 6,75 g; R +3,00 CT
 // 3,902, 7,23 g; L +2,75 CT 3,737, 7,00 g; CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
-import { settled, settledXsec, slowWorker, plain, guardPage } from './helpers.js';
+import { settled, settledXsec, settledView, slowWorker, plain, guardPage } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 guardPage(test);
@@ -131,14 +131,16 @@ test.describe('360 × 780', () => {
 test.describe('1280 × 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('two columns: sticky results with the empty phase-3 slot first, no bar', async ({ page }) => {
+  test('two columns: sticky results with the 3D view first, no bar', async ({ page }) => {
     await settled(page);
     const results = page.locator('.col-results');
     expect(await results.evaluate((el) => getComputedStyle(el).position)).toBe('sticky');
     const first = await results.evaluate((el) => el.firstElementChild?.id ?? null);
     expect(first).toBe('view-slot');
-    await expect(page.locator('#view-slot')).toHaveAttribute('hidden', '');
-    await expect(page.locator('#view-slot')).toBeEmpty();
+    // 03-05 (D-13): the slot holds the 3D view and shows once the view chunk loads.
+    await expect(page.locator('#view-slot > #view')).toHaveCount(1);
+    await settledView(page);
+    await expect(page.locator('#view-slot')).toBeVisible();
     await expect(page.locator('#bar-view-slot')).toHaveAttribute('hidden', '');
     await expect(page.locator('#summary-bar')).toBeHidden();
     // inputs left, results right
