@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 planned — 17 plans, plan-checker passed, lens-critic plan review PASS
-last_updated: "2026-11-08T11:22:09.357Z"
-last_activity: 2026-11-08 -- Phase 3 planning complete
+stopped_at: Phase 3 UI-SPEC approved
+last_updated: "2026-11-08T11:38:05.392Z"
+last_activity: 2026-11-08 -- Phase 03 execution started
 progress:
   total_phases: 4
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-06)
 
 **Core value:** A non-expert can type in their paper prescription and, within a few minutes, see correctly computed lens thickness and weight for their frame — and how material or frame choice changes it.
-**Current focus:** Phase 03 — 3D lenses & frame (not yet planned)
+**Current focus:** Phase 03 — 3D lenses & frame
 
 ## Current Position
 
-Phase: 03 (3D lenses & frame) — NOT STARTED
-Plan: — (phase 2 complete 2026-11-08: live at 976629f, Pixel 7 Pro checked, ENG-09 (a) accepted by the user)
-Status: Ready to execute
-Last activity: 2026-11-08 -- Phase 3 planning complete
+Phase: 03 (3D lenses & frame) — EXECUTING
+Plan: 1 of 17
+Status: Executing Phase 03
+Last activity: 2026-11-08 -- Phase 03 execution started
 
 Progress: [█████░░░░░] 50% (2 of 4 phases)
 
