@@ -1857,3 +1857,137 @@ td:has(.msg-out) input[aria-invalid='true'] {
     max-height: 60svh;
   }
 }
+
+/* 03-12 (VIZ-05, UI-SPEC Heatmap): the Darstellung switch reuses .segmented; the legend (max
+   400 px, 14 px labels) and the text table below the view. The table uses the phase-2 table
+   styles; below a 480 px container each row becomes a card with visible cell labels. */
+#view-mode {
+  margin-block: 0 var(--space-4);
+}
+
+/* .segmented (flex) and the stacked table (block) would beat the UA [hidden] rule. */
+#view-mode[hidden],
+#view-heat-table[hidden] {
+  display: none !important;
+}
+
+#view-heat {
+  container: viewheat / inline-size;
+}
+
+#view-legend {
+  max-width: 400px;
+  margin-block: var(--space-4) 0;
+  font-size: 0.875rem;
+}
+
+#view-legend p {
+  margin: 0;
+}
+
+.view-legend-title {
+  font-weight: 600;
+}
+
+#view-legend .view-legend-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-block: var(--space-1);
+}
+
+.view-legend-svg {
+  display: block;
+  overflow: visible;
+}
+
+.view-legend-bar {
+  stroke: var(--line);
+}
+
+.view-legend-tick {
+  stroke: var(--fg);
+}
+
+.view-legend-label {
+  fill: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+#view-legend .view-legend-step {
+  margin-block-start: var(--space-1);
+}
+
+#view-heat-table {
+  margin-block: var(--space-4) 0;
+  font-size: 0.875rem;
+}
+
+/* The thickest cell carries its location word: it may wrap (the mm value keeps its NBSP). */
+#view-heat-table td.num {
+  white-space: normal;
+}
+
+#view-heat-nochord {
+  margin-block: var(--space-2) 0;
+  font-size: 0.875rem;
+}
+
+@container viewheat (width < 480px) {
+  #view-heat-table,
+  #view-heat-table tbody,
+  #view-heat-table tr,
+  #view-heat-table th,
+  #view-heat-table td {
+    display: block;
+  }
+
+  #view-heat-table caption {
+    display: block;
+  }
+
+  #view-heat-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  #view-heat-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-1) var(--space-2);
+    margin-block-end: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  #view-heat-table tbody tr + tr > * {
+    border-block-start: 0;
+  }
+
+  #view-heat-table td,
+  #view-heat-table th {
+    padding: 0;
+    min-width: 0;
+    border: 0;
+  }
+
+  #view-heat-table tbody th {
+    grid-column: 1 / -1;
+  }
+
+  #view-heat-table .cell-label {
+    position: static;
+    margin: 0;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    display: block;
+    color: var(--muted);
+  }
+}

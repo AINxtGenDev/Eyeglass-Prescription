@@ -699,6 +699,37 @@ export default Object.freeze({
   'view.aria.eyeBlocked': '{eye} Glas: nicht berechnet.',
   'view.aria.eye.od': 'Rechtes',
   'view.aria.eye.os': 'Linkes',
+  // 03-12 (VIZ-05, UX-02; UI-SPEC "Copywriting → Heatmap"). {min}/{max} = fmtMm of the engine
+  // scale (heatScale), {step} = fmtIsoStep, {mm} = fmtMm of a heatCallouts value.
+  'view.mode.legend': 'Darstellung',
+  'view.mode.glass': 'Glas',
+  'view.mode.heat': 'Dickenkarte',
+  'view.badge.heat': 'Dickenkarte',
+  'view.caption.heat': 'Die Farbe zeigt die Dicke an jeder Stelle: dunkler = dicker. Alle Zahlen stehen auch in der Tabelle unter der Ansicht.',
+  'view.heatEye.legend': 'Zahlen am Glas für',
+  'view.heatEye.od': 'Rechtes Glas',
+  'view.heatEye.os': 'Linkes Glas',
+  'view.legend.title': 'Dicke in mm',
+  'view.legend.thin': 'dünner',
+  'view.legend.thick': 'dicker',
+  'view.legend.step': 'Linien alle {step}',
+  'view.legend.svgTitle': 'Farbskala der Dicke',
+  'view.legend.svgDesc': 'Von {min} (dünner, hell) bis {max} (dicker, dunkel), Linien alle {step}.',
+  'view.legend.flat': 'Das Glas ist fast überall gleich dick ({min} bis {max}).',
+  'view.table.caption': 'Dicke an markanten Stellen',
+  'view.table.col.where': 'Stelle',
+  'view.table.row.centre': 'Mitte (optischer Mittelpunkt)',
+  'view.table.row.nasal': 'innen (nasal)',
+  'view.table.row.temporal': 'außen (temporal)',
+  'view.table.row.superior': 'oben (superior)',
+  'view.table.row.inferior': 'unten (inferior)',
+  // UI-SPEC row text 'dickste Stelle ({loc})': the location differs per eye, so it sits in the cell.
+  'view.table.row.thickest': 'dickste Stelle',
+  'view.table.thickestCell': '{mm} ({loc})',
+  'view.table.noChord':
+    'Der optische Mittelpunkt liegt außerhalb der Fassungsform, deshalb gibt es keine Randwerte durch die Mitte.',
+  'view.aria.heat':
+    'Dickenkarte, {viewName}. Dünnste Stelle {min}, dickste Stelle {max}. Die Werte an markanten Stellen stehen in der Tabelle unter der Ansicht.',
   'view.noWebgl':
     'Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem.',
 

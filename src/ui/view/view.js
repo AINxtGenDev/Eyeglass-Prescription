@@ -42,6 +42,14 @@
 // and hinge are faded (frame.setFade, chosen before each render). #view-canvas gets a German
 // aria-label from the strings painted on the result cards (results.js cardStrings), the view
 // name, the frame and the material, debounced to 500 ms (one timer, latest wins).
+// 03-12 (VIZ-05, UX-02, D-21…D-23, lens-critic MAJOR 4): Expert-only 'Darstellung: Glas |
+// Dickenkarte' (#view-mode). Dickenkarte swaps the lens faces to the heat material (heat.js; both
+// materials pre-created, D-26) and moves the camera to the 'heat' pose of ONE lens, the heat eye
+// (larger max(ct, etMax.value) of the drawn eyes, ties → OD), so the map has about 4 px/mm on a
+// 320 px phone. Both lenses are coloured on one shared scale: heatScale over the drawn eyes'
+// metrics, isoLevels for the step (engine, D-23). Legend and table (legend.js) come from the same
+// engine values (heatCallouts), computed once per delivery (memo key), never per orbit frame.
+// Expert off returns to Glas. Without WebGL the switch is removed (UI-SPEC States).
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
@@ -55,6 +63,9 @@ import { cardStrings } from '../results.js';
 import { protrusionLines, ariaGlass } from './text.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
+import { createHeat } from './heat.js';
+import { renderLegend, renderHeatTable } from './legend.js';
+import { heatScale, isoLevels, heatCallouts } from '../../engine/mesh/heat.js';
 import { createFrame } from './frame.js';
 import { createChart, createShadow } from './backdrop.js';
 import { TIER_SETTINGS } from './tiers.js';
@@ -130,11 +141,16 @@ export function mountView({ slot }) {
   if (view === null) {
     // D-17: the note replaces the view; numbers, comparison and cross-section are unaffected.
     showNoWebgl();
+    $('view-mode').remove();
     setPending('');
     return { update: () => setPending('') };
   }
   setText('view-caption', t('view.caption.glass'));
-  const lenses = createLensSlots(view.scene, [...SLOTS]);
+  const heat = createHeat(view.scene);
+  const lenses = createLensSlots(view.scene, [...SLOTS], heat.material);
+  /** 03-12: 'glass' | 'heat' (not persisted; Glas is the default). */
+  let mode = 'glass';
+  const modeBadge = () => (mode === 'heat' ? 'view.badge.heat' : 'view.badge.glass');
   const frame = createFrame(view.scene, { OD: lenses.group('OD'), OS: lenses.group('OS') });
   const chart = createChart(view.scene, view.renderer, TIER_SETTINGS[view.tier()].chart);
   const shadow = createShadow(view.scene);
@@ -209,6 +225,8 @@ export function mountView({ slot }) {
     // 03-11: the faded temple materials are only rendered after a side view; compile their hidden
     // carriers now (synchronous compile(), no warning), so the first Seite builds no program.
     view.renderer.compile(frame.fadeCarrier, view.camera, view.scene);
+    // 03-12: the same for the heat material's hidden carrier (MINOR 1 rebuttal).
+    view.renderer.compile(heat.carrier, view.camera, view.scene);
   }
 
   let workerReallocs = 0;
@@ -340,10 +358,12 @@ export function mountView({ slot }) {
     attachedOnce = true;
     refresh();
     for (const b of presetButtons) b.disabled = false;
+    for (const r of modeRadios) r.disabled = false;
+    paintHeat();
     retryLeft = true;
     clearBadgeTimer();
     if (!contextLost) setText('view-status', '');
-    setBadge(last?.current === false ? 'view.badge.updating' : 'view.badge.glass');
+    setBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
     setPending('');
     view.render();
     if (sentAt !== undefined) setText('tech-view-remesh', t('tech.view.remesh', { ms: fmtMs(performance.now() - sentAt) }));
@@ -445,6 +465,11 @@ export function mountView({ slot }) {
   let ariaTimer = null;
   function writeAria() {
     ariaTimer = null;
+    if (mode === 'heat' && heatState) {
+      const label = t('view.aria.heat', { viewName: viewNameText(), min: fmtMm(heatState.scale.min), max: fmtMm(heatState.scale.max) });
+      if (canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
+      return;
+    }
     const OD = cardStrings('OD');
     const OS = cardStrings('OS');
     const f = last ? frameFor(last) : null;
@@ -482,6 +507,100 @@ export function mountView({ slot }) {
   for (const b of presetButtons) {
     b.addEventListener('click', () => controls.goTo(b.dataset.preset === 'reset' ? 'default' : b.dataset.preset));
   }
+
+  // ---- 03-12 Dickenkarte ----
+  const modeRadios = /** @type {HTMLInputElement[]} */ ([...document.querySelectorAll('#view-mode input[name=view-mode]')]);
+  for (const r of modeRadios) {
+    r.after(icon('check'));
+    r.addEventListener('change', () => {
+      if (r.checked) setMode(/** @type {'glass' | 'heat'} */ (r.value));
+    });
+  }
+  // Expert off while Dickenkarte is on → Glas (UI-SPEC Heatmap: Simple never shows the map).
+  $('expert').addEventListener('change', (e) => {
+    if (!(/** @type {HTMLInputElement} */ (e.target).checked) && mode === 'heat') {
+      for (const r of modeRadios) r.checked = r.value === 'glass';
+      setMode('glass');
+    }
+  });
+  /** null until the first heat paint: { key, scale, levels, eye } of the last painted state. */
+  let heatState = null;
+  /** The eye picked by 03-13's picker (null: the default rule applies on each delivery). */
+  let pickedEye = null;
+
+  /** Drawn eyes with an ok result: { eye: { result, frame } }. */
+  const heatEyes = () => SLOTS.filter((e) => last?.eyes[e]?.result?.ok && last.eyes[e].frame && lenses.visible(e));
+
+  /**
+   * MAJOR 4: the eye with the larger thickest point max(ct, etMax.value). Ties go to OD within
+   * SIDE_TIE_MM (0,05 mm, half the 0,1 mm display step; the Seite rule, MINOR 13), so two eyes that
+   * read the same on the cards (example: 4,6 / 4,6 mm) frame the right eye.
+   */
+  function defaultHeatEye(eyes) {
+    const th = (e) => {
+      if (!eyes.includes(e)) return null;
+      const m = last.eyes[e].result.metrics;
+      return Math.max(m.ct, m.etMax.value);
+    };
+    return sideEye({ OD: th('OD'), OS: th('OS') });
+  }
+
+  /** Scale, levels, legend and table from the engine for the drawn eyes (memo key per delivery). */
+  function paintHeat() {
+    if (mode !== 'heat') return;
+    const eyes = heatEyes();
+    const key = JSON.stringify(eyes.map((e) => [e, last.eyes[e].result.surfaces, last.eyes[e].result.metrics, last.eyes[e].frame]));
+    if (heatState?.key === key) return;
+    const eye = pickedEye && eyes.includes(pickedEye) ? pickedEye : defaultHeatEye(eyes);
+    const prevEye = heatState?.eye;
+    if (eyes.length === 0) {
+      heatState = { key, scale: null, levels: null, eye };
+      $('view-legend').hidden = true;
+      $('view-heat-table').hidden = true;
+      $('view-heat-nochord').hidden = true;
+      return;
+    }
+    const scale = heatScale(eyes.map((e) => last.eyes[e].result.metrics));
+    const levels = isoLevels(scale.min, scale.max);
+    heat.setScale(levels);
+    const table = { OD: null, OS: null };
+    for (const e of eyes) {
+      const { result, frame: f } = last.eyes[e];
+      table[e] = { callouts: heatCallouts({ surfaces: result.surfaces, frame: { shape: f.shape, A: f.A, B: f.B }, eye: e }, result.metrics), metrics: result.metrics };
+    }
+    heatState = { key, scale, levels, eye };
+    $('view-legend').hidden = false;
+    $('view-heat-table').hidden = false;
+    renderLegend({ min: scale.min, max: scale.max, levels });
+    renderHeatTable(table);
+    // A new heat eye while the camera is still on the heat pose: frame it (no tween on re-mesh).
+    if (prevEye !== undefined && prevEye !== eye && controls.preset() === 'heat') controls.goTo('heat', eye, { cut: true });
+    view.requestRender();
+    scheduleAria();
+  }
+
+  /** @param {'glass' | 'heat'} next */
+  function setMode(next) {
+    if (next === mode) return;
+    mode = next;
+    lenses.setMode(next);
+    const isHeat = next === 'heat';
+    if (!isHeat) {
+      heatState = null;
+      $('view-legend').hidden = true;
+      $('view-heat-table').hidden = true;
+      $('view-heat-nochord').hidden = true;
+    }
+    if (badge.textContent !== t('view.badge.updating')) setBadge(modeBadge());
+    updateLabels(drawnLenses());
+    if (isHeat) {
+      paintHeat();
+      controls.goTo('heat', heatState?.eye ?? 'OD');
+    }
+    view.requestRender();
+    scheduleAria();
+  }
+
   view.beforeRender(() => {
     const p = view.camera.position;
     const tg = controls.state().target;
@@ -505,7 +624,7 @@ export function mountView({ slot }) {
       labels.setText(i, text);
       parts.push(text, anchors[eye] && [anchors[eye].x, anchors[eye].y]);
     });
-    setText('view-caption', t(any ? 'view.caption.glass' : 'view.empty'));
+    setText('view-caption', t(!any ? 'view.empty' : mode === 'heat' ? 'view.caption.heat' : 'view.caption.glass'));
     const key = JSON.stringify(parts);
     if (key !== labelKey) {
       labelKey = key;
@@ -574,7 +693,8 @@ export function mountView({ slot }) {
       for (const s of SLOTS) if (want[s]) lenses.place(s, s, want[s].item.frame.A, placement[s].DBL);
       if (attachedOnce) refresh();
       view.requestRender();
-      if (attachedOnce) setBadge(inputs.current ? 'view.badge.glass' : 'view.badge.updating');
+      if (attachedOnce) setBadge(inputs.current ? modeBadge() : 'view.badge.updating');
+      if (attachedOnce) paintHeat();
       clearBadgeTimer();
       setPending('');
       return;
@@ -602,6 +722,19 @@ export function mountView({ slot }) {
     allocs: () => ({ page: lenses.allocCount() + frame.allocCount(), worker: workerReallocs }),
     meshMode: () => client.mode(),
     viewName: () => controls.viewName(),
+    /** 03-12: 'glass' | 'heat', and the engine scale / levels / heat eye of the painted map (null in Glas). */
+    mode: () => mode,
+    heatScale: () =>
+      heatState?.scale
+        ? { ...heatState.scale, ...heatState.levels, values: [...heatState.levels.values], eye: heatState.eye, uniforms: heat.uniforms() }
+        : null,
+    /** 03-12 test-only: [x, y, z] world mm of an eye's optical centre on the rim plane and its engine CT, or null. */
+    ocWorld: (e) => {
+      const r = last?.eyes[e]?.result;
+      if (!r?.ok || !lenses.visible(e)) return null;
+      const g = lenses.group(e).position;
+      return [g.x + r.surfaces.oc.x, g.y + r.surfaces.oc.y, g.z, r.metrics.ct];
+    },
     /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
     rotateActive: () => controls.rotateActive(),
     /** 03-09: camera state, derived limits and the side eye. */

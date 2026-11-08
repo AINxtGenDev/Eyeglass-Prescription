@@ -62,10 +62,14 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   let dragFrom = null;
   let limits = { minDistance: 0, maxDistance: Infinity, maxTargetRadius: Infinity };
 
+  // 03-12: the Dickenkarte pose is a front view (UI-SPEC: 'Entering Dickenkarte animates the camera
+  // to Vorne'), so its view name is 'front'; `name` keeps 'heat' so a refresh re-fits the heat eye.
+  const shownName = (n) => (n === 'heat' ? 'front' : n);
   const setName = (n) => {
     if (n === name) return;
+    const before = shownName(name);
     name = n;
-    onPose(n);
+    if (shownName(n) !== before) onPose(shownName(n));
   };
 
   /** Drop any damping residue (one undamped update applies and zeroes it). */
@@ -258,7 +262,11 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
         tween.to = { target: pose.target, s: poseSpherical(pose) };
       } else if (name !== 'free' && !dragging) goTo(name, eyeArg, { cut: true });
     },
-    viewName: () => name,
+    viewName: () => shownName(name),
+    /** 03-12: the preset the camera is on ('heat' for the Dickenkarte pose, 'free' after a drag). */
+    preset: () => name,
+    /** 03-12: the eye of the last heat pose. */
+    presetEye: () => eyeArg,
     limits: () => ({ ...limits }),
     pointer,
     /** Touch path: '3D drehen' is on (OrbitControls connected). Always false on the pointer path. */

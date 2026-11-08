@@ -11,6 +11,10 @@
 // so up to 4 sets per slot exist during fast typing. allocCount counts every alloc() call (03-15
 // leak test, lens-critic MINOR 6): it stops growing once the sets needed by the input rate exist,
 // and grows again only after a lost reply.
+// 03-12 (UX-02, D-26): front and back share one `thickness` BufferAttribute per slot (the worker's
+// `thick` array, swapped in attach like the others, so one GPU buffer). setMode swaps the face
+// meshes' material between the slot's glass material and the shared heat material; both are
+// created once and never recreated.
 import { BufferGeometry, BufferAttribute, Group, Mesh, MeshPhysicalMaterial, Sphere, Vector3, FrontSide } from 'three';
 import { allocLensBuffers, LENS_LENGTHS } from '../../engine/mesh/lens.js';
 import { FRONT_INDEX, BACK_INDEX, BAND_INDEX } from '../../engine/mesh/topology.js';
@@ -63,10 +67,12 @@ export function createBufferPool(alloc, lengths) {
 /**
  * @param {import('three').Scene} scene
  * @param {string[]} slotNames
+ * @param {import('three').Material} heatMaterial the shared Dickenkarte material (heat.js, 03-12)
  */
-export function createLensSlots(scene, slotNames) {
+export function createLensSlots(scene, slotNames, heatMaterial) {
   const edge = edgeMaterial();
-  /** @type {Record<string, { group: Group, glass: MeshPhysicalMaterial, geo: Record<string, BufferGeometry>, thick: Float32Array, pool: ReturnType<typeof createBufferPool>, sphere: Sphere | null }>} */
+  let mode = 'glass';
+  /** @type {Record<string, { group: Group, glass: MeshPhysicalMaterial, geo: Record<string, BufferGeometry>, faces: Mesh[], thickAttr: BufferAttribute, thick: Float32Array, pool: ReturnType<typeof createBufferPool>, sphere: Sphere | null }>} */
   const slots = {};
 
   for (const name of slotNames) {
@@ -86,17 +92,22 @@ export function createLensSlots(scene, slotNames) {
     group.name = name;
     group.visible = false;
     const geo = {};
+    const faces = [];
+    const thickAttr = new BufferAttribute(initial.thick, 1);
     for (const [part, [pos, nrm]] of Object.entries(PARTS)) {
       const g = new BufferGeometry();
       g.setAttribute('position', new BufferAttribute(initial[pos], 3));
       g.setAttribute('normal', new BufferAttribute(initial[nrm], 3));
+      if (part !== 'band') g.setAttribute('thickness', thickAttr);
       g.setIndex(INDEX[part]);
       g.boundingSphere = new Sphere(new Vector3(), 0);
       geo[part] = g;
-      group.add(new Mesh(g, part === 'band' ? edge : glass));
+      const mesh = new Mesh(g, part === 'band' ? edge : glass);
+      if (part !== 'band') faces.push(mesh);
+      group.add(mesh);
     }
     scene.add(group);
-    slots[name] = { group, glass, geo, thick: initial.thick, pool, sphere: null };
+    slots[name] = { group, glass, geo, faces, thickAttr, thick: initial.thick, pool, sphere: null };
   }
 
   /** Return a set that came back from the worker or was never sent. */
@@ -145,6 +156,8 @@ export function createLensSlots(scene, slotNames) {
         g.boundingSphere.radius = b.r;
       }
       s.thick = item.buffers.thick;
+      s.thickAttr.array = s.thick;
+      s.thickAttr.needsUpdate = true;
       giveBack(name, old);
       s.glass.ior = meta.surfaces.n;
       s.glass.thickness = meta.surfaces.ct;
@@ -177,6 +190,16 @@ export function createLensSlots(scene, slotNames) {
       return max;
     },
     ior: (name) => slots[name].glass.ior,
+    /**
+     * 03-12: 'glass' | 'heat' — swap the face meshes' material (both pre-created, D-26).
+     * @param {'glass' | 'heat'} next
+     */
+    setMode(next) {
+      if (next === mode) return;
+      mode = next;
+      for (const s of Object.values(slots)) for (const m of s.faces) m.material = next === 'heat' ? heatMaterial : s.glass;
+    },
+    mode: () => mode,
     /**
      * 03-08 (D-12, RESEARCH Pattern 5): glass dispersion = dispersionFor(tier, νe) per slot. Set on
      * a tier or material change only; transmission is never toggled (Pitfall 11: crossing 0

@@ -392,6 +392,11 @@
           <div id="view-slot" hidden>
             <section id="view" aria-labelledby="view-title" data-pending="load">
               <h2 id="view-title" class="visually-hidden" data-i18n="view.title"></h2>
+              <fieldset id="view-mode" class="segmented" data-expert hidden>
+                <legend><span class="expert-tag" data-i18n="expert.tag"></span> <span data-i18n="view.mode.legend"></span></legend>
+                <label><input type="radio" name="view-mode" value="glass" checked disabled><span data-i18n="view.mode.glass"></span></label>
+                <label><input type="radio" name="view-mode" value="heat" disabled><span data-i18n="view.mode.heat"></span></label>
+              </fieldset>
               <div id="view-stage" tabindex="0" role="group" data-i18n-aria-label="view.stage.label" aria-describedby="view-keys">
                 <canvas id="view-canvas" role="img" data-i18n-aria-label="view.title"></canvas>
                 <span class="view-badge" aria-hidden="true"></span>
@@ -420,6 +425,15 @@
                 <p id="view-protrusion-lead-os"></p>
                 <p id="view-protrusion-assumed" class="small"></p>
                 <p id="view-protrusion-bevel" class="small"></p>
+              </div>
+              <div id="view-heat">
+                <div id="view-legend" hidden></div>
+                <table id="view-heat-table" class="cmp-table" hidden>
+                  <caption data-i18n="view.table.caption"></caption>
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+                <p id="view-heat-nochord" hidden></p>
               </div>
             </section>
           </div>
