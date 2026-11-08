@@ -237,6 +237,41 @@ test('VIZ-03 mouse drag rotates and marks the view free', async ({ page }, testI
   expect(await viewName(page)).toBe('free');
 });
 
+// B-WR-05 (code review): a click (no movement) that interrupts a running preset tween leaves the
+// camera between two presets, so the view is 'free' (no stale preset name, no cut back on refresh).
+test('B-WR-05 a click that interrupts a preset tween marks the view free', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'pointer path: no coarse pointer');
+  test.setTimeout(90_000);
+  await settledView(page);
+  expect(await viewName(page)).toBe('default');
+  await ev(page, () => document.getElementById('view-stage').scrollIntoView({ block: 'center' }));
+  const box = await page.locator('#view-stage').boundingBox();
+  const c0 = await cam(page);
+  // Pause rAF, start the Seite tween, and advance it by exactly one render, part of the way.
+  await ev(page, async () => {
+    const q = [];
+    window.__rafQ = q;
+    window.__rafOrig = window.requestAnimationFrame;
+    window.requestAnimationFrame = (fn) => (q.push(fn), -1);
+    document.querySelector('#view-tools [data-preset=side]').click();
+    await new Promise((res) => setTimeout(res, 120));
+    window.__eyeglassView.pixel(1, 1);
+  });
+  const mid = await cam(page);
+  expect(Math.abs(mid.azimuthDeg - c0.azimuthDeg), 'the tween moved the camera').toBeGreaterThan(0.5);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.up();
+  await ev(page, () => {
+    window.requestAnimationFrame = window.__rafOrig;
+    for (const fn of window.__rafQ.splice(0)) window.requestAnimationFrame(fn);
+  });
+  await frameRender(page);
+  expect(await viewName(page)).toBe('free');
+  const after = await cam(page);
+  expect(Math.abs(after.azimuthDeg - mid.azimuthDeg), 'the camera stays where the click stopped it').toBeLessThan(0.5);
+});
+
 test.describe('VIZ-03 chart fade', () => {
   test.use({ reducedMotion: 'reduce' });
   test('hidden in Seite and Oben, shown in Vorne', async ({ page }) => {

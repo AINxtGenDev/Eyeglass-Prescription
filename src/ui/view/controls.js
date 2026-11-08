@@ -172,6 +172,14 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
 
   controls.addEventListener('change', () => scene.requestRender());
   controls.addEventListener('start', () => {
+    // B-WR-05: a gesture that interrupts a tween after it moved the camera leaves it between two
+    // presets; without this a click (no movement) kept the old preset name and the next refresh
+    // cut back to it.
+    if (tween) {
+      const { target, s } = tween.from;
+      const from = new Vector3().setFromSpherical(s).add(new Vector3(target.x, target.y, target.z));
+      if (from.distanceToSquared(camera.position) > 1e-8) setName('free');
+    }
     tween = null;
     settleAfterDamp = false;
     dragging = true;
