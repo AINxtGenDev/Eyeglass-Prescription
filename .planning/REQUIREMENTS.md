@@ -88,7 +88,7 @@
 
 ### 3D Visualization (VIZ)
 
-- [ ] **VIZ-01**: Both lenses are rendered as procedural 3D meshes (front surface, back surface, edge band at exact local thickness) built from the engine's points and normals inside the frame outline.
+- [x] **VIZ-01**: Both lenses are rendered as procedural 3D meshes (front surface, back surface, edge band at exact local thickness) built from the engine's points and normals inside the frame outline.
 - [ ] **VIZ-02**: A parametric frame (rim, bridge, simple temples) is rendered around the lenses.
 - [ ] **VIZ-03**: User can rotate, pan and zoom (mouse and touch) and jump to Vorne / Seite / Oben camera presets; the side view shows protrusion beyond the rim.
 - [ ] **VIZ-04**: Lenses use a transparent glass material with the material's index, over a high-contrast checkerboard / eye-chart background, labelled as a visual impression.
@@ -193,7 +193,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | L10N-02 | Phase 1 | Complete |
 | ANA-01 | Phase 2 | Complete |
 | ANA-02 | Phase 2 | Complete |
-| VIZ-01 | Phase 3 | Pending |
+| VIZ-01 | Phase 3 | Complete |
 | VIZ-02 | Phase 3 | Pending |
 | VIZ-03 | Phase 3 | Pending |
 | VIZ-04 | Phase 3 | Pending |

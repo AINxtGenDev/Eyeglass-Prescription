@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-11-08T12:34:20.060Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-11-08T13:23:15.237Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 41
+  completed_plans: 42
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 5 of 17
+Plan: 6 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -87,6 +87,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 02 P21 | 15 min | 2 tasks | 2 files |
 | Phase 03 P01 | 15min | 2 tasks | 8 files |
 | Phase 03 P02 | 20min | 3 tasks | 6 files |
+| Phase 03 P05 | 55 min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,9 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-01]: frontLeadMm (front vertex ahead of the rim front face) shown as its own Expert line; example OD 0,5152 / OS 0,5282 mm at D 3; edgeBeyondRim and frame.rim.over removed (deliberate Phase-2 change)
 - [Phase 03]: [03-02]: lens mesh = 64 rim-graded rings (g 2,5) x 720 spokes about the boxing centre, outer ring = engine outline; 46 081 vertices/surface, Uint16 indices; D-04(a) worst 1,33e-6 mm, build 12,7 ms/lens (Node desktop)
 - [Phase 03]: [03-02]: D-04(c) strict worst 0,0074 mm; low-index custom scan worst 0,0231 mm of the documented 0,025 (ne 1,43, -6 -3 x 45, rechteckig 62x55/14 PD 25); VIZ-01 stays Pending until 03-05 draws it
+- [Phase 03]: 03-05: e2e specs not about the 3D view run without it (without3d); view/layout/a11y opt in — SwiftShader CPU rendering starved parallel timing tests
+- [Phase 03]: 03-05: lens buffer pool cap 3 spare sets per slot (bounded 4 sets/slot), not refill-when-empty
+- [Phase 03]: 03-05: mesh client watchdog gets the compute-client hidden/late re-arm rule plus resume()
 
 ### Pending Todos
 
@@ -201,6 +205,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T12:12:38.000Z
-Stopped at: Phase 3 UI-SPEC approved
+Last session: 2026-11-08T13:23:15.232Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
