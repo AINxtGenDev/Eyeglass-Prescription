@@ -1,6 +1,6 @@
 // Shared e2e helpers (01-15).
-import { expect } from '@playwright/test';
-/* global requestAnimationFrame, self, window -- page/worker.evaluate bodies run in the browser */
+import { expect, test } from '@playwright/test';
+/* global requestAnimationFrame, self, window, document -- page/worker.evaluate bodies run in the browser */
 
 /**
  * Wait until the page has nothing pending: no input frame scheduled, no eye open in the compute
@@ -266,4 +266,58 @@ export async function sphOnly(page) {
     await page.locator(`#rx-${eye}-sph`).fill('-2,00');
   }
   await settled(page);
+}
+
+// ---- 03-08 (D-10): the eye chart covers part of the canvas ----
+/** UI-SPEC colours: studio background #f3f4f6, chart ink #1a1a1a and paper #ffffff. */
+const BACKGROUND = [243, 244, 246];
+const INK = [26, 26, 26];
+const PAPER = [255, 255, 255];
+const near = (px, want, tol) => want.every((w, i) => Math.abs(px[i] - w) <= tol);
+export const isChart = (px) => near(px, INK, 3) || near(px, PAPER, 3);
+/** Chart plane corners (mm, z = −200): 600 × 400 about the origin. */
+const CHART_CORNERS = [
+  [-300, 200],
+  [300, 200],
+  [300, -200],
+  [-300, -200],
+];
+/** Point-in-convex-quad: p on the same side of all four edges (either winding). */
+function inQuad(p, q) {
+  const s = q.map((a, i) => {
+    const b = q[(i + 1) % 4];
+    return Math.sign((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
+  });
+  return s.every((v) => v >= 0) || s.every((v) => v <= 0);
+}
+
+/**
+ * 03-08 background probe (lens-critic MINOR 12): the first canvas corner (2 px inset) outside the
+ * projected chart quad must show #f3f4f6 ± 2. If the chart covers all 4 corners, the corner pixel
+ * must be a chart colour instead, and the test is annotated.
+ */
+export async function backgroundProbe(page) {
+  const { quad, size } = await page.evaluate(
+    (corners) => ({
+      quad: corners.map(([x, y]) => window.__eyeglassView.project(x, y, -200)),
+      size: (({ clientWidth, clientHeight }) => [clientWidth, clientHeight])(document.getElementById('view-canvas')),
+    }),
+    CHART_CORNERS,
+  );
+  const [w, h] = size;
+  const canvasCorners = [
+    [2, 2],
+    [w - 3, 2],
+    [w - 3, h - 3],
+    [2, h - 3],
+  ];
+  const free = canvasCorners.find((c) => !inQuad(c, quad));
+  if (free) {
+    const px = await page.evaluate(([x, y]) => window.__eyeglassView.pixel(x, y), free);
+    expect(near(px, BACKGROUND, 2), `background at ${free}: ${px}`).toBe(true);
+    return;
+  }
+  test.info().annotations.push({ type: 'note', description: 'chart covers the canvas' });
+  const px = await page.evaluate(() => window.__eyeglassView.pixel(2, 2));
+  expect(isChart(px), `chart colour at the corner: ${px}`).toBe(true);
 }

@@ -27,6 +27,10 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 360, height: 780 },
+        // 03-08 (D-12): a phone-sized window.screen, so the tier choice sees a phone (the
+        // Desktop Chrome descriptor would report its 1920 × 1080 screen). hasTouch makes
+        // '(pointer: coarse)' match in Chromium.
+        screen: { width: 360, height: 780 },
         isMobile: true,
         hasTouch: true,
       },

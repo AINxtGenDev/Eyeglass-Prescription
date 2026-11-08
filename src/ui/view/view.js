@@ -24,16 +24,23 @@
 // but a job is still outstanding, requestMesh([]) makes it stale (a quick −2 → −3 → −2 must not
 // attach the −3 mesh). Technische Angaben: temple length (drawn value and its source) and the
 // assumed rim face width, filled after each frame attach (textContent only, fmtMm values).
+// 03-08 (D-10…D-12): eye chart and contact shadow (backdrop.js); the tier line with dispersion
+// (on only on hoch and only with a sourced νe), the exactness note and the last re-mesh time in
+// Technische Angaben. The re-mesh time runs from requestMesh to the render that shows the attached
+// mesh; it is a 3D number of its own and never mixed into the ENG-09 timings (Pitfall 12). Context
+// loss and restore (scene.js) drive #view-status and the 'Grafik vom Browser angehalten' reason.
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
 import { $, setText } from '../dom.js';
 import { icon } from '../icons.js';
-import { fmtMm } from '../../i18n/format.js';
+import { fmtMm, fmtMs } from '../../i18n/format.js';
 import { boxingCentreX, FRAME_FACE_MM, TEMPLE_DEFAULT_MM, TEMPLE_RANGE_MM } from '../../engine/mesh/frame.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
 import { createFrame } from './frame.js';
+import { createChart, createShadow } from './backdrop.js';
+import { TIER_SETTINGS } from './tiers.js';
 import { createLabels, place } from './labels.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
@@ -63,6 +70,14 @@ function showNoWebgl() {
   text.textContent = t('view.noWebgl');
   status.classList.add('view-note');
   status.replaceChildren(icon('info'), text);
+  showUnavailable('tech.view.reason.noWebgl');
+}
+
+/** Technische Angaben: why the 3D view is not available (reason key), or hidden for null. */
+function showUnavailable(reasonKey) {
+  const el = $('tech-view-unavailable');
+  el.textContent = reasonKey ? t('tech.view.unavailable', { reason: t(reasonKey) }) : '';
+  el.hidden = !reasonKey;
 }
 
 /**
@@ -100,6 +115,41 @@ export function mountView({ slot }) {
   setText('view-caption', t('view.caption.glass'));
   const lenses = createLensSlots(view.scene, [...SLOTS]);
   const frame = createFrame(view.scene, { OD: lenses.group('OD'), OS: lenses.group('OS') });
+  const chart = createChart(view.scene, view.renderer, TIER_SETTINGS[view.tier()].chart);
+  const shadow = createShadow(view.scene);
+  /** νe per slot of the last input (null: none, e.g. a custom material without νe). */
+  let abbe = { OD: null, OS: null };
+  /** Technische Angaben tier line; dispersion 'on' only when a slot actually gets dispersion. */
+  const writeTier = () => {
+    const tier = view.tier();
+    const on = SLOTS.some((s) => lenses.dispersion(s) > 0);
+    const dispersion = t(on ? 'tech.view.dispersion.on' : 'tech.view.dispersion.off');
+    setText('tech-view-tier', t(`tech.view.tier.${tier}`, { dispersion }));
+  };
+  const setDispersion = () => {
+    lenses.setDispersion(view.tier(), abbe);
+    writeTier();
+  };
+  view.onTier((_tier, s) => {
+    chart.setSize(s.chart);
+    setDispersion();
+  });
+  setDispersion();
+  /** While the GL context is lost, a mesh attach must not clear the status message. */
+  let contextLost = false;
+  view.onContext((state) => {
+    contextLost = state !== 'restored';
+    if (state === 'lost') setText('view-status', t('view.contextLost'));
+    else if (state === 'gone') {
+      setText('view-status', t('view.contextGone'));
+      showUnavailable('tech.view.reason.paused');
+    } else {
+      chart.reupload();
+      shadow.reupload();
+      setText('view-status', '');
+      showUnavailable(null);
+    }
+  });
   const labelsEl = $('view-labels');
   const labels = createLabels(labelsEl, SLOTS.length);
   /** Per eye: label anchor (world mm) or null. */
@@ -135,6 +185,8 @@ export function mountView({ slot }) {
   let retryLeft = true;
   /** Request data per mesh generation (the reply carries slot and buffers only). */
   const metaByGen = new Map();
+  /** performance.now() of each requestMesh, for the re-mesh time (Pitfall 12: 3D only). */
+  const sentAtByGen = new Map();
   /** Latest boxing placement per eye (a DBL change moves the lens without a re-mesh). */
   const placement = { OD: null, OS: null };
   let badgeTimer = null;
@@ -218,6 +270,8 @@ export function mountView({ slot }) {
     }
     const meta = metaByGen.get(d.gen) ?? {};
     for (const g of metaByGen.keys()) if (g <= d.gen) metaByGen.delete(g);
+    const sentAt = sentAtByGen.get(d.gen);
+    for (const g of sentAtByGen.keys()) if (g <= d.gen) sentAtByGen.delete(g);
     if (outstanding?.gen === d.gen) outstanding = null;
     // Lenses first, then the frame: the frame sets both lens groups' z in this same paint frame.
     const items = [...d.items].sort((a, b) => (a?.slot === 'frame') - (b?.slot === 'frame'));
@@ -230,6 +284,8 @@ export function mountView({ slot }) {
       if (it.slot === 'frame') {
         frame.attach(it, m);
         writeTech(frame.visible() ? it : null, m);
+        if (frame.visible()) shadow.fit(it.boundingSphere, m.B);
+        else shadow.hide();
       } else {
         const p = placement[m.eye];
         lenses.attach(it.slot, it, { surfaces: m.surfaces, eye: m.eye, A: m.frame.A, DBL: p?.DBL ?? m.DBL });
@@ -246,10 +302,11 @@ export function mountView({ slot }) {
     attachedOnce = true;
     retryLeft = true;
     clearBadgeTimer();
-    setText('view-status', '');
+    if (!contextLost) setText('view-status', '');
     setBadge(last?.current === false ? 'view.badge.updating' : 'view.badge.glass');
     setPending('');
     view.render();
+    if (sentAt !== undefined) setText('tech-view-remesh', t('tech.view.remesh', { ms: fmtMs(performance.now() - sentAt) }));
   }
 
   const drawnLenses = () => new Set(SLOTS.filter((s) => lenses.visible(s)));
@@ -338,14 +395,20 @@ export function mountView({ slot }) {
       const sentRim = FAIL_FRAME !== null && rimDepthMm === FAIL_FRAME ? -1 : rimDepthMm;
       want.frame = {
         item: { slot: 'frame', frame: { shape, A, B, DBL }, eyes, rimDepthMm: sentRim, templeMm },
-        meta: { key, A, DBL, rimDepthMm, templeMm, templeSource },
+        meta: { key, A, B, DBL, rimDepthMm, templeMm, templeSource },
       };
     } else {
       frame.hide();
+      shadow.hide();
       writeTech(null);
       attachedKey.frame = null;
     }
     updateLabels(new Set(SLOTS.filter((s) => want[s])));
+    const nextAbbe = { OD: inputs.eyes.OD?.result?.intermediates?.abbe ?? null, OS: inputs.eyes.OS?.result?.intermediates?.abbe ?? null };
+    if (nextAbbe.OD !== abbe.OD || nextAbbe.OS !== abbe.OS) {
+      abbe = nextAbbe;
+      setDispersion();
+    }
 
     const send = Object.entries(want).filter(([slotName, w]) => w.meta.key !== attachedKey[slotName]);
     const sig = JSON.stringify(send.map(([slotName, w]) => [slotName, w.meta.key]));
@@ -372,6 +435,7 @@ export function mountView({ slot }) {
     jobLog.push(send.map(([slotName]) => slotName));
     if (jobLog.length > JOB_LOG) jobLog.shift();
     metaByGen.set(gen, Object.fromEntries(send.map(([slotName, w]) => [slotName, w.meta])));
+    sentAtByGen.set(gen, performance.now());
     setPending('mesh');
     if (attachedOnce && badgeTimer === null) {
       badgeTimer = setTimeout(() => {
@@ -392,6 +456,13 @@ export function mountView({ slot }) {
     frameInfo: () => frame.info(),
     /** Test-only (03-07, round 2 MINOR 7): slot lists of the last 10 mesh jobs sent. */
     meshJobs: () => jobLog.map((j) => [...j]),
+    /** 03-08 (D-12): the active quality tier, and a slot's glass dispersion. */
+    tier: () => view.tier(),
+    dispersion: (s) => lenses.dispersion(s),
+    /** World point (mm) → canvas CSS px [x, y] in the current view. */
+    project: (x, y, z) => view.project(x, y, z),
+    /** Test-only (03-08): chart and contact shadow state. */
+    sceneInfo: () => ({ chartVisible: chart.mesh.visible, chartZ: chart.mesh.position.z, chartSize: chart.size(), shadowVisible: shadow.mesh.visible }),
     /** RGBA at CSS pixel (x, y) of the canvas, read in the same task as a fresh render. */
     pixel: (x, y) => {
       view.render();

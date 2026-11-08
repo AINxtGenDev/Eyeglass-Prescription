@@ -1,9 +1,22 @@
 // 3D view, slice 4 (03-05, VIZ-01, VIZ-04, VIZ-06): both lenses as glass from the engine
 // surfaces, built in the dedicated mesh worker, lazy-loaded after the first result paint.
 // 03-06 (D-16, D-17): the no-WebGL, load-failure/retry, blocked-eye and empty states.
+// 03-08 (D-10…D-12): eye chart, background probe, quality tiers, context loss, re-mesh time.
 import { test, expect } from '@playwright/test';
-import { settled, settledView, etmaxOf, guardPage, holdMeshWorker, noThreeWarnings, plain, MESH_WORKER_URL } from './helpers.js';
-/* global window, document, Worker */
+import { MATERIALS } from '../src/engine/materials.js';
+import {
+  settled,
+  settledView,
+  etmaxOf,
+  guardPage,
+  holdMeshWorker,
+  noThreeWarnings,
+  plain,
+  MESH_WORKER_URL,
+  backgroundProbe,
+  isChart,
+} from './helpers.js';
+/* global window, document, Worker, requestAnimationFrame */
 
 // Registered before guardPage, so it listens before guardPage's page.goto.
 let threeWarnings;
@@ -18,6 +31,7 @@ test.afterEach(() => {
 const round1 = (v) => Math.round(v * 10) / 10;
 const edgeMax = (page, slot) => page.evaluate((s) => window.__eyeglassView.edgeMax(s), slot);
 const material = (page, id) => page.locator(`input[name=material][value=${id}]`);
+
 
 test('VIZ-01 both lenses render at the card edge thickness', async ({ page }) => {
   await settledView(page);
@@ -38,9 +52,8 @@ test('VIZ-01 both lenses render at the card edge thickness', async ({ page }) =>
 
 test('VIZ-04 glass look', async ({ page }) => {
   await settledView(page);
-  // No chart yet: the corner shows the clear colour #f3f4f6 (03-08 replaces this probe).
-  const px = await page.evaluate(() => window.__eyeglassView.pixel(2, 2));
-  for (const [i, want] of [243, 244, 246].entries()) expect(Math.abs(px[i] - want), `channel ${i}: ${px}`).toBeLessThanOrEqual(2);
+  // 03-08: a canvas corner outside the projected chart shows the clear colour #f3f4f6.
+  await backgroundProbe(page);
   await expect(page.locator('.view-badge')).toHaveText('Visueller Eindruck');
   expect(plain(await page.locator('#view-caption').textContent())).toBe(
     'Visueller Eindruck – die Lichtbrechung im Glas ist nur angenähert. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
@@ -352,4 +365,98 @@ test('VIZ-02 failed frame keeps lensZ (round 2 MINOR 7)', async ({ page }) => {
   info = await frameInfo(page);
   expect(info.rimVisible).toEqual({ OD: true, OS: true });
   for (const eye of ['OD', 'OS']) expect(Math.abs(info.lensGroupZ[eye] - info.lensZ[eye]), eye).toBeLessThanOrEqual(1e-6);
+});
+
+// ---- 03-08 (VIZ-04, D-10…D-12): studio backdrop, tiers, context loss ----
+const view = (page, fn, arg) => page.evaluate(fn, arg);
+/** A checker square centre (mm) above the frame and off to the side, clear of the glasses. */
+const CHART_PROBE = [255, 95, -200];
+
+test('VIZ-04 chart through the glasses', async ({ page }) => {
+  await settledView(page);
+  const info = await view(page, () => window.__eyeglassView.sceneInfo());
+  expect(info.chartZ).toBe(-200);
+  expect(info.chartVisible).toBe(true);
+  expect(info.shadowVisible).toBe(true);
+  // A square centre (not the plan's (250, 150) mm, which is a square corner where the texture
+  // filter mixes ink and paper): its pixel is an untone-mapped chart colour.
+  const at = await view(page, (p) => window.__eyeglassView.project(...p), CHART_PROBE);
+  const size = await page.locator('#view-canvas').evaluate((c) => [c.clientWidth, c.clientHeight]);
+  expect(at[0] > 0 && at[0] < size[0] && at[1] > 0 && at[1] < size[1], `probe ${at} inside ${size}`).toBe(true);
+  const px = await view(page, (p) => window.__eyeglassView.pixel(...p), at);
+  expect(isChart(px), `chart pixel ${px}`).toBe(true);
+  await backgroundProbe(page);
+});
+
+test('D-12 tier', async ({ page }, testInfo) => {
+  await settledView(page);
+  const tierLine = page.locator('#tech-view-tier');
+  await expect(page.locator('#tech-view-exact')).toHaveText('Form und Dicke der Gläser sind in jeder Qualitätsstufe gleich genau.');
+  if (testInfo.project.name === 'mobile') {
+    // The mobile project has hasTouch (Chromium then matches '(pointer: coarse)') and a 360 × 780
+    // screen (playwright.config.js), so no media emulation is needed.
+    expect(await view(page, () => window.matchMedia('(pointer: coarse)').matches)).toBe(true);
+    expect(await view(page, () => window.__eyeglassView.tier())).toBe('mittel');
+    await expect(tierLine).toContainText('mittel');
+    for (const eye of ['OD', 'OS']) expect(await view(page, (s) => window.__eyeglassView.dispersion(s), eye)).toBe(0);
+    expect((await view(page, () => window.__eyeglassView.sceneInfo())).chartSize).toBe('1024x683');
+  } else {
+    expect(await view(page, () => window.__eyeglassView.tier())).toBe('hoch');
+    await expect(tierLine).toContainText('hoch');
+    await expect(tierLine).toContainText('Abbe-Zahl νₑ (angenähert)');
+    for (const eye of ['OD', 'OS']) {
+      const d = await view(page, (s) => window.__eyeglassView.dispersion(s), eye);
+      expect(Math.abs(d - 20 / MATERIALS.cr39.ve), eye).toBeLessThanOrEqual(1e-9);
+    }
+    expect((await view(page, () => window.__eyeglassView.sceneInfo())).chartSize).toBe('2048x1366');
+    // A material with another νe changes the dispersion without a reload.
+    await material(page, 'idx174').check();
+    await settledView(page);
+    expect(Math.abs((await view(page, () => window.__eyeglassView.dispersion('OD'))) - 20 / MATERIALS.idx174.ve)).toBeLessThanOrEqual(1e-9);
+  }
+});
+
+test('context loss', async ({ page }) => {
+  await settledView(page);
+  const status = page.locator('#view-status');
+  const lost = await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const c = /** @type {HTMLCanvasElement} */ (document.getElementById('view-canvas'));
+        const ext = c.getContext('webgl2')?.getExtension('WEBGL_lose_context');
+        if (!ext) return res(false);
+        window.__loseExt = ext;
+        c.addEventListener('webglcontextlost', () => res(true), { once: true });
+        ext.loseContext();
+      }),
+  );
+  expect(lost, 'WEBGL_lose_context available').toBe(true);
+  await expect(status).toHaveText('Die 3D-Ansicht wird neu aufgebaut …');
+  await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const c = document.getElementById('view-canvas');
+        c.addEventListener('webglcontextrestored', () => requestAnimationFrame(() => setTimeout(res, 0)), { once: true });
+        window.__loseExt.restoreContext();
+      }),
+  );
+  await expect(status).toHaveText('');
+  await expect(page.locator('#tech-view-unavailable')).toBeHidden();
+  await backgroundProbe(page);
+  // The chart texture is drawn again after the restore.
+  const at = await view(page, (p) => window.__eyeglassView.project(...p), CHART_PROBE);
+  expect(isChart(await view(page, (p) => window.__eyeglassView.pixel(...p), at))).toBe(true);
+  for (const eye of ['OD', 'OS']) expect(round1(await edgeMax(page, eye)), eye).toBe(await etmaxOf(page, eye.toLowerCase()));
+  // The view keeps working after the restore.
+  await page.locator('#rx-od-sph').fill('-5');
+  await settledView(page);
+  expect(round1(await edgeMax(page, 'OD'))).toBe(await etmaxOf(page, 'od'));
+});
+
+test('#tech-view-remesh shows the last 3D re-mesh time', async ({ page }) => {
+  await settledView(page);
+  await page.locator('#rx-od-sph').fill('-3');
+  await settledView(page);
+  await expect(page.locator('#tech-view-remesh')).toContainText('3D-Neuaufbau zuletzt:');
+  await expect(page.locator('#tech-view-remesh')).toContainText('ms');
 });

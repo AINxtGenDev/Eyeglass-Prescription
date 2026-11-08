@@ -3,7 +3,7 @@
 // Pinned values: 02-01-SUMMARY Task 2 table (example 4,597 / 4,597 mm, 6,86 / 6,75 g; R +3,00 CT
 // 3,902, 7,23 g; L +2,75 CT 3,737, 7,00 g; CR-39, Rechteckig 52×38/18).
 import { test, expect } from '@playwright/test';
-import { settled, settledXsec, settledView, slowWorker, plain, guardPage, noThreeWarnings, etmaxOf } from './helpers.js';
+import { settled, settledXsec, settledView, slowWorker, plain, guardPage, noThreeWarnings, etmaxOf, backgroundProbe } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 // Registered before guardPage, so it listens before guardPage's page.goto (03-06 breakpoint test).
@@ -219,9 +219,9 @@ test.describe('1280 × 800', () => {
       else expect(place.first, when).toBe(true);
       const mesh = await page.evaluate(() => window.__eyeglassView.edgeMax('OD'));
       expect(Math.round(mesh * 10) / 10, `OD mesh = card ${when}`).toBe(await etmaxOf(page, 'od'));
-      // A fresh render still draws: the corner shows the clear colour #f3f4f6.
-      const px = await page.evaluate(() => window.__eyeglassView.pixel(2, 2));
-      for (const [i, want] of [243, 244, 246].entries()) expect(Math.abs(px[i] - want), `${when} channel ${i}: ${px}`).toBeLessThanOrEqual(2);
+      // A fresh render still draws: a canvas corner outside the eye chart (03-08) shows the clear
+      // colour #f3f4f6.
+      await backgroundProbe(page);
       expect(await page.evaluate(() => window.__lost), `webglcontextlost events ${when}`).toBe(0);
     };
     await check('at 1280 px', null);

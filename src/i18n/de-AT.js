@@ -623,6 +623,19 @@ export default Object.freeze({
   'tech.view.templeSource.clamped': 'laut Bügel {stamp}, für die Darstellung auf {min} bis {max} begrenzt – angenommener Bereich',
   'tech.view.rimFace': 'Sichtbare Randbreite der Fassung: {w} (angenommener Wert, nur für die Darstellung)',
   'tech.view.planar': 'In der 3D-Ansicht sitzen die Gläser ohne Vorneigung und ohne Fassungsbogen, wie in der Berechnung.',
+  // 03-08 (D-12, UI-SPEC "Quality tiers"). dispersion.on adds 'νₑ (angenähert)' to the UI-SPEC
+  // string: the Farbsäume use 20/νe for 20/νd (RESEARCH A10), so the label says so.
+  'tech.view.tier.hoch': '3D-Darstellung: Qualitätsstufe hoch (volle Auflösung{dispersion})',
+  'tech.view.tier.mittel': '3D-Darstellung: Qualitätsstufe mittel (Telefon: Glasdurchsicht in halber Auflösung, ohne Farbsäume)',
+  'tech.view.tier.sparsam': '3D-Darstellung: Qualitätsstufe sparsam (automatisch gesenkt, weil die Ansicht ruckelte)',
+  'tech.view.dispersion.on': ', mit Farbsäumen aus der Abbe-Zahl νₑ (angenähert)',
+  'tech.view.dispersion.off': ', ohne Farbsäume',
+  'tech.view.exact': 'Form und Dicke der Gläser sind in jeder Qualitätsstufe gleich genau.',
+  'tech.view.remesh': '3D-Neuaufbau zuletzt: {ms}',
+  'tech.view.unavailable': '3D-Ansicht nicht verfügbar: {reason}',
+  'tech.view.reason.noWebgl': 'kein WebGL 2',
+  'tech.view.reason.loadFailed': 'Laden fehlgeschlagen',
+  'tech.view.reason.paused': 'Grafik vom Browser angehalten',
 
   // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View").
   'view.title': '3D-Ansicht Ihrer Brille',
@@ -641,6 +654,9 @@ export default Object.freeze({
   // (view-place.js, MAJOR 5), so the position word is dropped.
   'view.loadFailed': 'Die 3D-Ansicht konnte nicht geladen werden. Die berechneten Werte gelten unverändert.',
   'view.retry': 'Erneut versuchen',
+  // 03-08 (UI-SPEC States): WebGL context loss and restore.
+  'view.contextLost': 'Die 3D-Ansicht wird neu aufgebaut …',
+  'view.contextGone': 'Die 3D-Ansicht ist vorübergehend nicht verfügbar. Laden Sie die Seite neu, um sie wieder zu sehen.',
   'view.noWebgl':
     'Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem.',
 

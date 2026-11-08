@@ -15,6 +15,7 @@ import { BufferGeometry, BufferAttribute, Group, Mesh, MeshPhysicalMaterial, Sph
 import { allocLensBuffers, LENS_LENGTHS } from '../../engine/mesh/lens.js';
 import { FRONT_INDEX, BACK_INDEX, BAND_INDEX } from '../../engine/mesh/topology.js';
 import { boxingCentreX } from '../../engine/mesh/frame.js';
+import { dispersionFor } from './tiers.js';
 
 const POOL_CAP = 3;
 
@@ -176,5 +177,19 @@ export function createLensSlots(scene, slotNames) {
       return max;
     },
     ior: (name) => slots[name].glass.ior,
+    /**
+     * 03-08 (D-12, RESEARCH Pattern 5): glass dispersion = dispersionFor(tier, νe) per slot. Set on
+     * a tier or material change only; transmission is never toggled (Pitfall 11: crossing 0
+     * recompiles the glass program, so the value is written only when it changes).
+     * @param {string} tier
+     * @param {Record<string, number | null>} abbeBySlot νe per slot (null: no Abbe number)
+     */
+    setDispersion(tier, abbeBySlot) {
+      for (const [name, s] of Object.entries(slots)) {
+        const d = dispersionFor(tier, abbeBySlot[name] ?? null);
+        if (s.glass.dispersion !== d) s.glass.dispersion = d;
+      }
+    },
+    dispersion: (name) => slots[name].glass.dispersion,
   };
 }

@@ -264,9 +264,15 @@ function showLoadFailed() {
   const retry = document.createElement('button');
   retry.type = 'button';
   retry.textContent = t('view.retry');
+  // 03-08: the reason line in Technische Angaben (UI-SPEC tech.view.unavailable).
+  const reason = $('tech-view-unavailable');
+  reason.textContent = t('tech.view.unavailable', { reason: t('tech.view.reason.loadFailed') });
+  reason.hidden = false;
   retry.addEventListener('click', () => {
     // The button goes away: keep keyboard focus in the view instead of dropping it to <body>.
     $('view-stage').focus();
+    reason.hidden = true;
+    reason.textContent = '';
     status.classList.remove('view-failed');
     status.textContent = t('view.loading');
     $('view').dataset.pending = 'load';
