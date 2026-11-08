@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtGramWhole, fmtMs, fmtConic } from './format.js';
+import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtGramWhole, fmtMs, fmtConic, fmtIsoValue, fmtIsoStep } from './format.js';
 
 const NBSP = ' ';
 const MINUS = '−';
@@ -60,4 +60,22 @@ describe('fmtConic (MAT-05, no unit)', () => {
     [0, '0,0'],
     [-0, '0,0'],
   ])('fmtConic(%d) -> %j', (v, s) => expect(fmtConic(v)).toBe(s));
+});
+
+describe('fmtIsoValue / fmtIsoStep (03-12, VIZ-05 iso lines: 1–2 decimals)', () => {
+  test.each([
+    [2.5, '2,5'],
+    [2.25, '2,25'],
+    [3, '3,0'],
+    [0.1, '0,1'],
+  ])('fmtIsoValue(%d) -> %j', (v, s) => {
+    expect(fmtIsoValue(v)).toBe(s);
+  });
+  test.each([
+    [0.25, `0,25${NBSP}mm`],
+    [1, `1,0${NBSP}mm`],
+    [0.5, `0,5${NBSP}mm`],
+  ])('fmtIsoStep(%d) -> %j', (v, s) => {
+    expect(fmtIsoStep(v)).toBe(s);
+  });
 });
