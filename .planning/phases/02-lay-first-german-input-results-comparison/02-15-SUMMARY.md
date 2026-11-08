@@ -226,3 +226,49 @@ Range 12219a5 .. d60caf5; independent build, e2e 389 passed / 1 skipped; drove t
 - MINOR-4: STATE.md "Total plans completed: 15" stale.
 
 Orchestrator: REQUIREMENTS.md ENG-09 note narrowed to "whole-value edits only" so it does not overstate the proxy result.
+
+## Task 3: live check and real-device checks, 2026-11-08
+
+### Live and CI
+- The push was approved in chat ("Push now, fix typing after"). It was fast-forward only. Fix commits 66a9a68 (font-independent phone layout) and 976629f (layout spec timing) came after it.
+- Run 42415734158 for HEAD 976629f: jobs `build`, `deploy` and `verify-live` all `success`.
+- The curl check prints `1`: the live page carries `content="976629f"`.
+- Live e2e: `BASE_URL=https://ainxtgendev.github.io/Eyeglass-Prescription/ npm run test:e2e` → exit 0, **389 passed, 1 skipped** (2,1 min, 2026-11-08).
+
+### Real-device checks: Pixel 7 Pro, Android 17, Chrome 156, live site at Version 976629f (footer)
+The user ran these on 2026-11-08. The answers are quoted from chat, and the numbers are from the "Technische Angaben" screenshots taken at 08:13.
+
+| # | Check | Result |
+|---|---|---|
+| (i) | ± turns `2,25` into −2,25 | ✅ pass ("this works fine on my phone") |
+| (ii) | the bar does not cover the focused L PD field while the keyboard is open | **unverified**: the user answered "?" |
+| (iii) | no overflow, hyphenation | ✅ pass ("works fine") |
+| (iv) | TalkBack pass | **unverified** (optional, not run) |
+| (v) | ENG-09 with the comparison running | see the next table; typing felt smooth ("work fine") |
+| (vi) | device | Pixel 7 Pro, Android 17, Chrome 156.0.0.0. The UA string reports "Android 10; K" because of UA reduction |
+
+The phone ran the live build (footer 976629f), so the stale-app risk is ruled out for this check (MINOR-3).
+
+**ENG-09 readouts.** These are the last 10 inputs of one free key-by-key typing session (case A–like values plus material and shape changes). Case A and case B were not run as separate 10-edit sets.
+
+| Readout | Median | Longest |
+|---|---|---|
+| Hauptthread je Eingabe (incl. Darstellung) | 6,30 ms | **27,40 ms** |
+| Eingabe bis Reaktion | 11,60 ms | 32,60 ms |
+| Eingabe bis Ergebnis sichtbar | 28,60 ms | 56,20 ms |
+| Darstellung des Ergebnisses | — | **20,80 ms** |
+| Vergleich-Frame (incl. Darstellung) | 4,10 ms | **19,40 ms** |
+| Vergleich-Start nach dem Eingabe-Frame | 0,20 ms | 0,90 ms |
+| Event Timing, longest interaction | — | 72,00 ms |
+| „rechnet …“ since load | 2-mal | longest wait 59,00 ms |
+| Worker bench: normal / frame changed / Grenzfall / rescan (median) | 2,15 / 2,10 / 10,05 / 25,70 ms | p95 4,00 / 3,80 / 10,50 / 26,80 ms |
+
+**Verdict against ENG-09.**
+- **(a) FAIL.** The input frame max is 27,4 ms, the result frame max 20,8 ms and the compare frame max 19,4 ms, all ≥ 16,7 ms. The medians are well below the limit (6,3 / 4,1 ms). For comparison, 01-11 measured (a) at a longest 12,80 ms. The phone confirms lens-critic M4 for key-by-key typing.
+- **(b) PASS.** Reaction max 32,6 ms and Event Timing max 72 ms, both ≤ 200 ms.
+- **(c) PASS.** Result visible max 56,2 ms ≤ 100 ms (01-11: 27,30 ms).
+- **(d) PASS.** „rechnet …“ was shown 2 times. The longest wait was 59 ms, just over the 50 ms threshold, and the result arrived.
+- Worker compute matches 01-11 (2,30 / 9,95 / 25,4 ms), so the slow frames are main-thread page updates, not optics.
+- Levers for the follow-up plan: keep the last valid values instead of emptying and refilling on incomplete keystrokes (MINOR-1), coalesce the compare paint, and update fewer cells per frame.
+
+**Status.** ENG-09 stays Pending and M4 stays open. The user accepted both for the push and decided "fix typing after" (deferred-items.md). Item (ii) is re-asked. Item (iv) is recorded as unverified, not as pass.

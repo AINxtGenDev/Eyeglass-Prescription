@@ -86,11 +86,11 @@ Gap-plan note (02-19, lens-critic m2): the phase-1 property tests `evaluate.test
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| ± button and sticky bar above on-screen keyboard on a real phone | UX-03, RX-01 | iOS keypad and Android keyboard resize cannot be emulated by Playwright | Live site on Pixel (and iPhone if available): type a minus Sph via ±; focus the L PD field and check that the bar does not cover it |
-| German hyphenation of long compounds | UX-03 | Engine-specific hyphenation dictionaries | Live site at 320 px on a phone: no overflow, check hyphenation quality |
-| ENG-09 with the compare lane on a phone | ENG-09 regression | Worker timing is not throttled in the proxy | Read the Technische Angaben timings on the Pixel after 10 edits |
+| Behavior | Requirement | Why Manual | Test Instructions | Result |
+|----------|-------------|------------|-------------------|--------|
+| ± button and sticky bar above on-screen keyboard on a real phone | UX-03, RX-01 | iOS keypad and Android keyboard resize cannot be emulated by Playwright | Live site on Pixel (and iPhone if available): type a minus Sph via ±; focus the L PD field and check that the bar does not cover it | 2026-11-08 Pixel 7 Pro / Android 17 / Chrome 156: ± ✅; bar over L PD **unverified** (user unsure, re-asked) |
+| German hyphenation of long compounds | UX-03 | Engine-specific hyphenation dictionaries | Live site at 320 px on a phone: no overflow, check hyphenation quality | 2026-11-08 Pixel 7 Pro: ✅ no overflow, no odd breaks |
+| ENG-09 with the compare lane on a phone | ENG-09 regression | Worker timing is not throttled in the proxy | Read the Technische Angaben timings on the Pixel after 10 edits | 2026-11-08 Pixel 7 Pro, key-by-key: (a) **FAIL** (input max 27,4 / result 20,8 / compare 19,4 ms; medians 6,3 / 4,1 ms); (b) ✅ 32,6 ms, Event Timing 72 ms; (c) ✅ 56,2 ms; (d) ✅ 2× „rechnet …“, longest 59 ms |
 
 ---
 
@@ -103,4 +103,4 @@ Gap-plan note (02-19, lens-critic m2): the phase-1 property tests `evaluate.test
 - [x] Feedback latency < 120 s (`npm test` 46,9 s wall, 02-15)
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** automated rows green 2026-11-07 (02-15 Task 1 at 68c4e63; re-run 02-21 at ac2aa94, every value-asserting test passed on desktop and mobile); lens-critic re-review of 12219a5..HEAD and manual-only rows pending (02-15 Task 3). ENG-09 Pending per 02-20 (proxy FAIL, lens-critic M4 open MAJOR)
+**Approval:** automated rows green 2026-11-07 (02-15 Task 1 at 68c4e63; re-run 02-21 at ac2aa94, every value-asserting test passed on desktop and mobile); lens-critic re-review of 12219a5..HEAD and manual-only rows pending (02-15 Task 3). ENG-09 Pending per 02-20 (proxy FAIL, lens-critic M4 open MAJOR). Manual rows run 2026-11-08 on a Pixel 7 Pro (02-15 Task 3): ENG-09 (a) fails on the phone too, (b)–(d) pass; the bar-over-PD check is still unverified
