@@ -17,6 +17,11 @@
 //   world z, so the box fit uses the side eye's eyeBox y and z half-extents. The temples run out of
 //   the picture on purpose (the near one fades in 03-11).
 // - Dickenkarte (R1-5, 03-12): Vorne direction, box fit of the heat eye's eyeBox x and y extents.
+// - A/B compare (03-14, RES-03, D-24 as amended): one camera for both halves, each lens recentred
+//   on its own boxing centre (lens-local coordinates). compareContext unions the A and B lens + rim
+//   boxes, so every pose fits both halves at ONE scale (the larger configuration decides). Default,
+//   Vorne and Oben target the origin (the common boxing centre) with a perspective-exact,
+//   aspect-aware fit of that union about the origin; Seite and Dickenkarte use the union box.
 import { CHART_DISTANCE_MM } from '../../engine/mesh/frame.js';
 
 /** Vertical field of view (UI-SPEC Camera: 20° in every view) [BP]. */
@@ -113,7 +118,7 @@ export function fitBoxDistance(halfV, halfH, aspect, fovDeg = FOV_DEG, margin = 
  * @param {{x:number,y:number,z:number}} dir unit
  * @param {number} aspect stage width / height
  */
-export function fitPointsDistance(points, dir, aspect, fovDeg = FOV_DEG) {
+export function fitPointsDistance(points, dir, aspect, fovDeg = FOV_DEG, { centred = true } = {}) {
   const { right, up } = basisOf(dir);
   let h0 = Infinity;
   let h1 = -Infinity;
@@ -127,8 +132,9 @@ export function fitPointsDistance(points, dir, aspect, fovDeg = FOV_DEG) {
     w0 = Math.min(w0, v);
     w1 = Math.max(w1, v);
   }
-  const cH = (h0 + h1) / 2;
-  const cV = (w0 + w1) / 2;
+  // centred false (03-14 compare): the target stays at the origin (the boxing centre).
+  const cH = centred ? (h0 + h1) / 2 : 0;
+  const cV = centred ? (w0 + w1) / 2 : 0;
   const tanV = Math.tan((fovDeg / 2) * RAD);
   const tanH = tanV * aspect;
   let distance = 0;
@@ -195,15 +201,23 @@ export function cameraContext({ frameData: f, lensRadius, aspect, side }) {
  */
 export function presetPose(name, ctx, eye = 'OD') {
   const sphere = (dir, r) => ({ target: { ...ORIGIN }, dir: { ...dir }, distance: fitDistance(r) });
+  /** 03-14 compare: aspect-aware fit of the A ∪ B box about the origin. */
+  const aboutOrigin = (dir) => ({
+    target: { ...ORIGIN },
+    dir: { ...dir },
+    distance: fitPointsDistance(boxCorners(ctx.box), dir, ctx.aspect, FOV_DEG, { centred: false }).distance,
+  });
   switch (name) {
     case 'default':
     case 'top': {
       const dir = name === 'top' ? TOP_DIR : DEFAULT_DIR;
       if (!ctx.box) return sphere(dir, ctx.full.r);
+      if (ctx.compare) return aboutOrigin(dir);
       const f = fitPointsDistance(boxCorners(ctx.box), dir, ctx.aspect);
       return { target: f.target, dir: { ...dir }, distance: f.distance };
     }
     case 'front':
+      if (ctx.compare && ctx.box) return aboutOrigin(FRONT_DIR);
       return sphere(FRONT_DIR, ctx.front.r);
     case 'side': {
       const s = ctx.side === 'OS' ? 'OS' : 'OD';
@@ -221,6 +235,49 @@ export function presetPose(name, ctx, eye = 'OD') {
     default:
       throw new Error(`presetPose: unknown preset ${name}`);
   }
+}
+
+/**
+ * 03-14 (RES-03): the compared eye, the one with the larger thickest point across A and B
+ * (thickest(m).value per configuration and eye, null = not computed). Ties within SIDE_TIE_MM go
+ * to the right eye, the rule of the heat eye and Seite (MINOR 13).
+ * @param {{ A: { OD: number | null, OS: number | null } | null, B: { OD: number | null, OS: number | null } | null }} th mm
+ * @returns {'OD' | 'OS'}
+ */
+export function compareEye({ A, B }) {
+  const max = (eye) => {
+    const v = [A?.[eye], B?.[eye]].filter((x) => x != null);
+    return v.length ? Math.max(...v) : null;
+  };
+  return sideEye({ OD: max('OD'), OS: max('OS') });
+}
+
+/**
+ * 03-14 (RES-03, D-24 as amended): camera context of the A/B comparison. Every input is
+ * lens-local (recentred on its own boxing centre), null for a configuration that is not drawn.
+ * full.r = front.r = the larger sphere reach about the origin, so both halves share one scale;
+ * box = eyeBox[eye] = the union of the A and B lens + rim boxes; sideTarget = B's temporal rim
+ * point (A's when B has none). presetPose treats `compare: true` as "target the origin".
+ * @param {{ aspect: number, eye: 'OD' | 'OS',
+ *   lensSpheres: [ { x: number, y: number, z: number, r: number } | null, { x: number, y: number, z: number, r: number } | null ],
+ *   sideTargets: { A: {x:number,y:number,z:number} | null, B: {x:number,y:number,z:number} | null },
+ *   eyeBoxes: { A: any, B: any } }} o
+ */
+export function compareContext({ aspect, eye, lensSpheres, sideTargets, eyeBoxes }) {
+  const r = Math.max(0, ...lensSpheres.filter(Boolean).map(sphereReach));
+  const boxes = [eyeBoxes.A, eyeBoxes.B].filter(Boolean);
+  const box = boxes.length ? unionBox(boxes) : null;
+  const st = sideTargets.B ?? sideTargets.A;
+  return {
+    aspect,
+    side: eye,
+    compare: true,
+    full: { r },
+    front: { r },
+    box,
+    sideTarget: box && st ? { OD: { ...st }, OS: { ...st } } : null,
+    eyeBox: box && st ? { OD: box, OS: box } : null,
+  };
 }
 
 /** All preset poses for a context (the heat pose for both eyes). */

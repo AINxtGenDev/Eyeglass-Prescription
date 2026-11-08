@@ -7,6 +7,8 @@
 //   worker → main  { type: 'ready' }   once
 //                  plus at most one frame item (03-07, VIZ-02): { slot: 'frame', frame: { shape, A, B, DBL },
 //                    eyes: { OD: surfaces|null, OS: surfaces|null }, rimDepthMm, templeMm, buffers: FRAME_LENGTHS keys }
+//                  and, in a comparison (03-14, RES-03), at most one 'frameA' item: the frame of
+//                    configuration A, routed exactly like 'frame' (same validation, FRAME_LENGTHS)
 //   worker → main  { type: 'mesh', id, items: [{ slot, ok, finite, reallocated, buffers, boundingSphere|null }], computeMs }
 //                  a frame item also carries frontBoundingSphere, boundingBox, sideTarget, eyeBox, lensZ and templeMm
 //                  (the drawn, clamped temple length), all null when ok is false
@@ -26,8 +28,10 @@ import { buildFrameMesh, allocFrameBuffers, FRAME_LENGTHS } from '../engine/mesh
 import { BEVEL_RULE } from '../engine/rim.js';
 
 export const READY = Object.freeze({ type: 'ready' });
-/** OD, OS = the two main lenses; A = the compare lens (03-14); frame = the frame (03-07). */
-export const MESH_SLOTS = Object.freeze(['OD', 'OS', 'A', 'frame']);
+/** OD, OS = the two main lenses; A = the compare lens (03-14); frame = the frame (03-07); frameA = the compare frame (03-14). */
+export const MESH_SLOTS = Object.freeze(['OD', 'OS', 'A', 'frame', 'frameA']);
+/** Slots built by the frame path. */
+const FRAME_SLOTS = ['frame', 'frameA'];
 
 const EYES = ['OD', 'OS'];
 const SURFACE_KEYS = ['n', 'ct', 'c1', 'k1', 'ca', 'cb', 'axisRad'];
@@ -50,7 +54,7 @@ function invalidSurfaces(s) {
 /** @returns {string|null} why the lens item is invalid, or null */
 function invalid(item) {
   if (!item || typeof item !== 'object') return 'item';
-  if (!MESH_SLOTS.includes(item.slot) || item.slot === 'frame') return 'slot';
+  if (!MESH_SLOTS.includes(item.slot) || FRAME_SLOTS.includes(item.slot)) return 'slot';
   if (!EYES.includes(item.eye)) return 'eye';
   return invalidShapeSize(item.frame) ?? invalidSurfaces(item.surfaces);
 }
@@ -101,8 +105,8 @@ export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrame
     boundingSphere: null,
   });
 
-  const failFrame = (buffers, reallocated) => ({
-    ...fail({ slot: 'frame' }, buffers, reallocated),
+  const failFrame = (slot, buffers, reallocated) => ({
+    ...fail({ slot }, buffers, reallocated),
     frontBoundingSphere: null,
     boundingBox: null,
     sideTarget: null,
@@ -112,7 +116,8 @@ export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrame
   });
 
   const buildFrame = (item) => {
-    if (invalidFrame(item) !== null) return failFrame(item.buffers, false);
+    const slot = item.slot;
+    if (invalidFrame(item) !== null) return failFrame(slot, item.buffers, false);
     const { buffers, reallocated } = normalise(item.buffers, FRAME_LENGTHS, allocFrameBuffers);
     try {
       const { shape, A, B, DBL } = item.frame;
@@ -120,7 +125,7 @@ export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrame
       const { rimDepthMm, templeMm } = item;
       const r = frameFn({ frame: { shape, A, B, DBL }, eyes, rimDepthMm, templeMm, rule: BEVEL_RULE }, buffers);
       return {
-        slot: 'frame',
+        slot,
         ok: true,
         finite: r.finite === true,
         reallocated,
@@ -134,12 +139,12 @@ export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrame
         templeMm: r.templeMm ?? null,
       };
     } catch {
-      return failFrame(buffers, reallocated);
+      return failFrame(slot, buffers, reallocated);
     }
   };
 
   const buildItem = (item) => {
-    if (item?.slot === 'frame') return buildFrame(item);
+    if (FRAME_SLOTS.includes(item?.slot)) return buildFrame(item);
     if (invalid(item) !== null) return fail(item, item?.buffers, false);
     const { buffers, reallocated } = normalise(item.buffers, LENS_LENGTHS, allocLensBuffers);
     try {
