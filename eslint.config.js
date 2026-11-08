@@ -37,6 +37,24 @@ export default [
       ],
     },
   },
+  // 03-02: three only in the lazy view chunk (src/ui/view/**)
+  {
+    files: ['src/ui/**/*.js'],
+    ignores: ['src/ui/view/**', '**/*.test.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['three', 'three/*'],
+              message: 'Only src/ui/view/** may import Three.js (03-02, lazy 3D chunk).',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Worker glue (01-15): worker globals only, no Three.js, no UI.
   {
     files: ['src/worker/**/*.js'],

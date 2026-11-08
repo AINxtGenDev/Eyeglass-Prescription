@@ -57,6 +57,50 @@ describe('UI layer (src/ui)', () => {
   });
 });
 
+// 03-02 (T-03-06): Three.js only in the lazy view chunk src/ui/view/**.
+describe('three import boundary (03-02)', () => {
+  const THREE_IMPORTS = [
+    "import * as T from 'three'; export const x = T;",
+    "import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; export { OrbitControls };",
+  ];
+  const PROBES = [
+    'src/engine/mesh/__probe__.js',
+    'src/state/__probe__.js',
+    'src/worker/__probe__.js',
+    'src/ui/__probe__.js',
+  ];
+  test.each(PROBES.flatMap((p) => THREE_IMPORTS.map((code) => [p, code])))(
+    '%s rejects %s (no-restricted-imports)',
+    async (probe, code) => {
+      expect(await ruleIds(code, probe)).toContain('no-restricted-imports');
+    },
+  );
+
+  test('src/engine/mesh rejects DOM globals (no-restricted-globals)', async () => {
+    expect(
+      await ruleIds('export const f = () => document.title;', 'src/engine/mesh/__probe__.js'),
+    ).toContain('no-restricted-globals');
+  });
+
+  test('positive control: a pure function lints clean in src/engine/mesh', async () => {
+    expect(
+      await ruleIds('export const f = (x) => x * 2;\n', 'src/engine/mesh/__probe__.js'),
+    ).toEqual([]);
+  });
+
+  test('positive control: src/ui/view may import three', async () => {
+    expect(
+      await ruleIds("import * as T from 'three'; export const x = T;\n", 'src/ui/view/__probe__.js'),
+    ).toEqual([]);
+  });
+
+  test('src/ui/view keeps the HTML-sink ban (no-restricted-syntax)', async () => {
+    expect(
+      await ruleIds('export const f = (el, s) => { el.innerHTML = s; };', 'src/ui/view/__probe__.js'),
+    ).toContain('no-restricted-syntax');
+  });
+});
+
 describe('state layer (src/state)', () => {
   test('has no browser globals: document is undefined', async () => {
     expect(await ruleIds('export const f = () => document.title;', 'src/state/__probe__.js')).toContain(
