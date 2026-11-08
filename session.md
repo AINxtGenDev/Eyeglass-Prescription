@@ -177,3 +177,18 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 
 ### Next step
 `/clear`, then `/gsd-discuss-phase 3` (3D lenses and frame, thickness heatmap).
+
+## 2026-11-08 — Phase 3 execution (in progress)
+
+### Done
+- **03-01** bevel split + front-surface lead (`bevelSplit`, `frontLeadMm`; Expert rim lines). The '1:2' default is a deliberate change from Phase 2 (t = D now shows D/6 at the back). Phone check (chrome-devtools, 412 px): Randtiefe 3,0 → "hinten 1,6 mm, vorne bündig", lead 0,5 mm. Randtiefe 10 → "passt", no lead. No overflow, no console errors.
+- Orchestrator fix `5f796e2`: the disclaimer no longer says the facet position is not modelled. It now says the facet position is assumed.
+- **03-02** Three.js import boundary + fixed-topology lens mesh. D-04(c) worst 0,0074 mm (nₑ ≥ 1,49, limit 0,01) and 0,0231 mm for custom nₑ < 1,49 (limit 0,025). The margin is tight; the scan covered axis 45 and DBL 14 only. Build 12,7 ms per lens (−10, 62×55).
+- From wave 2 on, same-wave plans run in parallel worktrees (user request).
+
+### Open items
+- Tell lens-critic about the 0,0231 mm low-index margin in the result review.
+- Commit 143a039 (03-01) does not build: an intermediate state, which matters only for bisecting.
+
+### Next step
+Wave 2: 03-03 (frame + heat mesh) ∥ 03-04 (mesh worker), then 03-05 (first 3D view).
