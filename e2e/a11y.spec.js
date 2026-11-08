@@ -4,7 +4,7 @@
 // 320 px with hyphenation off, the D-39 keyboard path, and the UX-01 toggletips.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, settledCompare, settledXsec, guardPage } from './helpers.js';
+import { settled, settledCompare, settledXsec, settledView, guardPage } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
 guardPage(test, { view: true });
@@ -71,17 +71,160 @@ const STATES = {
   'everything open (Expert + comparison + all tips, <details>, stamp figure)': everythingOpen,
 };
 
-for (const [name, setup] of Object.entries(STATES)) {
+// ---- 03-16 (D-29, UX-04 carried, T-03-53): every 3D state at 320×640 and 1280×800 ----
+// Each entry: setup once, then per viewport wait (the view re-lays out after the resize: preset
+// refit, callouts, split), check (state-specific preconditions before axe), the axe run and the
+// overflow check; teardown after both viewports.
+const VIEW_CHUNK = '**/assets/view-*.js';
+const view = (page, fn) => page.evaluate(fn);
+const frames2 = (page) => page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, 0)))));
+const TABLE_ONLY = 'Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle.';
+
+async function viewSettled(page) {
+  await settledXsec(page);
+  await settledView(page);
+  await frames2(page);
+}
+async function expertView(page) {
+  await expertOn(page);
+  await settledView(page);
+}
+async function heatOn(page) {
+  await page.locator('#view-mode label', { hasText: 'Dickenkarte' }).click();
+  await page.waitForFunction(() => window.__eyeglassView.mode() === 'heat' && window.__eyeglassView.heatScale() !== null);
+  await frames2(page);
+}
+/** comparisonOn, then the view shows the comparison with the A lens attached (view-compare.spec.js). */
+async function compareView(page) {
+  await comparisonOn(page);
+  await settledView(page);
+  await page.waitForFunction(() => {
+    const c = window.__eyeglassView.compareInfo();
+    return c.active && c.aReady;
+  });
+  await frames2(page);
+}
+const expectMode = async (page, m) => expect(await view(page, () => window.__eyeglassView.mode())).toBe(m);
+
+/** Released by the loading state's teardown; one test at a time per worker process. */
+let releaseViewChunk = () => {};
+
+const VIEW_STATES = {
+  '3D Simple/Glas': {
+    setup: settledView,
+    check: (page) => expectMode(page, 'glass'),
+  },
+  '3D Expert/Glas': {
+    setup: expertView,
+    check: (page) => expectMode(page, 'glass'),
+  },
+  '3D Expert/Dickenkarte': {
+    setup: async (page) => {
+      await expertView(page);
+      await heatOn(page);
+    },
+    // Axe runs in whichever callout state the page shows; the state is recorded per viewport.
+    check: async (page, vp) => {
+      await expectMode(page, 'heat');
+      const li = await view(page, () => window.__eyeglassView.labelsInfo());
+      const callouts = li.labels.filter((l) => l.kind === 'callout').length;
+      test.info().annotations.push({ type: `calloutsFit ${vp.width}×${vp.height}`, description: JSON.stringify({ calloutsFit: li.calloutsFit, callouts }) });
+    },
+  },
+  // lens-critic round 2 MINOR 6: the table-only state forced at both widths.
+  '3D Expert/Dickenkarte nur Tabelle (?calloutsoff)': {
+    setup: async (page) => {
+      await settledView(page); // the first page's workers finish loading before the navigation
+      await page.goto('./?calloutsoff');
+      await settledView(page);
+      await expertView(page);
+      await heatOn(page);
+    },
+    check: async (page) => {
+      await expectMode(page, 'heat');
+      const li = await view(page, () => window.__eyeglassView.labelsInfo());
+      expect(li.calloutsFit, 'calloutsFit under ?calloutsoff').toBe(false);
+      expect(li.labels.filter((l) => l.kind === 'callout' || l.kind === 'dot'), 'visible callouts').toHaveLength(0);
+      await expect(page.locator('#view-callout-note')).toBeVisible();
+      await expect(page.locator('#view-callout-note')).toHaveText(TABLE_ONLY);
+    },
+  },
+  '3D Vergleich Glas': {
+    setup: compareView,
+    check: async (page) => {
+      await expectMode(page, 'glass');
+      expect((await view(page, () => window.__eyeglassView.compareInfo())).active).toBe(true);
+    },
+  },
+  '3D Vergleich Dickenkarte': {
+    setup: async (page) => {
+      await expertView(page);
+      await compareView(page);
+      await heatOn(page);
+    },
+    check: async (page) => {
+      await expectMode(page, 'heat');
+      expect((await view(page, () => window.__eyeglassView.compareInfo())).active).toBe(true);
+    },
+  },
+  '3D ohne WebGL (?nowebgl)': {
+    setup: async (page) => {
+      await settledView(page);
+      await page.goto('./?nowebgl');
+      await settledView(page);
+    },
+    check: (page) => expect(page.locator('#view-stage')).toContainText('WebGL 2 fehlt'),
+  },
+  // The view chunk request is held until both axe runs are done, then released.
+  '3D wird aufgebaut': {
+    setup: async (page) => {
+      await settledView(page);
+      const gate = new Promise((res) => {
+        releaseViewChunk = res;
+      });
+      await page.route(VIEW_CHUNK, async (route) => {
+        await gate;
+        await route.continue();
+      });
+      await page.goto('./');
+      await settled(page);
+    },
+    wait: async (page) => {
+      await settledXsec(page);
+      await frame(page);
+    },
+    check: async (page) => {
+      await expect(page.locator('#view')).toHaveAttribute('data-pending', 'load');
+      await expect(page.locator('#view-slot')).toBeVisible();
+      await expect(page.locator('#view-status')).toHaveText('3D-Ansicht wird aufgebaut …');
+    },
+    teardown: async (page) => {
+      releaseViewChunk();
+      await settledView(page);
+      await page.unroute(VIEW_CHUNK);
+    },
+  },
+};
+
+const ALL_STATES = {
+  ...Object.fromEntries(Object.entries(STATES).map(([name, setup]) => [name, { setup }])),
+  ...VIEW_STATES,
+};
+
+for (const [name, st] of Object.entries(ALL_STATES)) {
   test(`axe WCAG 2.2 AA zero violations and no overflow at 320 px: ${name}`, async ({ page }) => {
+    if (name.startsWith('3D ')) test.setTimeout(120_000); // SwiftShader renders on the CPU
     await settled(page);
-    await setup(page);
+    await st.setup(page);
     for (const vp of VIEWPORTS) {
       await page.setViewportSize(vp);
       await frame(page);
-      await settledXsec(page);
+      await (st.wait ?? (name.startsWith('3D ') ? viewSettled : settledXsec))(page);
+      if (st.check) await st.check(page, vp);
       await expectAxeClean(page, `${name} at ${vp.width}×${vp.height}`);
       await expectNoHorizontalScroll(page, `${name} at ${vp.width}×${vp.height}`);
     }
+    if (st.teardown) await st.teardown(page);
   });
 }
 
@@ -238,6 +381,80 @@ test('UX-01: every term has a tip that opens by click, Enter and Space and close
       await expect(btn, `${id} closes by Esc`).toHaveAttribute('aria-expanded', 'false');
       await expect(panel).toBeHidden();
       await expect(btn, `Esc leaves focus on the ${id} button`).toBeFocused();
+    }
+  }
+});
+
+// ---- 03-16 (D-29, D-13, 03-06 placement, lens-critic MAJOR 5): the keyboard path through the view ----
+
+/** The focused element as a key ('#id', 'preset:front', 'tip:tip-et', …) and where it sits. */
+const viewFocus = (page) =>
+  page.evaluate(() => {
+    const a = /** @type {HTMLElement} */ (document.activeElement);
+    if (!a || a === document.body) return { key: 'body' };
+    const key = a.dataset.preset
+      ? `preset:${a.dataset.preset}`
+      : a.classList.contains('tip-btn')
+        ? `tip:${a.getAttribute('aria-controls')}`
+        : a.id
+          ? `#${a.id}`
+          : a.classList.contains('col-results')
+            ? '.col-results'
+            : a.tagName.toLowerCase();
+    const cs = getComputedStyle(a);
+    return {
+      key,
+      inResult: !!a.closest('section#result'),
+      inOdCard: !!a.closest('#result-od-card'),
+      focusVisible: a.matches(':focus-visible'),
+      outline: cs.outlineStyle === 'none' ? 0 : parseFloat(cs.outlineWidth),
+    };
+  });
+
+test('D-29 keyboard path through the view', async ({ page }) => {
+  test.setTimeout(120_000);
+  await settledView(page);
+  const coarse = await page.evaluate(() => window.matchMedia('(any-pointer: coarse)').matches);
+  const viewOrder = ['#view-stage', 'preset:front', 'preset:side', 'preset:top', 'preset:reset', ...(coarse ? ['#view-rotate'] : [])];
+  for (const vp of VIEWPORTS) {
+    const at = `${vp.width}×${vp.height}`;
+    await page.setViewportSize(vp);
+    await frame(page);
+    await settledView(page);
+    // Start on the results region (tabindex 0, the first stop of .col-results in the D-39 path).
+    await page.locator('.col-results').focus();
+    const seen = [];
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab');
+      const f = await viewFocus(page);
+      if (f.key === 'body') break;
+      seen.push(f);
+      const s = seen.findIndex((x) => x.key === '#view-stage');
+      if (s >= 0 && seen.length > s + viewOrder.length && seen.some((x) => x.inOdCard)) break;
+    }
+    const keys = seen.map((x) => x.key);
+    test.info().annotations.push({ type: `tab order ${at}`, description: keys.join(' → ') });
+    const stage = keys.indexOf('#view-stage');
+    const firstOd = seen.findIndex((x) => x.inOdCard);
+    expect(stage, `${at}: #view-stage reached`).toBeGreaterThanOrEqual(0);
+    expect(firstOd, `${at}: a result card focusable reached`).toBeGreaterThanOrEqual(0);
+    if (vp.width >= 900) {
+      // D-13: the view is the first child of .col-results, before the result cards.
+      expect(stage, `${at}: #view-stage before #result-od-card`).toBeLessThan(firstOd);
+      expect(seen.slice(0, stage).some((x) => x.inResult), `${at}: nothing of section#result before the stage`).toBe(false);
+    } else {
+      // 03-06 (MAJOR 5): below 900 px the view follows section#result.
+      expect(firstOd, `${at}: result cards before the stage`).toBeLessThan(stage);
+      const lastResult = seen.slice(0, stage).findLastIndex((x) => x.inResult);
+      expect(lastResult, `${at}: section#result focusables before the stage`).toBeGreaterThanOrEqual(0);
+      expect(keys[lastResult + 1], `${at}: the stage right after the last focusable of section#result`).toBe('#view-stage');
+    }
+    // From the stage: Vorne → Seite → Oben → Ansicht zurücksetzen (→ '3D drehen' on a coarse pointer).
+    expect(keys.slice(stage, stage + viewOrder.length), `${at}: order from the stage`).toEqual(viewOrder);
+    if (!coarse) expect(keys[stage + viewOrder.length], `${at}: no '3D drehen' stop on a fine pointer`).not.toBe('#view-rotate');
+    for (const f of seen.slice(stage, stage + viewOrder.length)) {
+      expect(f.focusVisible, `${at}: ${f.key} matches :focus-visible`).toBe(true);
+      expect(f.outline, `${at}: ${f.key} outline width`).toBeGreaterThanOrEqual(3);
     }
   }
 });
