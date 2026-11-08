@@ -565,10 +565,9 @@ function mount({ slot }) {
     if (!contextLost) setText('view-status', '');
     setBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
     setPending('');
-    // Carried by the render below (2 passes, scene.js), unless a newer mesh job is already in flight
-    // (typing): then the attach of that job carries it, and no keystroke frame pays the copy.
-    if (outstanding === null) requestThumb(true);
-    else if (thumbCanvas) thumbDirty = true;
+    // Carried by the render below (2 passes, scene.js). B-WR-03: a reply is attached only when it is
+    // current, so no newer mesh job is in flight here; while one is, thumbSpec() says 'not now'.
+    requestThumb(true);
     view.render();
     if (PERF_MARKS) {
       const end = performance.now();
@@ -761,10 +760,13 @@ function mount({ slot }) {
    * (compare3d.shownRect: the whole canvas, or the A / B half while split, MINOR 5); the vertical
    * FOV spans that viewport's height, so the box is fitted with its half-extents scaled by
    * k = viewport height / crop height: fitBoxDistance(k·halfV, k·halfH, 4:3) (1,08 margin).
-   * Only below 900 px with the bar shown, never while the camera moves (controls.busy()).
+   * Only below 900 px with the bar shown, never while the camera moves (controls.busy()), and
+   * never while a mesh job is in flight (B-WR-03: the copy would show the old mesh and cost a
+   * keystroke frame; the wanted thumbnail waits in scene.js and the attach of that job carries it).
    */
   function thumbSpec() {
     if (!narrowMq.matches || barEl.hidden || barEl.classList.contains('thumb-off') || contextLost || !attachedOnce || controls.busy()) return null;
+    if (outstanding !== null) return null;
     const ctx = cameraCtx();
     const e = ctx.eyeBox;
     const box = ctx.compare ? ctx.box : e ? { min: minOf(e.OD.min, e.OS.min, Math.min), max: minOf(e.OD.max, e.OS.max, Math.max) } : null;

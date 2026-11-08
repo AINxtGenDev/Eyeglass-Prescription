@@ -590,6 +590,32 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
     await expect(page.locator('#summary-bar')).toHaveAccessibleName(/^Zum Ergebnis: Dickste Stelle · Gewicht R /);
   });
 
+  // B-WR-03 (code review): no thumbnail is copied while a newer mesh job is in flight (it would show
+  // the old mesh and cost a keystroke frame 2 passes); the attach of that job carries it.
+  test('B-WR-03 no thumbnail copy while a mesh job is in flight', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page); // the first load finishes before the reload (no aborted request)
+    const gate = await holdMeshWorker(page);
+    await page.reload();
+    await settledView(page);
+    await barShown(page);
+    await page.locator('#rx-od-sph').focus();
+    await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(0);
+    await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+    const c0 = (await thumbInfo(page)).copies;
+    await gate.hold();
+    await page.locator('#rx-od-sph').fill('-3');
+    await expect(page.locator('#view')).toHaveAttribute('data-pending', 'mesh');
+    const p0 = (await thumbInfo(page)).passes;
+    await page.evaluate(() => window.__eyeglassView.requestThumb());
+    await expect.poll(async () => (await thumbInfo(page)).passes).toBeGreaterThan(p0);
+    expect((await thumbInfo(page)).copies, 'no copy while the mesh job is held').toBe(c0);
+    await gate.release();
+    await settledView(page);
+    await expect.poll(async () => (await thumbInfo(page)).copies).toBe(c0 + 1);
+    expect((await thumbInfo(page)).passesPerThumbFrame).toBe(2);
+  });
+
   test('UX-03 no thumbnail copy during an orbit', async ({ page }) => {
     // Reduced motion: no damping after the drag, so the camera is at rest at touchEnd. With damping
     // SwiftShader (≈ 0,8 s per frame here) needs > 100 frames to come to rest (factor 0,08 per frame).
