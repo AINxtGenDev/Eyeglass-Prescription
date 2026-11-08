@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 import { settled, settledXsec, settledView, slowWorker, plain, guardPage } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
-guardPage(test);
+guardPage(test, { view: true });
 
 const noHorizontalScroll = (page) =>
   page.evaluate(() => {
@@ -199,8 +199,9 @@ for (const width of [360, 1280]) {
     test.use({ viewport: { width, height: 800 } });
 
     test('the arriving cross-section does not move the disclaimer', async ({ page }) => {
-      // guardPage's first load must be complete before navigating again (02-08: aborted worker fetch)
-      await settled(page);
+      // guardPage's first load must be complete before navigating again (02-08: aborted worker fetch;
+      // 03-05: that includes the lazy 3D view and its mesh worker)
+      await settledView(page);
       await slowWorker(page, 1500, { types: ['profile'] });
       await page.goto('./');
       await settled(page);

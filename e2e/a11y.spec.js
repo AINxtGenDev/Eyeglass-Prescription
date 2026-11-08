@@ -7,7 +7,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { settled, settledCompare, settledXsec, guardPage } from './helpers.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
-guardPage(test);
+guardPage(test, { view: true });
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const VIEWPORTS = [

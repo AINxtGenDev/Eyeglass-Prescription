@@ -20,6 +20,9 @@
 // queues the start ('queued' in #compare[data-pending]); timing.js calls onInputFrameEnd after
 // the input frame's end stamp, which posts one coalesced following task (MessageChannel) that
 // builds and sends the jobs for the latest specs. While queued, the compare paint waits.
+// 03-05 (D-16, VIZ-01): the first painted result lazy-loads the 3D view chunk (./view/view.js);
+// every later paint calls refreshView(), which updates the view in a following task (never in
+// the card frame, RESEARCH Pitfall 12). The view owns its own mesh worker (lens-critic MAJOR 3).
 import { createComputeClient, BUSY_AFTER_MS } from '../state/compute-client.js';
 import { MATERIALS } from '../engine/materials.js';
 import { t } from '../i18n/t.js';
@@ -123,6 +126,7 @@ function onFailed(eyes) {
     shown[eye] = { key: requestedKeys[eye], result: null };
   }
   scheduleComparePaint();
+  refreshView(); // 03-05: a failed eye is not drawn
 }
 
 // Deliveries are painted in the next frame; an eye is painted only if its seq is still current
@@ -167,6 +171,73 @@ function paintDeliveries() {
   onPainted(frameStart, openTs, pending.open.size);
   // The selected row is the main result; it is painted in the next frame, not in this one.
   scheduleComparePaint();
+  refreshView();
+}
+
+// ---- 3D view (03-05) ----
+
+/** @type {{ update: (inputs: object) => void } | null} */
+let view = null;
+let viewLoading = false;
+let viewTimer = null;
+/** Frame of the last shown key per eye (the key is the spec's JSON). */
+const viewFrames = { OD: { key: null, frame: null }, OS: { key: null, frame: null } };
+
+const frameOf = (eye, key) => {
+  const memo = viewFrames[eye];
+  if (memo.key !== key) viewFrames[eye] = { key, frame: JSON.parse(key).frame ?? null };
+  return viewFrames[eye].frame;
+};
+
+/**
+ * The painted main results for the view: an eye whose current input is not painted yet keeps its
+ * last shown result (current false); a blocked eye (no spec) is null.
+ */
+function viewInputs() {
+  const eyes = {};
+  let current = true;
+  for (const eye of EYES) {
+    const s = shown[eye];
+    if (requested[eye] === null || !s?.key) {
+      eyes[eye] = null;
+      continue;
+    }
+    if (s.key !== requestedKeys[eye]) current = false;
+    eyes[eye] = { result: s.result, frame: frameOf(eye, s.key) };
+  }
+  return { eyes, current };
+}
+
+// Test-only (03-05): e2e specs that are not about the view set this with an init script
+// (e2e/helpers.js without3d), because headless Chromium renders WebGL on the CPU.
+const NO_3D = window.__eyeglassNo3d === true;
+
+/** Update (or first load) the 3D view in a following task, coalesced. */
+export function refreshView() {
+  if (NO_3D) return;
+  const el = $('view');
+  if (el.dataset.pending === '') el.dataset.pending = 'queued';
+  if (viewTimer !== null) return;
+  viewTimer = setTimeout(() => {
+    viewTimer = null;
+    if (view) {
+      view.update(viewInputs());
+      return;
+    }
+    if (viewLoading) return;
+    viewLoading = true;
+    $('view-slot').hidden = false;
+    import('./view/view.js')
+      .then(({ mountView }) => {
+        view = mountView({ slot: $('view-slot') });
+        view.update(viewInputs());
+      })
+      .catch((err) => {
+        // 03-06 adds the visible message and 'Erneut versuchen'.
+        console.warn('3D view could not load', err);
+        $('view').dataset.pending = '';
+      });
+  }, 0);
 }
 
 function onResults({ results, openTs, computeMs, current }) {
@@ -256,6 +327,8 @@ export function requestMain(specs, inputTs) {
   client.request(specs, inputTs);
   if (PERF_MARKS) t0 = lap('u:rm.request', t0);
   for (const eye of EYES) if (specs[eye] === null) renderRim(eye, null);
+  // 03-05: a blocked eye (no spec) is not drawn; it never reaches paintDeliveries.
+  if ((view || viewLoading) && EYES.some((eye) => specs[eye] === null)) refreshView();
   $('cmp-footnote').hidden = !hasOverrides(specs);
   if (PERF_MARKS) t0 = lap('u:rm.rimFootnote', t0);
   // A changed main request starts a new compare generation in the client (and drops its queue);

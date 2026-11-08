@@ -5,7 +5,7 @@
 // here), and assert the stored pair differs before the main assertion.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, settledCompare, thickOf, sphOnly, slowWorker, holdWorker, WORKER_URL } from './helpers.js';
+import { settled, settledCompare, thickOf, sphOnly, slowWorker, holdWorker, without3d, WORKER_URL } from './helpers.js';
 /* global window, document, MutationObserver -- page.evaluate bodies run in the browser */
 
 // Must equal vite.config.js CSP exactly (T-01-39).
@@ -26,6 +26,7 @@ test.beforeEach(async ({ page }) => {
     window.__csp = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
   });
+  await without3d(page); // 03-05: the mesh worker is covered by view.spec.js (helpers.js without3d)
 });
 
 const sph = (page) => page.locator('#rx-od-sph');

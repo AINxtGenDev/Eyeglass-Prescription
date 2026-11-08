@@ -1,7 +1,7 @@
 // 3D view, slice 4 (03-05, VIZ-01, VIZ-04, VIZ-06): both lenses as glass from the engine
 // surfaces, built in the dedicated mesh worker, lazy-loaded after the first result paint.
 import { test, expect } from '@playwright/test';
-import { settled, settledView, etmaxOf, guardPage, holdMeshWorker, noThreeWarnings, plain } from './helpers.js';
+import { settled, settledView, etmaxOf, guardPage, holdMeshWorker, noThreeWarnings, plain, MESH_WORKER_URL } from './helpers.js';
 /* global window */
 
 // Registered before guardPage, so it listens before guardPage's page.goto.
@@ -9,7 +9,7 @@ let threeWarnings;
 test.beforeEach(({ page }) => {
   threeWarnings = noThreeWarnings(page);
 });
-guardPage(test);
+guardPage(test, { view: true });
 test.afterEach(() => {
   expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
 });
@@ -24,6 +24,10 @@ test('VIZ-01 both lenses render at the card edge thickness', async ({ page }) =>
   const size = await page.locator('#view-canvas').evaluate((c) => [c.clientWidth, c.clientHeight]);
   expect(size[0]).toBeGreaterThan(0);
   expect(size[1]).toBeGreaterThan(0);
+  // The meshes come from the dedicated mesh worker under the sub-path and the site CSP (guardPage
+  // fails on CSP console messages and failed requests), not from the main-thread fallback.
+  expect(page.workers().some((w) => MESH_WORKER_URL.test(new URL(w.url()).pathname))).toBe(true);
+  expect(await page.evaluate(() => window.__eyeglassView.meshMode())).toBe('worker');
   for (const eye of ['OD', 'OS']) {
     const mesh = await edgeMax(page, eye);
     expect(mesh, `${eye} slot drawn`).not.toBeNull();

@@ -1661,7 +1661,10 @@ td:has(.msg-out) input[aria-invalid='true'] {
   outline-offset: -3px;
 }
 
+/* Absolute, so the drawing-buffer size can never feed back into the stage height. */
 #view-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;

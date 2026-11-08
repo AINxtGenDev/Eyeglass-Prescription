@@ -2,7 +2,7 @@
 // RED until plan 01-03 ships the German page; runs against `vite preview` locally
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
-import { settled, thickOf, sphOnly } from './helpers.js';
+import { settled, thickOf, sphOnly, without3d } from './helpers.js';
 /* global document, window, MutationObserver -- page.evaluate bodies run in the browser */
 
 /** Material radio card (02-07) by MATERIALS id. */
@@ -25,6 +25,7 @@ test.beforeEach(async ({ page, baseURL }) => {
   page.on('console', (m) => {
     if (m.text().includes('Content Security Policy')) seen.csp.push(m.text());
   });
+  await without3d(page); // 03-05: the view has its own specs (helpers.js without3d)
   await page.goto('./');
   expect(page.url()).toMatch(/\/Eyeglass-Prescription\/$/);
 });

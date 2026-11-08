@@ -1,6 +1,6 @@
 // Shared e2e helpers (01-15).
 import { expect } from '@playwright/test';
-/* global requestAnimationFrame, self -- page/worker.evaluate bodies run in the browser */
+/* global requestAnimationFrame, self, window -- page/worker.evaluate bodies run in the browser */
 
 /**
  * Wait until the page has nothing pending: no input frame scheduled, no eye open in the compute
@@ -52,6 +52,12 @@ export async function settledView(page, { timeout = 15_000 } = {}) {
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
 }
 
+// Chromium's own GL driver performance notes ("GL Driver Message (OpenGL, Performance, …): GPU
+// stall due to ReadPixels"). They appear in tests that never call readPixels: three.js r187 calls
+// gl.readPixels only in readRenderTargetPixels(Async), which the app does not use, so they come
+// from the headless browser reading the canvas back for its compositor. Not an app message.
+const DRIVER_PERF_NOTE = /GL Driver Message \(OpenGL, Performance,/;
+
 /**
  * Collect console errors and warnings from Three.js or WebGL (03-05). Register before the page
  * loads (a beforeEach that runs before guardPage's). Returns a getter for the collected texts.
@@ -61,7 +67,10 @@ export async function settledView(page, { timeout = 15_000 } = {}) {
 export function noThreeWarnings(page) {
   const seen = [];
   page.on('console', (m) => {
-    if ((m.type() === 'error' || m.type() === 'warning') && /THREE|WebGL|GL_/.test(m.text())) seen.push(`${m.type()}: ${m.text()}`);
+    const text = m.text();
+    if ((m.type() === 'error' || m.type() === 'warning') && /THREE|WebGL|GL_/.test(text) && !DRIVER_PERF_NOTE.test(text)) {
+      seen.push(`${m.type()}: ${text}`);
+    }
   });
   return () => [...seen];
 }
@@ -172,12 +181,27 @@ export function plain(s) {
 }
 
 /**
+ * Test-only (03-05): the page never loads the 3D view (pipeline.js reads window.__eyeglassNo3d
+ * once at load). Headless Chromium renders WebGL with SwiftShader on the CPU; with the view in
+ * every test, 8 parallel workers starve each other and timing-based tests of the numbers path
+ * fail although each passes alone (measured 2026-11-08). The view's own specs (view, layout,
+ * a11y) keep it; VIZ-06 proves the numbers never wait for the mesh worker. Before page.goto.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function without3d(page) {
+  await page.addInitScript(() => {
+    window.__eyeglassNo3d = true;
+  });
+}
+
+/**
  * Register the smoke.spec guard harness for the calling spec file: every test fails on a 4xx/5xx
  * response, a failed request, a request to another origin or a CSP console message. Each test
- * starts on the app page ('./').
+ * starts on the app page ('./'). 03-05: without the 3D view unless `view: true` (without3d).
  * @param {typeof import('@playwright/test').test} test
+ * @param {{ view?: boolean }} [opts]
  */
-export function guardPage(test) {
+export function guardPage(test, { view = false } = {}) {
   /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
   let seen;
   test.beforeEach(async ({ page, baseURL }) => {
@@ -194,6 +218,7 @@ export function guardPage(test) {
     page.on('console', (m) => {
       if (m.text().includes('Content Security Policy')) seen.csp.push(m.text());
     });
+    if (!view) await without3d(page);
     await page.goto('./');
     expect(page.url()).toMatch(/\/Eyeglass-Prescription\/$/);
   });
