@@ -126,6 +126,9 @@ test('D-16 load failure and retry', async ({ page }) => {
   await expect(stage).toContainText('Die 3D-Ansicht konnte nicht geladen werden.');
   const retry = stage.getByRole('button', { name: 'Erneut versuchen' });
   await expect(retry).toBeVisible();
+  // A-IN-05: no dead controls and no empty 'image' next to the message.
+  await expect(page.locator('#view-tools')).toBeHidden();
+  await expect(page.locator('#view-canvas')).toHaveAttribute('aria-hidden', 'true');
   await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d\smm$/);
   // An input while the message is shown leaves nothing pending for the view.
   await page.locator('#rx-od-sph').fill('-3');
@@ -136,11 +139,39 @@ test('D-16 load failure and retry', async ({ page }) => {
   await settledView(page);
   await expect(retry).toHaveCount(0);
   await expect(page.locator('#view-stage')).toBeFocused();
+  await expect(page.locator('#view-tools')).toBeVisible();
+  await expect(page.locator('#view-canvas')).not.toHaveAttribute('aria-hidden', /.*/);
   for (const eye of ['OD', 'OS']) {
     const mesh = await edgeMax(page, eye);
     expect(mesh, `${eye} slot drawn after the retry`).not.toBeNull();
     expect(round1(mesh), eye).toBe(await etmaxOf(page, eye.toLowerCase()));
   }
+});
+
+// A-WR-02 / B-WR-09 (code review): a chunk that loads but whose mount or first update throws is not
+// a load failure. No 'Erneut versuchen' (a retry would mount a second view with a second mesh
+// worker), the reason is not 'Laden fehlgeschlagen', and nothing stays pending for the view.
+test('A-WR-02 mount or update error: no retry, no second mount', async ({ page }) => {
+  await settledView(page);
+  await page.route(VIEW_CHUNK, (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: "export function mountView() { window.__mounts = (window.__mounts ?? 0) + 1; return { update() { throw new Error('test: update threw'); } }; }",
+    }),
+  );
+  await page.goto('./');
+  await settledView(page);
+  const stage = page.locator('#view-stage');
+  await expect(stage).toContainText('Die 3D-Ansicht ist vorübergehend nicht verfügbar.');
+  await expect(stage.getByRole('button', { name: 'Erneut versuchen' })).toHaveCount(0);
+  await expect(page.locator('#tech-view-unavailable')).not.toContainText('Laden fehlgeschlagen');
+  await expect(page.locator('#tech-view-unavailable')).toContainText('3D-Ansicht nicht verfügbar:');
+  await expect(page.locator('#view-tools')).toBeHidden();
+  await expect(page.locator('#view-canvas')).toHaveAttribute('aria-hidden', 'true');
+  await page.locator('#rx-od-sph').fill('-3');
+  await settledView(page);
+  await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d\smm$/);
+  expect(await page.evaluate(() => window.__mounts)).toBe(1);
 });
 
 test('VIZ-01 blocked eye: not drawn, labelled, the other eye renders', async ({ page }) => {

@@ -184,11 +184,25 @@ function showUnavailable(reasonKey) {
  *   frame = the frame of the last input (drawn alone when no eye has a shown result)
  */
 
+/** B-WR-09 (code review): the view of the first successful mount; it has no teardown. */
+let mounted = null;
+
+/**
+ * Mount once: a second call returns the first view instead of creating a second renderer state,
+ * mesh worker and set of listeners on the same nodes (pipeline.js no longer retries a mount).
+ * @param {{ slot: HTMLElement }} o
+ * @returns {{ update: (inputs: ViewInputs) => void }}
+ */
+export function mountView(o) {
+  mounted ??= mount(o);
+  return mounted;
+}
+
 /**
  * @param {{ slot: HTMLElement }} o
  * @returns {{ update: (inputs: ViewInputs) => void }}
  */
-export function mountView({ slot }) {
+function mount({ slot }) {
   const viewEl = /** @type {HTMLElement} */ (slot.querySelector('#view'));
   const setPending = (v) => {
     if (viewEl.dataset.pending !== v) viewEl.dataset.pending = v;

@@ -636,6 +636,8 @@ export default Object.freeze({
   'tech.view.reason.noWebgl': 'kein WebGL 2',
   'tech.view.reason.loadFailed': 'Laden fehlgeschlagen',
   'tech.view.reason.paused': 'Grafik vom Browser angehalten',
+  // Code review A-WR-02 / B-WR-06: the view could not start, or a lens could not be built twice.
+  'tech.view.reason.error': 'Fehler beim Aufbau der Ansicht',
 
   // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View").
   'view.title': '3D-Ansicht Ihrer Brille',

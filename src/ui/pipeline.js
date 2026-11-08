@@ -251,45 +251,73 @@ export function refreshView() {
   }, 0);
 }
 
-/** Import the view chunk; on failure show the message with 'Erneut versuchen' (03-06, D-16). */
+/**
+ * Import the view chunk; on failure show the message with 'Erneut versuchen' (03-06, D-16).
+ * A-WR-02 (code review): only a failed import offers the retry. A mount or first-update error is
+ * not a load failure, and a retry would mount a second view (a second mesh worker and listeners):
+ * it shows the 'vorübergehend nicht verfügbar' state without a button, and the view is dropped so
+ * later inputs leave nothing pending for it.
+ */
 function loadView() {
-  import('./view/view.js')
-    .then(({ mountView }) => {
-      view = mountView({ slot: $('view-slot') });
-      view.update(viewInputs());
-    })
-    .catch((err) => {
+  import('./view/view.js').then(
+    ({ mountView }) => {
+      if (view) return; // never mount twice
+      try {
+        view = mountView({ slot: $('view-slot') });
+        view.update(viewInputs());
+      } catch (err) {
+        console.error('3D view could not start', err);
+        view = null;
+        viewFailed = true;
+        $('view').dataset.pending = '';
+        showViewFailed({ msgKey: 'view.contextGone', reasonKey: 'tech.view.reason.error', retry: false });
+      }
+    },
+    (err) => {
       console.warn('3D view could not load', err);
       viewFailed = true;
       $('view').dataset.pending = '';
-      showLoadFailed();
-    });
+      showViewFailed({ msgKey: 'view.loadFailed', reasonKey: 'tech.view.reason.loadFailed', retry: true });
+    },
+  );
 }
 
-/** Fehler-tier box in the stage (UI-SPEC States): message + secondary button, textContent only. */
-function showLoadFailed() {
+/**
+ * Fehler-tier box in the stage (UI-SPEC States): message (+ secondary button), textContent only.
+ * A-IN-05: while it is shown the dead preset buttons are hidden and the empty canvas is taken out
+ * of the accessibility tree; a retry restores both.
+ */
+function showViewFailed({ msgKey, reasonKey, retry: withRetry }) {
   const status = $('view-status');
   const msg = document.createElement('span');
-  msg.textContent = t('view.loadFailed');
+  msg.textContent = t(msgKey);
+  // 03-08: the reason line in Technische Angaben (UI-SPEC tech.view.unavailable).
+  const reason = $('tech-view-unavailable');
+  reason.textContent = t('tech.view.unavailable', { reason: t(reasonKey) });
+  reason.hidden = false;
+  $('view-tools').hidden = true;
+  $('view-canvas').setAttribute('aria-hidden', 'true');
+  status.classList.add('view-failed');
+  if (!withRetry) {
+    status.replaceChildren(msg);
+    return;
+  }
   const retry = document.createElement('button');
   retry.type = 'button';
   retry.textContent = t('view.retry');
-  // 03-08: the reason line in Technische Angaben (UI-SPEC tech.view.unavailable).
-  const reason = $('tech-view-unavailable');
-  reason.textContent = t('tech.view.unavailable', { reason: t('tech.view.reason.loadFailed') });
-  reason.hidden = false;
   retry.addEventListener('click', () => {
     // The button goes away: keep keyboard focus in the view instead of dropping it to <body>.
     $('view-stage').focus();
     reason.hidden = true;
     reason.textContent = '';
+    $('view-tools').hidden = false;
+    $('view-canvas').removeAttribute('aria-hidden');
     status.classList.remove('view-failed');
     status.textContent = t('view.loading');
     $('view').dataset.pending = 'load';
     viewFailed = false;
     loadView();
   });
-  status.classList.add('view-failed');
   status.replaceChildren(msg, retry);
 }
 

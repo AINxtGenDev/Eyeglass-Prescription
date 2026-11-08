@@ -1782,6 +1782,11 @@ td:has(.msg-out) input[aria-invalid='true'] {
   margin-block-start: var(--space-2);
 }
 
+/* A-IN-05: hidden while the load-failure message is shown (display: flex above would win). */
+#view-tools[hidden] {
+  display: none;
+}
+
 #view-tools button {
   min-width: 44px;
   min-height: 44px;
