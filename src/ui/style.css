@@ -548,6 +548,12 @@ form#rx {
   column-gap: var(--space-1);
 }
 
+/* Result-card labels: the "i" button stays beside the label; the label text wraps instead
+   (a lone button on its own line pushed the value down on a 412 px phone, 2026-11-08). */
+dt .term {
+  flex-wrap: nowrap;
+}
+
 .input-group {
   display: flex;
   max-width: 10rem;
