@@ -33,6 +33,20 @@ const CAPTION_TOP_PX = 8;
 const CAPTION_GAP_PX = 4;
 
 const HALVES = /** @type {const} */ (['A', 'B']);
+
+/**
+ * 03-15 (lens-critic MINOR 5): the drawing-buffer rect (device px, top-left origin) of the
+ * viewport that shows the selected configuration: the A or B half while split (the same halves
+ * renderPass draws, floor(W / 2) wide, B flush right), else the whole canvas. The thumbnail crops
+ * inside this rect with drawImage's source rectangle instead of rendering a layout of its own.
+ * @param {{ W: number, H: number, split: boolean, shown: 'A' | 'B' }} s stage CSS px and state
+ * @param {number} pixelRatio renderer pixel ratio (canvas px per CSS px)
+ */
+export function shownRect({ W, H, split, shown }, pixelRatio) {
+  const w = split ? Math.floor(W / 2) : W;
+  const x = split && shown === 'B' ? W - w : 0;
+  return { x: x * pixelRatio, y: 0, w: w * pixelRatio, h: H * pixelRatio };
+}
 const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 /**
@@ -120,7 +134,11 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
     saved.length = 0;
   };
 
+  /** 03-15 test-only: the viewport sizes (CSS px) of the last pass. */
+  const viewports = [];
+
   function renderPass() {
+    viewports.length = 0;
     const LA = lenses.group('A');
     const fA = frameA.compareParts(state.eye);
     if (!state.active) {
@@ -140,6 +158,8 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
         set(LA, 'visible', false);
         set(fA.root, 'visible', false);
       }
+      const { W, H } = stageSize();
+      viewports.push({ w: W, h: H });
       renderer.render(scene, camera);
       restore();
       return;
@@ -176,12 +196,15 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
         const b = halfBox(half);
         renderer.setViewport(b.x, 0, b.w, b.h);
         renderer.setScissor(b.x, 0, b.w, b.h);
+        viewports.push({ w: b.w, h: b.h });
         show(half);
         withHalf(half, () => renderer.render(scene, camera));
       }
       renderer.setScissorTest(false);
       renderer.setViewport(0, 0, W, H);
     } else {
+      const { W, H } = stageSize();
+      viewports.push({ w: W, h: H });
       show(state.shown);
       renderer.render(scene, camera);
     }
@@ -225,6 +248,10 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
     withHalf,
     halfBox,
     layoutCaptions,
+    /** 03-15: device-px rect of the shown configuration's viewport (shownRect above). */
+    shownRect: () => shownRect({ ...stageSize(), split: split(), shown: state.shown }, renderer.getPixelRatio()),
+    /** 03-15 test-only: viewport sizes (CSS px) the last pass rendered with. */
+    lastViewports: () => viewports.map((v) => ({ ...v })),
     /** Upload the A slot and the frameA rims with the next (normal) render. */
     warmUp() {
       warm = true;

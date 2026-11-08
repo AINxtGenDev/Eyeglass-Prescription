@@ -5,6 +5,7 @@
 // Accessible name = a visually hidden "Zum Ergebnis:" + the visible text. The UI-SPEC sentence as
 // aria-label failed axe label-content-name-mismatch (WCAG 2.5.3 Label in Name: the visible text
 // must be part of the name), so it is not used.
+// 03-15 (UX-03): #bar-view-slot holds the 3D view's lens thumbnail (enableBarThumb).
 import { $, setText } from './dom.js';
 import { t } from '../i18n/t.js';
 
@@ -36,6 +37,16 @@ export function initSummaryBar() {
   });
   updateSummaryBar({ OD: null, OS: null, busy: false, stale: false });
   updateVisibility();
+}
+
+/**
+ * 03-15 (UX-03, D-14): show the lens thumbnail (view.js calls this after its first copy). The bar
+ * becomes a 2-column grid (style.css #summary-bar.has-thumb); the canvas is aria-hidden, so the
+ * bar's accessible name is unchanged. Never called without WebGL: the slot stays hidden.
+ */
+export function enableBarThumb() {
+  $('bar-view-slot').hidden = false;
+  $('summary-bar').classList.add('has-thumb');
 }
 
 const pair = (v) => (v ? t('bar.eye', { thick: v.thick, weight: v.weight }) : DASH);

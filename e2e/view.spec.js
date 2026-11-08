@@ -7,6 +7,7 @@ import { MATERIALS } from '../src/engine/materials.js';
 import {
   settled,
   settledView,
+  settledCompare,
   etmaxOf,
   guardPage,
   holdMeshWorker,
@@ -476,4 +477,142 @@ test('#tech-view-remesh shows the last 3D re-mesh time', async ({ page }) => {
   await settledView(page);
   await expect(page.locator('#tech-view-remesh')).toContainText('3D-Neuaufbau zuletzt:');
   await expect(page.locator('#tech-view-remesh')).toContainText('ms');
+});
+
+// ---- 03-15 (UX-03, D-14, R1-8, lens-critic MINOR 5 / 11, round 2 MINOR 1): the bar thumbnail ----
+// Phone layout only (below 900 px). The thumbnail is made only while the bar is shown (the result
+// cards out of view); with the 3D view on screen the bar is hidden and no thumbnail is needed.
+const thumbInfo = (page) => page.evaluate(() => window.__eyeglassView.thumbInfo());
+const camKey = (c) => [c.position.x, c.position.y, c.position.z, c.target.x, c.target.y, c.target.z].join();
+/** Scroll to the top (the Rx fields; the result cards out of view) and wait for the bar. */
+async function barShown(page) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('#summary-bar')).toBeVisible();
+}
+
+test.describe('UX-03 bar thumbnail (03-15)', () => {
+  test.skip(({ isMobile }) => !isMobile, 'phone layout: mobile project only');
+
+  test('UX-03 lens view stays visible while editing', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page);
+    await barShown(page);
+    await page.locator('#rx-od-sph').focus();
+    await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(0);
+    const before = await thumbInfo(page);
+    await page.locator('#rx-od-sph').fill('-2,5');
+    await settledView(page);
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await expect(page.locator('#bar-view-slot')).toBeVisible();
+    const box = await page.locator('.bar-thumb').boundingBox();
+    expect(Math.abs(box.width - 48)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(box.height - 36)).toBeLessThanOrEqual(0.5);
+    const after = await thumbInfo(page);
+    expect(after.copies).toBeGreaterThan(before.copies);
+    expect(after.passesPerThumbFrame).toBe(2);
+    expect(after.nonBackgroundRatio).toBeGreaterThan(0.15);
+    for (const eye of ['OD', 'OS']) expect(after.lensWidthPx[eye], eye).toBeGreaterThanOrEqual(16);
+    test.info().annotations.push({ type: 'thumb', description: JSON.stringify(after) });
+    // The thumbnail frame restores the camera: the pose is the same before and after one.
+    const cam0 = await page.evaluate(() => window.__eyeglassView.camera());
+    await page.evaluate(() => window.__eyeglassView.requestThumb());
+    await expect.poll(async () => (await thumbInfo(page)).copies).toBe(after.copies + 1);
+    expect(camKey(await page.evaluate(() => window.__eyeglassView.camera()))).toBe(camKey(cam0));
+    // The bar's accessible name is unchanged: the canvas is aria-hidden.
+    await expect(page.locator('.bar-thumb')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('#summary-bar')).toHaveAccessibleName(/^Zum Ergebnis: Dickste Stelle · Gewicht R /);
+  });
+
+  test('UX-03 no thumbnail copy during an orbit', async ({ page }) => {
+    // Reduced motion: no damping after the drag, so the camera is at rest at touchEnd. With damping
+    // SwiftShader (≈ 0,8 s per frame here) needs > 100 frames to come to rest (factor 0,08 per frame).
+    test.setTimeout(90_000);
+    await settledView(page); // the first load finishes before the reload (no aborted request)
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+    await settledView(page);
+    // Stage at the top of the viewport: fully on screen ('3D drehen' needs ≥ 50 %) and the result
+    // cards above it out of view, so the bar shows.
+    await page.evaluate(() => document.getElementById('view-stage').scrollIntoView({ block: 'start' }));
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await page.locator('#view-rotate').click();
+    await expect(page.locator('#view-rotate')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(0);
+    const c0 = (await thumbInfo(page)).copies;
+    const box = await page.locator('#view-stage').boundingBox();
+    const from = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y, id: 1 }] });
+    // A thumbnail asked for in the middle of the drag waits until the camera is at rest.
+    await page.evaluate(() => window.__eyeglassView.requestThumb());
+    const seen = [];
+    for (let i = 1; i <= 6; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + 10 * i, y: from.y, id: 1 }] });
+      await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
+      seen.push((await thumbInfo(page)).copies);
+    }
+    expect(seen, 'copies during the drag').toEqual(seen.map(() => c0));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(async () => (await thumbInfo(page)).copies, { timeout: 30_000 }).toBe(c0 + 1);
+    expect(await page.evaluate(() => window.__eyeglassView.viewName())).toBe('free');
+    await cdp.detach();
+  });
+
+  test.describe('split', () => {
+    test.use({ viewport: { width: 412, height: 915 } });
+
+    test('UX-03 split crop keeps the layout (MINOR 5)', async ({ page }) => {
+      test.setTimeout(180_000);
+      await settledView(page);
+      await page.locator('#cmp-start').click();
+      await settledCompare(page);
+      await page.locator('input[name=material][value=idx174]').check();
+      await settledView(page);
+      await page.waitForFunction(() => {
+        const c = window.__eyeglassView.compareInfo();
+        return c.active && c.aReady && c.split;
+      });
+      await barShown(page);
+      const mem = await page.evaluate(() => window.__eyeglassView.memory());
+      const c0 = (await thumbInfo(page)).copies;
+      // A re-mesh of B (the shown configuration) with the bar shown.
+      await page.locator('#rx-od-sph').fill('-2,5');
+      await settledView(page);
+      await page.locator('#rx-os-sph').fill('-2,5');
+      await settledView(page);
+      await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(c0);
+      const info = await thumbInfo(page);
+      test.info().annotations.push({ type: 'thumb split', description: JSON.stringify(info) });
+      expect(info.mainViewports).toHaveLength(2);
+      expect(info.renderViewports.length).toBeGreaterThan(0);
+      const key = (v) => `${v.w}x${v.h}`;
+      const split = info.mainViewports.map(key);
+      for (const v of info.renderViewports) expect(split, 'thumbnail viewport is a split half').toContain(key(v));
+      expect(info.passesPerThumbFrame).toBe(2);
+      // The source rectangle lies inside the shown half (Nachher (B), the right half), device px.
+      const cv = await page.locator('#view-canvas').evaluate((c) => ({ W: c.clientWidth, H: c.clientHeight, pr: c.width / c.clientWidth }));
+      const half = info.mainViewports[1];
+      expect(info.src.x).toBeGreaterThanOrEqual((cv.W - half.w) * cv.pr - 0.5);
+      expect(info.src.x + info.src.w).toBeLessThanOrEqual(cv.W * cv.pr + 0.5);
+      expect(info.src.y + info.src.h).toBeLessThanOrEqual(cv.H * cv.pr + 0.5);
+      expect(await page.evaluate(() => window.__eyeglassView.memory())).toEqual(mem);
+      for (const eye of ['OD', 'OS']) if (info.lensWidthPx[eye] !== null) expect(info.lensWidthPx[eye], eye).toBeGreaterThanOrEqual(16);
+    });
+  });
+
+  test('UX-03 no WebGL: the thumbnail slot stays hidden', async ({ page }) => {
+    await settledView(page);
+    const all = threeWarnings;
+    threeWarnings = () => all().filter((w) => !w.includes('3D view: no WebGL2'));
+    await page.goto('./?nowebgl');
+    await settledView(page);
+    await expect(page.locator('#view-stage')).toContainText('WebGL 2 fehlt');
+    await barShown(page);
+    await page.locator('#rx-od-sph').fill('-2,5');
+    await settledView(page);
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await expect(page.locator('#bar-view-slot')).toBeHidden();
+    await expect(page.locator('#summary-bar')).not.toHaveClass(/has-thumb/);
+  });
 });

@@ -140,6 +140,37 @@ footer {
   display: none;
 }
 
+/* 03-15 (UX-03, UI-SPEC Phone): the lens thumbnail in column 1, the two text lines in column 2.
+   :not([hidden]) so the [hidden] rule above keeps winning. */
+#summary-bar.has-thumb:not([hidden]) {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  column-gap: 8px;
+  align-items: center;
+  align-content: center;
+}
+
+#summary-bar.has-thumb #bar-view-slot {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+#summary-bar.has-thumb .bar-label,
+#summary-bar.has-thumb .bar-values {
+  grid-column: 2;
+  min-width: 0;
+}
+
+/* 96 × 72 backing canvas (2×) shown at 48 × 36 px incl. the 1 px border (11,7:1 on the bar). */
+.bar-thumb {
+  display: block;
+  box-sizing: border-box;
+  width: 48px;
+  height: 36px;
+  border: 1px solid #d4d4d4;
+  border-radius: 4px;
+}
+
 #summary-bar:focus-visible {
   outline: 3px solid var(--bar-focus);
   outline-offset: -3px;

@@ -20,6 +20,17 @@
 //   re-upload from their canvas (onContext 'restored' hooks). No restore within 5 s → 'gone'.
 // 03-14 (RES-03): setPass(fn) replaces the single renderer.render(scene, camera) of render() by
 // compare3d.js's pass (two scissor halves with the same camera); hooks run once around it.
+// 03-15 (UX-03, D-14, R1-8, lens-critic MINOR 5 / 11, round 2 MINOR 1): the phone bar thumbnail.
+// setThumb({ canvas, source, onCopy }) + requestThumb(): the next render whose source() returns a
+// spec (view.js: phone width, not while the camera moves, a frame-front box exists) is a thumbnail
+// frame: thumbnail pose → pass → copy → restore → pass, all in one task with no await, so it costs
+// exactly 2 passes (round 2 MINOR 1; the old main → thumbnail → main order cost 3). The copy is
+// ctx.drawImage(renderer.domElement, …) right after the pass (RESEARCH Pattern 9: the drawing
+// buffer still holds the pixels in the same task; no preserveDrawingBuffer). The canvas is
+// composited after the task, so the user only ever sees pass 2. The thumbnail pass uses the screen
+// layout unchanged (the same viewports as the main pass; split A/B is cropped by the source
+// rectangle), so the per-camera transmission target, which r187 sizes from the active viewport
+// (WebGLRenderer.js lines 2056-2057, setSize per render), is never resized by the thumbnail.
 // 03-09 (VIZ-03): the camera poses live in camera-math.js and controls.js (fit() is gone).
 // - beforeRender hooks run before each render (controls.update / preset tween, chart fade);
 //   onResize hooks run after a stage resize, before its render (limits and preset refit).
@@ -36,6 +47,7 @@ import {
   SRGBColorSpace,
   NeutralToneMapping,
   Vector3,
+  Quaternion,
 } from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { pickTier, stepDown, TIER_SETTINGS } from './tiers.js';
@@ -46,6 +58,8 @@ const RAD = Math.PI / 180;
 const IDLE_GAP_MS = 250;
 /** Context loss: 'gone' when no restore follows within this time (UI-SPEC States). */
 const RESTORE_WAIT_MS = 5000;
+/** Thumbnail letterbox fill = the studio background #f3f4f6 (UI-SPEC Color). */
+const THUMB_BG = '#f3f4f6';
 
 /** Environment map for the glass reflections, from the built-in RoomEnvironment. */
 function makeEnvironment(renderer) {
@@ -115,6 +129,52 @@ export function createScene(canvas, stage) {
   let lastRenderAt = null;
   let stepPending = false;
   let pass = () => renderer.render(scene, camera);
+  /** 03-15 test-only: scene passes (a split pass with its two viewports counts as one). */
+  let passes = 0;
+  const runPass = () => {
+    passes++;
+    pass();
+  };
+  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any) => void }} */
+  let thumb = null;
+  let thumbWanted = false;
+  const thumbStats = { copies: 0, passesPerThumbFrame: 0 };
+  const savedPos = new Vector3();
+  const savedQuat = new Quaternion();
+
+  /** Copy the source rectangle (device px) of the drawing buffer into the thumb, letterboxed. */
+  function copyThumb(src) {
+    const c = thumb.canvas;
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+    g.fillStyle = THUMB_BG;
+    g.fillRect(0, 0, c.width, c.height);
+    const k = Math.min(c.width / src.w, c.height / src.h);
+    const dw = src.w * k;
+    const dh = src.h * k;
+    g.drawImage(renderer.domElement, src.x, src.y, src.w, src.h, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
+    thumbStats.copies++;
+  }
+
+  /**
+   * One frame that carries the thumbnail: 2 passes, no await in between (see the header).
+   * @param {{ position: {x:number,y:number,z:number}, target: {x:number,y:number,z:number}, src: {x:number,y:number,w:number,h:number} }} spec
+   */
+  function thumbFrame(spec) {
+    const p0 = passes;
+    savedPos.copy(camera.position);
+    savedQuat.copy(camera.quaternion);
+    camera.position.set(spec.position.x, spec.position.y, spec.position.z);
+    camera.lookAt(spec.target.x, spec.target.y, spec.target.z);
+    camera.updateMatrixWorld();
+    runPass();
+    copyThumb(spec.src);
+    camera.position.copy(savedPos);
+    camera.quaternion.copy(savedQuat);
+    camera.updateMatrixWorld();
+    thumb.onCopy(spec);
+    runPass();
+    thumbStats.passesPerThumbFrame = passes - p0;
+  }
 
   /** Interaction frame time → monitor; one step down when the median is too slow. */
   function sample() {
@@ -136,7 +196,12 @@ export function createScene(canvas, stage) {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
     for (const fn of preHooks) fn();
-    pass();
+    // A wanted thumbnail waits while source() says 'not now' (null), e.g. during an orbit.
+    const spec = thumbWanted && thumb ? thumb.source() : null;
+    if (spec) {
+      thumbWanted = false;
+      thumbFrame(spec);
+    } else runPass();
     sample();
     for (const fn of hooks) fn();
   }
@@ -201,6 +266,21 @@ export function createScene(canvas, stage) {
     setPass: (fn) => {
       pass = fn;
     },
+    /** 03-15: the bar thumbnail target and its spec source (view.js). */
+    setThumb: (t) => {
+      thumb = t;
+    },
+    /**
+     * 03-15: copy a thumbnail with the next render that allows it.
+     * @param {boolean} [inRender] the caller runs inside a render's hooks or right before a render
+     *   (paintMesh, resize): that render carries it, no extra frame is requested
+     */
+    requestThumb(inRender = false) {
+      thumbWanted = true;
+      if (!inRender) requestRender();
+    },
+    /** 03-15 test-only: thumbnail copies, passes of the last thumbnail frame, total passes. */
+    thumbStats: () => ({ ...thumbStats, passes }),
     beforeRender: (fn) => preHooks.push(fn),
     onResize: (fn) => resizeHooks.push(fn),
     /** 03-09: true while the user drags or damping still moves (frame-time monitor). */

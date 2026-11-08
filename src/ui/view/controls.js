@@ -284,6 +284,8 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       } else if (name !== 'free' && !dragging) goTo(name, eyeArg, { cut: true });
     },
     viewName: () => shownName(name),
+    /** 03-15: the camera moves (drag, preset tween, damping after a drag): no thumbnail now. */
+    busy: () => dragging || tween !== null || settleAfterDamp,
     /** 03-12: the preset the camera is on ('heat' for the Dickenkarte pose, 'free' after a drag). */
     preset: () => name,
     /** 03-12: the eye of the last heat pose. */

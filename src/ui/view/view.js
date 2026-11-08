@@ -101,7 +101,19 @@ import {
   calloutsFit,
 } from './labels.js';
 import { createControls } from './controls.js';
-import { cameraContext, compareContext, compareEye, presetPoses, chartRect, chartHidden, sideEye, nearTempleFade } from './camera-math.js';
+import {
+  cameraContext,
+  compareContext,
+  compareEye,
+  presetPoses,
+  chartRect,
+  chartHidden,
+  sideEye,
+  nearTempleFade,
+  fitBoxDistance,
+  FOV_DEG,
+} from './camera-math.js';
+import { enableBarThumb } from '../summary-bar.js';
 import { createCompare3d } from './compare3d.js';
 import { thickest } from '../../state/compare.js';
 
@@ -119,6 +131,12 @@ const ARIA_DEBOUNCE_MS = 500;
 const KEYS_SHOW_MS = 4000;
 /** A3: fade-out duration (style.css .view-keys--fading uses the same 300 ms) [BP]. */
 const KEYS_FADE_MS = 300;
+/** 03-15: the bar thumbnail is shown at 48 × 36 CSS px, a 4:3 crop (UI-SPEC Phone section). */
+const THUMB_CSS_W = 48;
+const THUMB_ASPECT = 4 / 3;
+/** Below the desktop breakpoint, the query of summary-bar.js NARROW (the bar exists only there). */
+const NARROW = '(max-width: 899.98px)';
+const RAD = Math.PI / 180;
 
 // Test-only (?failframe=<mm>, read once like ?perfmarks): a frame item whose rim depth equals this
 // value is sent with rimDepthMm −1, so the worker's own validation returns ok: false through the
@@ -217,6 +235,20 @@ export function mountView({ slot }) {
     return { update: () => setPending('') };
   }
   setText('view-caption', t('view.caption.glass'));
+  // ---- 03-15 (UX-03, D-14, R1-8): the phone bar thumbnail ----
+  const thumbCanvas = /** @type {HTMLCanvasElement | null} */ (document.querySelector('#bar-view-slot canvas.bar-thumb'));
+  const narrowMq = window.matchMedia(NARROW);
+  const barEl = $('summary-bar');
+  /** A thumbnail was asked for and not copied yet (re-asked when the bar or the breakpoint shows it). */
+  let thumbDirty = false;
+  /** Test-only thumbInfo() data of the last copy. */
+  let thumbLast = null;
+  /** @param {boolean} [inRender] called right before a render that will carry it */
+  function requestThumb(inRender = false) {
+    if (!thumbCanvas) return;
+    thumbDirty = true;
+    view.requestThumb(inRender);
+  }
   const heat = createHeat(view.scene);
   const lenses = createLensSlots(view.scene, [...SLOTS, 'A'], heat.material);
   /** 03-12: 'glass' | 'heat' (not persisted; Glas is the default). */
@@ -246,6 +278,7 @@ export function mountView({ slot }) {
   view.onTier((_tier, s) => {
     chart.setSize(s.chart);
     setDispersion();
+    requestThumb();
   });
   setDispersion();
   /** While the GL context is lost, a mesh attach must not clear the status message. */
@@ -261,6 +294,7 @@ export function mountView({ slot }) {
       shadow.reupload();
       setText('view-status', '');
       showUnavailable(null);
+      requestThumb();
     }
   });
   const labels = createLabels(labelsEl, SLOTS.length);
@@ -507,6 +541,7 @@ export function mountView({ slot }) {
     if (!contextLost) setText('view-status', '');
     setBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
     setPending('');
+    requestThumb(true); // carried by the render below (2 passes), see scene.js
     view.render();
     if (sentAt !== undefined) setText('tech-view-remesh', t('tech.view.remesh', { ms: fmtMs(performance.now() - sentAt) }));
     scheduleAria();
@@ -667,7 +702,11 @@ export function mountView({ slot }) {
     stage: $('view-stage'),
     scene: view,
     getContext: cameraCtx,
-    onSettle: requestSettle,
+    onSettle: (inRender) => {
+      // 03-15: a preset settled (never a free orbit: the thumbnail pose does not follow the camera).
+      if (controls.preset() !== 'free') requestThumb(inRender);
+      requestSettle(inRender);
+    },
     onPose: (name) => {
       sideNote.hidden = name !== 'side';
       if (name === 'side') {
@@ -677,6 +716,73 @@ export function mountView({ slot }) {
     },
   });
   if (controls.pointer) setText('view-hint', t('view.hint.pointer'));
+
+  /**
+   * 03-15 (lens-critic MINOR 11): the thumbnail pose, or null for 'not now'. Front direction,
+   * target = the centre of the frame-front box (both eye boxes: lens + rim, the bridge lies between
+   * them; no temples), or in A/B the compare box of the shown configuration's eye (lens-local, as
+   * compare3d draws it). The crop is the largest 4:3 rect centred in the shown viewport
+   * (compare3d.shownRect: the whole canvas, or the A / B half while split, MINOR 5); the vertical
+   * FOV spans that viewport's height, so the box is fitted with its half-extents scaled by
+   * k = viewport height / crop height: fitBoxDistance(k·halfV, k·halfH, 4:3) (1,08 margin).
+   * Only below 900 px with the bar shown, never while the camera moves (controls.busy()).
+   */
+  function thumbSpec() {
+    if (!narrowMq.matches || barEl.hidden || contextLost || !attachedOnce || controls.busy()) return null;
+    const ctx = cameraCtx();
+    const e = ctx.eyeBox;
+    const box = ctx.compare ? ctx.box : e ? { min: minOf(e.OD.min, e.OS.min, Math.min), max: minOf(e.OD.max, e.OS.max, Math.max) } : null;
+    if (!box) return null;
+    const r = compare3d.shownRect();
+    if (!(r.w > 0 && r.h > 0)) return null;
+    const cw = Math.min(r.w, r.h * THUMB_ASPECT);
+    const ch = cw / THUMB_ASPECT;
+    const k = r.h / ch;
+    const distance = fitBoxDistance((k * (box.max.y - box.min.y)) / 2, (k * (box.max.x - box.min.x)) / 2, THUMB_ASPECT);
+    const target = { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2, z: (box.min.z + box.max.z) / 2 };
+    return {
+      target,
+      position: { x: target.x, y: target.y, z: target.z + distance },
+      distance,
+      viewportH: r.h,
+      src: { x: r.x + (r.w - cw) / 2, y: r.y + (r.h - ch) / 2, w: cw, h: ch },
+      boxes: ctx.compare ? { [ctx.side]: box } : { OD: e.OD, OS: e.OS },
+    };
+  }
+  const minOf = (a, b, f) => ({ x: f(a.x, b.x), y: f(a.y, b.y), z: f(a.z, b.z) });
+  /** Projected x width of a box under the thumbnail pose, in thumbnail CSS px (test-only). */
+  function thumbWidthPx(spec, b) {
+    const tanV = Math.tan((FOV_DEG / 2) * RAD);
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const x of [b.min.x, b.max.x]) {
+      for (const z of [b.min.z, b.max.z]) {
+        const px = ((x - spec.target.x) / ((spec.distance - (z - spec.target.z)) * tanV)) * (spec.viewportH / 2);
+        lo = Math.min(lo, px);
+        hi = Math.max(hi, px);
+      }
+    }
+    return ((hi - lo) / spec.src.w) * THUMB_CSS_W;
+  }
+  if (thumbCanvas) {
+    view.setThumb({
+      canvas: thumbCanvas,
+      source: thumbSpec,
+      onCopy(spec) {
+        if (!thumbLast) enableBarThumb();
+        thumbDirty = false;
+        const lensWidthPx = { OD: null, OS: null };
+        for (const [eye, b] of Object.entries(spec.boxes)) lensWidthPx[eye] = thumbWidthPx(spec, b);
+        thumbLast = { lensWidthPx, renderViewports: compare3d.lastViewports(), src: { ...spec.src } };
+      },
+    });
+    // A thumbnail asked for while the bar was hidden (or on a wide screen) is made when it shows.
+    const reask = () => {
+      if (thumbDirty && narrowMq.matches && !barEl.hidden) view.requestThumb();
+    };
+    new MutationObserver(reask).observe(barEl, { attributes: true, attributeFilter: ['hidden'] });
+    narrowMq.addEventListener('change', reask);
+  }
   const presetButtons = [...document.querySelectorAll('#view-tools [data-preset]')];
   for (const b of presetButtons) {
     b.addEventListener('click', () => controls.goTo(b.dataset.preset === 'reset' ? 'default' : b.dataset.preset));
@@ -878,6 +984,7 @@ export function mountView({ slot }) {
     if (next === mode) return;
     mode = next;
     lenses.setMode(next);
+    requestThumb();
     const isHeat = next === 'heat';
     if (!isHeat) {
       heatState = null;
@@ -910,6 +1017,7 @@ export function mountView({ slot }) {
     if (attachedOnce) refresh();
     updateAvoid(true);
     requestSettle(true);
+    requestThumb(true);
   });
 
   // A3 (03-14): the keyboard hint shows on a keyboard focus, then fades after KEYS_SHOW_MS (a plain
@@ -998,6 +1106,7 @@ export function mountView({ slot }) {
       aEye: aOk ? attachedEyeA.A : null, // the eye the attached A was built for (compare3d draws it only for cmp.eye)
     });
     if (!changed) return;
+    requestThumb(); // the shown configuration or the layout changed
     const now = compare3d.state();
     if (now.active) heatEyeEl.hidden = true;
     if (!attachedOnce) {
@@ -1127,6 +1236,7 @@ export function mountView({ slot }) {
       // Same meshes as attached: only a lens placement could differ (DBL is in the frame key).
       for (const s of SLOTS) if (want[s]) lenses.place(s, s, want[s].item.frame.A, placement[s].DBL);
       if (attachedOnce) refresh();
+      if (attachedOnce) requestThumb();
       view.requestRender();
       if (attachedOnce) setBadge(inputs.current ? modeBadge() : 'view.badge.updating');
       if (attachedOnce) paintHeat();
@@ -1210,6 +1320,33 @@ export function mountView({ slot }) {
       }
       return { active: cs.active, split: cs.split, eye: cs.eye, shown: cs.shown, aReady: cs.aEye === cs.eye, widthPx };
     },
+    /**
+     * 03-15 test-only: thumbnail copies, the share of thumbnail pixels that are not the #f3f4f6
+     * background, each eye's projected box width in thumbnail px, the viewport sizes of the last
+     * thumbnail pass and of the last main pass, the passes of the last thumbnail frame.
+     */
+    thumbInfo: () => {
+      const st = view.thumbStats();
+      let nonBackgroundRatio = 0;
+      if (thumbCanvas && st.copies > 0) {
+        const d = /** @type {CanvasRenderingContext2D} */ (thumbCanvas.getContext('2d')).getImageData(0, 0, thumbCanvas.width, thumbCanvas.height).data;
+        let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 243) > 6 || Math.abs(d[i + 1] - 244) > 6 || Math.abs(d[i + 2] - 246) > 6) n++;
+        nonBackgroundRatio = n / (d.length / 4);
+      }
+      return {
+        copies: st.copies,
+        passes: st.passes,
+        passesPerThumbFrame: st.passesPerThumbFrame,
+        nonBackgroundRatio,
+        lensWidthPx: thumbLast ? { ...thumbLast.lensWidthPx } : { OD: null, OS: null },
+        renderViewports: thumbLast ? thumbLast.renderViewports.map((v) => ({ ...v })) : [],
+        mainViewports: compare3d.lastViewports(),
+        src: thumbLast ? { ...thumbLast.src } : null,
+      };
+    },
+    /** 03-15 test-only: copy a thumbnail with the next render that allows it. */
+    requestThumb: () => requestThumb(),
     /** 03-14 A3 test-only: keyboard hint 'off' | 'shown' | 'fading' | 'hidden'. */
     keysHint: () => keysState,
     /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
