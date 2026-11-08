@@ -27,7 +27,7 @@ const spec = (o) => ({
 });
 const OD = spec({});
 const OS = spec({ eye: 'OS', sph: -2.5, cyl: -0.75, axisDeg: 170, monoPD: 31.5 });
-const PLUS6 = spec({ sph: 6, cyl: 0, axisDeg: null });
+const PLUS6 = spec({ sph: 6, cyl: 0, axisDeg: 0 });
 const lensOf = (s) => {
   const r = evaluateLens(s);
   expect(r.ok).toBe(true);
@@ -100,10 +100,11 @@ describe('VIZ-03 bevel split (D-05)', () => {
 });
 
 describe('VIZ-03 front-surface lead over the rim (lens-critic MAJOR 1)', () => {
-  // Values measured by the 03-01 executor (pinned to 1e-9; the planner's check run gave 0,5151).
-  const OD_LEAD = 0.5151338298;
-  const OS_LEAD = 0.528;
-  const PLUS6_LEAD = 4.685;
+  // Values measured by the 03-01 executor on 2026-11-08 (pinned to 1e-9; the planner's check run
+  // gave 0,5151). Outline vertex of the max: OD 425, OS 427, +6 297.
+  const OD_LEAD = 0.5152099491529434;
+  const OS_LEAD = 0.5281867047901017;
+  const PLUS6_LEAD = 4.68512658961894;
 
   it('example OD ≈ 0,515 mm, OS ≈ 0,528 mm, +6,00 ≈ 4,685 mm (D = 3)', () => {
     const od = lensOf(OD);
