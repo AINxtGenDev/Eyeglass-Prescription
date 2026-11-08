@@ -16,6 +16,21 @@ created: 2026-11-08
 
 **Baseline (read 2026-11-08):** `src/ui/style.css` (tokens `--fg`, `--muted`, `--bg`, `--surface`, `--line`, `--accent`, `--accent-tint`, `--error`, `--hint`, `--bar-bg`, `--bar-focus`, `--space-1…16`), `index.html` (`#view-slot` is the first child of `.col-results`; `#bar-view-slot` is the first child of `#summary-bar`; both are empty and `hidden`), `src/ui/summary-bar.js`, `src/i18n/de-AT.js` (no `view.*` keys yet), `vite.config.js` CSP. **This spec extends 02-UI-SPEC.md and replaces none of it.** Phase 2 rules that still apply here: the tokens, the 4 type sizes, the 2 weights, 44 px targets, the 3 px focus ring, the rule "text or icon, never colour alone", de-AT through `t()`, the ban on "Stärke", and 320 px with no horizontal scroll.
 
+## Revision 1 amendments (lens-critic plan review, 2026-11-08)
+
+These override the rows they name; each affected row below carries an "(amended, R1-n)" marker. The plans cite them.
+
+- **R1-1 Placement on phones (MAJOR 5; D-14 revised):** below 900 px `#view-slot` sits in the DOM directly after `section#result` (moved by `src/ui/view-place.js`, 03-06), so the first card value is on screen before the 3D view. On ≥ 900 px it stays the first child of `.col-results` (D-13). DOM move, not CSS `order`. UX-03 is met by the bar thumbnail.
+- **R1-2 Keyboard order:** follows R1-1. On desktop the view comes before the result cards; on phones it comes after section#result.
+- **R1-3 Seite (MAJOR 2):** target = the temporal outer rim point of the side eye; distance = box fit of that eye's lens + rim side silhouette (y and z half-extents + 8 %), not "frame front + temples". Side eye = the larger total edge protrusion (front + back of bevelSplit at etMax), ties within 0,05 mm → right eye (MINOR 13).
+- **R1-4 OrbitControls limits (MAJOR 2):** derived from the presets on every frame attach: minDistance = 0,5 × the smallest preset distance, maxDistance = 2 × the largest, maxTargetRadius = the largest preset-target distance + 20 mm.
+- **R1-5 Dickenkarte camera (MAJOR 4):** Vorne direction, framed on the heat eye's lens + rim (box fit); the eye picker re-frames. Callouts are all-or-nothing: if any callout finds no free spot (five candidate offsets), none is shown and `view.callout.tableOnly` says that all values are in the table.
+- **R1-6 Touch path (MINOR 8):** chosen with `any-pointer: coarse` (not `pointer: coarse`), so hybrid touch laptops never trap touch scrolling. The quality tier keeps `pointer: coarse` (device class).
+- **R1-7 Protrusion copy (MAJOR 1, MINOR 10):** edge lines name the edge: `view.protrusion.both|front|back` = '{Rechts/Links}: Glasrand vorne {front}, hinten {back} aus der Fassung' / '… Glasrand vorne {front} aus der Fassung, hinten bündig' / '… Glasrand hinten {back} aus der Fassung, vorne bündig'; `view.protrusion.none` = '{Rechts/Links}: Glasrand passt ganz in die Fassung'; new `view.protrusion.lead` = '{Rechts/Links}: Vorderfläche bis zu {lead} vor der Fassung' and `view.protrusion.leadNone` = '{Rechts/Links}: Vorderfläche nicht vor der Fassung'; `view.protrusion.assumed` = 'Berechnet mit Randtiefe {rim} (angenommener Wert, keine Herstellerangabe; in der Experten-Ansicht änderbar).' The Expert rim block gets the matching `frame.rim.lead` / `frame.rim.leadNone` lines (03-01).
+- **R1-8 Thumbnail (MINOR 5, MINOR 11):** rendered with a front pose fitted to the frame-front box (lenses, rims, bridge; no temples), in the current screen layout; in split A/B the shown half is cropped with drawImage's source rectangle (no single full-frame render). The camera pose is restored and the main view re-rendered in the same task.
+- **R1-9 Timing labels (MINOR 4):** input → 3D paint ≤ 200 ms is the INP "good" threshold (web.dev/articles/inp), not RAIL; the RAIL response budget is ENG-09 (c)'s 100 ms, which is re-measured with the 3D view active (MAJOR 3). Proxy 3D numbers are labelled "worker unthrottled".
+- **R1-10 Lens depth (MINOR 9):** both lenses are referenced to one rim plane (each eye's mean bevel apex at z = 0); the frame's rims and bridge stay in that plane.
+
 **Hard constraints carried in:**
 - The CSP stays unchanged: `img-src 'self' data:`, `style-src 'self'`, `script-src 'self'` (the `worker.spec.js` test checks the CSP string exactly).
 - Styling goes through classes or `el.style.prop = …` only. No inline `style` attribute and no `<style>`.
@@ -160,9 +175,9 @@ Accent is **not** used for: the preset buttons (plain outlined actions, no selec
 
 ### Phone (< 900 px) (D-14)
 
-- `#view` is inline at the top of the results, full content width, 4:3 (412 px phone: 380×285; 320 px: 288×216).
+- `#view` is inline in the results, below section#result (amended, R1-1), full content width, 4:3 (412 px phone: 380×285; 320 px: 288×216).
 - **Thumbnail `#bar-view-slot`:** it loses `hidden` once the first 3D frame exists. It contains `<canvas class="bar-thumb" width="96" height="72" aria-hidden="true">`, shown at 48×36 px with a 1 px `#d4d4d4` border (11,7:1 on the bar) and a 4 px radius. The bar layout changes from a column to a 2-column grid `48px 1fr` with an 8 px gap; the text lines sit in column 2. The bar's accessible name is unchanged (the thumbnail is hidden from screen readers; the numbers are the content).
-- The thumbnail is copied with `ctx.drawImage(renderer.domElement, …)` **in the same task, right after `renderer.render()`** **[BP]**. This is cheaper than `preserveDrawingBuffer: true`, which costs memory and bandwidth on every frame. It is copied after each re-mesh render and after a preset animation settles, never during orbit frames. In A/B mode the thumbnail shows the configuration that `#cmp-show` selects (it follows the summary bar text). It shows a full-frame render with the current camera.
+- The thumbnail is copied with `ctx.drawImage(renderer.domElement, …)` **in the same task, right after `renderer.render()`** **[BP]**. This is cheaper than `preserveDrawingBuffer: true`, which costs memory and bandwidth on every frame. It is copied after each re-mesh render and after a preset animation settles, never during orbit frames. In A/B mode the thumbnail shows the configuration that `#cmp-show` selects (it follows the summary bar text). It shows a lens-framed front render in the current layout (amended, R1-8).
 - No-WebGL / failed load: the thumbnail slot stays `hidden`; the bar works as in phase 2.
 
 ---
@@ -242,22 +257,22 @@ A horizontal plane at y = −(B/2 + 25 mm), with the footprint of the frame fron
 |--------|--------|---------------------------------|------|
 | Default and "Ansicht zurücksetzen" | bridge centre | 35° toward the wearer's right side, 15° above | frame front + temples |
 | Vorne | bridge centre | 0° / 0° | frame front only |
-| Seite | temporal rim point of the **side eye** | 90° from the side eye's temporal side / 0° | frame front + temples |
+| Seite | temporal rim point of the **side eye** | 90° from the side eye's temporal side / 0° | side eye's lens + rim silhouette (amended, R1-3) |
 | Oben | bridge centre | 0° / 85° from above | frame front + temples |
 
-- **Side eye [BP]:** the eye whose thickest edge has the larger front protrusion (D-05 rule). Ties go to the right eye. In A/B mode it is the compared eye. `#view-side-note` then names it, because the view would otherwise look the same for either eye.
+- **Side eye [BP]:** the eye whose thickest edge has the larger total protrusion, front + back (D-05 rule; amended, R1-3). Ties within 0,05 mm go to the right eye. In A/B mode it is the compared eye. `#view-side-note` then names it, because the view would otherwise look the same for either eye.
 - **Transition:** 450 ms ease-in-out (cubic) on position and target. Under `prefers-reduced-motion: reduce` it is an instant cut and damping is off. There is no auto-rotate anywhere.
 
 ### OrbitControls limits
 
-`enableDamping: true` (`dampingFactor: 0.08`), `minDistance` = 0,35 × the default distance, `maxDistance` = 2 × the default distance, `minPolarAngle: 0.05`, `maxPolarAngle: π − 0.05`, `maxTargetRadius: 60` (mm, around the bridge centre). The glasses cannot be lost from view (D-20).
+`enableDamping: true` (`dampingFactor: 0.08`), `minDistance`, `maxDistance` and `maxTargetRadius` derived from the presets (amended, R1-4; the former 0,35 × / 2 × default and 60 mm clamped the Seite target and blocked a close-up), `minPolarAngle: 0.05`, `maxPolarAngle: π − 0.05`. The glasses cannot be lost from view (D-20).
 
 ### Pointer and touch (D-15) **[BP]**
 
 | Device | At rest | Active |
 |--------|---------|--------|
 | Fine pointer (mouse/trackpad) | Drag rotates; Shift + drag or right-drag pans. **The wheel zooms only while `#view-stage` has focus** (clicking it focuses it). Wheel events without focus scroll the page. | same |
-| Touch (`pointer: coarse`) | The view is static: `touch-action: pan-y pinch-zoom` on the stage, controls disabled, page scrolling passes through. Preset buttons work. | After "3D drehen" (`aria-pressed="true"`): `touch-action: none` on the stage only; one finger rotates, two fingers pinch-zoom and pan. |
+| Touch (`any-pointer: coarse`, amended R1-6) | The view is static: `touch-action: pan-y pinch-zoom` on the stage, controls disabled, page scrolling passes through. Preset buttons work. | After "3D drehen" (`aria-pressed="true"`): `touch-action: none` on the stage only; one finger rotates, two fingers pinch-zoom and pan. |
 
 - **Leaving the active state:** another tap on "3D drehen", or automatically when less than 50 % of the stage is in the viewport (IntersectionObserver), so the canvas can never trap scrolling. Choosing to make it explicit beats a first-tap activation: a first tap on a scrolling page is often a scroll start.
 - Hover alone never zooms. The page never scrolls because of the 3D view.
@@ -281,7 +296,7 @@ Handled keys call `preventDefault()`, so the column does not scroll; all other k
 ## Heatmap (VIZ-05, UX-02, D-21…D-23, D-25)
 
 - **Switch:** `fieldset#view-mode.segmented`, Expert only (`data-expert hidden`, with the `.expert-tag`). Options Glas | Dickenkarte; Glas is the default and is not persisted. Turning Expert off while Dickenkarte is on returns to Glas.
-- **Entering Dickenkarte** animates the camera to Vorne (D-21). Orbit stays possible.
+- **Entering Dickenkarte** animates the camera to Vorne, framed on the heat eye (D-21; amended, R1-5). Orbit stays possible.
 - **Shared scale (D-23, D-25):** scaleMin = the minimum over all displayed lenses of the thinnest point; scaleMax = the maximum of the thickest point (thickest(m)). Both are engine metrics. Both eyes count, and in A/B mode all four lenses count. The range is rounded outward to the iso step.
 - **Iso step [BP]:** the smallest step from {0,1; 0,2; 0,25; 0,5; 1; 2} mm that gives ≤ 8 lines inside the range. If even that gives fewer than 2 lines, the narrow-range sentence (Copywriting) replaces the step line, and the callouts still carry the numbers.
 - **Callouts (D-22):** HTML labels projected from 3D, on the **one eye selected** in `#view-heat-eye` (default: the eye with the larger thickest point). In a 400 px or smaller view, ten labels around two ~110–150 px lenses would overlap; both lenses are still coloured. Five fixed callouts: Mitte (the optical centre), innen, außen, oben, unten. The four edge callouts sit where the horizontal and vertical lines through the optical centre meet the outline. Their values come from the engine's `thicknessAt` at those exact points (D-04e). A sixth callout, "dickste", is added at the location of the engine's thickest edge when that point is more than 10° of polar angle from all four edge callouts. Otherwise the nearest callout gets the suffix " · dickste".
@@ -323,7 +338,7 @@ Handled keys call `preventDefault()`, so the column does not scroll; all other k
 
 | Interaction | Behaviour |
 |-------------|-----------|
-| Any input change | Result paint first (ENG-09 unchanged). Then re-mesh latest-wins (D-16). Then one render, the thumbnail copy and the aria-label update. Target input → 3D paint ≤ 200 ms on the 4× proxy and on the Pixel 7 Pro (D-28). |
+| Any input change | Result paint first (ENG-09 unchanged). Then re-mesh latest-wins (D-16). Then one render, the thumbnail copy and the aria-label update. Target input → 3D paint ≤ 200 ms (INP 'good'; amended, R1-9) on the 4× proxy and on the Pixel 7 Pro (D-28). |
 | Preset button | Animate (or cut) to the preset. Focus stays on the button. Seite also reveals `#view-side-note`; any other preset or free orbit hides it. |
 | "Ansicht zurücksetzen" / Home | Default 3/4 view, zoom and pan reset |
 | "3D drehen" | Toggles touch orbit (`aria-pressed`). The hint text switches between the two touch hints. |
@@ -334,7 +349,7 @@ Handled keys call `preventDefault()`, so the column does not scroll; all other k
 | Window/stage resize | `ResizeObserver` on the stage → `setSize` + render (debounced to one rAF) |
 | Motion | Preset tween 450 ms and damping. Under `prefers-reduced-motion` both are off. |
 
-**Keyboard order (extends the phase-2 D-39 path):** … results region → `[Expert] Darstellung radios` → `#view-stage` → Vorne → Seite → Oben → Ansicht zurücksetzen → `[touch] 3D drehen` → `[heat] eye picker` → result cards …. Because `#view` is the first block in `.col-results`, it comes before the result cards. No positive `tabindex`.
+**Keyboard order (extends the phase-2 D-39 path):** … results region → `[Expert] Darstellung radios` → `#view-stage` → Vorne → Seite → Oben → Ansicht zurücksetzen → `[touch] 3D drehen` → `[heat] eye picker` → result cards …. On desktop `#view` is the first block in `.col-results`, so it comes before the result cards; on phones it follows section#result (amended, R1-2). No positive `tabindex`.
 
 ---
 
@@ -400,11 +415,13 @@ Always visible under the caption, because the text is the measurable value and t
 | Key | Copy |
 |-----|------|
 | `view.protrusion.title` (14 px 600) | Überstand am dicksten Glasrand |
-| `view.protrusion.both` | {Rechts/Links}: vorne {front}, hinten {back} aus der Fassung |
-| `view.protrusion.front` | {Rechts/Links}: vorne {front} aus der Fassung, hinten bündig |
-| `view.protrusion.back` | {Rechts/Links}: hinten {back} aus der Fassung, vorne bündig |
-| `view.protrusion.none` | {Rechts/Links}: passt ganz in die Fassung |
-| `view.protrusion.assumed` | Berechnet mit Randtiefe {rim} (angenommener Wert, keine Herstellerangabe). |
+| `view.protrusion.both` | (amended, R1-7) {Rechts/Links}: Glasrand vorne {front}, hinten {back} aus der Fassung |
+| `view.protrusion.front` | (amended, R1-7) {Rechts/Links}: Glasrand vorne {front} aus der Fassung, hinten bündig |
+| `view.protrusion.back` | (amended, R1-7) {Rechts/Links}: Glasrand hinten {back} aus der Fassung, vorne bündig |
+| `view.protrusion.none` | (amended, R1-7) {Rechts/Links}: Glasrand passt ganz in die Fassung |
+| `view.protrusion.lead` (R1-7) | {Rechts/Links}: Vorderfläche bis zu {lead} vor der Fassung |
+| `view.protrusion.leadNone` (R1-7) | {Rechts/Links}: Vorderfläche nicht vor der Fassung |
+| `view.protrusion.assumed` | (amended, R1-7) Berechnet mit Randtiefe {rim} (angenommener Wert, keine Herstellerangabe; in der Experten-Ansicht änderbar). |
 | `view.protrusion.bevelAssumed` (only if D-05 finds no citable bevel rule) | Die Aufteilung nach vorne und hinten ist angenommen. |
 
 "bündig" = protrusion ≤ 0,05 mm (half of the 0,1 mm display resolution, so "0,0 mm" never appears).

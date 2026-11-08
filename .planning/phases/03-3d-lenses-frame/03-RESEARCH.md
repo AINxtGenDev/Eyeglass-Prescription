@@ -601,13 +601,13 @@ catch { showNoWebgl(); return; }   // D-17: numbers, compare and cross-section k
    - RESOLVED: user chose '1:2' for all lenses on 2026-11-08, marked as an assumption; implemented in 03-01.
 3. **Callouts when the OC lies outside the outline** (`meridianProfile` → `NO_CHORD`).
    - Recommendation: the table shows "–" with a sentence, and the heatmap still renders (the scale is still valid).
-   - RESOLVED: adopted as recommended; engine side in 03-03, table "–" and sentence in 03-10.
+   - RESOLVED: adopted as recommended; engine side in 03-03, table "–" and sentence in 03-12.
 4. **Sync-mode (no worker) 3D**
    - Choice: build on the main thread after the result paint, or hold like compare jobs.
    - Recommendation: build after paint, in its own task, and accept the frame, because sync mode is a rare fallback already labelled in Technische Angaben.
-   - RESOLVED: adopted as recommended; implemented and tested in 03-13.
+   - RESOLVED: adopted as recommended, refined in plan revision 1 (lens-critic MINOR 7): one mesh item per macrotask with a stale stop; implemented in 03-04 (mesh client) and tested end-to-end in 03-15. Revision 1 also moved mesh building from the engine worker to a dedicated mesh worker (lens-critic MAJOR 3, see 03-04-PLAN objective), so Pattern 4's "existing worker" now reads "dedicated mesh worker".
 5. **m6 thick-result note** (deferred): the probes show computable lenses with 41–45 mm edges (−10 in 62×55 CR-39). The 3D view will make that visible. Planner: keep it deferred unless a sourced threshold is found; no source was found in this research.
-   - RESOLVED: stays deferred (no sourced threshold); recorded in 03-14.
+   - RESOLVED: stays deferred (no sourced threshold); recorded in 03-17.
 
 ## Environment Availability
 
