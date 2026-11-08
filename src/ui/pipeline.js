@@ -40,7 +40,7 @@ import { renderMaterialLine } from './material-input.js';
 import { renderGlassSettings, isExpert } from './expert.js';
 import { placeViewSlot } from './view-place.js';
 import { renderCrossSection, renderCrossSectionEmpty, renderCrossSectionPending, renderMeridianOptions } from './cross-section.js';
-import { renderRim } from './frame-input.js';
+import { renderRim, displayFrame } from './frame-input.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 
@@ -208,7 +208,9 @@ function viewInputs() {
     if (s.key !== requestedKeys[eye]) current = false;
     eyes[eye] = { result: s.result, frame: frameOf(eye, s.key) };
   }
-  return { eyes, current };
+  // 03-07 (VIZ-02): the frame of the last input (drawn alone when no eye is computable) and the
+  // display-only rim depth and temple length.
+  return { eyes, current, frame: currentConfig?.().frame ?? null, display: displayFrame() };
 }
 
 // Test-only (03-05): e2e specs that are not about the view set this with an init script

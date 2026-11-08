@@ -45,6 +45,10 @@ let temple = EXAMPLE_TEMPLE_MM;
 let schedule = () => {};
 /** @type {() => void} */
 let onShown = () => {};
+/** 03-07: the display-only inputs (rim depth, temple) changed; main.js wires refreshView. */
+let onDisplayChange = () => {};
+/** Last valid Expert rim depth (display only, 03-07). */
+let rimDepthShown = RIM_DEPTH_DEFAULT_MM;
 
 const stampText = (A, DBL, len) => `${numNf.format(A)}${SQUARE}${numNf.format(DBL)}${len === null ? '' : ' ' + len}`;
 
@@ -96,6 +100,32 @@ export function paintRim() {
     setText(`${RIM_ID}-lead-${eye.toLowerCase()}`, leadText);
   }
   $(`${RIM_ID}-bevel`).hidden = !any;
+}
+
+/**
+ * Display-only frame inputs for the 3D view (03-07, VIZ-02, D-06). They never enter a LensSpec.
+ * - rimDepthMm: while the Experten-Ansicht is on, the valid field value (empty = the assumed
+ *   default, as paintRim), else the last valid value; with the switch off the assumed default,
+ *   like every other Expert field (readExpertOverrides is all null while off).
+ * - templeMm: `temple` is set from every VALID stamp, including its null when that stamp has no
+ *   temple; an invalid stamp being typed keeps the last valid one, and rewriteStamp() (A or DBL
+ *   typed) keeps it in the text. So the rule is: the last valid stamp's temple → 'stamp'; a last
+ *   valid stamp without one → templeMm null, 'assumed'; the lazy view chunk substitutes the
+ *   engine's TEMPLE_DEFAULT_MM (importing engine/mesh/frame.js here would put the mesh builder
+ *   into the entry bundle, +8 kB). The example stamp "52□18 140" at load counts as 'stamp'. The
+ *   drawing may clamp it (engine TEMPLE_RANGE_MM); the view states that.
+ * @returns {{ rimDepthMm: number, templeMm: number | null, templeSource: 'stamp' | 'assumed' }}
+ */
+export function displayFrame() {
+  let rimDepthMm = RIM_DEPTH_DEFAULT_MM;
+  if (isExpert()) {
+    const r = validateRimDepth(input(RIM_ID).value);
+    if (!r.msg) rimDepthShown = r.value ?? RIM_DEPTH_DEFAULT_MM;
+    rimDepthMm = rimDepthShown;
+  }
+  return temple === null
+    ? { rimDepthMm, templeMm: null, templeSource: 'assumed' }
+    : { rimDepthMm, templeMm: temple, templeSource: 'stamp' };
 }
 
 /** Selected id, guarded to a SHAPES key (T-01-21). */
@@ -249,6 +279,7 @@ function onStampInput(e) {
     temple = r.temple;
   }
   schedule(e.timeStamp);
+  onDisplayChange();
 }
 
 /** The stamp message: a Fehler, or the swapped-numbers Hinweis with its apply text. Both block. */
@@ -377,11 +408,12 @@ export function applyFrameSizes(A, DBL) {
 
 /**
  * Build the cards, fill the example frame and wire the inputs.
- * @param {{ schedule: (timeStamp: number) => void, onMessageShown: () => void }} hooks
+ * @param {{ schedule: (timeStamp: number) => void, onMessageShown: () => void, onDisplayChange?: () => void }} hooks
  */
 export function initFrameInput(hooks) {
   schedule = hooks.schedule;
   onShown = hooks.onMessageShown;
+  onDisplayChange = hooks.onDisplayChange ?? (() => {});
   buildShapeCards();
   prefillFrame(DEFAULT_SHAPE);
   initStampHelp();
@@ -398,7 +430,10 @@ export function initFrameInput(hooks) {
   for (const id of [STAMP_ID, ID.A, ID.B, ID.DBL, RIM_ID]) flushOnBlur(id);
   setText('frame-rim-note', t('frame.rim.note', { value: fmtMm(RIM_DEPTH_DEFAULT_MM) }));
   // No schedule: the rim depth changes no spec (no compute job, no 'rechnet …').
-  input(RIM_ID).addEventListener('input', paintRim);
+  input(RIM_ID).addEventListener('input', () => {
+    paintRim();
+    onDisplayChange(); // 03-07: the 3D frame follows the rim depth (display only)
+  });
   document.querySelector('#frame-shape').addEventListener('change', (e) => {
     if (!FIELDS.some((f) => userTyped[f])) prefillFrame(currentShape());
     schedule(e.timeStamp);

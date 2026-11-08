@@ -3,7 +3,7 @@
 // 03-06 (D-16, D-17): the no-WebGL, load-failure/retry, blocked-eye and empty states.
 import { test, expect } from '@playwright/test';
 import { settled, settledView, etmaxOf, guardPage, holdMeshWorker, noThreeWarnings, plain, MESH_WORKER_URL } from './helpers.js';
-/* global window */
+/* global window, document, Worker */
 
 // Registered before guardPage, so it listens before guardPage's page.goto.
 let threeWarnings;
@@ -152,7 +152,9 @@ test('VIZ-01 blocked eye: not drawn, labelled, the other eye renders', async ({ 
     expect(b.right).toBeLessThanOrEqual(stage.x + stage.width);
     expect(b.bottom).toBeLessThanOrEqual(stage.y + stage.height);
   }
-  expect(r.left).toBeLessThan(l.left);
+  // Centres, not left edges: 'L – nicht berechnet' is much wider than 'R' (03-07: with the frame
+  // and temples in the default fit the lenses sit closer together on screen).
+  expect(r.left + r.width / 2).toBeLessThan(l.left + l.width / 2);
 });
 
 test('VIZ-01 empty: no computable eye', async ({ page }) => {
@@ -169,4 +171,185 @@ test('VIZ-01 empty: no computable eye', async ({ page }) => {
   await settledView(page);
   expect(round1(await edgeMax(page, 'OD'))).toBe(await etmaxOf(page, 'od'));
   expect(plain(await page.locator('#view-caption').textContent())).toMatch(/^Visueller Eindruck – /);
+});
+
+// ---- 03-07 (VIZ-02, D-06, D-09): the frame ----
+const frameInfo = (page) => page.evaluate(() => window.__eyeglassView.frameInfo());
+const meshJobs = (page) => page.evaluate(() => window.__eyeglassView.meshJobs());
+const memory = (page) => page.evaluate(() => window.__eyeglassView.memory());
+const expertOn = async (page) => {
+  await page.locator('#expert').check();
+  await settledView(page);
+};
+const rimDepth = async (page, v) => {
+  await page.locator('#frame-rim').fill(v);
+  await settledView(page);
+};
+const stamp = async (page, v) => {
+  await page.locator('#frame-stamp').fill(v);
+  await settledView(page);
+};
+const cards = (page) =>
+  page.evaluate(() => ['od', 'os'].flatMap((e) => ['ct', 'thick'].map((k) => document.getElementById(`result-${e}-${k}`)?.textContent)));
+
+test('VIZ-02 bridge spans DBL', async ({ page }) => {
+  await settledView(page);
+  let info = await frameInfo(page);
+  expect(info.rimVisible).toEqual({ OD: true, OS: true });
+  expect(Math.abs(info.bridgeSpanX - 18)).toBeLessThanOrEqual(0.01);
+  await page.locator('#frame-dbl').fill('20');
+  await settledView(page);
+  info = await frameInfo(page);
+  expect(Math.abs(info.bridgeSpanX - 20)).toBeLessThanOrEqual(0.01);
+});
+
+test('VIZ-02 temple from the stamp', async ({ page }) => {
+  await settledView(page);
+  const temple = page.locator('#tech-view-temple');
+  // The example stamp "52□18 140" counts as from the temple.
+  await expect(temple).toContainText('140');
+  await expect(temple).toContainText('vom Bügel');
+  await stamp(page, '52□18 145');
+  let info = await frameInfo(page);
+  for (const eye of ['OD', 'OS']) expect(Math.abs(info.templeLen[eye] - 145), eye).toBeLessThanOrEqual(0.1);
+  await expect(temple).toContainText('145');
+  await expect(temple).toContainText('vom Bügel');
+  await expect(page.locator('#tech-view-rimface')).toContainText('angenommener Wert');
+  await expect(page.locator('#tech-view-planar')).toHaveText(
+    'In der 3D-Ansicht sitzen die Gläser ohne Vorneigung und ohne Fassungsbogen, wie in der Berechnung.',
+  );
+  await stamp(page, '52□18');
+  info = await frameInfo(page);
+  for (const eye of ['OD', 'OS']) expect(Math.abs(info.templeLen[eye] - 140), eye).toBeLessThanOrEqual(0.1);
+  await expect(temple).toContainText('140');
+  await expect(temple).toContainText('angenommener Wert');
+  // 03-03 clamp: a stamp temple outside the assumed drawing range is named, never shown as drawn.
+  await stamp(page, '52□18 999');
+  info = await frameInfo(page);
+  for (const eye of ['OD', 'OS']) expect(Math.abs(info.templeLen[eye] - 160), eye).toBeLessThanOrEqual(0.1);
+  expect(plain(await temple.textContent())).toBe(
+    'Bügellänge in der 3D-Ansicht: 160,0 mm (laut Bügel 999,0 mm, für die Darstellung auf 110,0 mm bis 160,0 mm begrenzt – angenommener Bereich)',
+  );
+});
+
+test('VIZ-02 rim depth is display only', async ({ page }) => {
+  await settledView(page);
+  await page.addInitScript(() => {
+    window.__computeMsgs = 0;
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (msg, ...rest) {
+      if (msg?.type === 'compute') window.__computeMsgs++;
+      return post.call(this, msg, ...rest);
+    };
+  });
+  await page.reload();
+  await settledView(page);
+  await expertOn(page);
+  expect((await frameInfo(page)).rimDepth).toBe(3);
+  const n = await page.evaluate(() => window.__computeMsgs);
+  expect(n, 'the counter must see the start-up compute').toBeGreaterThan(0);
+  const before = await cards(page);
+  await rimDepth(page, '5');
+  expect(await page.evaluate(() => window.__computeMsgs)).toBe(n);
+  expect((await frameInfo(page)).rimDepth).toBe(5);
+  expect(await cards(page)).toEqual(before);
+});
+
+test('VIZ-02 blocked eye keeps its rim', async ({ page }) => {
+  await settledView(page);
+  await page.locator('#rx-os-cyl').fill('-1,00');
+  await page.locator('#rx-os-axis').fill('');
+  await page.locator('#rx-os-axis').blur();
+  await settledView(page);
+  await expect(page.locator('#rx-os-axis-err')).toBeVisible();
+  expect(await edgeMax(page, 'OS')).toBeNull();
+  const info = await frameInfo(page);
+  expect(info.rimVisible).toEqual({ OD: true, OS: true });
+  expect(info.lensZ.OS).toBe(0); // a blocked eye's rim is flat about the rim plane
+});
+
+test('VIZ-02 every shape', async ({ page }) => {
+  await settledView(page);
+  const before = await memory(page);
+  for (const id of ['rund', 'rechteckig', 'panto', 'pilot', 'rechteckig']) {
+    await page.locator(`input[name=frame-shape][value=${id}]`).check();
+    await settledView(page);
+    const info = await frameInfo(page);
+    expect(info.rimVisible, id).toEqual({ OD: true, OS: true });
+    for (const eye of ['OD', 'OS']) expect(round1(await edgeMax(page, eye)), `${id} ${eye}`).toBe(await etmaxOf(page, eye.toLowerCase()));
+  }
+  expect(await memory(page)).toEqual(before);
+});
+
+test('VIZ-02 common rim plane (MINOR 9)', async ({ page }) => {
+  await settledView(page);
+  await page.locator('#rx-od-sph').fill('-2');
+  await page.locator('#rx-os-sph').fill('-8');
+  await settledView(page);
+  const info = await frameInfo(page);
+  for (const eye of ['OD', 'OS']) expect(Math.abs(info.lensGroupZ[eye] - info.lensZ[eye]), eye).toBeLessThanOrEqual(1e-6);
+  expect(Math.abs(info.lensZ.OD - info.lensZ.OS)).toBeGreaterThan(0.01);
+  for (const eye of ['OD', 'OS']) expect(round1(await edgeMax(page, eye)), eye).toBe(await etmaxOf(page, eye.toLowerCase()));
+});
+
+test('VIZ-02 per-item keys (round 2 MINOR 7)', async ({ page }) => {
+  await settledView(page);
+  await expertOn(page);
+  await rimDepth(page, '5');
+  expect((await meshJobs(page)).at(-1)).toEqual(['frame']);
+  await stamp(page, '52□18 145');
+  expect((await meshJobs(page)).at(-1)).toEqual(['frame']);
+  await page.locator('#rx-od-sph').fill('-2');
+  await settledView(page);
+  const job = (await meshJobs(page)).at(-1);
+  expect(job).toContain('OD');
+  expect(job).toContain('frame');
+  expect(job).not.toContain('OS');
+});
+
+test('VIZ-02 −2 → −3 → −2 while a job is outstanding attaches −2', async ({ page }) => {
+  await settledView(page);
+  const gate = await holdMeshWorker(page);
+  await page.goto('./');
+  await settledView(page);
+  await page.locator('#rx-od-sph').fill('-2');
+  await settledView(page);
+  const want = await etmaxOf(page, 'od');
+  await gate.hold();
+  await page.locator('#rx-od-sph').fill('-3');
+  await settled(page);
+  await expect(page.locator('#view')).toHaveAttribute('data-pending', 'mesh');
+  await page.locator('#rx-od-sph').fill('-2');
+  await settled(page);
+  await page.evaluate(() => new Promise((res) => setTimeout(res, 50)));
+  // Nothing changed against the attached −2 meshes, but the −3 job is outstanding: an empty job
+  // makes it stale.
+  expect((await meshJobs(page)).at(-1)).toEqual([]);
+  await gate.release();
+  await settledView(page);
+  expect(await etmaxOf(page, 'od')).toBe(want);
+  expect(round1(await edgeMax(page, 'OD'))).toBe(want);
+});
+
+test('VIZ-02 failed frame keeps lensZ (round 2 MINOR 7)', async ({ page }) => {
+  await settledView(page);
+  await page.goto('./?failframe=7');
+  await settledView(page);
+  await page.locator('#rx-od-sph').fill('-2');
+  await page.locator('#rx-os-sph').fill('-8');
+  await settledView(page);
+  await expertOn(page);
+  const z = (await frameInfo(page)).lensGroupZ;
+  await rimDepth(page, '7');
+  let info = await frameInfo(page);
+  expect(info.rimVisible).toEqual({ OD: false, OS: false });
+  for (const eye of ['OD', 'OS']) {
+    expect(Math.abs(info.lensGroupZ[eye] - z[eye]), eye).toBeLessThanOrEqual(1e-6);
+    expect(round1(await edgeMax(page, eye)), eye).toBe(await etmaxOf(page, eye.toLowerCase()));
+  }
+  await expect(page.locator('#tech-view-temple')).toHaveText('');
+  await rimDepth(page, '4');
+  info = await frameInfo(page);
+  expect(info.rimVisible).toEqual({ OD: true, OS: true });
+  for (const eye of ['OD', 'OS']) expect(Math.abs(info.lensGroupZ[eye] - info.lensZ[eye]), eye).toBeLessThanOrEqual(1e-6);
 });

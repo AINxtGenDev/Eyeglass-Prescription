@@ -615,6 +615,14 @@ export default Object.freeze({
   'tech.eventTimingNone': 'Browser-Messung (Event Timing): nicht verfügbar',
   'tech.rerun': 'Erneut messen',
   'tech.ua': 'Browser: {ua}',
+  // 03-07 (VIZ-02, D-06; UI-SPEC "Technische Angaben"): the frame's assumed design values.
+  'tech.view.temple': 'Bügellänge in der 3D-Ansicht: {len} ({source})',
+  'tech.view.templeSource.stamp': 'vom Bügel',
+  'tech.view.templeSource.assumed': 'angenommener Wert',
+  // 03-03 clamps the drawn temple to an assumed range; the stamp value is named, not hidden.
+  'tech.view.templeSource.clamped': 'laut Bügel {stamp}, für die Darstellung auf {min} bis {max} begrenzt – angenommener Bereich',
+  'tech.view.rimFace': 'Sichtbare Randbreite der Fassung: {w} (angenommener Wert, nur für die Darstellung)',
+  'tech.view.planar': 'In der 3D-Ansicht sitzen die Gläser ohne Vorneigung und ohne Fassungsbogen, wie in der Berechnung.',
 
   // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View").
   'view.title': '3D-Ansicht Ihrer Brille',

@@ -16,14 +16,24 @@
 // numbers path is untouched. Eye labels R / L sit 6 mm below each lens's lowest outline point
 // (boxing box bottom, y = −B/2); a blocked eye is not drawn and reads '{eye} – nicht berechnet';
 // with no computable eye the caption reads view.empty and no label is shown.
+// 03-07 (VIZ-02, D-06): the frame is one more mesh item ('frame', frame.js). Per-item keys
+// (lens-critic round 2 MINOR 7): update() sends only the items whose key differs from the key of
+// the item last attached in that slot from a current reply (not the last sent key, so the items
+// of a dropped or stale job are sent again with the next job). A rim-depth or temple change sends
+// only the frame item; an Rx change of one eye sends that lens and the frame. When nothing changed
+// but a job is still outstanding, requestMesh([]) makes it stale (a quick −2 → −3 → −2 must not
+// attach the −3 mesh). Technische Angaben: temple length (drawn value and its source) and the
+// assumed rim face width, filled after each frame attach (textContent only, fmtMm values).
 import { createMeshClient } from '../../state/mesh-client.js';
 import { transferOf } from '../../state/transfer.js';
 import { t } from '../../i18n/t.js';
 import { $, setText } from '../dom.js';
 import { icon } from '../icons.js';
-import { boxingCentreX } from '../../engine/mesh/frame.js';
+import { fmtMm } from '../../i18n/format.js';
+import { boxingCentreX, FRAME_FACE_MM, TEMPLE_DEFAULT_MM, TEMPLE_RANGE_MM } from '../../engine/mesh/frame.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
+import { createFrame } from './frame.js';
 import { createLabels, place } from './labels.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
@@ -32,6 +42,19 @@ const BADGE_AFTER_MS = 100;
 /** Eye label gap below the lowest outline point (mm). */
 const LABEL_GAP_MM = 6;
 const EYE_KEY = { OD: 'view.eye.od', OS: 'view.eye.os' };
+/** Mesh jobs kept for the test handle meshJobs(). */
+const JOB_LOG = 10;
+
+// Test-only (?failframe=<mm>, read once like ?perfmarks): a frame item whose rim depth equals this
+// value is sent with rimDepthMm −1, so the worker's own validation returns ok: false through the
+// real path. It changes no number (the rim depth is display only).
+const FAIL_FRAME = (() => {
+  const v = Number(new URLSearchParams(location.search).get('failframe'));
+  return Number.isFinite(v) && v > 0 ? v : null;
+})();
+
+/** Lens key: the eye, every surfaces field, the shape, A and B (not DBL: a DBL change only moves). */
+const lensKey = (eye, surfaces, f) => JSON.stringify([eye, surfaces, f.shape, f.A, f.B]);
 
 /** The no-WebGL note in the stage (D-17): info icon + text, textContent only. */
 function showNoWebgl() {
@@ -43,8 +66,13 @@ function showNoWebgl() {
 }
 
 /**
- * @typedef {{ result: any, frame: { shape: string, A: number, B: number, DBL: number } | null } | null} ViewEye
- * @typedef {{ eyes: { OD: ViewEye, OS: ViewEye }, current: boolean }} ViewInputs
+ * @typedef {{ shape: string, A: number, B: number, DBL: number }} ViewFrame
+ * @typedef {{ result: any, frame: ViewFrame | null } | null} ViewEye
+ * @typedef {{ rimDepthMm: number, templeMm: number | null, templeSource: 'stamp' | 'assumed' }} ViewDisplay
+ *   templeMm null = no temple on the stamp (TEMPLE_DEFAULT_MM, 'angenommener Wert')
+ * @typedef {{ eyes: { OD: ViewEye, OS: ViewEye }, frame?: ViewFrame | null, display?: ViewDisplay,
+ *   current: boolean }} ViewInputs
+ *   frame = the frame of the last input (drawn alone when no eye has a shown result)
  */
 
 /**
@@ -71,6 +99,7 @@ export function mountView({ slot }) {
   }
   setText('view-caption', t('view.caption.glass'));
   const lenses = createLensSlots(view.scene, [...SLOTS]);
+  const frame = createFrame(view.scene, { OD: lenses.group('OD'), OS: lenses.group('OS') });
   const labelsEl = $('view-labels');
   const labels = createLabels(labelsEl, SLOTS.length);
   /** Per eye: label anchor (world mm) or null. */
@@ -95,7 +124,12 @@ export function mountView({ slot }) {
   let workerReallocs = 0;
   /** @type {ViewInputs | null} */
   let last = null;
-  let lastKey = null;
+  /** Key of the item last attached per slot from a current reply (null = nothing attached). */
+  const attachedKey = { OD: null, OS: null, frame: null };
+  /** The last requestMesh without its reply yet: { gen, sig } (sig = the sent slots and keys). */
+  let outstanding = null;
+  /** Slot lists of the last JOB_LOG jobs sent (test handle meshJobs). */
+  const jobLog = [];
   let fitKey = null;
   let attachedOnce = false;
   let retryLeft = true;
@@ -108,7 +142,11 @@ export function mountView({ slot }) {
   let paintFrame = null;
 
   const giveBackAll = (items) => {
-    for (const it of items ?? []) if (it) lenses.giveBack(it.slot, it.buffers);
+    for (const it of items ?? []) {
+      if (!it) continue;
+      if (it.slot === 'frame') frame.giveBack(it.buffers);
+      else lenses.giveBack(it.slot, it.buffers);
+    }
   };
   const clearBadgeTimer = () => {
     if (badgeTimer !== null) clearTimeout(badgeTimer);
@@ -144,10 +182,14 @@ export function mountView({ slot }) {
     if (d.items === null) {
       // The job's buffers are lost (dead worker / error reply): the next take allocates. Rebuild
       // the current request once, so the view does not keep an old mesh until the next input.
+      for (const slotName of Object.keys(metaByGen.get(d.gen) ?? {})) {
+        if (slotName === 'frame') frame.lose();
+        else lenses.lose(slotName);
+      }
       metaByGen.delete(d.gen);
+      if (outstanding?.gen === d.gen) outstanding = null;
       if (d.current && last && retryLeft) {
         retryLeft = false;
-        lastKey = null;
         update(last);
       } else if (d.current) {
         clearBadgeTimer();
@@ -176,19 +218,30 @@ export function mountView({ slot }) {
     }
     const meta = metaByGen.get(d.gen) ?? {};
     for (const g of metaByGen.keys()) if (g <= d.gen) metaByGen.delete(g);
-    const drawn = new Set();
-    for (const it of d.items) {
+    if (outstanding?.gen === d.gen) outstanding = null;
+    // Lenses first, then the frame: the frame sets both lens groups' z in this same paint frame.
+    const items = [...d.items].sort((a, b) => (a?.slot === 'frame') - (b?.slot === 'frame'));
+    for (const it of items) {
       const m = meta[it?.slot];
       if (!m) {
         giveBackAll([it]);
         continue;
       }
-      const p = placement[m.eye];
-      lenses.attach(it.slot, it, { surfaces: m.surfaces, eye: m.eye, A: m.frame.A, DBL: p?.DBL ?? m.DBL });
-      if (it.ok && it.finite) drawn.add(it.slot);
+      if (it.slot === 'frame') {
+        frame.attach(it, m);
+        writeTech(frame.visible() ? it : null, m);
+      } else {
+        const p = placement[m.eye];
+        lenses.attach(it.slot, it, { surfaces: m.surfaces, eye: m.eye, A: m.frame.A, DBL: p?.DBL ?? m.DBL });
+      }
+      attachedKey[it.slot] = m.key;
     }
-    for (const s of SLOTS) if (!drawn.has(s)) lenses.hide(s);
-    updateLabels(drawn); // a mesh that came back not drawable reads 'nicht berechnet' too
+    // This reply is current, so `placement` is the placement it was requested with.
+    for (const s of SLOTS) {
+      const p = placement[s];
+      if (p) lenses.place(s, s, p.A, p.DBL);
+    }
+    updateLabels(drawnLenses()); // a mesh that came back not drawable reads 'nicht berechnet' too
     refit();
     attachedOnce = true;
     retryLeft = true;
@@ -199,12 +252,37 @@ export function mountView({ slot }) {
     view.render();
   }
 
-  /** Default view refit when the frame (or the set of drawn lenses) changes. */
+  const drawnLenses = () => new Set(SLOTS.filter((s) => lenses.visible(s)));
+
+  /** Technische Angaben: the drawn temple length with its source, and the rim face width. */
+  function writeTech(item, m) {
+    if (!item) {
+      setText('tech-view-temple', '');
+      setText('tech-view-rimface', '');
+      return;
+    }
+    let source;
+    if (m.templeSource !== 'stamp') source = t('tech.view.templeSource.assumed');
+    else if (item.templeMm === m.templeMm) source = t('tech.view.templeSource.stamp');
+    else {
+      // 03-03 clamp (TEMPLE_RANGE_MM, assumed): never print the stamp value next to another drawing.
+      const [min, max] = TEMPLE_RANGE_MM.map(fmtMm);
+      source = t('tech.view.templeSource.clamped', { stamp: fmtMm(m.templeMm), min, max });
+    }
+    setText('tech-view-temple', t('tech.view.temple', { len: fmtMm(item.templeMm), source }));
+    setText('tech-view-rimface', t('tech.view.rimFace', { w: fmtMm(FRAME_FACE_MM) }));
+  }
+
+  /**
+   * Default view refit when the frame (or the set of drawn lenses) changes. UI-SPEC Camera: the
+   * fit covers the frame bounding sphere (front + temples) and the lenses.
+   */
   function refit() {
-    const key = JSON.stringify(SLOTS.map((s) => (lenses.edgeMax(s) === null ? null : placement[s])));
+    const fm = frame.visible() ? frame.info() : null;
+    const key = JSON.stringify([SLOTS.map((s) => (lenses.edgeMax(s) === null ? null : placement[s])), fm && fm.templeLen]);
     if (key === fitKey) return;
     fitKey = key;
-    const r = lenses.unionRadius();
+    const r = Math.max(lenses.unionRadius(), frame.radius());
     if (r > 0) view.fit(r);
   }
 
@@ -228,51 +306,72 @@ export function mountView({ slot }) {
     }
   }
 
+  /** The frame the view draws: the shown eyes' frame, else the frame of the last input. */
+  const frameFor = (inputs) => inputs.eyes.OD?.frame ?? inputs.eyes.OS?.frame ?? inputs.frame ?? null;
+
   /** @param {ViewInputs} inputs */
   function update(inputs) {
     last = inputs;
-    const want = [];
+    /** slot → { item (without buffers), meta (with key) } */
+    const want = {};
     for (const eye of SLOTS) {
       const e = inputs.eyes[eye];
       placement[eye] = e?.frame ?? null;
       if (e?.frame) knownFrame = e.frame;
       if (e?.result?.ok && e.frame) {
         const { shape, A, B } = e.frame;
-        want.push({ slot: eye, eye, surfaces: e.result.surfaces, frame: { shape, A, B } });
+        const item = { slot: eye, eye, surfaces: e.result.surfaces, frame: { shape, A, B } };
+        want[eye] = { item, meta: { ...item, key: lensKey(eye, e.result.surfaces, e.frame), DBL: e.frame.DBL } };
       } else {
         lenses.hide(eye);
+        attachedKey[eye] = null;
       }
     }
-    updateLabels(new Set(want.map((w) => w.eye)));
-    const key = JSON.stringify(want);
-    if (key === lastKey) {
-      // Same meshes: only the placement can differ (DBL).
-      for (const w of want) {
-        const p = placement[w.eye];
-        if (p) lenses.place(w.slot, w.eye, w.frame.A, p.DBL);
-      }
+    const f = frameFor(inputs);
+    const disp = inputs.display;
+    if (f && disp) {
+      const { shape, A, B, DBL } = f;
+      const eyes = { OD: want.OD?.item.surfaces ?? null, OS: want.OS?.item.surfaces ?? null };
+      const { rimDepthMm, templeSource } = disp;
+      const templeMm = disp.templeMm ?? TEMPLE_DEFAULT_MM;
+      const key = JSON.stringify([shape, A, B, DBL, eyes.OD, eyes.OS, rimDepthMm, templeMm]);
+      const sentRim = FAIL_FRAME !== null && rimDepthMm === FAIL_FRAME ? -1 : rimDepthMm;
+      want.frame = {
+        item: { slot: 'frame', frame: { shape, A, B, DBL }, eyes, rimDepthMm: sentRim, templeMm },
+        meta: { key, A, DBL, rimDepthMm, templeMm, templeSource },
+      };
+    } else {
+      frame.hide();
+      writeTech(null);
+      attachedKey.frame = null;
+    }
+    updateLabels(new Set(SLOTS.filter((s) => want[s])));
+
+    const send = Object.entries(want).filter(([slotName, w]) => w.meta.key !== attachedKey[slotName]);
+    const sig = JSON.stringify(send.map(([slotName, w]) => [slotName, w.meta.key]));
+    if (outstanding !== null && outstanding.sig === sig) {
+      // The outstanding job already carries exactly these items; it stays pending ('mesh').
+      view.requestRender();
+      return;
+    }
+    if (send.length === 0 && outstanding === null) {
+      // Same meshes as attached: only a lens placement could differ (DBL is in the frame key).
+      for (const s of SLOTS) if (want[s]) lenses.place(s, s, want[s].item.frame.A, placement[s].DBL);
       refit();
       view.requestRender();
-      // A job for this key may still be in flight ('mesh'); otherwise refreshView's 'queued' ends.
-      if (viewEl.dataset.pending !== 'mesh') {
-        if (attachedOnce) setBadge(inputs.current ? 'view.badge.glass' : 'view.badge.updating');
-        setPending('');
-      }
+      if (attachedOnce) setBadge(inputs.current ? 'view.badge.glass' : 'view.badge.updating');
+      clearBadgeTimer();
+      setPending('');
       return;
     }
-    lastKey = key;
-    const items = want.map((w) => ({ ...w, buffers: lenses.takeSpare(w.slot) }));
+    // Changed items, or nothing changed but a job is outstanding: requestMesh([]) makes it stale.
+    const items = send.map(([slotName, w]) => ({ ...w.item, buffers: slotName === 'frame' ? frame.take() : lenses.takeSpare(slotName) }));
     const { gen, dropped } = client.requestMesh(items);
     giveBackAll(dropped);
-    metaByGen.set(gen, Object.fromEntries(want.map((w) => [w.slot, { ...w, DBL: placement[w.eye]?.DBL ?? 0 }])));
-    if (items.length === 0) {
-      // Nothing to draw (03-06 shows the state); the request only makes older jobs stale.
-      clearBadgeTimer();
-      setText('view-status', '');
-      setPending('');
-      view.requestRender();
-      return;
-    }
+    outstanding = { gen, sig };
+    jobLog.push(send.map(([slotName]) => slotName));
+    if (jobLog.length > JOB_LOG) jobLog.shift();
+    metaByGen.set(gen, Object.fromEntries(send.map(([slotName, w]) => [slotName, w.meta])));
     setPending('mesh');
     if (attachedOnce && badgeTimer === null) {
       badgeTimer = setTimeout(() => {
@@ -284,11 +383,15 @@ export function mountView({ slot }) {
 
   window.__eyeglassView = Object.freeze({
     memory: () => ({ ...view.renderer.info.memory, programs: view.renderer.info.programs?.length ?? 0 }),
-    allocs: () => ({ page: lenses.allocCount(), worker: workerReallocs }),
+    allocs: () => ({ page: lenses.allocCount() + frame.allocCount(), worker: workerReallocs }),
     meshMode: () => client.mode(),
     viewName: () => 'default',
     ior: (s) => lenses.ior(s),
     edgeMax: (s) => lenses.edgeMax(s),
+    /** Test-only (03-07): frame measured from its attached buffers; lens group z (MINOR 9). */
+    frameInfo: () => frame.info(),
+    /** Test-only (03-07, round 2 MINOR 7): slot lists of the last 10 mesh jobs sent. */
+    meshJobs: () => jobLog.map((j) => [...j]),
     /** RGBA at CSS pixel (x, y) of the canvas, read in the same task as a fresh render. */
     pixel: (x, y) => {
       view.render();

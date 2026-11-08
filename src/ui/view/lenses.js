@@ -5,11 +5,12 @@
 // attached arrays are never transferred to the worker (Pitfall 7): attach() puts the previous
 // arrays into the slot's pool, and the next request sends a pool set.
 //
-// Pool: per slot at most POOL_CAP spare sets. The page holds the attached set and the sets of the
-// in-flight and the queued mesh job; a new request takes a set before the replaced queued job
-// hands its set back, so up to 4 sets per slot exist during fast typing. allocCount counts every
-// allocLensBuffers() call (03-15 leak test, lens-critic MINOR 6): it stops growing once the
-// sets needed by the input rate exist, and grows again only after a lost reply.
+// Pool (createBufferPool, shared with the frame in frame.js since 03-07): per slot at most
+// POOL_CAP spare sets. The page holds the attached set and the sets of the in-flight and the
+// queued mesh job; a new request takes a set before the replaced queued job hands its set back,
+// so up to 4 sets per slot exist during fast typing. allocCount counts every alloc() call (03-15
+// leak test, lens-critic MINOR 6): it stops growing once the sets needed by the input rate exist,
+// and grows again only after a lost reply.
 import { BufferGeometry, BufferAttribute, Group, Mesh, MeshPhysicalMaterial, Sphere, Vector3, FrontSide } from 'three';
 import { allocLensBuffers, LENS_LENGTHS } from '../../engine/mesh/lens.js';
 import { FRONT_INDEX, BACK_INDEX, BAND_INDEX } from '../../engine/mesh/topology.js';
@@ -27,20 +28,44 @@ const INDEX = { front: new BufferAttribute(FRONT_INDEX, 1), back: new BufferAttr
 const edgeMaterial = () => new MeshPhysicalMaterial({ color: '#6f8a84', roughness: 0.35, clearcoat: 0.5, clearcoatRoughness: 0.2 });
 
 /** A full, right-length, not detached set (a detached Float32Array has length 0). */
-const usable = (b) => !!b && Object.entries(LENS_LENGTHS).every(([k, len]) => b[k] instanceof Float32Array && b[k].length === len);
+const usableFor = (lengths) => (b) =>
+  !!b && Object.entries(lengths).every(([k, len]) => b[k] instanceof Float32Array && b[k].length === len);
+const usable = usableFor(LENS_LENGTHS);
+
+/**
+ * Bounded pool of buffer sets for one mesh slot (03-07: lens slots and the frame).
+ * @param {() => Record<string, Float32Array>} alloc
+ * @param {Record<string, number>} lengths the slot's buffer lengths (a set is taken back only if it matches)
+ * @returns {{ take: () => Record<string, Float32Array>, giveBack: (set: any) => void, lose: () => void,
+ *   usable: (set: any) => boolean, allocCount: () => number, lostCount: () => number }}
+ */
+export function createBufferPool(alloc, lengths) {
+  const ok = usableFor(lengths);
+  const spare = [];
+  let allocCount = 0;
+  let lostCount = 0;
+  return {
+    /** A spare set, or a new one when the pool is empty. */
+    take: () => spare.pop() ?? (allocCount++, alloc()),
+    /** Return a set that came back from the worker or was never sent. */
+    giveBack(set) {
+      if (ok(set) && spare.length < POOL_CAP && !spare.includes(set)) spare.push(set);
+    },
+    /** A sent set did not come back (dead worker, error reply); the next take allocates. */
+    lose: () => void lostCount++,
+    usable: ok,
+    allocCount: () => allocCount,
+    lostCount: () => lostCount,
+  };
+}
 
 /**
  * @param {import('three').Scene} scene
  * @param {string[]} slotNames
  */
 export function createLensSlots(scene, slotNames) {
-  let allocCount = 0;
-  const alloc = () => {
-    allocCount++;
-    return allocLensBuffers();
-  };
   const edge = edgeMaterial();
-  /** @type {Record<string, { group: Group, glass: MeshPhysicalMaterial, geo: Record<string, BufferGeometry>, thick: Float32Array, pool: object[], sphere: Sphere | null }>} */
+  /** @type {Record<string, { group: Group, glass: MeshPhysicalMaterial, geo: Record<string, BufferGeometry>, thick: Float32Array, pool: ReturnType<typeof createBufferPool>, sphere: Sphere | null }>} */
   const slots = {};
 
   for (const name of slotNames) {
@@ -53,7 +78,9 @@ export function createLensSlots(scene, slotNames) {
       specularIntensity: 1,
       side: FrontSide,
     });
-    const initial = alloc();
+    const pool = createBufferPool(allocLensBuffers, LENS_LENGTHS);
+    const initial = pool.take();
+    pool.giveBack(pool.take()); // one spare set from the start
     const group = new Group();
     group.name = name;
     group.visible = false;
@@ -68,22 +95,26 @@ export function createLensSlots(scene, slotNames) {
       group.add(new Mesh(g, part === 'band' ? edge : glass));
     }
     scene.add(group);
-    slots[name] = { group, glass, geo, thick: initial.thick, pool: [alloc()], sphere: null };
+    slots[name] = { group, glass, geo, thick: initial.thick, pool, sphere: null };
   }
 
   /** Return a set that came back from the worker or was never sent. */
   function giveBack(name, buffers) {
-    const s = slots[name];
-    if (s && usable(buffers) && s.pool.length < POOL_CAP && !s.pool.includes(buffers)) s.pool.push(buffers);
+    slots[name]?.pool.giveBack(buffers);
   }
   function hide(name) {
     slots[name].group.visible = false;
   }
 
   return {
-    allocCount: () => allocCount,
+    allocCount: () => Object.values(slots).reduce((n, s) => n + s.pool.allocCount(), 0),
     /** A set to send with a mesh request (the pool, or a new one when the pool is empty). */
-    takeSpare: (name) => slots[name].pool.pop() ?? alloc(),
+    takeSpare: (name) => slots[name].pool.take(),
+    /** A sent set of this slot was lost with its job. */
+    lose: (name) => slots[name]?.pool.lose(),
+    /** The slot's Group (the frame sets its z to the common rim plane, 03-07 MINOR 9). */
+    group: (name) => slots[name].group,
+    visible: (name) => slots[name].group.visible,
     giveBack,
     hide,
     /**
@@ -130,7 +161,7 @@ export function createLensSlots(scene, slotNames) {
       for (const s of Object.values(slots)) {
         if (!s.group.visible || !s.sphere) continue;
         const c = s.sphere.center;
-        r = Math.max(r, Math.hypot(c.x + s.group.position.x, c.y, c.z) + s.sphere.radius);
+        r = Math.max(r, Math.hypot(c.x + s.group.position.x, c.y, c.z + s.group.position.z) + s.sphere.radius);
       }
       return r;
     },

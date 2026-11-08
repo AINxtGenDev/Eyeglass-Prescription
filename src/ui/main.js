@@ -38,6 +38,7 @@ import {
   requestMain,
   cardMaterial,
   updateXsec,
+  refreshView,
 } from './pipeline.js';
 import {
   initTiming,
@@ -228,6 +229,8 @@ function init() {
       onExpertToggle();
       // 02-13: the Querschnitt is requested only while the switch is on.
       updateXsec();
+      // 03-07: the 3D frame's rim depth is the field value only while the switch is on.
+      refreshView();
       schedule(ts);
     },
     { schedule, onMessageShown: () => EYES.forEach(onMessageShown), materialId: currentMaterialId() },
@@ -252,7 +255,8 @@ function init() {
   });
   setComputeMode('worker', 'tech.mode.worker');
   initMaterialInput({ schedule, onMaterialChange, onMessageShown: () => EYES.forEach(onMessageShown) });
-  initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown) });
+  // 03-07: rim depth and temple re-mesh only the 3D frame (no compute job; no import cycle).
+  initFrameInput({ schedule, onMessageShown: () => EYES.forEach(onMessageShown), onDisplayChange: refreshView });
   const onInput = (e) => schedule(e.timeStamp);
   const example = initExample(onInput);
   initRxInput({ onInput, onMessageShown });
