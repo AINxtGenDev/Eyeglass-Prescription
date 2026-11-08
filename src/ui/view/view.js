@@ -789,6 +789,9 @@ export function mountView({ slot }) {
     view.setThumb({
       canvas: thumbCanvas,
       source: thumbSpec,
+      // A4 (03-16): no backdrop in the thumbnail pass (eye chart, and the contact shadow, which the
+      // front pose sees as a grey strip along the bottom edge): the glasses on the plain background.
+      hide: [chart.mesh, shadow.mesh],
       onCopy(spec) {
         if (!thumbLast) enableBarThumb();
         thumbDirty = false;

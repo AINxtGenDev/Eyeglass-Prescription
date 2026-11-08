@@ -483,6 +483,41 @@ test('#tech-view-remesh shows the last 3D re-mesh time', async ({ page }) => {
 // Phone layout only (below 900 px). The thumbnail is made only while the bar is shown (the result
 // cards out of view); with the 3D view on screen the bar is hidden and no thumbnail is needed.
 const thumbInfo = (page) => page.evaluate(() => window.__eyeglassView.thumbInfo());
+/**
+ * A4 (03-16): pixel check of the thumbnail canvas (96×72 device px). cornerBg: share of the four
+ * 8×8 corner blocks that are the plain #f3f4f6 background (± 6, as nonBackgroundRatio); with the
+ * eye chart in the pass these were checker (≈ 5 % in the 03-15 screenshot). minL / bgL: darkest
+ * and background relative luminance (Rec. 709 weights, 0-255), so the rims read darker.
+ */
+const thumbPixels = (page) =>
+  page.locator('.bar-thumb').evaluate((c) => {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const W = c.width;
+    const H = c.height;
+    const n = 8;
+    const lum = (i) => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    const isBg = (i) => Math.abs(d[i] - 243) <= 6 && Math.abs(d[i + 1] - 244) <= 6 && Math.abs(d[i + 2] - 246) <= 6;
+    let bg = 0;
+    let all = 0;
+    for (const [x0, y0] of [[0, 0], [W - n, 0], [0, H - n], [W - n, H - n]]) {
+      for (let y = y0; y < y0 + n; y++) {
+        for (let x = x0; x < x0 + n; x++) {
+          all++;
+          if (isBg((y * W + x) * 4)) bg++;
+        }
+      }
+    }
+    let minL = 255;
+    for (let i = 0; i < d.length; i += 4) minL = Math.min(minL, lum(i));
+    return { cornerBg: bg / all, minL, bgL: 0.2126 * 243 + 0.7152 * 244 + 0.0722 * 246 };
+  });
+/** A4: the corners are plain background (no checker) and the rims are clearly darker. */
+async function expectPlainThumb(page) {
+  const px = await thumbPixels(page);
+  test.info().annotations.push({ type: 'thumb pixels', description: JSON.stringify(px) });
+  expect(px.cornerBg, 'thumbnail corners are the plain background').toBeGreaterThanOrEqual(0.98);
+  expect(px.bgL - px.minL, 'rims darker than the background').toBeGreaterThan(100);
+}
 const camKey = (c) => [c.position.x, c.position.y, c.position.z, c.target.x, c.target.y, c.target.z].join();
 /** Scroll to the top (the Rx fields; the result cards out of view) and wait for the bar. */
 async function barShown(page) {
@@ -513,6 +548,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
     expect(after.nonBackgroundRatio).toBeGreaterThan(0.15);
     for (const eye of ['OD', 'OS']) expect(after.lensWidthPx[eye], eye).toBeGreaterThanOrEqual(16);
     test.info().annotations.push({ type: 'thumb', description: JSON.stringify(after) });
+    await expectPlainThumb(page);
     // The thumbnail frame restores the camera: the pose is the same before and after one.
     const cam0 = await page.evaluate(() => window.__eyeglassView.camera());
     await page.evaluate(() => window.__eyeglassView.requestThumb());
@@ -598,6 +634,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
       expect(info.src.y + info.src.h).toBeLessThanOrEqual(cv.H * cv.pr + 0.5);
       expect(await page.evaluate(() => window.__eyeglassView.memory())).toEqual(mem);
       for (const eye of ['OD', 'OS']) if (info.lensWidthPx[eye] !== null) expect(info.lensWidthPx[eye], eye).toBeGreaterThanOrEqual(16);
+      await expectPlainThumb(page);
     });
   });
 

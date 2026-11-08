@@ -32,6 +32,11 @@
 // layout unchanged (the same viewports as the main pass; split A/B is cropped by the source
 // rectangle), so the per-camera transmission target, which r187 sizes from the active viewport
 // (WebGLRenderer.js lines 2056-2057, setSize per render), is never resized by the thumbnail.
+// A4 (03-16, orchestrator amendment): the objects in thumb.hide (view.js: the eye chart and the
+// contact shadow) are hidden
+// for the thumbnail pass only (.visible, restored before pass 2), so the 48×36 px picture shows the
+// glasses on the plain #f3f4f6 scene background instead of a busy checker. No new geometry,
+// texture, material or program; still exactly 2 passes.
 // 03-09 (VIZ-03): the camera poses live in camera-math.js and controls.js (fit() is gone).
 // - beforeRender hooks run before each render (controls.update / preset tween, chart fade);
 //   onResize hooks run after a stage resize, before its render (limits and preset refit).
@@ -136,7 +141,7 @@ export function createScene(canvas, stage) {
     passes++;
     pass();
   };
-  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any) => void }} */
+  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any) => void, hide?: import('three').Object3D[] }} */
   let thumb = null;
   let thumbWanted = false;
   const thumbStats = { copies: 0, passesPerThumbFrame: 0 };
@@ -167,7 +172,11 @@ export function createScene(canvas, stage) {
     camera.position.set(spec.position.x, spec.position.y, spec.position.z);
     camera.lookAt(spec.target.x, spec.target.y, spec.target.z);
     camera.updateMatrixWorld();
+    const hide = thumb.hide ?? [];
+    const wasVisible = hide.map((o) => o.visible);
+    for (const o of hide) o.visible = false;
     runPass();
+    hide.forEach((o, i) => (o.visible = wasVisible[i]));
     copyThumb(spec.src);
     camera.position.copy(savedPos);
     camera.quaternion.copy(savedQuat);
