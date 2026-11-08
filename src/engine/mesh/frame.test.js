@@ -457,6 +457,12 @@ describe('VIZ-02 frame mesh (D-06)', () => {
     expect(within(res.boundingSphere, all)).toBe(true);
     expect(within(res.frontBoundingSphere, front)).toBe(true);
     expect(res.frontBoundingSphere.r).toBeLessThan(res.boundingSphere.r);
+    // 03-09 A1: the world AABB of every frame vertex (the default camera fit projects its corners).
+    const b = res.boundingBox;
+    for (const [i, k] of [[0, 'x'], [1, 'y'], [2, 'z']]) {
+      expect(b.min[k]).toBe(Math.min(...all.map((q) => q[i])));
+      expect(b.max[k]).toBe(Math.max(...all.map((q) => q[i])));
+    }
   });
 
   it('wrong buffer length throws; non-finite surfaces → finite false', () => {

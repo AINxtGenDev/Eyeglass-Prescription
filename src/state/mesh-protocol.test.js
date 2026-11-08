@@ -194,6 +194,7 @@ describe('frame item (03-07, VIZ-02)', () => {
     expect(ri.frontBoundingSphere).toEqual(d.res.frontBoundingSphere);
     expect(ri.sideTarget).toEqual(d.res.sideTarget);
     expect(ri.eyeBox).toEqual(d.res.eyeBox);
+    expect(ri.boundingBox).toEqual(d.res.boundingBox);
     expect(ri.lensZ).toEqual(d.res.lensZ);
     expect(ri.templeMm).toBe(140);
     for (const k of Object.keys(FRAME_LENGTHS)) {

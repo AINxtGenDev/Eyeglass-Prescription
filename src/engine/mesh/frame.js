@@ -279,10 +279,16 @@ function addArray(b, a, dx) {
   for (let q = 0; q < a.length; q += 3) addPoint(b, a[q] + dx, a[q + 1], a[q + 2]);
 }
 
-/** Sphere about the centre of the AABB of the parts [array, dx], from the stored values. */
-function sphereOf(parts) {
+/** World AABB of the parts [array, dx], from the stored values. */
+function boxOf(parts) {
   const b = emptyBox();
   for (const [a, dx] of parts) addArray(b, a, dx);
+  return b;
+}
+
+/** Sphere about the centre of the AABB of the parts [array, dx], from the stored values. */
+function sphereOf(parts) {
+  const b = boxOf(parts);
   const cx = (b.min.x + b.max.x) / 2;
   const cy = (b.min.y + b.max.y) / 2;
   const cz = (b.min.z + b.max.z) / 2;
@@ -307,11 +313,14 @@ function sphereOf(parts) {
  * @param {ReturnType<typeof allocFrameBuffers>} out
  * @returns {{ finite: boolean, boundingSphere: {x:number,y:number,z:number,r:number},
  *   frontBoundingSphere: {x:number,y:number,z:number,r:number},
+ *   boundingBox: { min: {x:number,y:number,z:number}, max: {x:number,y:number,z:number} },
  *   sideTarget: { OD: {x:number,y:number,z:number}, OS: {x:number,y:number,z:number} },
  *   eyeBox: { OD: { min: {x:number,y:number,z:number}, max: {x:number,y:number,z:number} }, OS: object },
  *   lensZ: { OD: number, OS: number }, templeMm: number }}
  *   finite = false when any value is non-finite (the view must not upload the mesh);
- *   frontBoundingSphere covers the rims and the bridge; templeMm = the drawn (clamped) length.
+ *   frontBoundingSphere covers the rims and the bridge; boundingBox = the world AABB of every frame
+ *   vertex (03-09 A1: the default camera fits its projected corners); templeMm = the drawn
+ *   (clamped) length.
  */
 export function buildFrameMesh({ frame, eyes, rimDepthMm: D, templeMm, rule = BEVEL_RULE }, out) {
   for (const [k, len] of Object.entries(FRAME_LENGTHS)) {
@@ -427,6 +436,7 @@ export function buildFrameMesh({ frame, eyes, rimDepthMm: D, templeMm, rule = BE
     finite,
     boundingSphere: sphereOf(all),
     frontBoundingSphere: sphereOf(front),
+    boundingBox: boxOf(all),
     sideTarget,
     eyeBox,
     lensZ,

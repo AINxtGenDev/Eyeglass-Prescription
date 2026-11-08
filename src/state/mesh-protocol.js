@@ -8,7 +8,7 @@
 //                  plus at most one frame item (03-07, VIZ-02): { slot: 'frame', frame: { shape, A, B, DBL },
 //                    eyes: { OD: surfaces|null, OS: surfaces|null }, rimDepthMm, templeMm, buffers: FRAME_LENGTHS keys }
 //   worker → main  { type: 'mesh', id, items: [{ slot, ok, finite, reallocated, buffers, boundingSphere|null }], computeMs }
-//                  a frame item also carries frontBoundingSphere, sideTarget, eyeBox, lensZ and templeMm
+//                  a frame item also carries frontBoundingSphere, boundingBox, sideTarget, eyeBox, lensZ and templeMm
 //                  (the drawn, clamped temple length), all null when ok is false
 //   worker → main  { type: 'error', id, message }
 //
@@ -104,6 +104,7 @@ export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrame
   const failFrame = (buffers, reallocated) => ({
     ...fail({ slot: 'frame' }, buffers, reallocated),
     frontBoundingSphere: null,
+    boundingBox: null,
     sideTarget: null,
     eyeBox: null,
     lensZ: null,
@@ -126,6 +127,7 @@ export function createMeshHandler({ meshFn = buildLensMesh, frameFn = buildFrame
         buffers,
         boundingSphere: r.boundingSphere ?? null,
         frontBoundingSphere: r.frontBoundingSphere ?? null,
+        boundingBox: r.boundingBox ?? null,
         sideTarget: r.sideTarget ?? null,
         eyeBox: r.eyeBox ?? null,
         lensZ: r.lensZ ?? null,
