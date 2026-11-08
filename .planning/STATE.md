@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-11-08T14:20:28.158Z"
+stopped_at: Completed 03-08-PLAN.md
+last_updated: "2026-11-08T14:59:14.254Z"
 last_activity: 2026-11-08
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 54
-  completed_plans: 44
+  completed_plans: 45
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-11-06)
 ## Current Position
 
 Phase: 03 (3D lenses & frame) — EXECUTING
-Plan: 8 of 17
+Plan: 9 of 17
 Status: Ready to execute
 Last activity: 2026-11-08
 
@@ -90,6 +90,7 @@ Progress: [█████░░░░░] 50% (2 of 4 phases)
 | Phase 03 P05 | 55 min | 2 tasks | 17 files |
 | Phase 03 P06 | 45min | 2 tasks | 9 files |
 | Phase 03 P07 | 75 min | 2 tasks | 11 files |
+| Phase 03 P08 | 35min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-07: the 3D frame's rim depth follows the Expert field only while the switch is on (else RIM_DEPTH_DEFAULT_MM)
 - [Phase ?]: 03-07: a clamped stamp temple is named in Technische Angaben; TEMPLE_RANGE_MM stays [ASSUMED]
 - [Phase ?]: 03-07: per-item mesh keys against the attached key; requestMesh([]) stales an outstanding job; identical outstanding job is not resent
+- [Phase 03]: 03-08: tech.view.dispersion.on refined to ', mit Farbsäumen aus der Abbe-Zahl νₑ (angenähert)' (20/νe stands in for KHR 20/νd)
+- [Phase 03]: 03-08: Playwright mobile project sets screen 360x780 so the phone tier (mittel) runs; hasTouch already matches (pointer: coarse)
+- [Phase 03]: 03-08: e2e background probe uses a canvas corner outside the projected chart quad (helpers.backgroundProbe), replacing fixed pixel(2,2) probes
+- [Phase 03]: 03-08: VIZ-06 left Pending: its GPU-leak test (03-15) and the 4x-throttled phone trace are not done yet
 
 ### Pending Todos
 
@@ -212,6 +217,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T14:20:28.153Z
-Stopped at: Completed 03-07-PLAN.md
+Last session: 2026-11-08T14:59:02.247Z
+Stopped at: Completed 03-08-PLAN.md
 Resume file: None
