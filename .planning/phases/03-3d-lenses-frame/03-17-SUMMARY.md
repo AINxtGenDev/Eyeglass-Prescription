@@ -260,6 +260,12 @@ The review lists 14 Info items. A-IN-05 was fixed with A-WR-02 (324de3a), so **1
 - **New (this task):** the no-WebGL state keeps four disabled preset buttons and an un-hidden `role="img"` canvas (the A-IN-05 pattern).
 - `layout.spec.js:302` is known to be timing-flaky (pre-existing); it passed in this run.
 
+### Task 2 checkpoint: user answers (2026-11-09, verbatim)
+
+- M1 question → "Accept new limit (Recommended)": the restated D-04(c) bound is accepted (recorded in 03-CONTEXT.md D-04(c)).
+- Push question → "Push now (Recommended)": fast-forward push of main approved, no force.
+- Accepted open findings: M1 (user, restated bound). lens-critic accepted MINOR 1, 7 and 10–14 itself. VIZ-06 stays Pending until the Pixel 7 Pro measurement in Task 3.
+
 ### lens-critic verdict
 
 **NEEDS WORK** (0 BLOCKER, 2 MAJOR, 14 MINOR), reviewed at 7f44aef + f52ac80 + e5f1061. Full review in 03-LENS-CRITIC-RESULT.md (edf2dc9); fixes in 03-LC-FIX.md (45781a1 … 11f5237).
