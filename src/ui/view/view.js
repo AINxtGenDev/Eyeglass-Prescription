@@ -253,7 +253,10 @@ function mount({ slot }) {
     badgeBox = badge.offsetWidth > 0 ? { x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight } : null;
     if (badgeBox) boxes.push(badgeBox);
     if (stageEl.matches(':focus-visible') && keysState !== 'hidden') {
-      const s = stageEl.getBoundingClientRect();
+      // 03-CI: in #view-labels coordinates (the stage's padding box, like the badge's offsetTop),
+      // not the border box: the 1 px stage border otherwise lets a label overlap the hint by 1 px.
+      const b = stageEl.getBoundingClientRect();
+      const s = { left: b.left + stageEl.clientLeft, top: b.top + stageEl.clientTop, right: b.right - stageEl.clientLeft, bottom: b.bottom - stageEl.clientTop };
       const k = keysEl.getBoundingClientRect();
       const top = Math.max(k.top, s.top) - s.top;
       const bottom = Math.min(k.bottom, s.bottom) - s.top;
