@@ -140,13 +140,39 @@ Limits of this trace, stated plainly:
 
 ## MCP matrix (orchestrator)
 
-> **Placeholder.** The chrome-devtools MCP is not available to this executor. The orchestrator runs the D-30 matrix on `vite preview` (412×915, 320×640, 1280×800) and fills this section:
-> - screenshots with a written description of each: default, Vorne, Seite (protrusion and front-surface lead visible and stated), Oben, Dickenkarte (both eyes, callouts or the table-only note), A/B (side by side at 412 and 1280, toggle at 320), the phone bar thumbnail, no-WebGL, and at 320/412 the results region with the first card value before the 3D view (MAJOR 5);
-> - `list_console_messages`;
-> - 4× traces for one re-mesh and a 3 s orbit;
-> - memory (`window.__eyeglassView.memory()` plus a heap snapshot) before/after 20 changes.
->
-> _Orchestrator results: (pending)_
+Run by the orchestrator on 2026-11-09 with the chrome-devtools MCP against `vite preview` on port 4180 (build of 7f44aef; the no-WebGL row re-checked after f52ac80). That Chrome (156) renders with a **real GPU**: `ANGLE (AMD, AMD Radeon RX Vega M GH Graphics (radeonsi vegam ACO), OpenGL ES 3.2)`, read via `WEBGL_debug_renderer_info`. Its numbers are a desktop-GPU proxy, not phone numbers. The MCP `take_screenshot` hangs once WebGL is mounted (known issue), so the screenshots are Playwright stage shots on the same build (orchestrator, after 03-09 … 03-16, listed in session.md), and the MCP part is DOM, console, memory and timing.
+
+**State matrix at 412×915 (DPR 2,625, mobile, touch), one script, no page errors:**
+
+| State | Canvas accessible name (start) | Visible labels | Renderer memory |
+|---|---|---|---|
+| default | "3D-Ansicht der Brille, schräg von vorne. Rechtes Glas: dickste Stelle 4,6 mm außen oben …" | R, L | 21 / 6 / 11 |
+| Vorne | "… von vorne …" | R, L | same |
+| Seite | "… von der Seite (rechtes Glas) …" | R | same |
+| Oben | "… von oben …" | R, L | same |
+| Ansicht zurücksetzen | "… schräg von vorne …" | R, L | same |
+| Dickenkarte OD | "Dickenkarte, von vorne. Dünnste Stelle 1,8 mm, dickste Stelle 4,6 mm …" | 1,8 · 3,3 · 4,1 · 3,0 · 3,0 · dickste 4,6 · iso 2,0 (equal to the table) | same |
+| Dickenkarte OS | same pattern | 1,8 · 3,1 · 4,0 · 3,0 · 3,0 · dickste 4,6 (equal to the table) | same |
+| Vergleich, Dickenkarte | "Vergleich rechtes Glas, von vorne. Vorher (A): dickste Stelle 4,6 mm. Nachher (B) …" | iso labels + Vorher (A), Nachher (B); note "Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in …" | same |
+| Vergleich, Glas / show A | "Vergleich rechtes Glas, schräg von vorne …" | Vorher (A), Nachher (B) | same |
+| Vergleich beendet, Expert aus | "3D-Ansicht der Brille, schräg von vorne …" | R, L | same |
+
+Every row: `scrollWidth` 412 = `innerWidth`. Results (`#result` top 3359 px) come before the view (top 4609 px) in document order (MAJOR 5). `list_console_messages` (error, warn): none.
+
+**4× CPU throttle at 412×915 (real GPU, workers unthrottled):**
+- Orbit, 3 s of keyboard rotation on the focused stage (azimuth −35° → 130°): 178 frames, median 16,7 ms, p95 16,8 ms, max 16,8 ms (rAF intervals; the display is 60 Hz, so this is the vsync cap). A synthetic touch-pointer drag did not move the camera (untrusted pointer events), so the keyboard path was used.
+- Re-mesh with the 3D view on screen (bar hidden): "3D-Neuaufbau zuletzt" over 10 Sph edits 32,5–81,2 ms (first 81,2, then 35,8–48,9).
+- Re-mesh with the inputs on screen and the phone bar + thumbnail visible: 23,1–29,0 ms over 10 Sph edits; **no long task (> 50 ms) on the main thread** (PerformanceObserver `longtask`). On this GPU the 03-15 SwiftShader stall (~1,3 s) does not appear; the Pixel measurement in Task 3 is still the binding one.
+- Tier shown in Technische Angaben: "Qualitätsstufe mittel (Telefon: Glasdurchsicht in halber Auflösung, ohne Farbsäume)".
+
+**Memory:**
+- 412 px: 24 Sph edits → renderer 21 / 6 / 11 unchanged, JS heap 24,9 MB after the runs.
+- 1280×800: 20 Sph edits during a comparison → 21 geometries, 6 textures, 12 programs, JS heap 50,0 → 52,8 MB. **12 programs is the count from page load on this GPU at 1280 px** (checked after a reload: 12 at load, through Expert, Dickenkarte, compare and edits, and over 20 further edits). Headless Chromium counts 11. Constant, so not a leak, but the D-27 "expected 11" holds only for the headless environment.
+- A DevTools heap snapshot was not taken (the MCP screenshot/snapshot tools hang with WebGL mounted); `performance.memory` was used instead.
+
+**320×640 `?nowebgl`:** the note "Ihr Browser kann die 3D-Ansicht nicht anzeigen (WebGL 2 fehlt oder ist ausgeschaltet). Alle Werte, der Vergleich und der Querschnitt funktionieren trotzdem." shows; `scrollWidth` 320. **Finding (fixed in f52ac80):** before the fix the 4 disabled preset buttons stayed visible, the keyboard hint ("Pfeiltasten drehen …") stayed in the accessibility tree via the stage's aria-describedby, and the canvas kept role=img without aria-hidden. Console: only the deliberate warning "3D view: no WebGL2".
+
+**1280×800:** the view and the results share the right column (stage left 808 px = result left), view above the cards (D-13); "3D drehen" hidden (fine pointer); Dickenkarte callouts 1,8 · 3,3 · 4,1 · 3,0 · 3,0 · dickste 4,6 with iso labels 2,0 · 3,0; split comparison shows the table-only note (known item); no console messages.
 
 ### Supporting evidence: Playwright screenshots (not the MCP matrix)
 
