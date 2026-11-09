@@ -2,9 +2,13 @@
 // no globals and no dependencies; the caller passes `coarse` (primary pointer) and `minScreen`
 // (min of the screen width and height, CSS px), so the logic runs in Node.
 //
-// Geometry resolution is identical in every tier: the tessellation that meets the D-04(c) 0,01 mm
-// bound is never reduced. A tier only changes the pixel ratio, the transmission render target
-// scale, dispersion and the chart texture size; realism degrades, correctness never does.
+// Geometry resolution is identical in every tier: the one tessellation (topology.js) is never
+// reduced, and its vertices are exact. Its sag error between vertices is measured, not proven for
+// every input (mesh/tessellation.test.js, 03-LC M1, full grid scan): ≤ 0,01 mm (≤ 0,025 mm for
+// custom nₑ < 1,49) for every scanned lens up to etMax 31 mm; above that up to 0,0174 mm below
+// etMax 35 mm and 0,106 mm above (etMax 58,6 mm). A tier only changes the pixel ratio, the
+// transmission render target scale, dispersion and the chart texture size; realism degrades,
+// correctness never does.
 
 /** Phones: a coarse primary pointer and a screen whose shorter side is below this (CSS px). */
 const PHONE_MAX_SIDE = 768;
