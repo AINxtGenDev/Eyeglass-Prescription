@@ -262,7 +262,23 @@ The review lists 14 Info items. A-IN-05 was fixed with A-WR-02 (324de3a), so **1
 
 ### lens-critic verdict
 
-_(pending: inserted by the orchestrator)_
+**NEEDS WORK** (0 BLOCKER, 2 MAJOR, 14 MINOR), reviewed at 7f44aef + f52ac80 + e5f1061. Full review in 03-LENS-CRITIC-RESULT.md (edf2dc9); fixes in 03-LC-FIX.md (45781a1 … 11f5237).
+
+- **M2, fixed (45781a1):** while comparing, `#view-protrusion` shows only the compared eye as labelled "Vorher (A):" and "Nachher (B):" pairs. The orchestrator checked this in the chrome-devtools MCP at 412×915 (real GPU), CR-39 against 1,74:
+  - A: hinten 1,6 mm, front lead 0,5 mm;
+  - B: hinten 0,5 mm, no front lead;
+  - the bar reads "Nachher (B): …";
+  - no console errors, no overflow, memory 21/6/11.
+- **M1, open, needs the user's re-acceptance:**
+  - The executor's full scan of 58 552 lenses shows that lens-critic's restatement does not hold either. 10 lenses with etMax 31–35 mm exceed 0,01 mm (worst 0,01736 mm). The worst relative error is 0,559 %, not ≤ 0,25 %.
+  - A bound that matches the data: ≤ 0,01 mm (≤ 0,025 mm for nₑ < 1,49) up to etMax 31 mm; beyond that ≤ 0,11 mm absolute or ≤ 0,6 % of the local thickness.
+  - The test now carries regression limits just above the measured worst cases (35dd6b9).
+- **MINOR 2, 3 (A5), 4, 5, 6, 8:** fixed. **MINOR 9:** no change needed. **The rest:** accepted by lens-critic.
+- **Gate at 35dd6b9:**
+  - lint 0;
+  - 1 799 unit tests, coverage 98,91 % statements / 96,87 % branches;
+  - e2e 563 passed / 2 failed / 37 skipped;
+  - both failures passed when re-run alone. `layout.spec.js:302` is a timing race that already fails on the baseline edf2dc9 (3 of 8 runs).
 
 ## Deviations from Plan
 
