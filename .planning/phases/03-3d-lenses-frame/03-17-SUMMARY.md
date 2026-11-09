@@ -308,3 +308,21 @@ None. Task 1 changes documentation only.
 | 1 Gate, trace, VALIDATION, lens-critic input | done (MCP matrix and lens-critic verdict owed by the orchestrator) | this docs commit |
 | 2 Push approval | not started (blocking user checkpoint) | — |
 | 3 Push, live check, Pixel 7 Pro, REQUIREMENTS.md | not started | — |
+
+## Task 3: live verification (orchestrator, 2026-11-09)
+
+- **First deploy failed.** Push 1 (`bac1c38..2bd6783`, approved at the Task 2 checkpoint) started CI run 42573586930. Its build job failed in e2e: 8 failed / 557 passed. Cause: the runner falls back to DejaVu Sans, which is wider than the local font, and that exposed three layout bugs. Nothing was deployed. The fix is in 03-CI-FIX.md (3ab3fc2 … 10ddba3).
+- **Second push succeeded.** Push 2 (`2bd6783..10ddba3`, separately approved by the user with "Push now (Recommended)") ran as CI run 42682803647: build, deploy and verify-live all **success**.
+- **Live HTML check:** `curl -fsS ".../?v=$(git rev-parse HEAD)" | grep -c 'content="10ddba3"'` prints **1**.
+- **Live e2e** (`BASE_URL=https://ainxtgendev.github.io/Eyeglass-Prescription/`): **565 passed / 1 failed / 38 skipped** in 16,7 min.
+  - The failure is `layout.spec.js:302` at 360 × 800, the known timing race in the test (it also fails on baseline edf2dc9, 3 of 8 runs).
+  - Re-run alone with `--repeat-each=3` against the live site: **12 / 12 passed**.
+- **MCP matrix on the live URL**, Chrome 156 at 412×915 with a real GPU:
+  - The commit meta reads 10ddba3.
+  - Presets Vorne / Seite / Oben work, with no horizontal overflow in any state.
+  - Dickenkarte callouts for R (1,8 / 3,3 / 4,1 mm, "dickste 4,6 mm") equal the table.
+  - Comparison CR-39 against 1,74: the protrusion block shows labelled Vorher (A) / Nachher (B) lines, and the bar reads "Nachher (B): …".
+  - Renderer memory is 21/6/11 before and after 20 Sph edits; JS heap 25,7 MB.
+  - `?nowebgl` shows the German note, and `#view-tools` and `#view-keys` are hidden. The canvas has aria-hidden and the stage has no tabindex.
+  - No console errors or warnings.
+- **Pixel 7 Pro (i)–(ix):** waiting for the user.
