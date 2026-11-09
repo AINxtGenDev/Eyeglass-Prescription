@@ -30,23 +30,35 @@ function updateVisibility() {
  * thumbnail steps aside (class thumb-off) and the bar is the phase-2 text bar; the same when the
  * label would wrap (03-LC MINOR 6). Measured on text, visibility and size changes only, with the
  * thumbnail layout applied.
+ * 03-CI: the text bar itself is not font-proof either (DejaVu Sans: that line is 320 px at 16 px
+ * against 288 px free at 320 px, so the nowrap values ran off the screen). If the values do not
+ * fit, the bar takes the same tighter values line as next to the thumbnail (bar-tight); if they
+ * still do not fit (larger text size), the values may wrap (bar-wrap): a taller bar, never a
+ * clipped number.
  */
 function fitThumb() {
   const bar = $('summary-bar');
-  if (!bar.classList.contains('has-thumb') || bar.hidden) return;
-  bar.classList.remove('thumb-off');
+  if (bar.hidden) return;
+  bar.classList.remove('thumb-off', 'bar-tight', 'bar-wrap');
   const values = $('summary-bar-values');
   const range = document.createRange();
   range.selectNodeContents(values);
-  // 03-LC (MINOR 6): the label must stay on one line too (a 'Vorher (A):' / 'Nachher (B):' prefix
-  // next to the thumbnail would wrap it and grow the bar over the 72 px scroll padding).
-  const label = document.createRange();
-  label.selectNodeContents($('summary-bar-label'));
-  const lines = [...label.getClientRects()];
-  const oneLine = lines.every((r) => Math.abs(r.top - lines[0].top) < 1);
-  const fits = oneLine && range.getBoundingClientRect().width <= values.clientWidth + 0.5;
-  bar.classList.toggle('thumb-off', !fits);
-  $('bar-view-slot').hidden = !fits;
+  const valuesFit = () => range.getBoundingClientRect().width <= values.clientWidth + 0.5;
+  if (bar.classList.contains('has-thumb')) {
+    // 03-LC (MINOR 6): the label must stay on one line too (a 'Vorher (A):' / 'Nachher (B):' prefix
+    // next to the thumbnail would wrap it and grow the bar over the 72 px scroll padding).
+    const label = document.createRange();
+    label.selectNodeContents($('summary-bar-label'));
+    const lines = [...label.getClientRects()];
+    const oneLine = lines.every((r) => Math.abs(r.top - lines[0].top) < 1);
+    const fits = oneLine && valuesFit();
+    bar.classList.toggle('thumb-off', !fits);
+    $('bar-view-slot').hidden = !fits;
+    if (fits) return;
+  }
+  if (valuesFit()) return;
+  bar.classList.add('bar-tight');
+  if (!valuesFit()) bar.classList.add('bar-wrap');
 }
 
 /** Observe #result and the breakpoint; a tap scrolls to the result and focuses its heading. */
@@ -86,6 +98,7 @@ export function enableBarThumb() {
 export function disableBarThumb() {
   $('bar-view-slot').hidden = true;
   $('summary-bar').classList.remove('has-thumb', 'thumb-off');
+  fitThumb();
 }
 
 const pair = (v) => (v ? t('bar.eye', { thick: v.thick, weight: v.weight }) : DASH);
