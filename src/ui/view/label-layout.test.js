@@ -97,6 +97,21 @@ describe('VIZ-05 label layout (03-13)', () => {
     expect(none.calloutsFit).toBe(false);
   });
 
+  test('03-CI: a wide pill near the stage edge slides along it instead of dropping every callout', () => {
+    const bounds = { w: 328, h: 246 };
+    // Anchor 62 px from the left edge, 139 px pill (DejaVu Sans 'dickste 4,6 mm'): outward runs into
+    // the badge, below/above leave the stage on the left, left leaves it, right hits a marker.
+    const a = { x: 62.4, y: 62.2 };
+    const c = { id: 'c', priority: 0, order: 0, anchor: a, size: { w: 139, h: 31 }, offset: { dx: -77.5, dy: -23.5 }, dot: DOT };
+    const avoid = [{ x: 8, y: 8, w: 113, h: 31 }, { x: 172.5, y: 39.8, w: 8, h: 8 }];
+    const out = layoutLabels([c], { ...bounds, avoid });
+    expect(out.calloutsFit).toBe(true);
+    const p = out.placed.get('c');
+    // Below the marker (8 px gap), slid to the left stage edge; the pill still spans the anchor.
+    expect(p).toEqual({ x: 0, y: a.y + LABEL_GAP_PX });
+    expect(p.x <= a.x && a.x <= p.x + 139).toBe(true);
+  });
+
   test('later callouts avoid the earlier ones and every callout dot', () => {
     const bounds = { w: 400, h: 300 };
     const oc = { x: 200, y: 150 };

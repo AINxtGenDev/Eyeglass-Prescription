@@ -1,10 +1,10 @@
 // VIZ-05 label layout (03-13; UI-SPEC "Heatmap": callouts, iso labels, collision priority;
 // Typography: labels are never shrunk). Pure: plain numbers in, plain numbers out, no imports.
 //
-// lens-critic MAJOR 4, the one rule: callouts are all-or-nothing. Each callout tries up to five
+// lens-critic MAJOR 4, the one rule: callouts are all-or-nothing. Each callout tries up to nine
 // boxes in a fixed order (outward along optical centre → anchor; below, above, left, right of its
-// anchor, 8 px gap) and takes the first that lies inside the stage and overlaps no box placed so
-// far. If any callout finds no free box, NO callout is shown (the table holds every number); a
+// anchor, 8 px gap; then those four slid along the stage edge so they fit, 03-CI) and takes the
+// first that lies inside the stage and overlaps no box placed so far. If any callout finds no free box, NO callout is shown (the table holds every number); a
 // partial set of callouts is never shown.
 //
 // After the callouts, eye labels (priority 1) and then iso labels (priority 2) are placed, each in
@@ -62,6 +62,14 @@ export function layoutLabels(items, bounds) {
         [ax - LABEL_GAP_PX - bw / 2, ay],
         [ax + LABEL_GAP_PX + bw / 2, ay],
       ];
+      // 03-CI: then the same four sides slid along the stage edge (below/above: x clamped, left/
+      // right: y clamped). The box still spans its anchor on the slide axis, so the pill stays
+      // next to its marker; a wide pill near a stage edge (wider system fonts) no longer drops
+      // the whole callout set.
+      const cx0 = (cx) => Math.min(Math.max(cx, bw / 2), w - bw / 2);
+      const cy0 = (cy) => Math.min(Math.max(cy, bh / 2), h - bh / 2);
+      for (const [cx, cy] of centres.slice(1, 3)) centres.push([cx0(cx), cy]);
+      for (const [cx, cy] of centres.slice(3, 5)) centres.push([cx, cy0(cy)]);
       let box = null;
       for (const [cx, cy] of centres) {
         const r = { x: cx - bw / 2, y: cy - bh / 2, w: bw, h: bh };
