@@ -630,6 +630,53 @@ async function barShown(page) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator('#summary-bar')).toBeVisible();
 }
+/**
+ * 03-CI: the bar as shown, and the same bar with the thumbnail layout forced on (class thumb-off
+ * removed, slot shown; restored in the same task, so nothing paints or fires in between). The
+ * product rule (summary-bar.js fitThumb) is font-independent: the thumbnail stays iff the values
+ * fit and the label is one line next to it. Which side a font lands on is not (DejaVu Sans on the
+ * CI runner is wider than the Noto Sans of a dev machine), so the specs assert the rule.
+ */
+const measureBar = (page) =>
+  page.evaluate(() => {
+    const bar = document.getElementById('summary-bar');
+    const slot = document.getElementById('bar-view-slot');
+    const m = () => {
+      const label = document.createRange();
+      label.selectNodeContents(document.getElementById('summary-bar-label'));
+      const v = document.getElementById('summary-bar-values');
+      const r = document.createRange();
+      r.selectNodeContents(v);
+      const rv = r.getBoundingClientRect();
+      return {
+        labelLines: new Set([...label.getClientRects()].map((x) => Math.round(x.top))).size,
+        need: rv.width,
+        have: v.clientWidth,
+        right: rv.right,
+        barH: bar.getBoundingClientRect().height,
+        sw: document.documentElement.scrollWidth,
+      };
+    };
+    const shown = { ...m(), thumb: !slot.hidden, label: document.getElementById('summary-bar-label').textContent, text: document.getElementById('summary-bar-values').textContent };
+    const cls = ['thumb-off', 'bar-tight', 'bar-wrap'].filter((c) => bar.classList.contains(c));
+    const hid = slot.hidden;
+    bar.classList.remove('thumb-off', 'bar-tight', 'bar-wrap');
+    slot.hidden = false;
+    const withThumb = m();
+    bar.classList.add(...cls);
+    slot.hidden = hid;
+    return { ...shown, withThumb, fitsWithThumb: withThumb.labelLines === 1 && withThumb.need <= withThumb.have + 0.5 };
+  });
+/** The bar rule at 320 px: thumbnail iff it fits; never clipped, one-line label, no taller than the phase-2 bar. */
+function expectBarRule(m) {
+  expect(m.thumb, 'thumbnail shown iff the line fits next to it').toBe(m.fitsWithThumb);
+  expect(m.labelLines, 'label on one line').toBe(1);
+  expect(m.need).toBeLessThanOrEqual(m.have + 0.5);
+  expect(m.right).toBeLessThanOrEqual(320);
+  expect(m.sw).toBe(320);
+  // Not taller than the phase-2 text bar (59,6 px: 8 px padding, 19,6 px label, 24 px values).
+  expect(m.barH).toBeLessThanOrEqual(59.6);
+}
 
 test.describe('UX-03 bar thumbnail (03-15)', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout: mobile project only');
@@ -781,21 +828,34 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
       for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('-12');
       await settledView(page);
       await barShown(page);
-      await expect(page.locator('#bar-view-slot')).toBeVisible();
-      const fit = await page.evaluate(() => {
-        const v = document.getElementById('summary-bar-values');
-        const r = document.createRange();
-        r.selectNodeContents(v);
-        const bar = document.getElementById('summary-bar').getBoundingClientRect();
-        return { text: v.textContent, need: r.getBoundingClientRect().width, have: v.clientWidth, barH: bar.height, right: r.getBoundingClientRect().right, sw: document.documentElement.scrollWidth };
-      });
+      // The thumbnail is enabled (first copy); whether it is shown or steps aside is the rule below.
+      await expect(page.locator('#summary-bar')).toHaveClass(/has-thumb/);
+      const fit = await measureBar(page);
       test.info().annotations.push({ type: 'fit 320', description: JSON.stringify(fit) });
       expect(plain(fit.text)).toMatch(/^R \d+,\d mm · \d+ g \| L \d+,\d mm · \d+ g$/);
-      expect(fit.need).toBeLessThanOrEqual(fit.have + 0.5);
-      expect(fit.right).toBeLessThanOrEqual(320);
-      expect(fit.sw).toBe(320);
-      // Not taller than the phase-2 text bar (59,6 px: 8 px padding, 19,6 px label, 24 px values).
-      expect(fit.barH).toBeLessThanOrEqual(59.6);
+      expectBarRule(fit);
+    });
+
+    // 03-CI: font-proof, whatever the system font: at 150 % text size the values line fits neither
+    // next to the thumbnail nor at 1rem, so the bar takes the tight line and then wraps; never clipped.
+    test('03-CI the values are never clipped at a larger text size', async ({ page }) => {
+      test.setTimeout(90_000);
+      await thumbPage(page);
+      for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('-12');
+      await settledView(page);
+      await barShown(page);
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '150%';
+        window.dispatchEvent(new Event('resize'));
+      });
+      const m = await measureBar(page);
+      test.info().annotations.push({ type: 'fit 320 at 150 %', description: JSON.stringify(m) });
+      expect(plain(m.text)).toMatch(/^R \d+,\d mm · \d+ g \| L \d+,\d mm · \d+ g$/);
+      expect(m.thumb).toBe(false);
+      await expect(page.locator('#summary-bar')).toHaveClass(/bar-wrap/);
+      expect(m.need).toBeLessThanOrEqual(m.have + 0.5);
+      expect(m.right).toBeLessThanOrEqual(320);
+      // (No page scrollWidth check here: at 150 % other page content may reflow wider; this test is the bar.)
     });
 
     // 03-LC MINOR 6: with a 'Vorher (A):' / 'Nachher (B):' prefix the label must not wrap next to the
@@ -810,38 +870,14 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
       await settledCompare(page);
       await page.locator('input[name=material][value=idx174]').check();
       await settledView(page);
-      const measure = () =>
-        page.evaluate(() => {
-          const bar = document.getElementById('summary-bar');
-          const label = document.getElementById('summary-bar-label');
-          const v = document.getElementById('summary-bar-values');
-          const r = document.createRange();
-          r.selectNodeContents(label);
-          const tops = [...r.getClientRects()].map((x) => Math.round(x.top));
-          const rv = document.createRange();
-          rv.selectNodeContents(v);
-          return {
-            label: label.textContent,
-            labelLines: new Set(tops).size,
-            need: rv.getBoundingClientRect().width,
-            have: v.clientWidth,
-            barH: bar.getBoundingClientRect().height,
-            thumb: !document.getElementById('bar-view-slot').hidden,
-            sw: document.documentElement.scrollWidth,
-          };
-        });
       for (const which of ['b', 'a']) {
         await page.locator(`#cmp-show input[name=cmp-show][value=${which}]`).check();
         await settledView(page);
         await barShown(page);
-        const m = await measure();
+        const m = await measureBar(page);
         test.info().annotations.push({ type: `bar 320 ${which}`, description: JSON.stringify(m) });
         expect(plain(m.label)).toMatch(which === 'b' ? /^Nachher \(B\): / : /^Vorher \(A\): /);
-        expect(m.thumb, 'thumbnail kept').toBe(true);
-        expect(m.labelLines, 'label on one line').toBe(1);
-        expect(m.need).toBeLessThanOrEqual(m.have + 0.5);
-        expect(m.barH).toBeLessThanOrEqual(59.6);
-        expect(m.sw).toBe(320);
+        expectBarRule(m);
       }
     });
   });
