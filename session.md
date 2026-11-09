@@ -252,5 +252,19 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - Deferred to phase 4: m7 (the Simple page is 8 771 px long at 360 px); a "very thick" note for 40–58 mm edges.
 - A-IN-07 (VoiceOver table semantics) and Safari's caching of failed imports are unverified.
 
+### Done (added 2026-11-09, later)
+- **First deploy failed.** CI run 42573586930 for 2bd6783 had 8 e2e failures, so nothing was deployed.
+  - Cause: the runner uses DejaVu Sans, 10–20 % wider than the local font. That exposed three layout bugs: callouts dropped at 360 px, a 1 px overlap with the keyboard hint, and bar numbers clipped at 320 px.
+  - Fix in 03-CI-FIX.md (3ab3fc2 … 10ddba3). Reproduced in `mcr.microsoft.com/playwright:v1.65.0-noble` plus DejaVu.
+- **Second push** (`2bd6783..10ddba3`, approved by the user): CI run 42682803647 passed build, deploy and verify-live. **Phase 3 is live at 10ddba3.**
+- **Live e2e:** 565 passed / 1 failed. The failure is the known `layout.spec.js:302` race; it passed 12 of 12 when re-run alone.
+- **Live MCP matrix at 412 px:** all states fine, memory flat (21/6/11) over 20 edits, no console errors.
+
+### Open items (added 2026-11-09, later)
+- **Pixel 7 Pro measurement (03-17 Task 3, items i–ix): the user is doing it on 2026-11-10.** Pass criteria: 3D update ≤ 200 ms median; ENG-09 (c) with compare ≤ 100 ms per edit; orbit ≤ 16,7 ms per frame. If the thumbnail guard trips on the phone, the thumbnail is off and the bar is text only.
+- Logged in deferred-items.md:
+  - `worker.spec.js:331` fails under heavy load;
+  - at 320 px with 150 % text size and DejaVu, the page is 345 px wide.
+
 ### Next step
-Deploy green → live checks → the user's Pixel 7 Pro measurement → VIZ-06 → gsd-verifier → phase complete → /gsd-secure-phase 3.
+User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
