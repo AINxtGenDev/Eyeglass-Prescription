@@ -410,6 +410,51 @@ legend {
   display: inline;
 }
 
+/* Input boxes line up on the right edge of their field (user request 2026-11-09): label left,
+   box right on the same row. The label keeps at least 10rem; when that and the box do not fit
+   side by side, the box wraps to the next line, still on the right edge. Tips, hints, echoes and
+   errors follow on full-width rows below. */
+.field:has(> input[type='text'], > select, > .input-group) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.field:has(> input[type='text'], > select, > .input-group) > * {
+  flex: 1 1 100%;
+  order: 1;
+}
+
+.field:has(> input[type='text'], > select, > .input-group) > .term {
+  flex: 1 1 10rem;
+  order: 0;
+  flex-wrap: nowrap;
+}
+
+.field:has(> input[type='text'], > select, > .input-group) > :is(input[type='text'], select, .input-group) {
+  flex: 0 0 auto;
+  order: 0;
+  margin-inline-start: auto;
+}
+
+/* Short numbers (52, 3,0, 1,600) fit in 7,5rem; the stamp ('52□18 140') keeps more room. */
+.field > input[type='text'] {
+  width: 7.5rem;
+}
+
+.field > #frame-stamp {
+  width: 11rem;
+}
+
+/* In the three-column A/B/DBL row the label goes on top and the box below it, on the
+   column's right edge. */
+@container frame (width >= 760px) {
+  .frame-dims .field:has(> input[type='text']) > .term {
+    flex-basis: 100%;
+  }
+}
+
 .field-hint {
   margin: 0;
   color: var(--muted);
@@ -550,7 +595,9 @@ legend {
   gap: var(--space-2);
 }
 
-@container frame (width >= 400px) {
+/* Three columns only when each label fits on one line beside nothing (user request 2026-11-09:
+   right-aligned boxes; below this the rows put label left, box right). */
+@container frame (width >= 760px) {
   .frame-dims {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1554,11 +1601,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
   gap: var(--space-2);
 }
 
-@media (min-width: 480px) {
-  .gs-min {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+/* .gs-min stays one column (user request 2026-11-09): every input box on the same right edge. */
 
 /* 02-11 Vorderfläche (MAT-05) inside the Glas-Einstellungen, and the [Expert] Randtiefe in the
    frame section (FRAME-02): same Expert surface as #glass-settings. */
