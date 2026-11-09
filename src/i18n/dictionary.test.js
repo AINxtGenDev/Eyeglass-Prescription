@@ -6,6 +6,7 @@ import { RX_CODES } from '../state/transpose.js';
 import { VAL_CODES } from '../state/validate.js';
 import { DIAGNOSTICS } from '../engine/diagnostics.js';
 import { MATERIALS } from '../engine/materials.js';
+import { BEVEL_RULES, BEVEL_RULE } from '../engine/rim.js';
 import { RX_PRESETS, FRAME_PRESETS } from '../state/presets.js';
 import { readFileSync } from 'node:fs';
 
@@ -499,5 +500,39 @@ describe('02-14 UX-01 term list (UI-SPEC Toggletips)', () => {
     const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
     expect(html).toMatch(new RegExp(`class="tip-btn"[^>]*\\s+aria-controls="tip-${id}"`));
     expect(html).toContain(`id="tip-${id}"`);
+  });
+});
+
+// 03-LC (lens-critic MINOR 5, A-IN-03): the bevel position is written out in words in the UI
+// ("bei einem Drittel der Randdicke von vorne"). These strings must name the fraction of the
+// engine's rule, BEVEL_RULES[BEVEL_RULE] (rim.js), so a rule change cannot leave them stale.
+describe('bevel wording follows BEVEL_RULES[BEVEL_RULE] (A-IN-03)', () => {
+  /** de-AT wording per apex fraction from the front (rim.js BEVEL_RULES values). */
+  const WORDING = new Map([
+    [1 / 3, 'einem Drittel der Randdicke von vorne'],
+    [1 / 2, 'der Hälfte der Randdicke'],
+    [0, 'an der Vorderkante'],
+  ]);
+  const fraction = BEVEL_RULES[BEVEL_RULE];
+  const phrase = WORDING.get(fraction);
+
+  test('every rule has a wording; the current rule is one third from the front', () => {
+    for (const v of Object.values(BEVEL_RULES)) expect(WORDING.has(v), `wording for ${v}`).toBe(true);
+    expect(fraction).toBe(1 / 3);
+  });
+
+  test('frame.rim.bevel and disclaimer.body name the current fraction', () => {
+    expect(dict['frame.rim.bevel']).toContain(phrase);
+    expect(dict['disclaimer.body']).toContain(phrase);
+  });
+
+  test('view.protrusion.* and every other string: no other rule, and any "Drittel" is the current phrase', () => {
+    const others = [...WORDING].filter(([v]) => v !== fraction).map(([, w]) => w);
+    const protrusion = Object.keys(dict).filter((k) => k.startsWith('view.protrusion.'));
+    expect(protrusion.length).toBeGreaterThan(0);
+    for (const [key, s] of Object.entries(dict)) {
+      for (const w of others) expect(s.includes(w), `${key} names another bevel rule (${w})`).toBe(false);
+      if (s.includes('Drittel')) expect(s, key).toContain(phrase);
+    }
   });
 });
