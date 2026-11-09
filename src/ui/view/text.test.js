@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { evaluateLens } from '../../engine/evaluate.js';
 import { frameOutline } from '../../engine/frame/outline.js';
 import { bevelSplit, frontLeadMm } from '../../engine/rim.js';
-import { protrusionLines, protrusionKind, ariaGlass, PROTRUSION_FLUSH_MM } from './text.js';
+import { protrusionLines, protrusionCompareLines, protrusionKind, ariaGlass, PROTRUSION_FLUSH_MM } from './text.js';
 
 const FRAME = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
 const spec = (o) => ({
@@ -103,6 +103,26 @@ describe('D-19/D-29 view text (03-11)', () => {
     ];
     for (const [t, D] of pairs) expect(protrusionKind(t, D).kind, `${t}/${D}`).toBe(rule(t, D));
     expect(protrusionKind(4.6, 10).kind).toBe('none');
+  });
+
+  // lens-critic M2 (03-LC): during a comparison the block shows the compared eye only, one
+  // 'Vorher (A):' and one 'Nachher (B):' pair from the same rule; A still computing → B only.
+  test('comparison: Vorher (A) and Nachher (B) lines for the compared eye (M2)', () => {
+    const d = { rimDepthMm: 3, rimAssumed: true };
+    const p = protrusionCompareLines({ A: { etMax: 4.597, lead: 0.515 }, B: { etMax: 3.6, lead: 0.02 } }, d);
+    expect(p.lines).toEqual([
+      `Vorher (A): Glasrand hinten 1,6${NB}mm aus der Fassung, vorne bündig`,
+      // 3,6: apex 1,2, back 3,6 − 1,2 − 1,5 = 0,9
+      `Nachher (B): Glasrand hinten 0,9${NB}mm aus der Fassung, vorne bündig`,
+    ]);
+    expect(p.leads).toEqual([`Vorher (A): Vorderfläche bis zu 0,5${NB}mm vor der Fassung`, 'Nachher (B): Vorderfläche nicht vor der Fassung']);
+    expect(p.title).toBe('Überstand am dicksten Glasrand');
+    expect(p.assumed).toBe(protrusionLines({ OD: { etMax: 1, lead: 0 }, OS: null }, d).assumed);
+    expect(p.bevel).toBe('Die Aufteilung nach vorne und hinten ist angenommen.');
+    const onlyB = protrusionCompareLines({ A: null, B: { etMax: 4.597, lead: 0.515 } }, d);
+    expect(onlyB.lines).toEqual([`Nachher (B): Glasrand hinten 1,6${NB}mm aus der Fassung, vorne bündig`]);
+    expect(onlyB.leads).toEqual([`Nachher (B): Vorderfläche bis zu 0,5${NB}mm vor der Fassung`]);
+    expect(protrusionCompareLines({ A: null, B: null }, d).lines).toEqual([]);
   });
 
   test('aria: the UI-SPEC example sentence exactly', () => {

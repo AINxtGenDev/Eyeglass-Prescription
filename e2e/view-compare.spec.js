@@ -387,3 +387,48 @@ for (const vp of [
     });
   });
 }
+
+// ---- 03-LC lens-critic M2: #view-protrusion during a comparison ----
+// While comparing, the block shows only the compared eye: one 'Vorher (A):' pair and one
+// 'Nachher (B):' pair, each from the same engine rule (bevelSplit, frontLeadMm) as the Expert rim
+// lines. The Expert rim lines follow the painted main result, so A's are read before the start
+// (A = that configuration, frozen) and B's after the material change.
+test('M2 protrusion block: Vorher (A) and Nachher (B) lines equal the Expert rim lines of A and B', async ({ page }, testInfo) => {
+  desktopOnly(testInfo);
+  test.setTimeout(150_000);
+  await settledView(page);
+  await expertOn(page);
+  const rim = async (eyeId) => ({
+    edge: plain(await page.locator(`#frame-rim-result-${eyeId}`).textContent()),
+    lead: plain(await page.locator(`#frame-rim-lead-${eyeId}`).textContent()),
+  });
+  const before = { od: await rim('od'), os: await rim('os') };
+  await comparisonOn(page);
+  const c = await info(page);
+  const eyeId = c.eye.toLowerCase();
+  const rimA = before[eyeId];
+  const rimB = await rim(eyeId);
+  const mm = (s) => plain(s).match(/(\d+,\d) mm/g) ?? [];
+  expect(mm(rimB.edge), 'A and B differ (CR-39 against 1,74)').not.toEqual(mm(rimA.edge));
+  const block = page.locator('#view-protrusion');
+  await expect(block).toBeVisible();
+  const lines = (await block.locator('p:not(.view-protrusion-title):not(.small)').allTextContents()).map(plain).filter((s) => s !== '');
+  test.info().annotations.push({ type: 'M2 block', description: JSON.stringify({ lines, rimA, rimB }) });
+  expect(lines).toHaveLength(4);
+  const [edgeA, leadA, edgeB, leadB] = lines;
+  expect(edgeA).toMatch(/^Vorher \(A\): Glasrand /);
+  expect(leadA).toMatch(/^Vorher \(A\): Vorderfläche /);
+  expect(edgeB).toMatch(/^Nachher \(B\): Glasrand /);
+  expect(leadB).toMatch(/^Nachher \(B\): Vorderfläche /);
+  expect(mm(edgeA), 'A edge = Expert rim line of A').toEqual(mm(rimA.edge));
+  expect(mm(leadA), 'A lead = Expert lead line of A').toEqual(mm(rimA.lead));
+  expect(mm(edgeB), 'B edge = Expert rim line of B').toEqual(mm(rimB.edge));
+  expect(mm(leadB), 'B lead = Expert lead line of B').toEqual(mm(rimB.lead));
+  // No 'Rechts:' / 'Links:' line for the other eye while comparing.
+  expect(lines.some((s) => /^(Rechts|Links):/.test(s))).toBe(false);
+  // End: back to one pair per eye.
+  await page.locator('#cmp-end').click();
+  await settledView(page);
+  await expect(page.locator('#view-protrusion-od')).toHaveText(/^Rechts: Glasrand /);
+  await expect(page.locator('#view-protrusion-os')).toHaveText(/^Links: Glasrand /);
+});

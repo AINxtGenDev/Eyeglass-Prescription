@@ -40,13 +40,32 @@ export function protrusionKind(etMax, rimDepthMm) {
  * @returns {{ title: string, lines: string[], leads: string[], assumed: string | null, bevel: string }}
  *   lines / leads in eye order (OD first); assumed null when the rim depth is the user's own value
  */
-export function protrusionLines(eyes, { rimDepthMm, rimAssumed }) {
+export function protrusionLines(eyes, display) {
+  return block(
+    EYES.filter((e) => eyes[e]).map((e) => [t(PROTRUSION_EYE[e]), eyes[e]]),
+    display,
+  );
+}
+
+/**
+ * lens-critic M2 (03-LC): the block during a comparison, for the compared eye only: a 'Vorher (A)'
+ * pair and a 'Nachher (B)' pair (labels = the comparison table headings cmp.cfg.col.*), same rule.
+ * @param {{ A: { etMax: number, lead: number } | null, B: { etMax: number, lead: number } | null }} cfg
+ *   null = not computed (A while it is still computing: only the B pair)
+ * @param {{ rimDepthMm: number, rimAssumed: boolean }} display
+ */
+export function protrusionCompareLines(cfg, display) {
+  const rows = [];
+  if (cfg.A) rows.push([t('cmp.cfg.col.a'), cfg.A]);
+  if (cfg.B) rows.push([t('cmp.cfg.col.b'), cfg.B]);
+  return block(rows, display);
+}
+
+/** @param {[string, { etMax: number, lead: number }][]} rows label + values, in display order */
+function block(rows, { rimDepthMm, rimAssumed }) {
   const lines = [];
   const leads = [];
-  for (const e of EYES) {
-    const v = eyes[e];
-    if (!v) continue;
-    const eye = t(PROTRUSION_EYE[e]);
+  for (const [eye, v] of rows) {
     const { kind, front, back } = protrusionKind(v.etMax, rimDepthMm);
     lines.push(t(`view.protrusion.${kind}`, { eye, front: fmtMm(front), back: fmtMm(back) }));
     leads.push(

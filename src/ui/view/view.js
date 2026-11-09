@@ -78,7 +78,7 @@ import { boxingCentreX, FRAME_FACE_MM, TEMPLE_DEFAULT_MM, TEMPLE_RANGE_MM } from
 import { bevelSplit, frontLeadMm } from '../../engine/rim.js';
 import { frameOutline } from '../../engine/frame/outline.js';
 import { cardStrings } from '../results.js';
-import { protrusionLines, ariaGlass } from './text.js';
+import { protrusionLines, protrusionCompareLines, ariaGlass } from './text.js';
 import { createScene } from './scene.js';
 import { createLensSlots } from './lenses.js';
 import { createHeat } from './heat.js';
@@ -675,37 +675,55 @@ function mount({ slot }) {
 
   /** Protrusion block (D-19): memo key of the last painted state. */
   let protrusionKey = null;
-  const leadMemo = { OD: { key: null, value: NaN }, OS: { key: null, value: NaN } };
+  const leadMemo = { OD: { key: null, value: NaN }, OS: { key: null, value: NaN }, A: { key: null, value: NaN } };
+  /** etMax and the front-surface lead (frontLeadMm, memoised per slot) of one result, or null. */
+  function protrusionOf(slot, eye, result, frameSpec, rim) {
+    if (!result?.ok || !frameSpec) return null;
+    const { shape, A, B } = frameSpec;
+    const key = JSON.stringify([result.surfaces, shape, A, B, eye, rim]);
+    if (leadMemo[slot].key !== key) {
+      leadMemo[slot] = { key, value: frontLeadMm(result.surfaces, frameOutline(shape, A, B, eye), rim).value };
+    }
+    return { etMax: result.metrics.etMax.value, lead: leadMemo[slot].value };
+  }
+  /**
+   * lens-critic M2 (03-LC): while comparing, only the compared eye, as a 'Vorher (A)' pair (A's
+   * result and frame from the compare input; left out while A computes) and a 'Nachher (B)' pair,
+   * in the OD and OS paragraphs in that order. Outside a comparison one pair per computed eye.
+   */
   function paintProtrusion() {
     const disp = last?.display;
     const rim = disp?.rimDepthMm;
-    const eyes = { OD: null, OS: null };
-    if (rim > 0) {
-      for (const eye of SLOTS) {
-        const e = last.eyes[eye];
-        if (!e?.result?.ok || !e.frame) continue;
-        const { shape, A, B } = e.frame;
-        const key = JSON.stringify([e.result.surfaces, shape, A, B, rim]);
-        if (leadMemo[eye].key !== key) {
-          leadMemo[eye] = { key, value: frontLeadMm(e.result.surfaces, frameOutline(shape, A, B, eye), rim).value };
-        }
-        eyes[eye] = { etMax: e.result.metrics.etMax.value, lead: leadMemo[eye].value };
-      }
+    const has = rim > 0;
+    /** @type {[string, { etMax: number, lead: number } | null][]} */
+    let rows;
+    if (cmp) {
+      const eye = cmp.eye;
+      const a = has ? protrusionOf('A', eye, cmp.A?.[eye], cmp.specA?.[eye]?.frame, rim) : null;
+      const b = has ? protrusionOf(eye, eye, last.eyes[eye]?.result, last.eyes[eye]?.frame, rim) : null;
+      rows = [['A', a], ['B', b]];
+    } else {
+      rows = SLOTS.map((eye) => [eye, has ? protrusionOf(eye, eye, last?.eyes[eye]?.result, last?.eyes[eye]?.frame, rim) : null]);
     }
-    const key = JSON.stringify([eyes, rim, disp?.rimAssumed]);
+    const key = JSON.stringify([rows, rim, disp?.rimAssumed]);
     if (key === protrusionKey) return;
     protrusionKey = key;
-    const any = eyes.OD !== null || eyes.OS !== null;
-    $('view-protrusion').hidden = !any;
-    if (!any) return;
-    const p = protrusionLines(eyes, { rimDepthMm: rim, rimAssumed: disp.rimAssumed !== false });
+    const shown = rows.filter(([, v]) => v !== null);
+    $('view-protrusion').hidden = shown.length === 0;
+    if (shown.length === 0) return;
+    const display = { rimDepthMm: rim, rimAssumed: disp.rimAssumed !== false };
+    const p = cmp
+      ? protrusionCompareLines({ A: rows[0][1], B: rows[1][1] }, display)
+      : protrusionLines({ OD: rows[0][1], OS: rows[1][1] }, display);
+    // The lines come in row order without the empty rows: outside a comparison each eye keeps its
+    // own paragraphs (a blocked OD leaves the OD pair empty); while comparing they fill from the top.
     let i = 0;
-    for (const eye of SLOTS) {
-      const has = eyes[eye] !== null;
-      setText(`view-protrusion-${eye.toLowerCase()}`, has ? p.lines[i] : '');
-      setText(`view-protrusion-lead-${eye.toLowerCase()}`, has ? p.leads[i] : '');
-      if (has) i++;
-    }
+    SLOTS.forEach((eye, slot) => {
+      const fill = cmp ? slot < p.lines.length : rows[slot][1] !== null;
+      setText(`view-protrusion-${eye.toLowerCase()}`, fill ? p.lines[i] : '');
+      setText(`view-protrusion-lead-${eye.toLowerCase()}`, fill ? p.leads[i] : '');
+      if (fill) i++;
+    });
     setText('view-protrusion-assumed', p.assumed ?? '');
     setText('view-protrusion-bevel', p.bevel);
   }
@@ -1210,7 +1228,6 @@ function mount({ slot }) {
   /** @param {ViewInputs} inputs */
   function update(inputs) {
     last = inputs;
-    paintProtrusion();
     if (attachedOnce) scheduleAria();
     /** slot → { item (without buffers), meta (with key) } */
     const want = {};
@@ -1268,6 +1285,8 @@ function mount({ slot }) {
         }
       }
     }
+    // After cmp (M2: the compared eye and A's result); before any mesh work, as before.
+    paintProtrusion();
     const f = frameFor(inputs);
     const disp = inputs.display;
     if (f && disp) {
