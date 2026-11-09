@@ -676,6 +676,36 @@ test.describe('VIZ-03 protrusion as text (03-11)', () => {
   });
 });
 
+// 03-LC MINOR 8: evidence for a plus lens. With Sph +6 the front surface stands well ahead of the
+// rim; in Seite the protrusion text says so (> 4 mm) with the same numbers as the Expert rim lines.
+test.describe('VIZ-03 plus lens in Seite (03-LC MINOR 8)', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('Sph +6: the front-lead text exceeds 4 mm and equals the Expert rim line', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('+6');
+    await settledView(page);
+    await go(page, 'side');
+    await frameRender(page);
+    expect(await ev(page, () => window.__eyeglassView.viewName())).toBe('side');
+    await expect(page.locator('#view-side-note')).toBeVisible();
+    await page.locator('#expert').check();
+    await expect(page.locator('#frame-rim-lead-od')).not.toHaveText('');
+    const seen = {};
+    for (const eye of ['od', 'os']) {
+      const lead = await plainText(page, `#view-protrusion-lead-${eye}`);
+      const rimLead = await plainText(page, `#frame-rim-lead-${eye}`);
+      seen[eye] = { lead, rimLead };
+      expect(lead).toMatch(/Vorderfläche bis zu \d+,\d mm vor der Fassung$/);
+      const v = Number(mmOf(lead).replace(',', '.'));
+      expect(v, `${eye} lead`).toBeGreaterThan(4);
+      expect(mmOf(lead), `${eye} lead = Expert rim line`).toBe(mmOf(rimLead));
+      expect(mmOf(await plainText(page, `#view-protrusion-${eye}`))).toBe(mmOf(await plainText(page, `#frame-rim-result-${eye}`)));
+    }
+    test.info().annotations.push({ type: 'plus Seite', description: JSON.stringify(seen) });
+  });
+});
+
 test.describe('VIZ-03 Seite note and fade (03-11)', () => {
   test.use({ reducedMotion: 'reduce' });
   test('side note names the eye, near temple faded, no new program', async ({ page }) => {
