@@ -178,7 +178,7 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 ### Next step
 `/clear`, then `/gsd-discuss-phase 3` (3D lenses and frame, thickness heatmap).
 
-## 2026-11-08 — Phase 3 execution (in progress)
+## 2026-11-08/09 — Phase 3 execution, review, push (in progress)
 
 ### Done
 - **03-01** bevel split + front-surface lead (`bevelSplit`, `frontLeadMm`; Expert rim lines). The '1:2' default is a deliberate change from Phase 2 (t = D now shows D/6 at the back). Phone check (chrome-devtools, 412 px): Randtiefe 3,0 → "hinten 1,6 mm, vorne bündig", lead 0,5 mm. Randtiefe 10 → "passt", no lead. No overflow, no console errors.
@@ -223,5 +223,34 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - For lens-critic: no on-lens callouts in split Dickenkarte at ≥ 360 px; sparse iso labels on phones (1 of 6); front lead text-only in Seite; #view-protrusion describes B during compare; 'Nachher (B):' bar prefix missing; camera stays on the heat pose after leaving Dickenkarte; layout.spec.js:302 flake (~1/16).
 - Pixel 7 Pro (03-17): re-mesh latency with the bar thumbnail visible, orbit frames, ENG-09 (c) with 3D + compare.
 
+### Done (added 2026-11-09)
+- **Code review** (two parallel reviewers, merged in 03-REVIEW.md): 1 critical and 11 warnings fixed (03-REVIEW-FIX.md). The no-WebGL state now hides the presets and `#view-keys` and marks the canvas aria-hidden (f52ac80).
+- **03-17 Task 1:**
+  - Gate at 7f44aef: 1787 unit tests, coverage 98,91 % statements, e2e 557 passed / 0 failed, view chunk 638 kB.
+  - MCP matrix at 412 px with 4× throttle: orbit median 16,7 ms; re-mesh 32–81 ms with the 3D view on screen, 23–29 ms with the bar visible.
+  - Memory 21/6/11, flat. Heap 24,9 MB.
+- **lens-critic result review: NEEDS WORK** (0 BLOCKER, 2 MAJOR, 14 MINOR), in 03-LENS-CRITIC-RESULT.md.
+- **Fixes from that review** (03-LC-FIX.md, 45781a1 … 11f5237):
+  - M2: the protrusion block shows labelled Vorher (A) / Nachher (B) lines while comparing. Checked by MCP at 412 px.
+  - The bar says "Nachher (B):".
+  - Thumbnail self-timing guard (amendment A5: 2 frames over 50 ms in a row turn it off).
+  - "3D drehen" scrolls the stage into view first.
+  - A "Seite neu laden" fallback after a second chunk failure.
+  - Tests: bevel wording; plus lens in Seite; a deterministic D-04(c) grid.
+- **M1:** a scan of 58 552 lenses showed the 0,01 mm tessellation bound fails above etMax ≈ 31 mm (worst 0,106 mm / 0,56 %). **The user accepted the restated bound** (≤ 0,01 mm, or ≤ 0,025 mm for nₑ < 1,49, up to etMax 31 mm; beyond that ≤ 0,11 mm or ≤ 0,6 %), recorded in 03-CONTEXT D-04(c).
+- **The user approved the push.** Fast-forward `bac1c38..2bd6783` to main (114 commits) is done; the deploy run 42573586930 started.
+
+### Open items (added 2026-11-09)
+- Deploy run 42573586930: confirm it is green and that the live HTML carries 2bd6783.
+- 03-17 Task 3:
+  - live e2e plus MCP matrix on the live URL;
+  - **Pixel 7 Pro measurement by the user.** Pass criteria: 3D update ≤ 200 ms median at 412 px with the bar thumbnail; orbit at about vsync; renderer memory flat over 20+ edits;
+  - then VIZ-06 Complete in REQUIREMENTS.md.
+- e2e flakes:
+  - `layout.spec.js:302` is a timing race in the test (1 500 ms profile delay); it also fails on the baseline, 3 of 8 runs.
+  - `worker.spec.js:331` failed once under full-suite load.
+- Deferred to phase 4: m7 (the Simple page is 8 771 px long at 360 px); a "very thick" note for 40–58 mm edges.
+- A-IN-07 (VoiceOver table semantics) and Safari's caching of failed imports are unverified.
+
 ### Next step
-Phase code review (two parallel reviewers), then 03-17 Task 1 (gate, trace, MCP matrix), lens-critic result review, push approval.
+Deploy green → live checks → the user's Pixel 7 Pro measurement → VIZ-06 → gsd-verifier → phase complete → /gsd-secure-phase 3.
