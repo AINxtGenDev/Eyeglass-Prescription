@@ -79,6 +79,15 @@ export function enableBarThumb() {
   fitThumb();
 }
 
+/**
+ * 03-LC (MINOR 3): the thumbnail is off for this session (view.js's self-timing guard): the slot is
+ * hidden and the bar is the phase-2 text bar again.
+ */
+export function disableBarThumb() {
+  $('bar-view-slot').hidden = true;
+  $('summary-bar').classList.remove('has-thumb', 'thumb-off');
+}
+
 const pair = (v) => (v ? t('bar.eye', { thick: v.thick, weight: v.weight }) : DASH);
 
 /**

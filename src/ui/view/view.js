@@ -113,7 +113,7 @@ import {
   fitBoxDistance,
   FOV_DEG,
 } from './camera-math.js';
-import { enableBarThumb } from '../summary-bar.js';
+import { enableBarThumb, disableBarThumb } from '../summary-bar.js';
 import { createCompare3d } from './compare3d.js';
 import { thickest } from '../../state/compare.js';
 
@@ -134,6 +134,18 @@ const KEYS_FADE_MS = 300;
 /** 03-15: the bar thumbnail is shown at 48 × 36 CSS px, a 4:3 crop (UI-SPEC Phone section). */
 const THUMB_CSS_W = 48;
 const THUMB_ASPECT = 4 / 3;
+/**
+ * 03-LC (lens-critic MINOR 3, amendment A5): self-timing guard. A thumbnail frame (pass + copy)
+ * longer than the long-task threshold, 50 ms (W3C Long Tasks API, https://www.w3.org/TR/longtasks-1/:
+ * "Long task refers to any of the following occurrences whose duration exceeds 50ms"), THUMB_SLOW_RUN
+ * times in a row turns the thumbnail off for the session; the bar keeps its text. Two in a row, so
+ * a single slow first frame (shader warm-up) does not count.
+ */
+const THUMB_SLOW_MS = 50;
+const THUMB_SLOW_RUN = 2;
+// Test-only (?thumbguardoff, read once like ?calloutsoff): the guard measures but never trips, so
+// the UX-03 thumbnail specs can still prove the thumbnail under SwiftShader (≈ 1 s per frame).
+const THUMB_GUARD_OFF = location.search.includes('thumbguardoff');
 /** Below the desktop breakpoint, the query of summary-bar.js NARROW (the bar exists only there). */
 const NARROW = '(max-width: 899.98px)';
 const RAD = Math.PI / 180;
@@ -271,9 +283,11 @@ function mount({ slot }) {
   let thumbDirty = false;
   /** Test-only thumbInfo() data of the last copy. */
   let thumbLast = null;
+  /** MINOR 3: slow thumbnail frames in a row, tripped = off for the session, the last frame's ms. */
+  const thumbGuard = { slowRun: 0, tripped: false, lastMs: null, frames: 0 };
   /** @param {boolean} [inRender] called right before a render that will carry it */
   function requestThumb(inRender = false) {
-    if (!thumbCanvas) return;
+    if (!thumbCanvas || thumbGuard.tripped) return;
     thumbDirty = true;
     view.requestThumb(inRender);
   }
@@ -810,6 +824,7 @@ function mount({ slot }) {
    * keystroke frame; the wanted thumbnail waits in scene.js and the attach of that job carries it).
    */
   function thumbSpec() {
+    if (thumbGuard.tripped) return null;
     if (!narrowMq.matches || barEl.hidden || barEl.classList.contains('thumb-off') || contextLost || !attachedOnce || controls.busy()) return null;
     if (outstanding !== null) return null;
     const ctx = cameraCtx();
@@ -854,9 +869,17 @@ function mount({ slot }) {
       // A4 (03-16): no backdrop in the thumbnail pass (eye chart, and the contact shadow, which the
       // front pose sees as a grey strip along the bottom edge): the glasses on the plain background.
       hide: [chart.mesh, shadow.mesh],
-      onCopy(spec) {
-        if (!thumbLast) enableBarThumb();
+      onCopy(spec, ms) {
         thumbDirty = false;
+        thumbGuard.frames++;
+        thumbGuard.lastMs = ms;
+        thumbGuard.slowRun = ms > THUMB_SLOW_MS ? thumbGuard.slowRun + 1 : 0;
+        if (!THUMB_GUARD_OFF && thumbGuard.slowRun >= THUMB_SLOW_RUN) {
+          thumbGuard.tripped = true;
+          disableBarThumb();
+          return;
+        }
+        if (!thumbLast) enableBarThumb();
         const lensWidthPx = { OD: null, OS: null };
         for (const [eye, b] of Object.entries(spec.boxes)) lensWidthPx[eye] = thumbWidthPx(spec, b);
         thumbLast = { lensWidthPx, renderViewports: compare3d.lastViewports(), src: { ...spec.src } };
@@ -864,7 +887,7 @@ function mount({ slot }) {
     });
     // A thumbnail asked for while the bar was hidden (or on a wide screen) is made when it shows.
     const reask = () => {
-      if (thumbDirty && narrowMq.matches && !barEl.hidden && !barEl.classList.contains('thumb-off')) view.requestThumb();
+      if (thumbDirty && !thumbGuard.tripped && narrowMq.matches && !barEl.hidden && !barEl.classList.contains('thumb-off')) view.requestThumb();
     };
     new MutationObserver(reask).observe(barEl, { attributes: true, attributeFilter: ['hidden', 'class'] });
     narrowMq.addEventListener('change', reask);
@@ -1436,6 +1459,8 @@ function mount({ slot }) {
         renderViewports: thumbLast ? thumbLast.renderViewports.map((v) => ({ ...v })) : [],
         mainViewports: compare3d.lastViewports(),
         src: thumbLast ? { ...thumbLast.src } : null,
+        // MINOR 3: the self-timing guard (off = ?thumbguardoff).
+        guard: { ...thumbGuard, thresholdMs: THUMB_SLOW_MS, run: THUMB_SLOW_RUN, off: THUMB_GUARD_OFF },
       };
     },
     /** 03-15 test-only: copy a thumbnail with the next render that allows it. */

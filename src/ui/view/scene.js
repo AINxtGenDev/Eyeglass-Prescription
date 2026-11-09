@@ -141,7 +141,7 @@ export function createScene(canvas, stage) {
     passes++;
     pass();
   };
-  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any) => void, hide?: import('three').Object3D[] }} */
+  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any, ms: number) => void, hide?: import('three').Object3D[] }} */
   let thumb = null;
   let thumbWanted = false;
   const thumbStats = { copies: 0, passesPerThumbFrame: 0 };
@@ -167,6 +167,9 @@ export function createScene(canvas, stage) {
    */
   function thumbFrame(spec) {
     const p0 = passes;
+    // 03-LC (MINOR 3): wall time of the thumbnail pass + copy (drawImage of the WebGL canvas waits
+    // for the GPU), handed to onCopy for view.js's self-timing guard.
+    const t0 = performance.now();
     savedPos.copy(camera.position);
     savedQuat.copy(camera.quaternion);
     camera.position.set(spec.position.x, spec.position.y, spec.position.z);
@@ -189,7 +192,7 @@ export function createScene(canvas, stage) {
       camera.quaternion.copy(savedQuat);
       camera.updateMatrixWorld();
     }
-    thumb.onCopy(spec);
+    thumb.onCopy(spec, performance.now() - t0);
     runPass();
     thumbStats.passesPerThumbFrame = passes - p0;
   }

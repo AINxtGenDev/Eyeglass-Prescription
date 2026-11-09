@@ -583,6 +583,16 @@ async function expectPlainThumb(page) {
   expect(px.bgL - px.minL, 'rims darker than the background').toBeGreaterThan(100);
 }
 const camKey = (c) => [c.position.x, c.position.y, c.position.z, c.target.x, c.target.y, c.target.z].join();
+/**
+ * 03-LC (MINOR 3, A5): headless Chromium renders on SwiftShader (≈ 1 s per thumbnail frame), so
+ * the self-timing guard turns the thumbnail off after two frames. The specs that prove the
+ * thumbnail itself load the page with ?thumbguardoff (the guard measures but never trips).
+ */
+async function thumbPage(page) {
+  await settledView(page); // guardPage's first load finishes before the next navigation
+  await page.goto('./?thumbguardoff');
+  await settledView(page);
+}
 /** Scroll to the top (the Rx fields; the result cards out of view) and wait for the bar. */
 async function barShown(page) {
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -594,7 +604,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
 
   test('UX-03 lens view stays visible while editing', async ({ page }) => {
     test.setTimeout(90_000);
-    await settledView(page);
+    await thumbPage(page);
     await barShown(page);
     await page.locator('#rx-od-sph').focus();
     await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(0);
@@ -629,7 +639,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
     test.setTimeout(90_000);
     await settledView(page); // the first load finishes before the reload (no aborted request)
     const gate = await holdMeshWorker(page);
-    await page.reload();
+    await page.goto('./?thumbguardoff');
     await settledView(page);
     await barShown(page);
     await page.locator('#rx-od-sph').focus();
@@ -655,7 +665,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
     test.setTimeout(90_000);
     await settledView(page); // the first load finishes before the reload (no aborted request)
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.reload();
+    await page.goto('./?thumbguardoff');
     await settledView(page);
     // Stage at the top of the viewport: fully on screen ('3D drehen' needs ≥ 50 %) and the result
     // cards above it out of view, so the bar shows.
@@ -690,7 +700,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
 
     test('UX-03 split crop keeps the layout (MINOR 5)', async ({ page }) => {
       test.setTimeout(180_000);
-      await settledView(page);
+      await thumbPage(page);
       await page.locator('#cmp-start').click();
       await settledCompare(page);
       await page.locator('input[name=material][value=idx174]').check();
@@ -733,7 +743,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
 
     test('UX-03 the values are never clipped next to the thumbnail (03-15)', async ({ page }) => {
       test.setTimeout(90_000);
-      await settledView(page);
+      await thumbPage(page);
       await barShown(page);
       // The longest realistic line: two-digit mm and g on both eyes.
       for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('-12');
@@ -760,7 +770,7 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
     // thumbnail (03-15 rule: the thumbnail steps aside rather than the bar growing or clipping).
     test('MINOR 6 the prefixed bar label never wraps next to the thumbnail', async ({ page }) => {
       test.setTimeout(150_000);
-      await settledView(page);
+      await thumbPage(page);
       await barShown(page);
       await page.locator('#rx-od-sph').focus();
       await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(0);
@@ -795,12 +805,47 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
         const m = await measure();
         test.info().annotations.push({ type: `bar 320 ${which}`, description: JSON.stringify(m) });
         expect(plain(m.label)).toMatch(which === 'b' ? /^Nachher \(B\): / : /^Vorher \(A\): /);
+        expect(m.thumb, 'thumbnail kept').toBe(true);
         expect(m.labelLines, 'label on one line').toBe(1);
         expect(m.need).toBeLessThanOrEqual(m.have + 0.5);
         expect(m.barH).toBeLessThanOrEqual(59.6);
         expect(m.sw).toBe(320);
       }
     });
+  });
+
+  // 03-LC MINOR 3 (A5): the guard as shipped. SwiftShader takes far longer than 50 ms per
+  // thumbnail frame, so after two of them the thumbnail is off for the session: the slot hidden,
+  // the bar the phase-2 text bar, no further copy on edits.
+  test('MINOR 3 thumbnail guard: two slow thumbnail frames turn the thumbnail off', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await barShown(page);
+    await page.locator('#rx-od-sph').focus();
+    const guard = async () => (await thumbInfo(page)).guard;
+    await expect.poll(async () => (await guard()).frames).toBeGreaterThan(0);
+    for (const v of ['-2,5', '-3']) {
+      await page.locator('#rx-od-sph').fill(v);
+      await settledView(page);
+    }
+    await expect.poll(async () => (await guard()).tripped).toBe(true);
+    const g = await guard();
+    test.info().annotations.push({ type: 'guard', description: JSON.stringify(g) });
+    expect(g).toMatchObject({ tripped: true, thresholdMs: 50, run: 2, off: false });
+    expect(g.frames).toBe(2);
+    expect(g.lastMs).toBeGreaterThan(50);
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await expect(page.locator('#bar-view-slot')).toBeHidden();
+    await expect(page.locator('#summary-bar')).not.toHaveClass(/has-thumb/);
+    expect(plain(await page.locator('#summary-bar-values').textContent())).toMatch(/^R \d+,\d mm · \d+ g \| L \d+,\d mm · \d+ g$/);
+    // Off for the session: another edit and an explicit request copy nothing.
+    const c0 = (await thumbInfo(page)).copies;
+    await page.locator('#rx-od-sph').fill('-3,5');
+    await settledView(page);
+    await page.evaluate(() => window.__eyeglassView.requestThumb());
+    await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
+    expect((await thumbInfo(page)).copies).toBe(c0);
+    await expect(page.locator('#bar-view-slot')).toBeHidden();
   });
 
   test('UX-03 no WebGL: the thumbnail slot stays hidden', async ({ page }) => {
