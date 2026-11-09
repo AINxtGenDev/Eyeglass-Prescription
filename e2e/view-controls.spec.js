@@ -533,33 +533,56 @@ test.describe('VIZ-03 touch path (03-10)', () => {
     expect(await touchAction(page)).toContain('pan-y');
   });
 
-  // B-WR-07 (code review): with less than half of the stage on screen '3D drehen' does not switch
-  // on (the observer fires only on a 0,5 crossing, so it could never switch off again from there).
-  test('B-WR-07 3D drehen stays off while less than half of the stage is visible', async ({ page }) => {
-    test.setTimeout(90_000);
-    await settledView(page);
-    await stageCentre(page);
-    // Scroll so that only the bottom ≈ 40 % of the stage is in the viewport (the toggle below it is).
-    const ratio = await ev(page, async () => {
+  // B-WR-07 (code review) + 03-LC MINOR 4: with less than half of the stage on screen, '3D drehen'
+  // first scrolls the stage into view (block 'nearest'; instant under reduced motion) and then
+  // switches on, instead of silently refusing. It never switches on with the stage under half
+  // visible (from there no 0,5 crossing would ever switch it off again).
+  /** Scroll so that only the bottom ≈ 40 % of the stage is in the viewport (the toggle below it is). */
+  const stageMostlyAbove = (page) =>
+    ev(page, async () => {
       const st = document.getElementById('view-stage');
       const r = st.getBoundingClientRect();
-      window.scrollTo(0, window.scrollY + r.top + 0.6 * r.height);
+      window.scrollTo({ top: window.scrollY + r.top + 0.6 * r.height, behavior: 'instant' });
       await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, 50))));
       const r2 = st.getBoundingClientRect();
       return (Math.min(r2.bottom, window.innerHeight) - Math.max(r2.top, 0)) / r2.height;
     });
+  const stageRatio = (page) =>
+    ev(page, () => {
+      const r = document.getElementById('view-stage').getBoundingClientRect();
+      return (Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0)) / r.height;
+    });
+
+  test('B-WR-07 MINOR 4 3D drehen below half visibility scrolls the stage into view, then switches on', async ({ page }) => {
+    test.setTimeout(90_000);
+    await settledView(page);
+    await stageCentre(page);
+    const ratio = await stageMostlyAbove(page);
     expect(ratio).toBeGreaterThan(0.2);
     expect(ratio).toBeLessThan(0.5);
     await ev(page, () => document.getElementById('view-rotate').click());
-    await ev(page, () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 50))));
-    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false');
-    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(false);
-    expect(await touchAction(page)).toContain('pan-y');
-    // With the stage on screen again the toggle works.
-    await stageCentre(page);
-    await ev(page, () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 50))));
-    await rotate(page).tap();
     await expect(rotate(page)).toHaveAttribute('aria-pressed', 'true');
+    expect(await stageRatio(page), 'stage on screen after the tap').toBeGreaterThanOrEqual(0.99);
+    expect(await ev(page, () => window.__eyeglassView.rotateActive())).toBe(true);
+    expect(await touchAction(page)).toBe('none');
+    await expect(page.locator('#view-hint')).toHaveText(/./);
+    // Scrolling the stage out again still switches it off (the 0,5 crossing).
+    await stageMostlyAbove(page);
+    await expect(rotate(page)).toHaveAttribute('aria-pressed', 'false');
+    expect(await touchAction(page)).toContain('pan-y');
+  });
+
+  test.describe('without reduced motion', () => {
+    test.use({ reducedMotion: 'no-preference' });
+    test('MINOR 4 3D drehen with a smooth scroll switches on once the stage is in view', async ({ page }) => {
+      test.setTimeout(90_000);
+      await settledView(page);
+      await stageCentre(page);
+      expect(await stageMostlyAbove(page)).toBeLessThan(0.5);
+      await ev(page, () => document.getElementById('view-rotate').click());
+      await expect(rotate(page)).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
+      expect(await stageRatio(page)).toBeGreaterThanOrEqual(0.5);
+    });
   });
 
   test('VIZ-03 presets at rest', async ({ page }) => {

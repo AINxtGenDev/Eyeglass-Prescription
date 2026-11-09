@@ -12,7 +12,9 @@
 //   on the stage only; one finger rotates, two fingers dolly + pan, so enableZoom follows the toggle)
 //   and disconnect() restores ''. It turns off on a second tap or when less than 50 % of the stage
 //   is in the viewport (IntersectionObserver threshold 0.5), and it does not turn on while less
-//   than 50 % is visible (code review B-WR-07), so the canvas never traps scrolling.
+//   than 50 % is visible (code review B-WR-07), so the canvas never traps scrolling. A tap there
+//   scrolls the stage into view (block 'nearest', instant under reduced motion) and switches on
+//   once the observer sees ≥ 50 % (03-LC MINOR 4), instead of refusing silently.
 //   On a hybrid laptop the mouse also rotates only after '3D drehen'.
 // - Wheel (D-15 as amended): enableZoom is true only while #view-stage has focus. r187's wheel
 //   handler returns before preventDefault when enableZoom is false, so the page scrolls. A
@@ -34,6 +36,10 @@ import { presetPose, presetPoses, controlLimits, keyStep, easeInOutCubic, basisO
 
 const DAMPING = 0.08;
 const RAD = Math.PI / 180;
+/** MINOR 4: how long a tap below half visibility waits for its scroll to bring the stage in [BP]:
+ * longer than a browser smooth scroll (a few hundred ms), short enough that a later manual scroll
+ * does not switch on by surprise. */
+const SCROLL_ON_MS = 2000;
 
 /**
  * @param {{ camera: import('three').PerspectiveCamera, stage: HTMLElement,
@@ -256,12 +262,29 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
     button.hidden = false;
     setIcon();
     setText('view-hint', t('view.hint.touchOff'));
-    button.addEventListener('click', () => setActive(!active));
+    /**
+     * 03-LC (lens-critic MINOR 4): a tap below half visibility scrolls the stage into view first
+     * and switches on at the observer's next 0,5 crossing, if that comes before this deadline
+     * (performance.now() ms; 0 = none). Any other observer callback cancels it.
+     */
+    let onAfterScrollUntil = 0;
+    button.addEventListener('click', () => {
+      if (!active && ratio !== null && ratio < 0.5) {
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        onAfterScrollUntil = performance.now() + SCROLL_ON_MS;
+        stage.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+        return;
+      }
+      setActive(!active);
+    });
     new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           ratio = e.intersectionRatio;
+          const wanted = onAfterScrollUntil > performance.now();
+          onAfterScrollUntil = 0;
           if (active && ratio < 0.5) setActive(false);
+          else if (!active && wanted && ratio >= 0.5) setActive(true);
         }
       },
       { threshold: [0.5] },
