@@ -872,7 +872,7 @@ export function cardMaterial(currentId) {
  */
 function paintCards() {
   // Before the cards are painted, so every paintBar inside renderResult carries the prefix (M2).
-  setCardConfig(showA ? 'a' : null);
+  setCardConfig(cardConfigNow());
   for (const eye of EYES) {
     if (requested[eye] === null) continue;
     if (showA) {
@@ -899,9 +899,13 @@ function paintCards() {
   }
 }
 
+/** Which configuration the cards show, for the bar prefix: 'a' | 'b' (a comparison runs) | null. */
+const cardConfigNow = () => (showA && configA ? 'a' : configA ? 'b' : null);
+
 /** 'Variante vergleichen': freeze frame + material as A; the status is written before the focus. */
 function startConfigCompare() {
   configA = currentConfig();
+  setCardConfig(cardConfigNow()); // 03-LC MINOR 6: the cards stay on Nachher (B)
   setConfigActive(true);
   renderConfigCompare({ config: configA, A: undefined, B: {}, same: sameConfig() });
   $('cmp-diff').focus();

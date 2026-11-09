@@ -275,8 +275,9 @@ for (const vp of [
 }
 
 // RES-03, lens-critic M2 (02-17): while the cards show Vorher (A), the phone summary bar repeats
-// A's card strings, so it must say so ('Vorher (A):' before its label); Nachher and 'Vergleich
-// beenden' drop the prefix. The toggle is never switched for the user (WCAG 3.2.2 spirit).
+// A's card strings, so it must say so ('Vorher (A):' before its label). 03-LC MINOR 6: while a
+// comparison runs and the cards show Nachher (B), the bar says 'Nachher (B):'; 'Vergleich
+// beenden' drops the prefix. The toggle is never switched for the user (WCAG 3.2.2 spirit).
 const barLabel = async (page) => plain(await page.locator('#summary-bar-label').textContent());
 const barVals = async (page) => plain(await page.locator('#summary-bar-values').textContent());
 const cardBar = async (page) => {
@@ -294,7 +295,13 @@ test.describe('RES-03 summary bar marks Vorher (A), 360 × 780', () => {
 
   test('RES-03 summary bar: Vorher (A) prefix through toggle, frame edit and end', async ({ page }) => {
     await settledCompare(page);
+    await barInView(page);
+    expect(await barLabel(page)).toBe('Dickste Stelle · Gewicht');
     await compareWith174(page);
+    // MINOR 6: the comparison starts on Nachher (B), and the bar says so.
+    await barInView(page);
+    expect(await barLabel(page)).toBe('Nachher (B): Dickste Stelle · Gewicht');
+    expect(await barVals(page)).toBe(await cardBar(page));
     await showRadio(page, 'a').check();
     await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
     await barInView(page);
@@ -313,7 +320,7 @@ test.describe('RES-03 summary bar marks Vorher (A), 360 × 780', () => {
     await showRadio(page, 'b').check();
     await expect(page.locator('#result-od-title')).not.toContainText('Vorher');
     await barInView(page);
-    expect(await barLabel(page)).not.toContain('Vorher');
+    expect(await barLabel(page)).toMatch(/^Nachher \(B\): /);
     expect(await barVals(page)).toBe(await cardBar(page));
     expect(await barVals(page)).not.toBe(aBar);
 
@@ -322,7 +329,7 @@ test.describe('RES-03 summary bar marks Vorher (A), 360 × 780', () => {
     expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
     await page.locator('#cmp-end').click();
     await barInView(page);
-    expect(await barLabel(page)).not.toContain('Vorher');
+    expect(await barLabel(page)).toBe('Dickste Stelle · Gewicht');
     expect(await barVals(page)).toBe(await cardBar(page));
   });
 });
@@ -336,18 +343,23 @@ test.describe('RES-03 summary bar with the Vorher prefix, 320 × 640', () => {
   // the prefix, label on one line, bar below the 72 px scroll padding".
   test('RES-03 summary bar: the prefixed bar does not wrap and stays under the scroll padding', async ({ page }) => {
     await settledCompare(page);
-    await compareWith174(page);
     await barInView(page);
     const plainBox = await page.locator('#summary-bar').boundingBox();
+    await compareWith174(page);
+    const fits = async (re) => {
+      await barInView(page);
+      expect(await barLabel(page)).toMatch(re);
+      const box = await page.locator('#summary-bar').boundingBox();
+      const label = await page.locator('#summary-bar-label').boundingBox();
+      expect(Math.abs(box.height - plainBox.height), 'prefix adds no line').toBeLessThanOrEqual(1);
+      expect(label.height, 'label on one line (14 px × 1.4)').toBeLessThanOrEqual(20.6);
+      expect(box.height, 'bar below scroll-padding-bottom').toBeLessThan(72);
+    };
+    // MINOR 6: 'Nachher (B):' is one character longer than 'Vorher (A):'.
+    await fits(/^Nachher \(B\): /);
     await showRadio(page, 'a').check();
     await expect(page.locator('#result-od-thick')).toHaveText(/^4,6\smm$/);
-    await barInView(page);
-    expect(await barLabel(page)).toMatch(/^Vorher \(A\): /);
-    const box = await page.locator('#summary-bar').boundingBox();
-    const label = await page.locator('#summary-bar-label').boundingBox();
-    expect(Math.abs(box.height - plainBox.height), 'prefix adds no line').toBeLessThanOrEqual(1);
-    expect(label.height, 'label on one line (14 px × 1.4)').toBeLessThanOrEqual(20.6);
-    expect(box.height, 'bar below scroll-padding-bottom').toBeLessThan(72);
+    await fits(/^Vorher \(A\): /);
   });
 });
 

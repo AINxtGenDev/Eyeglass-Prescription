@@ -755,6 +755,52 @@ test.describe('UX-03 bar thumbnail (03-15)', () => {
       // Not taller than the phase-2 text bar (59,6 px: 8 px padding, 19,6 px label, 24 px values).
       expect(fit.barH).toBeLessThanOrEqual(59.6);
     });
+
+    // 03-LC MINOR 6: with a 'Vorher (A):' / 'Nachher (B):' prefix the label must not wrap next to the
+    // thumbnail (03-15 rule: the thumbnail steps aside rather than the bar growing or clipping).
+    test('MINOR 6 the prefixed bar label never wraps next to the thumbnail', async ({ page }) => {
+      test.setTimeout(150_000);
+      await settledView(page);
+      await barShown(page);
+      await page.locator('#rx-od-sph').focus();
+      await expect.poll(async () => (await thumbInfo(page)).copies).toBeGreaterThan(0);
+      await page.locator('#cmp-start').click();
+      await settledCompare(page);
+      await page.locator('input[name=material][value=idx174]').check();
+      await settledView(page);
+      const measure = () =>
+        page.evaluate(() => {
+          const bar = document.getElementById('summary-bar');
+          const label = document.getElementById('summary-bar-label');
+          const v = document.getElementById('summary-bar-values');
+          const r = document.createRange();
+          r.selectNodeContents(label);
+          const tops = [...r.getClientRects()].map((x) => Math.round(x.top));
+          const rv = document.createRange();
+          rv.selectNodeContents(v);
+          return {
+            label: label.textContent,
+            labelLines: new Set(tops).size,
+            need: rv.getBoundingClientRect().width,
+            have: v.clientWidth,
+            barH: bar.getBoundingClientRect().height,
+            thumb: !document.getElementById('bar-view-slot').hidden,
+            sw: document.documentElement.scrollWidth,
+          };
+        });
+      for (const which of ['b', 'a']) {
+        await page.locator(`#cmp-show input[name=cmp-show][value=${which}]`).check();
+        await settledView(page);
+        await barShown(page);
+        const m = await measure();
+        test.info().annotations.push({ type: `bar 320 ${which}`, description: JSON.stringify(m) });
+        expect(plain(m.label)).toMatch(which === 'b' ? /^Nachher \(B\): / : /^Vorher \(A\): /);
+        expect(m.labelLines, 'label on one line').toBe(1);
+        expect(m.need).toBeLessThanOrEqual(m.have + 0.5);
+        expect(m.barH).toBeLessThanOrEqual(59.6);
+        expect(m.sw).toBe(320);
+      }
+    });
   });
 
   test('UX-03 no WebGL: the thumbnail slot stays hidden', async ({ page }) => {

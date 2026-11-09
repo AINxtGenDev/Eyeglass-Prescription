@@ -432,6 +432,8 @@ export default Object.freeze({
   // 02-17 (lens-critic M2): shown before bar.label / result.computing while the result cards show
   // Vorher (A); same words as cmp.show.suffix.a.
   'bar.prefix.a': 'Vorher (A):',
+  // 03-LC (lens-critic MINOR 6): the same while a comparison runs and the cards show Nachher (B).
+  'bar.prefix.b': 'Nachher (B):',
   'bar.eye': '{thick} · {weight}',
   'bar.values': 'R {od} | L {os}',
   'bar.jump': 'Zum Ergebnis:',

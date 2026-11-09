@@ -27,8 +27,9 @@ function updateVisibility() {
  * narrower; below 400 px style.css shrinks the side padding and the values font for it (the
  * longest realistic line, 'R 16,3 mm · 15 g | L 17,2 mm · 16 g', measured 237 px at 14 px against
  * 240 px free at 320 px). If the line still does not fit (another font, a longer value), the
- * thumbnail steps aside (class thumb-off) and the bar is the phase-2 text bar. Measured on text,
- * visibility and size changes only, with the thumbnail layout applied.
+ * thumbnail steps aside (class thumb-off) and the bar is the phase-2 text bar; the same when the
+ * label would wrap (03-LC MINOR 6). Measured on text, visibility and size changes only, with the
+ * thumbnail layout applied.
  */
 function fitThumb() {
   const bar = $('summary-bar');
@@ -37,7 +38,13 @@ function fitThumb() {
   const values = $('summary-bar-values');
   const range = document.createRange();
   range.selectNodeContents(values);
-  const fits = range.getBoundingClientRect().width <= values.clientWidth + 0.5;
+  // 03-LC (MINOR 6): the label must stay on one line too (a 'Vorher (A):' / 'Nachher (B):' prefix
+  // next to the thumbnail would wrap it and grow the bar over the 72 px scroll padding).
+  const label = document.createRange();
+  label.selectNodeContents($('summary-bar-label'));
+  const lines = [...label.getClientRects()];
+  const oneLine = lines.every((r) => Math.abs(r.top - lines[0].top) < 1);
+  const fits = oneLine && range.getBoundingClientRect().width <= values.clientWidth + 0.5;
   bar.classList.toggle('thumb-off', !fits);
   $('bar-view-slot').hidden = !fits;
 }
@@ -77,13 +84,14 @@ const pair = (v) => (v ? t('bar.eye', { thick: v.thick, weight: v.weight }) : DA
 /**
  * Repaint the bar from the card strings.
  * @param {{ OD: { thick: string, weight: string } | null, OS: { thick: string, weight: string } | null,
- *   busy: boolean, stale: boolean, config?: 'a' | null }} s  thick = the card's thickest point
+ *   busy: boolean, stale: boolean, config?: 'a' | 'b' | null }} s  thick = the card's thickest point
  *   (thickest(m)), weight = the card's whole grams; null = no result for that eye ('–');
- *   config 'a' = the cards show Vorher (A), so the label gets the 'Vorher (A):' prefix (02-17, M2).
+ *   config 'a' = the cards show Vorher (A), so the label gets the 'Vorher (A):' prefix (02-17, M2);
+ *   'b' = a comparison runs and the cards show Nachher (B): 'Nachher (B):' (03-LC MINOR 6).
  */
 export function updateSummaryBar({ OD, OS, busy, stale, config = null }) {
   const label = t(busy ? 'result.computing' : 'bar.label');
-  setText('summary-bar-label', config === 'a' ? `${t('bar.prefix.a')} ${label}` : label);
+  setText('summary-bar-label', config ? `${t(`bar.prefix.${config}`)} ${label}` : label);
   setText('summary-bar-values', t('bar.values', { od: pair(OD), os: pair(OS) }));
   const values = $('summary-bar-values');
   if (stale) values.dataset.stale = 'true';

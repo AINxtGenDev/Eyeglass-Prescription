@@ -33,9 +33,9 @@ const displayed = { OD: null, OS: null };
 const staleEyes = new Set();
 
 /**
- * The configuration the cards show: 'a' = Vorher (A), null = the current one (02-17, M2). Written
- * only by pipeline.js paintCards via setCardConfig.
- * @type {'a' | null}
+ * The configuration the cards show: 'a' = Vorher (A), 'b' = Nachher (B) while a comparison runs
+ * (03-LC MINOR 6), null = no comparison (02-17, M2). Written only by pipeline.js via setCardConfig.
+ * @type {'a' | 'b' | null}
  */
 let cardConfig = null;
 
@@ -53,7 +53,7 @@ function paintBar() {
 
 /**
  * Tell the summary bar which configuration the cards show; repaints the bar when it changed.
- * @param {'a' | null} config
+ * @param {'a' | 'b' | null} config
  */
 export function setCardConfig(config) {
   if (config === cardConfig) return;
@@ -78,7 +78,7 @@ const painted = { OD: null, OS: null };
 
 /**
  * @param {'OD'|'OS'} eye
- * @returns {{ thick: string, thickLoc: string, ct: string, materialId: string | null, config: 'a' | null } | null}
+ * @returns {{ thick: string, thickLoc: string, ct: string, materialId: string | null, config: 'a' | 'b' | null } | null}
  */
 export function cardStrings(eye) {
   return painted[eye] ? { ...painted[eye] } : null;
