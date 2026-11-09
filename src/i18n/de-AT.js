@@ -658,6 +658,8 @@ export default Object.freeze({
   // (view-place.js, MAJOR 5), so the position word is dropped.
   'view.loadFailed': 'Die 3D-Ansicht konnte nicht geladen werden. Die berechneten Werte gelten unverändert.',
   'view.retry': 'Erneut versuchen',
+  // 03-LC (lens-critic MINOR 2, A-IN-06): the import failed again after the retry.
+  'view.reload': 'Seite neu laden',
   // 03-08 (UI-SPEC States): WebGL context loss and restore.
   'view.contextLost': 'Die 3D-Ansicht wird neu aufgebaut …',
   'view.contextGone': 'Die 3D-Ansicht ist vorübergehend nicht verfügbar. Laden Sie die Seite neu, um sie wieder zu sehen.',

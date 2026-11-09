@@ -183,6 +183,8 @@ let view = null;
 let viewLoading = false;
 /** The chunk failed to load and the retry button is shown (03-06). */
 let viewFailed = false;
+/** Failed chunk imports so far (03-LC MINOR 2: from the second one on, the button reloads the page). */
+let viewImportFailures = 0;
 let viewTimer = null;
 /** Frame of the last shown key per eye (the key is the spec's JSON). */
 const viewFrames = { OD: { key: null, frame: null }, OS: { key: null, frame: null } };
@@ -276,8 +278,9 @@ function loadView() {
     (err) => {
       console.warn('3D view could not load', err);
       viewFailed = true;
+      viewImportFailures++;
       $('view').dataset.pending = '';
-      showViewFailed({ msgKey: 'view.loadFailed', reasonKey: 'tech.view.reason.loadFailed', retry: true });
+      showViewFailed({ msgKey: 'view.loadFailed', reasonKey: 'tech.view.reason.loadFailed', retry: viewImportFailures > 1 ? 'reload' : true });
     },
   );
 }
@@ -286,6 +289,8 @@ function loadView() {
  * Fehler-tier box in the stage (UI-SPEC States): message (+ secondary button), textContent only.
  * A-IN-05: while it is shown the dead preset buttons are hidden and the empty canvas is taken out
  * of the accessibility tree; a retry restores both.
+ * @param {{ msgKey: string, reasonKey: string, retry: boolean | 'reload' }} o  retry: true =
+ *   'Erneut versuchen' (import again), 'reload' = 'Seite neu laden' (03-LC MINOR 2), false = none
  */
 function showViewFailed({ msgKey, reasonKey, retry: withRetry }) {
   const status = $('view-status');
@@ -304,6 +309,14 @@ function showViewFailed({ msgKey, reasonKey, retry: withRetry }) {
   }
   const retry = document.createElement('button');
   retry.type = 'button';
+  // 03-LC MINOR 2 (A-IN-06): a browser may keep a failed module import failed for the life of the
+  // page (UNVERIFIED for Safari), so after a failed retry the button reloads the page instead.
+  if (withRetry === 'reload') {
+    retry.textContent = t('view.reload');
+    retry.addEventListener('click', () => location.reload());
+    status.replaceChildren(msg, retry);
+    return;
+  }
   retry.textContent = t('view.retry');
   retry.addEventListener('click', () => {
     // The button goes away: keep keyboard focus in the view instead of dropping it to <body>.

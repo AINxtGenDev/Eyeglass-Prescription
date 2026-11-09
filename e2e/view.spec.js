@@ -153,6 +153,38 @@ test('D-16 load failure and retry', async ({ page }) => {
   }
 });
 
+// 03-LC MINOR 2 (A-IN-06): a browser may keep a failed module import failed for the page's life
+// (UNVERIFIED for Safari), so a second failure after 'Erneut versuchen' offers 'Seite neu laden',
+// which reloads the page (location.reload()).
+test('A-IN-06 second chunk failure after the retry offers Seite neu laden', async ({ page }) => {
+  await settledView(page);
+  guard.allowFailed(VIEW_CHUNK_RE);
+  let aborted = 0;
+  await page.route(VIEW_CHUNK, (route) => {
+    aborted++;
+    return route.abort();
+  });
+  await page.goto('./');
+  await settledView(page);
+  const stage = page.locator('#view-stage');
+  const retry = stage.getByRole('button', { name: 'Erneut versuchen' });
+  await expect(retry).toBeVisible();
+  await retry.click();
+  await settledView(page);
+  expect(aborted, 'the chunk failed twice').toBeGreaterThanOrEqual(2);
+  await expect(stage).toContainText('Die 3D-Ansicht konnte nicht geladen werden.');
+  await expect(retry).toHaveCount(0);
+  const reload = stage.getByRole('button', { name: 'Seite neu laden' });
+  await expect(reload).toBeVisible();
+  await expect(page.locator('#view-tools')).toBeHidden();
+  // The click reloads: a marker on window is gone afterwards, and the fresh page offers the retry again.
+  await page.evaluate(() => (window.__lcMarker = true));
+  await Promise.all([page.waitForEvent('load'), reload.click()]);
+  await settledView(page);
+  expect(await page.evaluate(() => window.__lcMarker ?? null)).toBeNull();
+  await expect(retry).toBeVisible();
+});
+
 // A-WR-02 / B-WR-09 (code review): a chunk that loads but whose mount or first update throws is not
 // a load failure. No 'Erneut versuchen' (a retry would mount a second view with a second mesh
 // worker), the reason is not 'Laden fehlgeschlagen', and nothing stays pending for the view.
