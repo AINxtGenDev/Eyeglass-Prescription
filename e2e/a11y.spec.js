@@ -289,6 +289,9 @@ const PATH = [
 ];
 
 test('keyboard only: the D-39 path with Tab, Space, Enter, arrows and Esc; focus always visible', async ({ page }) => {
+  // 03-CI: dozens of Tab presses and several recomputes, each settled with a SwiftShader 3D render:
+  // 14 s on a dev machine, 25–32 s on a loaded 4-core runner, so the 30 s default is too tight.
+  test.setTimeout(90_000);
   await settled(page);
   await page.locator('h1').first().click(); // sequential focus starts at the top of the page
   const seen = [];
