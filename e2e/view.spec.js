@@ -104,6 +104,11 @@ test('D-17 no WebGL: the note, and the numbers keep working', async ({ page }) =
   await expect(page.locator('#view-stage')).toContainText('WebGL 2 fehlt');
   await expect(page.locator('#view-status svg.icon')).toHaveCount(1);
   await expect(page.locator('#view')).toHaveAttribute('data-pending', '');
+  // A-IN-05 for no-WebGL: no dead preset buttons, no keyboard hint or tab stop, no empty image.
+  await expect(page.locator('#view-tools')).toBeHidden();
+  await expect(page.locator('#view-keys')).toBeHidden();
+  await expect(page.locator('#view-canvas')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('#view-stage')).not.toHaveAttribute('tabindex');
   await expect(page.locator('#result-od-ct')).toHaveText(/^\d+,\d+\smm$/);
   // A minus lens keeps the minimum centre thickness, so the change shows in the thickest point.
   const before = await page.locator('#result-od-thick').textContent();

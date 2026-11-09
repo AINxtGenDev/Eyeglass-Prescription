@@ -161,6 +161,15 @@ function showNoWebgl() {
   status.classList.add('view-note');
   status.replaceChildren(icon('info'), text);
   showUnavailable('tech.view.reason.noWebgl');
+  // A-IN-05 for the no-WebGL state (03-17 finding): there is nothing to turn or zoom, so the
+  // preset buttons, the keyboard hint and the stage's tab stop go away, and the empty canvas
+  // leaves the accessibility tree. The note in #view-status stays.
+  $('view-tools').hidden = true;
+  $('view-keys').hidden = true;
+  $('view-canvas').setAttribute('aria-hidden', 'true');
+  const stage = $('view-stage');
+  stage.removeAttribute('tabindex');
+  stage.removeAttribute('aria-describedby');
 }
 
 /** Technische Angaben: why the 3D view is not available (reason key), or hidden for null. */

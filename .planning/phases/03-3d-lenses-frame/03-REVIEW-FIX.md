@@ -180,3 +180,9 @@ The two e2e failures did not reproduce:
 _Fixed: 2026-11-08T23:19:55Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
+
+## Orchestrator follow-up (03-17 Task 1 finding)
+
+| ID | Outcome | Commit | Test |
+|---|---|---|---|
+| A-IN-05 (no-WebGL path) | Fixed: without WebGL the preset toolbar and keyboard hint are hidden, the stage loses its tab stop and aria-describedby, and the canvas is aria-hidden; the no-WebGL note stays. Confirmed before the fix in the chrome-devtools MCP at 320×640 (`?nowebgl`: 4 disabled presets visible, canvas role=img without aria-hidden). | see git log | e2e/view.spec.js D-17 test extended; view.spec + a11y.spec 82 passed / 6 skipped |
