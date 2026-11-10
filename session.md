@@ -316,6 +316,9 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - `layout.spec.js:182` (result pending > 10 s on the runner): the known watch item, now 3 of the last 6 runs.
 - **Deploy run 42907320977 (6062880) failed: 570 passed, 2 failed**, both runner timing flakes from before today: `layout.spec.js:302` (the 1,5 s slowed drawing arrived before the test saw it pending) and `view.spec.js:381` "every shape" (30 s test timeout). The DejaVu container run of 6062880: 571 passed, 1 failed (`layout.spec.js:116`, result > 10 s).
   - CI stability fix (test-only + config): settle helpers wait 20 s / 25 s (was 10 s / 15 s; functional waits, the performance budgets are in perf-throttled.spec.js and explicit timeouts), slowWorker 6 s in layout.spec.js:302 (below the 10 s watchdog), `test.setTimeout(120 s)` for "every shape", and `retries: CI ? 1 : 0` (Playwright's default recommendation; retried passes are reported as flaky). Locally layout.spec.js + view.spec.js:381: 40/40.
+- **Run 42914314568 (09f1366): build 572 passed (0 flaky), deploy and verify-live (572 passed) success. Live = 09f1366.**
+- **Live check, chrome-devtools at 1710×1000:** footer commit 09f1366; 3D stage 913×571; real click on the button → 1710×1000 (CSS fallback in that MCP tab, the API is refused there since the MCP browser restart; the API path was clicked live-equivalent on the local build earlier), exit → 913×571; no overflow, console clean.
+- **For the user:** reload (tap "Neue Version" if shown); footer must show 09f1366.
 
 ### Next step
 User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
