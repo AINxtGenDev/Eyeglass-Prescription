@@ -148,7 +148,7 @@ export function initHeatLabels(container, note) {
     const isos = Array.from({ length: ISO_MAX }, () => span('view-label view-label--iso'));
     return { callouts, isos, active: false, group: null, points: { callouts: [], isos: [] } };
   };
-  heat = { note, sets: { B: makeSet(null), A: makeSet('A') }, calloutsFit: true, avoid: [] };
+  heat = { note, sets: { B: makeSet(null), A: makeSet('A') }, calloutsFit: true, avoid: [], corner: null, cornerLow: false };
 }
 
 /**
@@ -210,9 +210,18 @@ export function clearHeatLabels(which) {
   }
 }
 
-/** Boxes in stage px that no label may cover (the badge, the keyboard hint while shown). */
-export function setLabelAvoid(boxes) {
-  if (heat) heat.avoid = boxes;
+/**
+ * Boxes in stage px that no label may cover (the badge, the keyboard hint while shown), and the
+ * fullscreen button's two places (2026-11-10): top-right by default, bottom-right only when the
+ * callouts fit there and not with the button at the top (a narrow phone stage, a wide font).
+ * @param {Array<{ x: number, y: number, w: number, h: number }>} boxes
+ * @param {{ top: { x: number, y: number, w: number, h: number }, low: { x: number, y: number, w: number, h: number } } | null} [corner]
+ */
+export function setLabelAvoid(boxes, corner = null) {
+  if (heat) {
+    heat.avoid = boxes;
+    heat.corner = corner;
+  }
 }
 
 const pv = new Vector3();
@@ -290,19 +299,27 @@ export function prepareHeatLabels(which, camera, size, eyes) {
 export function commitHeatLabels(parts) {
   if (!heat) return;
   const live = parts.filter((p) => p.prep);
-  const run = (part, withCallouts) => {
+  const run = (part, withCallouts, corner) => {
     const { items, size } = part.prep;
     const ox = part.offsetX ?? 0;
     // Stage boxes in this part's own coordinates; boxes outside it never collide.
-    const avoid = [...heat.avoid, ...(part.avoid ?? [])].map((b) => ({ ...b, x: b.x - ox }));
+    const avoid = [...heat.avoid, ...(corner ? [corner] : []), ...(part.avoid ?? [])].map((b) => ({ ...b, x: b.x - ox }));
     // ?calloutsoff: the callouts are left out as if they did not fit (MINOR 6).
     const use = withCallouts && !CALLOUTS_OFF ? items : items.filter((it) => it.priority !== 0);
     return layoutLabels(use, { w: size.width, h: size.height, avoid });
   };
-  let laid = live.map((p) => run(p, true));
+  const top = heat.corner?.top ?? null;
+  let laid = live.map((p) => run(p, true, top));
   let fit = !CALLOUTS_OFF && laid.every((l) => l.calloutsFit);
-  if (!fit && live.length > 1) laid = live.map((p) => run(p, false));
+  let low = false;
+  if (!fit && !CALLOUTS_OFF && heat.corner) {
+    // The button yields its corner to the callouts if they fit with it at the bottom instead.
+    const alt = live.map((p) => run(p, true, heat.corner.low));
+    if (alt.every((l) => l.calloutsFit)) [laid, fit, low] = [alt, true, true];
+  }
+  if (!fit && live.length > 1) laid = live.map((p) => run(p, false, top));
   heat.calloutsFit = fit;
+  heat.cornerLow = low;
   const shown = new Set();
   live.forEach((part, k) => {
     const ox = part.offsetX ?? 0;
@@ -356,6 +373,9 @@ export function settleNote() {
   const text = active && !heat.calloutsFit ? t('view.callout.tableOnly') : '';
   if (heat.note.textContent !== text) heat.note.textContent = text;
 }
+
+/** Whether the last Dickenkarte layout moved the fullscreen button to the bottom-right corner. */
+export const cornerLow = () => heat !== null && heat.cornerLow && (heat.sets.A.active || heat.sets.B.active);
 
 /** Test handle: whether the callouts fit in the last layout (false under ?calloutsoff). */
 export const calloutsFit = () => heat?.calloutsFit ?? true;

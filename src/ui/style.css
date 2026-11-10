@@ -1947,6 +1947,12 @@ td:has(.msg-out) input[aria-invalid='true'] {
   display: none;
 }
 
+/* Dickenkarte on a narrow stage: the callouts need the top-right corner (labels.js cornerLow). */
+.view-fs.view-fs--low {
+  top: auto;
+  bottom: var(--space-2);
+}
+
 /* Fullscreen API: the UA sheet already sets position: fixed and 100% × 100%. */
 #view-stage:fullscreen {
   aspect-ratio: auto;

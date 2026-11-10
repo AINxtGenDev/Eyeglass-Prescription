@@ -377,12 +377,15 @@ async function cornersAreChart(page, label) {
     [w - 3, h - 3, -1, -1],
     [2, h - 3, 1, -1],
   ];
-  for (const [x, y, sx, sy] of corners) {
-    const at = [];
-    for (const i of [0, 2, 4]) for (const j of [0, 2, 4]) at.push([x + sx * i, y + sy * j]);
-    const px = await ev(page, (p) => window.__eyeglassView.pixels(p), at);
-    expect(px.some(isChartish), `${label}: chart pixels near (${x}, ${y}): ${JSON.stringify(px)}`).toBe(true);
-  }
+  // One pixels() call for all 36 points (each call waits for a render; CI 2026-11-10 timed out
+  // at 120 s with one call per corner).
+  const at = [];
+  for (const [x, y, sx, sy] of corners) for (const i of [0, 2, 4]) for (const j of [0, 2, 4]) at.push([x + sx * i, y + sy * j]);
+  const px = await ev(page, (p) => window.__eyeglassView.pixels(p), at);
+  corners.forEach(([x, y], k) => {
+    const patch = px.slice(k * 9, k * 9 + 9);
+    expect(patch.some(isChartish), `${label}: chart pixels near (${x}, ${y}): ${JSON.stringify(patch)}`).toBe(true);
+  });
 }
 
 for (const vp of [

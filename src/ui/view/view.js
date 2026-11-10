@@ -99,6 +99,7 @@ import {
   setLabelAvoid,
   settleNote,
   calloutsFit,
+  cornerLow,
 } from './labels.js';
 import { createControls } from './controls.js';
 import { createFullscreen } from './fullscreen.js';
@@ -256,8 +257,16 @@ function mount({ slot }) {
     const boxes = [];
     badgeBox = badge.offsetWidth > 0 ? { x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight } : null;
     if (badgeBox) boxes.push(badgeBox);
-    fsBox = fsButton.offsetWidth > 0 ? { x: fsButton.offsetLeft, y: fsButton.offsetTop, w: fsButton.offsetWidth, h: fsButton.offsetHeight } : null;
-    if (fsBox) boxes.push(fsBox);
+    // The button's two places from its right inset (equal to its top inset, CSS), whichever it is in now.
+    let corner = null;
+    fsBox = null;
+    if (fsButton.offsetWidth > 0) {
+      const w = fsButton.offsetWidth;
+      const h = fsButton.offsetHeight;
+      const inset = stageEl.clientWidth - fsButton.offsetLeft - w;
+      fsBox = { x: fsButton.offsetLeft, y: inset, w, h };
+      corner = { top: fsBox, low: { x: fsButton.offsetLeft, y: stageEl.clientHeight - inset - h, w, h } };
+    }
     if (stageEl.matches(':focus-visible') && keysState !== 'hidden') {
       // 03-CI: in #view-labels coordinates (the stage's padding box, like the badge's offsetTop),
       // not the border box: the 1 px stage border otherwise lets a label overlap the hint by 1 px.
@@ -268,10 +277,10 @@ function mount({ slot }) {
       const bottom = Math.min(k.bottom, s.bottom) - s.top;
       if (bottom > top) boxes.push({ x: Math.max(k.left, s.left) - s.left, y: top, w: Math.min(k.right, s.right) - Math.max(k.left, s.left), h: bottom - top });
     }
-    const key = JSON.stringify(boxes);
+    const key = JSON.stringify([boxes, corner]);
     if (key === avoidKey) return; // a mouse focus shows no hint: nothing to settle mid-drag
     avoidKey = key;
-    setLabelAvoid(boxes);
+    setLabelAvoid(boxes, corner);
     if (mode === 'heat') requestSettle(inRender);
   }
 
@@ -426,6 +435,12 @@ function mount({ slot }) {
         labels.pool[d('OD') <= d('OS') ? 1 : 0].hidden = true;
       }
     }
+  });
+  // After the label layout (hooks run in order): the fullscreen button yields the top-right corner
+  // to the Dickenkarte callouts when only that makes them fit (labels.js commitHeatLabels).
+  view.afterRender(() => {
+    const low = mode === 'heat' && cornerLow();
+    if (fsButton.classList.contains('view-fs--low') !== low) fsButton.classList.toggle('view-fs--low', low);
   });
   // Compile the glass and edge programs while the mesh worker builds the first lenses.
   // compileAsync prepares every mesh's material, visible or not (WebGLRenderer r187 scene.traverse).
