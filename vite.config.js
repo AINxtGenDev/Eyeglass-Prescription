@@ -2,13 +2,15 @@ import { defineConfig } from 'vite';
 
 // Short commit hash shown in the footer (#app-commit). CI sets GITHUB_SHA.
 const commit = (process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
+// Build date (ISO 8601, UTC) shown next to the version in the footer.
+const buildDate = new Date().toISOString().slice(0, 10);
 
 // The commit must be in index.html itself (verify-live greps the HTML),
 // so it is injected into the page, not only defined in the JS bundle.
 const appMeta = {
   name: 'app-meta',
   transformIndexHtml(html) {
-    return html.replaceAll('%APP_COMMIT%', commit);
+    return html.replaceAll('%APP_COMMIT%', commit).replaceAll('%APP_DATE%', buildDate);
   },
 };
 
