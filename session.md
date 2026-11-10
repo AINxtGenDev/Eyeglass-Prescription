@@ -274,5 +274,14 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - Checked at 320/412/1280 px; e2e 289 passed. Pushed with approval (run 42768704484).
 - **User request:** the footer shows "Version dev-1.1 · <build date> (<commit>)". The build date is ISO 8601 (UTC) and is injected at build time.
 
+### Notes (2026-11-10)
+- **User screenshot from the Pixel (07:45): A/B/DBL still ragged.** Cause: the live site was still 7172af8. Deploy run 42768704484 (7d24e8b, the alignment fix) was in progress and 42769520667 (bef752b) was queued, so the phone showed the old build, not a CSS bug.
+- **chrome-devtools at Pixel 7 Pro size (412×892, DPR 3.5) on the local build at HEAD:**
+  - the A/B/DBL boxes all sit at l276–r396 px, on one right edge;
+  - no horizontal overflow;
+  - footer "Version dev-1.1 · 2026-11-10".
+  - The Rx cards (Sph/Zyl/Achse/PD) are a 2×2 grid with full-width boxes; left unchanged.
+- **For the user, after the deploy:** reload the page (tap "Neue Version" if shown). The footer must read dev-1.1.
+
 ### Next step
 User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
