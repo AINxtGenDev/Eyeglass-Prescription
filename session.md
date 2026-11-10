@@ -282,6 +282,16 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - footer "Version dev-1.1 · 2026-11-10".
   - The Rx cards (Sph/Zyl/Achse/PD) are a 2×2 grid with full-width boxes; left unchanged.
 - **For the user, after the deploy:** reload the page (tap "Neue Version" if shown). The footer must read dev-1.1.
+- **Deploys:**
+  - Run 42768704484 (7d24e8b) failed: 3 e2e timeouts on the runner (`layout.spec.js:116` and `:182` result still pending after 10 s; `view.spec.js:381` 30 s test timeout). Not the CSS; the same specs pass locally.
+  - Run 42769520667 (bef752b) was cancelled, superseded.
+  - **Run 42771362285 (9c37642): build, deploy and verify-live success. Live = 9c37642.**
+- **Live check, chrome-devtools at Pixel 7 Pro size:**
+  - footer "Version dev-1.1 · 2026-11-10 (9c37642)";
+  - A/B/DBL boxes l276–r396 px, one right edge;
+  - stamp box ends at r396;
+  - no overflow.
+- **Watch:** CI e2e timeouts recur on slow runners (two of the last four runs). If a third run fails the same way, find out why a result takes more than 10 s on the runner.
 
 ### Next step
 User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
