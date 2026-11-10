@@ -101,6 +101,7 @@ import {
   calloutsFit,
 } from './labels.js';
 import { createControls } from './controls.js';
+import { createFullscreen } from './fullscreen.js';
 import {
   cameraContext,
   compareContext,
@@ -240,6 +241,9 @@ function mount({ slot }) {
   let avoidKey = '';
   /** 03-14: the badge box (stage px) of the last measure, for the A/B captions. */
   let badgeBox = null;
+  /** The fullscreen button's box (stage px), kept clear like the badge. */
+  let fsBox = null;
+  const fsButton = /** @type {HTMLButtonElement} */ (slot.querySelector('#view-fullscreen'));
   /** A3: keyboard hint 'off' (no keyboard focus) | 'shown' | 'fading' | 'hidden'. */
   let keysState = 'off';
   const keysEl = /** @type {HTMLElement} */ (slot.querySelector('#view-keys'));
@@ -252,6 +256,8 @@ function mount({ slot }) {
     const boxes = [];
     badgeBox = badge.offsetWidth > 0 ? { x: badge.offsetLeft, y: badge.offsetTop, w: badge.offsetWidth, h: badge.offsetHeight } : null;
     if (badgeBox) boxes.push(badgeBox);
+    fsBox = fsButton.offsetWidth > 0 ? { x: fsButton.offsetLeft, y: fsButton.offsetTop, w: fsButton.offsetWidth, h: fsButton.offsetHeight } : null;
+    if (fsBox) boxes.push(fsBox);
     if (stageEl.matches(':focus-visible') && keysState !== 'hidden') {
       // 03-CI: in #view-labels coordinates (the stage's padding box, like the badge's offsetTop),
       // not the border box: the 1 px stage border otherwise lets a label overlap the hint by 1 px.
@@ -372,7 +378,7 @@ function mount({ slot }) {
   view.afterRender(() => {
     const size = { width: labelsEl.clientWidth, height: labelsEl.clientHeight };
     const cs = compare3d.state();
-    const caps = compare3d.layoutCaptions(badgeBox);
+    const caps = compare3d.layoutCaptions([badgeBox, fsBox].filter(Boolean));
     if (cs.active) {
       // 03-14: no eye labels in the A/B layout (one eye, two configurations; the captions say which).
       for (const el of labels.pool) if (!el.hidden) el.hidden = true;
@@ -813,6 +819,7 @@ function mount({ slot }) {
     },
   });
   if (controls.pointer) setText('view-hint', t('view.hint.pointer'));
+  createFullscreen({ stage: $('view-stage'), button: fsButton, onChange: (on) => controls.setFullscreen(on) });
 
   /**
    * 03-15 (lens-critic MINOR 11): the thumbnail pose, or null for 'not now'. Front direction,

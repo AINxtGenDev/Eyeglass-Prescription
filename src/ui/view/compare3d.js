@@ -226,7 +226,8 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
    * px, so the Dickenkarte labels avoid them.
    * @param {{ x: number, y: number, w: number, h: number } | null} badge the badge box, or null
    */
-  function layoutCaptions(badge) {
+  /** @param {Array<{ x: number, y: number, w: number, h: number }>} corners boxes the captions keep clear of (badge, fullscreen button) */
+  function layoutCaptions(corners) {
     const on = (el, x, y) => {
       const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       if (el.style.transform !== tf) el.style.transform = tf;
@@ -246,7 +247,11 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
       const { w, h } = sizeOf(captions[half]);
       return { half, x: b.x + Math.max(0, (b.w - w) / 2), y: CAPTION_TOP_PX, w, h };
     });
-    if (badge && boxes.some((q) => hit(q, badge))) for (const q of boxes) q.y = badge.y + badge.h + CAPTION_GAP_PX;
+    const hits = corners.filter((c) => boxes.some((q) => hit(q, c)));
+    if (hits.length) {
+      const y = Math.max(...hits.map((c) => c.y + c.h)) + CAPTION_GAP_PX;
+      for (const q of boxes) q.y = y;
+    }
     for (const half of HALVES) if (!halves.includes(half)) off(captions[half]);
     for (const q of boxes) on(captions[q.half], q.x, q.y);
     return boxes.map(({ x, y, w, h }) => ({ x, y, w, h }));

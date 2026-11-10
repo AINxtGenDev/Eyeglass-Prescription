@@ -217,8 +217,10 @@ test.describe('VIZ-03 keyboard', () => {
     const back = await cam(page);
     expectDir(back, DEFAULT_DIR);
     expect(back.distance).toBeCloseTo(c0.distance, 3);
-    // Tab order: stage → Vorne → Seite → Oben → Ansicht zurücksetzen [→ touch: 3D drehen]
+    // Tab order: stage → Vollbild (2026-11-10) → Vorne → Seite → Oben → Ansicht zurücksetzen [→ touch: 3D drehen]
     await stage.focus();
+    await page.keyboard.press('Tab');
+    expect(await ev(page, () => document.activeElement?.id)).toBe('view-fullscreen');
     for (const b of ['front', 'side', 'top', 'reset']) {
       await page.keyboard.press('Tab');
       expect(await ev(page, () => document.activeElement?.getAttribute('data-preset'))).toBe(b);
@@ -365,14 +367,22 @@ test.describe('A1 default fit at 412 × 915', () => {
 // ---- A2 (2026-11-08): the chart fills the whole stage behind the glasses ----
 async function cornersAreChart(page, label) {
   const [w, h] = await page.locator('#view-canvas').evaluate((el) => [el.clientWidth, el.clientHeight]);
-  const at = [
-    [2, 2],
-    [w - 3, 2],
-    [w - 3, h - 3],
-    [2, h - 3],
+  // A 3 × 3 patch (2 px apart) at each corner: at maxDistance the 10 mm squares are a few px wide
+  // and a filtered ink/paper edge pixel can read 242,242,242, inside the background's ± 6. The studio
+  // background is one flat colour, so one clearly chart pixel in the patch shows the chart reaches
+  // the corner (seen at a 544 px stage, 2026-11-10; the 400 px stage happened to hit a square).
+  const corners = [
+    [2, 2, 1, 1],
+    [w - 3, 2, -1, 1],
+    [w - 3, h - 3, -1, -1],
+    [2, h - 3, 1, -1],
   ];
-  const px = await ev(page, (p) => window.__eyeglassView.pixels(p), at);
-  at.forEach(([x, y], i) => expect(isChartish(px[i]), `${label}: chart pixel at (${x}, ${y}): ${px[i]}`).toBe(true));
+  for (const [x, y, sx, sy] of corners) {
+    const at = [];
+    for (const i of [0, 2, 4]) for (const j of [0, 2, 4]) at.push([x + sx * i, y + sy * j]);
+    const px = await ev(page, (p) => window.__eyeglassView.pixels(p), at);
+    expect(px.some(isChartish), `${label}: chart pixels near (${x}, ${y}): ${JSON.stringify(px)}`).toBe(true);
+  }
 }
 
 for (const vp of [
@@ -721,8 +731,21 @@ test.describe('VIZ-03 Seite note and fade (03-11)', () => {
     await expect(page.locator('#view-side-note')).toBeVisible();
     await expect(page.locator('#view-side-note')).toContainText('rechten');
     expect(await info()).toBe('OD');
-    // From the side the two eye labels overlap: only the near eye's label stays (no 'L' over 'R').
-    await expect(page.locator('#view-labels .view-label:visible')).toHaveText(['R']);
+    // From the side the two eye labels come close: the near eye's label always stays, and 'L' is
+    // shown only where it does not overlap 'R' (on the 400 px stage it yields; on a wider desktop
+    // stage, 2026-11-10, both fit side by side).
+    await expect(page.locator('#view-labels .view-label:visible').first()).toHaveText('R');
+    const boxes = await page.locator('#view-labels .view-label:visible').evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return { t: e.textContent, l: r.left, r: r.right, t0: r.top, b: r.bottom };
+      }),
+    );
+    if (boxes.length === 2) {
+      const [a, c] = boxes;
+      const overlap = a.l < c.r && c.l < a.r && a.t0 < c.b && c.t0 < a.b;
+      expect(overlap, `labels ${JSON.stringify(boxes)}`).toBe(false);
+    }
     const after = await ev(page, () => window.__eyeglassView.memory());
     // MINOR 1 rebuttal: the faded materials were compiled while hidden.
     expect(after.programs).toBe(before.programs);

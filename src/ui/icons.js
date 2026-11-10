@@ -1,6 +1,6 @@
-// Seven 16×16 inline SVG icons (UI-SPEC "Icon library"). Built with createElementNS and
+// 16×16 inline SVG icons (UI-SPEC "Icon library"). Built with createElementNS and
 // presentation attributes only: no style attribute and no <style> element (CSP, T-02-11).
-// Decorative: the text label next to an icon always carries the meaning.
+// Decorative: the text label next to an icon (or the button's aria-label) carries the meaning.
 const NS = 'http://www.w3.org/2000/svg';
 
 /** Child shapes per icon: [tag, attributes]. */
@@ -30,6 +30,15 @@ const SHAPES = {
   rotate: [
     ['path', { d: 'M12.76 5.25A5.5 5.5 0 1 0 13.5 8' }],
     ['path', { d: 'M13.25 2.25v3.25H10', 'stroke-linejoin': 'round' }],
+  ],
+  // Fullscreen toggle of the 3D view: two arrows to the corners (enter) and back to the centre (exit).
+  expand: [
+    ['path', { d: 'M9.5 2.5h4v4M13.5 2.5 9.25 6.75', 'stroke-linejoin': 'round' }],
+    ['path', { d: 'M6.5 13.5h-4v-4M2.5 13.5l4.25-4.25', 'stroke-linejoin': 'round' }],
+  ],
+  collapse: [
+    ['path', { d: 'M13 6.5H9.5V3M9.5 6.5l4-4', 'stroke-linejoin': 'round' }],
+    ['path', { d: 'M3 9.5h3.5V13M6.5 9.5l-4 4', 'stroke-linejoin': 'round' }],
   ],
 };
 

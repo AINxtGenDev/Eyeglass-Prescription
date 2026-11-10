@@ -418,7 +418,7 @@ test('D-29 keyboard path through the view', async ({ page }) => {
   test.setTimeout(120_000);
   await settledView(page);
   const coarse = await page.evaluate(() => window.matchMedia('(any-pointer: coarse)').matches);
-  const viewOrder = ['#view-stage', 'preset:front', 'preset:side', 'preset:top', 'preset:reset', ...(coarse ? ['#view-rotate'] : [])];
+  const viewOrder = ['#view-stage', '#view-fullscreen', 'preset:front', 'preset:side', 'preset:top', 'preset:reset', ...(coarse ? ['#view-rotate'] : [])];
   for (const vp of VIEWPORTS) {
     const at = `${vp.width}×${vp.height}`;
     await page.setViewportSize(vp);
@@ -452,7 +452,7 @@ test('D-29 keyboard path through the view', async ({ page }) => {
       expect(lastResult, `${at}: section#result focusables before the stage`).toBeGreaterThanOrEqual(0);
       expect(keys[lastResult + 1], `${at}: the stage right after the last focusable of section#result`).toBe('#view-stage');
     }
-    // From the stage: Vorne → Seite → Oben → Ansicht zurücksetzen (→ '3D drehen' on a coarse pointer).
+    // From the stage: Vollbild (2026-11-10, the button inside the stage) → Vorne → Seite → Oben → Ansicht zurücksetzen (→ '3D drehen' on a coarse pointer).
     expect(keys.slice(stage, stage + viewOrder.length), `${at}: order from the stage`).toEqual(viewOrder);
     if (!coarse) expect(keys[stage + viewOrder.length], `${at}: no '3D drehen' stop on a fine pointer`).not.toBe('#view-rotate');
     for (const f of seen.slice(stage, stage + viewOrder.length)) {

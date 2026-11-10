@@ -671,6 +671,8 @@ export default Object.freeze({
   'view.preset.reset': 'Ansicht zurücksetzen',
   'view.hint.pointer': 'Ziehen dreht die Brille · Umschalt + Ziehen verschiebt · Mausrad zoomt, nachdem Sie in die Ansicht geklickt haben.',
   'view.rotate': '3D drehen',
+  'view.fullscreen.enter': '3D-Ansicht im Vollbild',
+  'view.fullscreen.exit': 'Vollbild beenden',
   'view.hint.touchOff': 'Tippen Sie auf „3D drehen“, um die Brille mit dem Finger zu drehen.',
   'view.hint.touchOn': 'Ein Finger dreht, zwei Finger zoomen und verschieben. Zum Weiterblättern wieder auf „3D drehen“ tippen.',
   'view.keys': 'Tastatur: Pfeiltasten drehen, Umschalt + Pfeiltasten verschieben, Plus und Minus zoomen, Pos1 setzt die Ansicht zurück.',

@@ -97,6 +97,20 @@ footer {
   }
 }
 
+/* Wide desktop screens: the results column (3D view, cross-section, cards) grows with the window
+   instead of staying at 400 px; the inputs keep their 40rem reading width. */
+@media (min-width: 1200px) {
+  header,
+  .layout,
+  footer {
+    max-width: 1600px;
+  }
+
+  .layout-cols {
+    grid-template-columns: minmax(0, 40rem) minmax(400px, 1fr);
+  }
+}
+
 /* Sticky results only when the viewport is high enough to show a useful part of them. */
 @media (min-width: 900px) and (min-height: 600px) {
   .col-results {
@@ -1900,6 +1914,62 @@ td:has(.msg-out) input[aria-invalid='true'] {
 
 .view-badge:empty {
   display: none;
+}
+
+/* Fullscreen toggle (user request 2026-11-10): top-right corner of the stage, 44 px target,
+   on --bg like the badge so it stays readable on the chart. */
+.view-fs {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.view-fs .icon {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.view-fs:hover {
+  border-color: var(--fg);
+}
+
+.view-fs[hidden] {
+  display: none;
+}
+
+/* Fullscreen API: the UA sheet already sets position: fixed and 100% × 100%. */
+#view-stage:fullscreen {
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Fallback without the element Fullscreen API (iPhone Safari): the stage covers the page. */
+#view-stage.view-stage--fs {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: auto;
+  height: auto;
+  max-height: none;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+html.view-fs-open,
+html.view-fs-open body {
+  overflow: hidden;
 }
 
 #view-labels {

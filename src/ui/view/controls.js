@@ -219,6 +219,9 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
     });
   }
   let active = false;
+  /** Fullscreen on/off (touch only: the page cannot scroll there, so one finger turns the view). */
+  /** @type {(on: boolean) => void} */
+  let fsHook = () => {};
   const syncZoom = () => {
     controls.enableZoom = pointer ? document.activeElement === stage : active;
   };
@@ -257,6 +260,14 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       button.setAttribute('aria-pressed', String(on));
       setIcon();
       setText('view-hint', t(on ? 'view.hint.touchOn' : 'view.hint.touchOff'));
+    };
+    let activeBeforeFs = false;
+    fsHook = (on) => {
+      if (on) {
+        activeBeforeFs = active;
+        ratio = 1; // the stage fills the screen; the observer confirms with its next callback
+        setActive(true);
+      } else setActive(activeBeforeFs);
     };
     stage.classList.add('view-stage--static');
     button.hidden = false;
@@ -321,6 +332,8 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
 
   return {
     goTo,
+    /** Fullscreen entered or left (fullscreen.js through view.js). */
+    setFullscreen: (/** @type {boolean} */ on) => fsHook(on),
     /** B-WR-08: accept keys and drags (view.js calls it on the first mesh attach). */
     enable() {
       inputEnabled = true;
