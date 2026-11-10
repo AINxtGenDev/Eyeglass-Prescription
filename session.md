@@ -308,6 +308,12 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - Tab order now: 3D view → Vollbild button → Vorne → Seite → Oben → Ansicht zurücksetzen [→ 3D drehen]; `a11y.spec.js:417` and `view-controls.spec.js:189` updated (both projects pass).
   - Full e2e on the final code: 564 passed, 8 failed; 4 were the Tab order (fixed above). The rest pass alone (layout.spec.js:302, view-compare.spec.js:321 hint, view-controls wheel :233, A2 at 1280): load flakes. **Watch:** A2 at 1280 failed once under full parallel load after the patch.
   - The other 4 were the known flakes (`worker.spec.js:331`, `layout.spec.js:302`, a11y "3D wird aufgebaut" at 320 px, A2 on the mobile project in the same run).
+- **Deploy run 42892121369 (d0159ba) failed in build/e2e: 569 passed, 3 failed; nothing deployed, live stays 9c37642.**
+  - `view-controls` A2 at 1280: 120 s test timeout. Cause: my 3 × 3 patch made 4 `pixels()` calls per state (each waits for a render). Now one call with all 36 points.
+  - `view-heat.spec.js:319` eye picker (mobile, 360 px): real regression from the fullscreen button. In DejaVu (runner font) the OS "dickste 4,6 mm" callout (139 px) needs the top-right corner; with the button's avoid box the all-or-nothing callout set dropped to the table-only note. Reproduced in `pw-dejavu:1.65`; passes with the button box left out. A larger HEAT_FIT_MARGIN (1,4 / 1,5) does not help.
+  - Fix: the button keeps the top-right corner by default; in Dickenkarte, if the callouts fit only without it there, the layout tries the button at the bottom-right (`labels.js commitHeatLabels`, `cornerLow()`, `.view-fs--low`) and uses that if everything fits; otherwise the table-only note as before. DejaVu container: OS → button at the bottom (277,195), all 6 callouts; OD → stays top; `view-heat.spec.js` 36/36.
+  - chrome-devtools at 320×640 (Noto): Linkes Glas → button bottom-right, all callouts, no note (before this fix that width fell back to the note); fullscreen from there → button back at the top, exit → bottom again; console clean, no overflow. That tab's requestFullscreen was refused after an MCP browser restart, so the CSS fallback ran (as designed).
+  - `layout.spec.js:182` (result pending > 10 s on the runner): the known watch item, now 3 of the last 6 runs.
 
 ### Next step
 User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
