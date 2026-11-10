@@ -293,5 +293,21 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - no overflow.
 - **Watch:** CI e2e timeouts recur on slow runners (two of the last four runs). If a third run fails the same way, find out why a result takes more than 10 s on the runner.
 
+- **User feedback 2026-11-10 (evening): phone layout OK. On the desktop (~1710 px window) the 3D view was too small** (fixed 400 px results column, page max 1152 px).
+  - Fix, CSS only: from 1200 px viewport the page may be up to 1600 px wide, and the results column becomes `minmax(400px, 1fr)` next to the inputs (max 40rem). 900–1199 px stays unchanged.
+  - chrome-devtools, local build: 3D stage at 1000 px 400 px wide (unchanged); 1280 px → 514 px; 1710 px → 913×571 px (canvas buffer 910×568); 2560 px → 913 px (capped), page centred; no horizontal overflow. Result cards stay readable at the wider width.
+- **User request 2026-11-10: fullscreen button for the 3D view** (icon from the user's screenshot: two diagonal arrows), top-right corner of the stage; tap again (or Esc) returns.
+  - `src/ui/view/fullscreen.js`: Fullscreen API on `#view-stage`; where the browser has no element fullscreen (iPhone Safari) or refuses, a CSS fallback (`.view-stage--fs`, position fixed, page scroll locked). Icons `expand`/`collapse` in icons.js; name via `title` ("3D-Ansicht im Vollbild" / "Vollbild beenden").
+  - Touch (coarse pointer): fullscreen switches "3D drehen" on (one finger turns the view, there is no page to scroll) and restores the previous state on exit (`controls.setFullscreen`).
+  - Eye labels and the A/B captions keep clear of the button (avoid box like the badge; `layoutCaptions` takes a list of corner boxes).
+  - chrome-devtools: 1280×800 real click → `document.fullscreenElement` = stage, 1280×800, buffer 1279×799, back to 514×322; Pixel 7 Pro (412×892, touch) → 412×892, "3D drehen" pressed, back to 382×287 and not pressed; no overflow.
+  - New `e2e/view-fullscreen.spec.js` (API round trip, CSS fallback round trip, Esc), desktop + mobile: 6/6.
+- **Test fixes after the wider stage** (the first full run on the width change: 560 passed, 6 failed):
+  - `view-controls` A2 chart cover at 1280: at maxDistance a filtered ink/paper pixel read 242,242,242, inside the background's ± 6 (screenshot: checker up to the corner). Now a 3 × 3 patch per corner, one chart pixel is enough (the background is flat).
+  - `view-controls` Seite: on the wider stage R and L no longer overlap, so both show. Asserted now: R shown, L only without overlap.
+  - Tab order now: 3D view → Vollbild button → Vorne → Seite → Oben → Ansicht zurücksetzen [→ 3D drehen]; `a11y.spec.js:417` and `view-controls.spec.js:189` updated (both projects pass).
+  - Full e2e on the final code: 564 passed, 8 failed; 4 were the Tab order (fixed above). The rest pass alone (layout.spec.js:302, view-compare.spec.js:321 hint, view-controls wheel :233, A2 at 1280): load flakes. **Watch:** A2 at 1280 failed once under full parallel load after the patch.
+  - The other 4 were the known flakes (`worker.spec.js:331`, `layout.spec.js:302`, a11y "3D wird aufgebaut" at 320 px, A2 on the mobile project in the same run).
+
 ### Next step
 User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
