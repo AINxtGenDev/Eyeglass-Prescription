@@ -303,7 +303,9 @@ for (const width of [360, 1280]) {
       // guardPage's first load must be complete before navigating again (02-08: aborted worker fetch;
       // 03-05: that includes the lazy 3D view and its mesh worker)
       await settledView(page);
-      await slowWorker(page, 1500, { types: ['profile'] });
+      // 6 s (was 1,5 s): on the CI runner the drawing arrived before the test saw it pending
+      // (2026-11-10). Stays below the client's 10 s watchdog.
+      await slowWorker(page, 6000, { types: ['profile'] });
       await page.goto('./');
       await settled(page);
       await page.locator('#expert').check();

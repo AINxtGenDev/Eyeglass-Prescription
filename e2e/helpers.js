@@ -3,13 +3,23 @@ import { expect, test } from '@playwright/test';
 /* global requestAnimationFrame, self, window, document -- page/worker.evaluate bodies run in the browser */
 
 /**
+ * Waiting budgets of the settle helpers (2026-11-10): 20 s / 25 s, raised from 10 s / 15 s. On
+ * the GitHub runner (parallel workers, SwiftShader rendering the 3D tests) a first result took
+ * more than 10 s in 3 of 6 runs. These are waits for a functional
+ * state, not performance budgets: those live in perf-throttled.spec.js and in tests that pass an
+ * explicit timeout (smoke.spec.js: 2 s).
+ */
+const SETTLE_MS = 20_000;
+const SETTLE_VIEW_MS = 25_000;
+
+/**
  * Wait until the page has nothing pending: no input frame scheduled, no eye open in the compute
  * client, no delivered result unpainted (#result[data-pending] = ''), then one more frame so the
  * paint is done. Playwright's fill/selectOption dispatch input/change synchronously, so 'input'
  * is already in the set when this runs.
  * @param {import('@playwright/test').Page} page
  */
-export async function settled(page, { timeout = 10_000 } = {}) {
+export async function settled(page, { timeout = SETTLE_MS } = {}) {
   await expect(page.locator('#result')).toHaveAttribute('data-pending', '', { timeout });
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
 }
@@ -21,7 +31,7 @@ export async function settled(page, { timeout = 10_000 } = {}) {
  * compare jobs.
  * @param {import('@playwright/test').Page} page
  */
-export async function settledCompare(page, { timeout = 10_000 } = {}) {
+export async function settledCompare(page, { timeout = SETTLE_MS } = {}) {
   await settled(page, { timeout });
   await expect(page.locator('#compare')).toHaveAttribute('data-pending', '', { timeout });
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
@@ -34,7 +44,7 @@ export async function settledCompare(page, { timeout = 10_000 } = {}) {
  * profile is already marked pending.
  * @param {import('@playwright/test').Page} page
  */
-export async function settledXsec(page, { timeout = 10_000 } = {}) {
+export async function settledXsec(page, { timeout = SETTLE_MS } = {}) {
   await settledCompare(page, { timeout });
   await expect(page.locator('#xsec')).toHaveAttribute('data-pending', '', { timeout });
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
@@ -46,7 +56,7 @@ export async function settledXsec(page, { timeout = 10_000 } = {}) {
  * Three.js and the first mesh can take a few seconds on CI, hence the 15 s default.
  * @param {import('@playwright/test').Page} page
  */
-export async function settledView(page, { timeout = 15_000 } = {}) {
+export async function settledView(page, { timeout = SETTLE_VIEW_MS } = {}) {
   await settled(page, { timeout });
   await expect(page.locator('#view')).toHaveAttribute('data-pending', '', { timeout });
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));

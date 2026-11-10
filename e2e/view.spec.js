@@ -379,6 +379,8 @@ test('VIZ-02 blocked eye keeps its rim', async ({ page }) => {
 });
 
 test('VIZ-02 every shape', async ({ page }) => {
+  // Five shape switches, each waiting for its mesh: 30 s was too short on the CI runner (2026-11-10).
+  test.setTimeout(120_000);
   await settledView(page);
   const before = await memory(page);
   for (const id of ['rund', 'rechteckig', 'panto', 'pilot', 'rechteckig']) {

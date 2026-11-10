@@ -7,7 +7,9 @@ const PERF_SPEC = /perf-throttled\.spec\.js$/;
 export default defineConfig({
   testDir: 'e2e',
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // One retry on CI (Playwright's recommended default): a runner timing flake no longer blocks the
+  // deploy, and a test that passes only on the retry is still reported as flaky.
+  retries: process.env.CI ? 1 : 0,
   use: { baseURL },
   // Local runs serve the production build under the real base path.
   // With BASE_URL set (e.g. the live Pages URL) no server is started.
