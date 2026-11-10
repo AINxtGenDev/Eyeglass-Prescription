@@ -266,5 +266,13 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - `worker.spec.js:331` fails under heavy load;
   - at 320 px with 150 % text size and DejaVu, the page is 345 px wide.
 
+### Done (added 2026-11-09/10)
+- Docs push 7172af8 deployed (run 42705548011, green).
+- **User request:** input boxes right-aligned (7d24e8b, CSS only).
+  - Label left, box on the field's right edge. When a label needs more than the free width, the box wraps to the next line and stays on the right.
+  - A/B/DBL and the Mindestdicken pair are now one column.
+  - Checked at 320/412/1280 px; e2e 289 passed. Pushed with approval (run 42768704484).
+- **User request:** the footer shows "Version dev-1.1 · <build date> (<commit>)". The build date is ISO 8601 (UTC) and is injected at build time.
+
 ### Next step
 User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
