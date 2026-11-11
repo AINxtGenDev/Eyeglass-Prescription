@@ -3,6 +3,7 @@
 // and against the live Pages URL when BASE_URL is set.
 import { test, expect } from '@playwright/test';
 import { settled, thickOf, sphOnly, without3d } from './helpers.js';
+import { APP_VERSION } from '../version.js';
 /* global document, window, MutationObserver -- page.evaluate bodies run in the browser */
 
 /** Material radio card (02-07) by MATERIALS id. */
@@ -320,8 +321,10 @@ test('Vogel raw value with clamp note (MINOR-1)', async ({ page }) => {
 
 test('footer shows the build commit', async ({ page }) => {
   await expect(page.locator('#app-commit')).toHaveText(/^([0-9a-f]{7}|dev)$/);
-  await expect(page.locator('#app-version')).toHaveText('dev-1.2');
+  await expect(page.locator('#app-version')).toHaveText(APP_VERSION);
   await expect(page.locator('#app-date')).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+  // User request 2026-11-11: copyright line at the bottom of the page.
+  await expect(page.locator('#app-copyright')).toHaveText('© 2026 Franz Plessl, Georg Plessl, Werner Plessl. Alle Rechte vorbehalten.');
 });
 
 test('technical details show the timing readout', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { APP_VERSION } from './version.js';
 
 // Short commit hash shown in the footer (#app-commit). CI sets GITHUB_SHA.
 const commit = (process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
@@ -10,7 +11,10 @@ const buildDate = new Date().toISOString().slice(0, 10);
 const appMeta = {
   name: 'app-meta',
   transformIndexHtml(html) {
-    return html.replaceAll('%APP_COMMIT%', commit).replaceAll('%APP_DATE%', buildDate);
+    return html
+      .replaceAll('%APP_COMMIT%', commit)
+      .replaceAll('%APP_DATE%', buildDate)
+      .replaceAll('%APP_VERSION%', APP_VERSION);
   },
 };
 
