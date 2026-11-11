@@ -333,5 +333,10 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
   - MINOR 3 (off-grid D-04(c) worst 0,1169 mm at axis 150) pinned, guard 0,12 mm; MINOR 6 and 8 fixed; MINOR 2 partly (hint box skipped in fullscreen); MINOR 1, 4, 5 and the rest of 2 deferred (deferred-items.md); MINOR 9 accepted.
 - **Tests:** lint clean; unit 1800/1800; e2e fullscreen/heat/controls/a11y/smoke 167 passed, 1 failed: `a11y.spec.js:215` "everything open" times out at 30 s under 4 workers. The baseline 0776c4a build fails the same way (4/4), so it is pre-existing; logged in deferred-items.md.
 
+- **Run 42974893279 (97c44c1): build 574 passed, deploy, verify-live 574 passed. Live = 97c44c1 = dev-1.2.** chrome-devtools on live: 1710 footer "Version dev-1.2 · 2026-11-11 (97c44c1)" + copyright, all four (i) beside their terms, stage 911 px; 412 no overflow, console clean.
+- **lens-critic final verdict: PASS** (0 BLOCKER, 0 MAJOR), MA-1/MA-2 confirmed (03-LENS-CRITIC-RERUN.md). 03-VERIFICATION passed.
+- **Phase 3 complete** (`gsd-tools phase complete 3`, 17/17 plans, 3 of 4 phases). Warning from the tool: v2 IDs (SHARE, INS, LANG, DATA) are not in the traceability table; they are v2, not mapped to a phase.
+- **/gsd-secure-phase 3: SECURED**, 54/54 threats closed (51 mitigate, 3 accept), ASVS 1 (03-SECURITY.md). Watch: `window.__eyeglassView` still ships in production (frozen, no Rx; `pixels()` can force a GPU readback from any script on the github.io origin), accepted as AR-03-04. Gating it behind a flag means touching every e2e spec that uses it: phase 4 candidate.
+
 ### Next step
-CI/deploy of this push → live check (footer dev-1.2 · 2026-11-11, copyright, headers) → lens-critic confirms MA-1/MA-2 (or the user accepts) → phase complete → /gsd-secure-phase 3. Ask the user for a 30-second Pixel check: does the small glasses picture show in the bottom bar while editing?
+User: 30-second Pixel check (small glasses picture in the bottom bar while editing?). Then phase 4: `/gsd-discuss-phase 4` (Durchblick refraction view, offline); carry over deferred-items.md (CI flaky reporting, fullscreen legend, a11y:215 timeout, __eyeglassView gate, real Pixel trace).
