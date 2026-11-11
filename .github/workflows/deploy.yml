@@ -36,10 +36,7 @@ jobs:
       - run: npm run test:coverage
       # GITHUB_SHA is baked into index.html as <meta name="app-commit">.
       - run: npm run build
-      # The system packages come from the Ubuntu mirrors. When the runner cannot reach them
-      # (2026-11-11: DNS failures in four runs), install the browser alone; the image already
-      # has Chromium's libraries, and the e2e tests still gate the deploy.
-      - run: npx playwright install --with-deps chromium || npx playwright install chromium
+      - run: npx playwright install --with-deps chromium
       # Smoke test against vite preview at /Eyeglass-Prescription/.
       - run: npm run test:e2e
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -75,10 +72,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # The system packages come from the Ubuntu mirrors. When the runner cannot reach them
-      # (2026-11-11: DNS failures in four runs), install the browser alone; the image already
-      # has Chromium's libraries, and the e2e tests still gate the deploy.
-      - run: npx playwright install --with-deps chromium || npx playwright install chromium
+      - run: npx playwright install --with-deps chromium
       - name: Wait for Pages to serve this commit
         run: |
           for i in $(seq 1 60); do
