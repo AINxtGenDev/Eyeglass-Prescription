@@ -973,7 +973,9 @@ td:has(.msg-out) input[aria-invalid='true'] {
     margin: 0 0 var(--space-2);
     overflow: visible;
     clip: auto;
-    white-space: normal;
+    /* pre-line: the label strings carry a line break before the unit, so every card label
+       has the unit on its own line (user 2026-11-11). */
+    white-space: pre-line;
     display: block;
     font-size: 0.875rem;
     font-weight: 600;
@@ -1061,8 +1063,25 @@ td:has(.msg-out) input[aria-invalid='true'] {
 .value-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  column-gap: var(--space-4);
   margin: 0;
+}
+
+/* Label and value of two neighbouring cells share row tracks (subgrid), so the numbers line up
+   even when only one label carries a tip button. The margin replaces the former row gap. */
+.value-grid > div {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  min-width: 0;
+}
+
+.value-grid > div:nth-child(n + 3) {
+  margin-block-start: var(--space-4);
+}
+
+.value-grid dt {
+  align-self: end;
 }
 
 .value-grid[hidden] {
