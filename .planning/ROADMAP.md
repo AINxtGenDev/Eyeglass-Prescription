@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Verified Engine & Live Pipeline** - Pure-JS optics engine with tiered validation, gated GitHub Actions deploy to Pages, minimal live German result page (completed 2026-11-07)
 - [x] **Phase 2: Lay-First German Input, Results & Comparison** - Paper-shaped Rx entry, frame and material choice, plain-German results, mm/g comparison, Expert view with 2D cross-section, accessibility
-- [ ] **Phase 3: 3D Lenses & Frame** - Procedural lens meshes and parametric frame from engine data, camera presets, glass impression, thickness heatmap, smooth re-meshing on phones
+- [x] **Phase 3: 3D Lenses & Frame** - Procedural lens meshes and parametric frame from engine data, camera presets, glass impression, thickness heatmap, smooth re-meshing on phones (completed 2026-11-11)
 - [ ] **Phase 4: Refraction View & Offline** - Ray-traced "Durchblick" view through the real lens surfaces, graceful mobile degradation, offline service worker with update prompt
 
 ## Phase Details
@@ -296,7 +296,7 @@ Plans:
 
 **Wave 15**
 
-- [ ] 03-17-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live check, Pixel 7 Pro measurement incl. ENG-09 (c) with 3D
+- [x] 03-17-PLAN.md — Phase gate: trace, lens-critic result review, approved push, live check, Pixel 7 Pro measurement incl. ENG-09 (c) with 3D
 
 ### Phase 4: Refraction View & Offline
 
@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
-| 3. 3D Lenses & Frame | 16/17 | In Progress|  |
+| 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
 | 4. Refraction View & Offline | 0/TBD | Not started | - |

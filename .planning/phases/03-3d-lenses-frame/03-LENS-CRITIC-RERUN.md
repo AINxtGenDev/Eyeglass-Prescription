@@ -26,3 +26,11 @@
 | m7 | 03-VERIFICATION.md premature | Updated with this verdict |
 | m8 | Version label hard-coded in two places | `version.js` (APP_VERSION) is the single source; vite.config.js injects it, smoke.spec.js imports it |
 | m9 | Fullscreen button name only from `title` | Accepted (e2e asserts the accessible name; no overlap found) |
+
+## Confirmation (2026-11-11, HEAD 97c44c1)
+
+**Final verdict: PASS** (0 BLOCKER, 0 MAJOR), on the condition that CI run 42974893279 goes green.
+- MA-1 fixed: SC-4 real-phone measurement "accepted unmet" in 03-17-SUMMARY, 03-VALIDATION (status approved, no "⬜ owed" row left) and REQUIREMENTS; matches the ENG-09 precedent of 02-15.
+- MA-2 fixed and probed (dev server, `fullscreenEnabled` forced false, 412 touch and 1280): Tab/Shift+Tab reach only view-stage, view-fullscreen and BODY; 16 elements inert (header, #rx, #summary-bar …); Chromium's AX tree (CDP `Accessibility.getFullAXTree`) exposes only "Vollbild beenden"; after Esc nothing inert, focus on the button, tabindex restored. Note: Playwright's `ariaSnapshot` ignores `inert`, so it cannot test this.
+- MINOR 3, 6, 8 confirmed; the MINOR 2 side effect (hint box skipped in fullscreen) looks right.
+- Still open, deferred: MINOR 1, the rest of 2, 4, 5; the Pixel thumbnail question (user).
