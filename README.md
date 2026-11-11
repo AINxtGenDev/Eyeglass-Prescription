@@ -43,7 +43,7 @@ It is built first for 🧑 **lay people** holding a paper prescription, and seco
 |---|:---:|---|
 | 1️⃣ Verified engine & live pipeline | ✅ | Optics engine with tiered tests, gated GitHub Pages deploy, minimal German page, checked on a real phone |
 | 2️⃣ Lay-first input, results & comparison | ✅ | German Rx entry, frame and material choice, plain-language results, mm/g comparison, Experten-Ansicht with cross-section; live and checked on a Pixel 7 Pro |
-| 3️⃣ 3D lenses & frame | 🚀 | Procedural lens meshes, parametric frame, thickness heatmap (Dickenkarte), A/B side by side, phone-bar thumbnail; live since 2026-11-09, real-phone check pending |
+| 3️⃣ 3D lenses & frame | ✅ | Procedural lens meshes, parametric frame, thickness heatmap (Dickenkarte), A/B side by side, phone-bar thumbnail, fullscreen; complete 2026-11-11, checked on a Pixel 7 Pro and desktop |
 | 4️⃣ Refraction view & offline | ⏳ | Ray-traced "Durchblick" through the real lens surfaces, offline support |
 
 ---
