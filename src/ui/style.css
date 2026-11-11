@@ -937,7 +937,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
   .rx-table tbody tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-4);
+    column-gap: var(--space-4);
     margin-block-end: var(--space-4);
     padding: var(--space-4);
     border: 1px solid var(--line);
@@ -951,11 +951,22 @@ td:has(.msg-out) input[aria-invalid='true'] {
     font-weight: 600;
   }
 
+  /* Label, input, echo and message of two neighbouring fields share row tracks (subgrid), so the
+     inputs line up even when only one label wraps. The margin replaces the former row gap. */
   .rx-table td {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 4;
     min-width: 0;
+    margin-block-start: var(--space-4);
+  }
+
+  .rx-table td > output {
+    place-self: start;
   }
 
   .rx-table .cell-label {
+    align-self: end;
     position: static;
     width: auto;
     height: auto;
