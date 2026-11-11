@@ -1007,8 +1007,10 @@ td:has(.msg-out) input[aria-invalid='true'] {
     margin: 0 0 var(--space-2);
     overflow: visible;
     clip: auto;
-    /* pre-line: the label strings carry a line break before the unit, so every card label
-       has the unit on its own line (user 2026-11-11). */
+    /* pre-line: the label strings carry a line break before "in <unit>", so every card label
+       has the unit on its own line (user 2026-11-11). The break sits before "in": with the
+       wider CI font (DejaVu Sans) "Sph rechtes Auge in" did not fit a 139 px cell at 360 px,
+       gave three lines and pushed R Sph below the summary bar (e2e/layout.spec.js:116). */
     white-space: pre-line;
     display: block;
     font-size: 0.875rem;
