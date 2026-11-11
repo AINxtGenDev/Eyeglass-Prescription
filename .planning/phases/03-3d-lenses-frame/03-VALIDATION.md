@@ -1,7 +1,7 @@
 ---
 phase: 3
 slug: 3d-lenses-frame
-status: draft
+status: approved
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-11-08
@@ -95,10 +95,10 @@ Statuses set in 03-17 Task 1 from the full gate at HEAD `7f44aef` (2026-11-08): 
 
 | Behavior | Requirement | Why Manual | Test Instructions | Result (03-17) |
 |----------|-------------|------------|-------------------|----------------|
-| Visual correctness of the default, Vorne, Seite (protrusion), Oben, Dickenkarte, A/B, thumbnail and no-WebGL states | VIZ-03, VIZ-04, VIZ-05, RES-03, UX-03 | Visual judgement | chrome-devtools MCP at 412×915, 320×640 and 1280×800 on `vite preview`: screenshot each state and write what it shows; `list_console_messages` must be clean | ⬜ MCP pass owed by the orchestrator (03-17-SUMMARY "MCP matrix (orchestrator)"). Supporting Playwright screenshots of every listed state at 412/320/1280 are described in 03-17-SUMMARY; console at 1280/320 clean, at 412 only the whitelisted "GPU stall due to ReadPixels" driver note |
-| Re-mesh latency, orbit frame time, ENG-09 (c) with 3D | VIZ-06 | Needs a performance trace | MCP `performance_start_trace` at 4× CPU (worker unthrottled, 01-15): input → 3D paint ≤ 200 ms (INP 'good', web.dev/articles/inp), orbit median/p95 ≤ 16,7 ms (60 Hz frame), input → result painted ≤ 100 ms with 3D + compare active (ENG-09 (c), RAIL response) | ⬜ MCP traces owed by the orchestrator. `npm run test:perf` proxy (SwiftShader, worker unthrottled, not phone numbers): re-mesh 1280 median 59,6 / max 94,6 ms; 412 with bar 1 373,6 / 1 387,1 ms; orbit median 841,7 ms (1280), 850 ms (412); ENG-09 (c) with 3D + compare median 30,6 / max 34,7 ms, estimate 46,75 ms |
-| Real mid-range phone timing | VIZ-06 (SC-4) | Needs a real device (human) | Pixel 7 Pro on the live site, using the 02-15 method, incl. ENG-09 (c) with the 3D view and a comparison active (03-17 item i-b); record the numbers in VERIFICATION | ✅ accepted by the user 2026-11-11 ("it works excellent on my phone and desktop", Pixel 7 Pro, live 09f1366); no device trace numbers, the 412 px real-GPU numbers in 03-17-SUMMARY stand in |
-| GPU/heap memory growth | VIZ-06 (D-27) | Heap snapshot comparison | MCP `evaluate_script` `window.__eyeglassView.memory()` before and after 20 changes, plus a heap snapshot diff | ⬜ MCP heap snapshot owed by the orchestrator. Automated D-27 (view-memory.spec.js, 03-17 gate): geometries 21, textures 6, programs 11, allocPage 10, allocWorker 0 after warm-up and after 56 changes |
+| Visual correctness of the default, Vorne, Seite (protrusion), Oben, Dickenkarte, A/B, thumbnail and no-WebGL states | VIZ-03, VIZ-04, VIZ-05, RES-03, UX-03 | Visual judgement | chrome-devtools MCP at 412×915, 320×640 and 1280×800 on `vite preview`: screenshot each state and write what it shows; `list_console_messages` must be clean | ✅ done on the live URL 2026-11-09 (03-17-SUMMARY "Task 3: live verification", Chrome 156 at 412×915, real GPU: presets, Dickenkarte callouts = table, A/B protrusion lines, `?nowebgl` note, no overflow, console clean). 320 and 1280 states: Playwright screenshots only, no MCP pass. Supporting Playwright screenshots of every listed state at 412/320/1280 are described in 03-17-SUMMARY; console at 1280/320 clean, at 412 only the whitelisted "GPU stall due to ReadPixels" driver note |
+| Re-mesh latency, orbit frame time, ENG-09 (c) with 3D | VIZ-06 | Needs a performance trace | MCP `performance_start_trace` at 4× CPU (worker unthrottled, 01-15): input → 3D paint ≤ 200 ms (INP 'good', web.dev/articles/inp), orbit median/p95 ≤ 16,7 ms (60 Hz frame), input → result painted ≤ 100 ms with 3D + compare active (ENG-09 (c), RAIL response) | ✅ MCP at 412 px, real desktop GPU, 4× CPU (03-17 Task 1): orbit median 16,7 ms; input → 3D paint 32–81 ms with the view on screen, 23–29 ms with the bar thumbnail, no long task; no separate ENG-09 (c) MCP trace (the proxy value below stands). Not phone numbers. Earlier `npm run test:perf` proxy (SwiftShader, worker unthrottled, not phone numbers): re-mesh 1280 median 59,6 / max 94,6 ms; 412 with bar 1 373,6 / 1 387,1 ms; orbit median 841,7 ms (1280), 850 ms (412); ENG-09 (c) with 3D + compare median 30,6 / max 34,7 ms, estimate 46,75 ms |
+| Real mid-range phone timing | VIZ-06 (SC-4) | Needs a real device (human) | Pixel 7 Pro on the live site, using the 02-15 method, incl. ENG-09 (c) with the 3D view and a comparison active (03-17 item i-b); record the numbers in VERIFICATION | ⚠️ **accepted unmet** by the user 2026-11-11 ("it works excellent on my phone and desktop", Pixel 7 Pro, live 09f1366): no visible lag reported, but nothing measured on the phone, so SC-4's "measured and recorded" is not met. The 412 px desktop-GPU numbers above are supporting evidence only. Whether the bar thumbnail showed on the Pixel or the A5 guard switched it off is unknown |
+| GPU/heap memory growth | VIZ-06 (D-27) | Heap snapshot comparison | MCP `evaluate_script` `window.__eyeglassView.memory()` before and after 20 changes, plus a heap snapshot diff | ⚠️ heap snapshot diff not taken (accepted 2026-11-11). Renderer memory 21/6/11 before and after 20 Sph edits on the live URL (MCP 2026-11-09), JS heap 25,7 MB once. Automated D-27 (view-memory.spec.js, 03-17 gate): geometries 21, textures 6, programs 11, allocPage 10, allocWorker 0 after warm-up and after 56 changes |
 
 ---
 
@@ -111,4 +111,4 @@ Statuses set in 03-17 Task 1 from the full gate at HEAD `7f44aef` (2026-11-08): 
 - [x] Feedback latency < 120s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** approved 2026-11-11 (real-phone row by user acceptance)
+**Approval:** approved 2026-11-11 with two rows accepted unmet (real-phone timing, heap snapshot diff); see the Result column

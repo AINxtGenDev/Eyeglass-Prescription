@@ -329,5 +329,6 @@ None. Task 1 changes documentation only.
   - chrome-devtools at 412 px, real GPU, 4× CPU (Task 1): orbit median 16,7 ms; re-mesh 32–81 ms with the 3D view on screen, 23–29 ms with the bar thumbnail, no long task;
   - renderer memory flat (21/6/11) over 20 edits live, and over 56 changes in view-memory.spec.js;
   - the thumbnail self-timing guard (A5) turns the thumbnail off if it stalls.
-  - (iii)–(vii) and (ix): covered by the user's "works excellent" only qualitatively.
-  - Per Task 3 step 5 ("passed or is explicitly accepted by the user"), VIZ-06 is marked Complete by user acceptance, the same way as ENG-09 in 02-15. SC-4's "measured and recorded" is met by the 412 px real-GPU numbers above, not by a phone trace.
+  - (iii), (v)–(vii) and (ix): covered by the user's "works excellent" only qualitatively.
+  - (iv) is **unknown**: the A5 guard switches the thumbnail off without a notice, so "works excellent" does not tell whether the thumbnail showed on the Pixel.
+  - Per Task 3 step 5 ("passed or is explicitly accepted by the user"), VIZ-06 is marked Complete by user acceptance, the same way as ENG-09 in 02-15. **SC-4 "measured on a real phone" is accepted unmet**; the 412 px desktop-GPU numbers are supporting evidence only (lens-critic re-review 2026-11-11, MA-1).
