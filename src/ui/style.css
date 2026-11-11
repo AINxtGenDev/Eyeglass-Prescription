@@ -230,7 +230,7 @@ footer {
 }
 
 .short-disclaimer {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--muted);
 }
 
@@ -244,9 +244,43 @@ footer {
   text-decoration: underline;
 }
 
+/* Heading scale (quick 261111-s53): three distinct levels; the title grows with the window from
+   24 px (phone) to 32 px (desktop). On phones the title and the Experten hint keep their former
+   size, so the Rx entry still starts on the first screen (e2e/layout.spec.js, 360 × 780). */
 h1 {
-  font-size: 1.5rem;
+  font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2rem);
   line-height: 1.25;
+}
+
+h2 {
+  font-size: 1.375rem;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+/* Reading width (quick 261111-s53): running text stays at about 75 characters per line (66ch of
+   the "0" width), also where its box spans the whole window. Explanations and messages are
+   16 px; 14 px is kept for labels, captions inside cards and the footer. */
+#disclaimer,
+#tech p,
+.field-hint,
+#view-hint,
+#view-side-note,
+#view-caption,
+#view-protrusion p,
+#cmp-assumed-note,
+#cmp-footnote {
+  max-width: 66ch;
+}
+
+/* The hint keeps its own flex line (flex-basis 100 %), so the limit is padding, not max-width. */
+#expert-hint {
+  box-sizing: border-box;
+  padding-inline-end: calc(100% - min(100%, 66ch));
 }
 
 table {
@@ -476,7 +510,7 @@ legend {
 .field-hint {
   margin: 0;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 #frame-stamp {
@@ -769,7 +803,7 @@ input.mirrored {
   flex-basis: 100%;
   margin: 0;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 /* Field messages, three tiers: text label + icon + box (UI-SPEC Validation messages). */
@@ -777,7 +811,7 @@ input.mirrored {
   margin: var(--space-1) 0 0;
   padding: var(--space-2);
   border-inline-start: 4px solid var(--line);
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .msg[hidden] {
@@ -1249,6 +1283,14 @@ td:has(.msg-out) input[aria-invalid='true'] {
   color: var(--muted);
 }
 
+/* 16 px from 600 px on; phones keep 14 px so the Rx entry starts on the first screen. */
+@media (min-width: 600px) {
+  #expert-hint {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
 /* Expert-only blocks: tag at the top so users see why the block appeared (UI-SPEC). */
 #expert-analysis {
   background: var(--surface);
@@ -1387,7 +1429,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
 
 #cmp-assumed-note,
 #cmp-footnote {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--muted);
 }
 
@@ -1655,7 +1697,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
 
 #glass-settings .small {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 #glass-settings .small p {
@@ -1689,7 +1731,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
 
 #expert-k-wrap .small {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 #frame-rim-wrap {
@@ -1702,7 +1744,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
 }
 
 #frame-rim-result {
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 #frame-rim-result p {
@@ -1935,7 +1977,7 @@ td:has(.msg-out) input[aria-invalid='true'] {
 #view-hint,
 #view-side-note {
   margin-block: var(--space-2) 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--muted);
 }
 
@@ -2119,14 +2161,14 @@ html.view-fs-open body {
 
 #view-caption {
   margin-block: var(--space-2) 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--muted);
 }
 
 /* 03-11 (D-19, UI-SPEC Protrusion): always shown under the caption; the text is the value. */
 #view-protrusion {
   margin-block: var(--space-4) 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 #view-protrusion p {
@@ -2230,7 +2272,7 @@ html.view-fs-open body {
 /* role=status stays in the DOM (a live region must exist before its text changes); empty = hidden. */
 #view-callout-note {
   margin-block: var(--space-2) 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 #view-callout-note:empty {
@@ -2239,7 +2281,7 @@ html.view-fs-open body {
 
 #view-heat-nochord {
   margin-block: var(--space-2) 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 @container viewheat (width < 480px) {
