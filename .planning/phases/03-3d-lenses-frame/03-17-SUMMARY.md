@@ -307,7 +307,7 @@ None. Task 1 changes documentation only.
 |---|---|---|
 | 1 Gate, trace, VALIDATION, lens-critic input | done (MCP matrix and lens-critic verdict owed by the orchestrator) | this docs commit |
 | 2 Push approval | not started (blocking user checkpoint) | — |
-| 3 Push, live check, Pixel 7 Pro, REQUIREMENTS.md | not started | — |
+| 3 Push, live check, Pixel 7 Pro, REQUIREMENTS.md | done (Pixel by user acceptance, 2026-11-11) | docs commit 2026-11-11 |
 
 ## Task 3: live verification (orchestrator, 2026-11-09)
 
@@ -325,4 +325,9 @@ None. Task 1 changes documentation only.
   - Renderer memory is 21/6/11 before and after 20 Sph edits; JS heap 25,7 MB.
   - `?nowebgl` shows the German note, and `#view-tools` and `#view-keys` are hidden. The canvas has aria-hidden and the stage has no tabindex.
   - No console errors or warnings.
-- **Pixel 7 Pro (i)–(ix):** waiting for the user.
+- **Pixel 7 Pro (i)–(ix): accepted by the user, not measured.** On 2026-11-11, on the live site (09f1366: the same app plus the wider desktop view and the fullscreen button), the user reported "it works excellent on my phone and desktop" (Pixel 7 Pro, Chrome; the user had already used the phone layout and 3D view on 2026-11-10). No trace numbers were taken on the device, so (i), (i-b), (ii) and (viii) have **no device values**. What stands in for them:
+  - chrome-devtools at 412 px, real GPU, 4× CPU (Task 1): orbit median 16,7 ms; re-mesh 32–81 ms with the 3D view on screen, 23–29 ms with the bar thumbnail, no long task;
+  - renderer memory flat (21/6/11) over 20 edits live, and over 56 changes in view-memory.spec.js;
+  - the thumbnail self-timing guard (A5) turns the thumbnail off if it stalls.
+  - (iii)–(vii) and (ix): covered by the user's "works excellent" only qualitatively.
+  - Per Task 3 step 5 ("passed or is explicitly accepted by the user"), VIZ-06 is marked Complete by user acceptance, the same way as ENG-09 in 02-15. SC-4's "measured and recorded" is met by the 412 px real-GPU numbers above, not by a phone trace.

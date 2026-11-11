@@ -93,7 +93,7 @@
 - [x] **VIZ-03**: User can rotate, pan and zoom (mouse and touch) and jump to Vorne / Seite / Oben camera presets; the side view shows protrusion beyond the rim.
 - [x] **VIZ-04**: Lenses use a transparent glass material with the material's index, over a high-contrast checkerboard / eye-chart background, labelled as a visual impression.
 - [x] **VIZ-05**: Expert view shows a thickness heatmap on the lens with a mm legend and labelled iso-lines, plus numeric callouts at nasal/temporal/superior/inferior and centre. (2026-11-08, 03-12 + 03-13: cividis map, mm legend and table (03-12); on-lens callouts Mitte/innen/außen/oben/unten (+ dickste) equal to the table and engine, labelled iso lines where they fit, all-or-nothing callouts with the table-only note (03-13, e2e view-heat.spec.js). Caveats for lens-critic in 03-13-SUMMARY: table-only at 320 px and while the keyboard hint shows; iso labels sparse on phones.)
-- [ ] **VIZ-06**: Re-meshing after input changes shows no visible lag on a mid-range phone and does not leak GPU memory over repeated changes.
+- [x] **VIZ-06**: Re-meshing after input changes shows no visible lag on a mid-range phone and does not leak GPU memory over repeated changes. (2026-11-11, 03-17 Task 3: Complete by user acceptance on the Pixel 7 Pro, "it works excellent on my phone and desktop"; no device trace. Measured stand-ins: 412 px real GPU 4× CPU re-mesh 23–81 ms, orbit median 16,7 ms; memory flat 21/6/11 over 56 changes, e2e view-memory.spec.js.)
 
 ### Refraction Impression (REF)
 
@@ -198,7 +198,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIZ-03 | Phase 3 | Complete |
 | VIZ-04 | Phase 3 | Complete |
 | VIZ-05 | Phase 3 | Complete |
-| VIZ-06 | Phase 3 | Pending |
+| VIZ-06 | Phase 3 | Complete |
 | REF-01 | Phase 4 | Pending |
 | REF-02 | Phase 4 | Pending |
 | OFF-01 | Phase 4 | Pending |
@@ -211,4 +211,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-06*
-*Last updated: 2026-11-08 (02-15 Task 3, Pixel 7 Pro): ENG-09 (a) fails on the real phone too (max 27,4 ms), (b)–(d) pass; the user accepted the speed, so ENG-09 is Complete with (a) accepted unmet. Before: 2026-11-07 (02-22, lens-critic M4, user decision 'Fix the measurement'): ENG-09 note: quiet proxy method, 4× proxy (a) passes in 3 of 3 runs for whole-value edits only (max 10,0 ms); key-by-key typing still fails (lens-critic re-review); ENG-09 stays Pending for the 02-15 real-phone check. Before: (02-20, lens-critic M4): ENG-09 back to Pending, the 4× proxy input frame stays ≥ 16,7 ms after the compare-start move (02-20-SUMMARY). Before: (02-19, lens-critic m1) RES-03, UX-02 and UX-03 mapped to "Phase 2 + 3" and Pending, because each has a part that needs the phase-3 3D view (user decision 2026-11-07, deferred-items.md).*
+*Last updated: 2026-11-11 (03-17 Task 3): VIZ-06 Complete by user acceptance on the Pixel 7 Pro, no device trace. Before: 2026-11-08 (02-15 Task 3, Pixel 7 Pro): ENG-09 (a) fails on the real phone too (max 27,4 ms), (b)–(d) pass; the user accepted the speed, so ENG-09 is Complete with (a) accepted unmet. Before: 2026-11-07 (02-22, lens-critic M4, user decision 'Fix the measurement'): ENG-09 note: quiet proxy method, 4× proxy (a) passes in 3 of 3 runs for whole-value edits only (max 10,0 ms); key-by-key typing still fails (lens-critic re-review); ENG-09 stays Pending for the 02-15 real-phone check. Before: (02-20, lens-critic M4): ENG-09 back to Pending, the 4× proxy input frame stays ≥ 16,7 ms after the compare-start move (02-20-SUMMARY). Before: (02-19, lens-critic m1) RES-03, UX-02 and UX-03 mapped to "Phase 2 + 3" and Pending, because each has a part that needs the phase-3 3D view (user decision 2026-11-07, deferred-items.md).*

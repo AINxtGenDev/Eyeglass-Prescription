@@ -97,7 +97,7 @@ Statuses set in 03-17 Task 1 from the full gate at HEAD `7f44aef` (2026-11-08): 
 |----------|-------------|------------|-------------------|----------------|
 | Visual correctness of the default, Vorne, Seite (protrusion), Oben, Dickenkarte, A/B, thumbnail and no-WebGL states | VIZ-03, VIZ-04, VIZ-05, RES-03, UX-03 | Visual judgement | chrome-devtools MCP at 412×915, 320×640 and 1280×800 on `vite preview`: screenshot each state and write what it shows; `list_console_messages` must be clean | ⬜ MCP pass owed by the orchestrator (03-17-SUMMARY "MCP matrix (orchestrator)"). Supporting Playwright screenshots of every listed state at 412/320/1280 are described in 03-17-SUMMARY; console at 1280/320 clean, at 412 only the whitelisted "GPU stall due to ReadPixels" driver note |
 | Re-mesh latency, orbit frame time, ENG-09 (c) with 3D | VIZ-06 | Needs a performance trace | MCP `performance_start_trace` at 4× CPU (worker unthrottled, 01-15): input → 3D paint ≤ 200 ms (INP 'good', web.dev/articles/inp), orbit median/p95 ≤ 16,7 ms (60 Hz frame), input → result painted ≤ 100 ms with 3D + compare active (ENG-09 (c), RAIL response) | ⬜ MCP traces owed by the orchestrator. `npm run test:perf` proxy (SwiftShader, worker unthrottled, not phone numbers): re-mesh 1280 median 59,6 / max 94,6 ms; 412 with bar 1 373,6 / 1 387,1 ms; orbit median 841,7 ms (1280), 850 ms (412); ENG-09 (c) with 3D + compare median 30,6 / max 34,7 ms, estimate 46,75 ms |
-| Real mid-range phone timing | VIZ-06 (SC-4) | Needs a real device (human) | Pixel 7 Pro on the live site, using the 02-15 method, incl. ENG-09 (c) with the 3D view and a comparison active (03-17 item i-b); record the numbers in VERIFICATION | ⬜ 03-17 Task 3 (Pixel 7 Pro on the live site) |
+| Real mid-range phone timing | VIZ-06 (SC-4) | Needs a real device (human) | Pixel 7 Pro on the live site, using the 02-15 method, incl. ENG-09 (c) with the 3D view and a comparison active (03-17 item i-b); record the numbers in VERIFICATION | ✅ accepted by the user 2026-11-11 ("it works excellent on my phone and desktop", Pixel 7 Pro, live 09f1366); no device trace numbers, the 412 px real-GPU numbers in 03-17-SUMMARY stand in |
 | GPU/heap memory growth | VIZ-06 (D-27) | Heap snapshot comparison | MCP `evaluate_script` `window.__eyeglassView.memory()` before and after 20 changes, plus a heap snapshot diff | ⬜ MCP heap snapshot owed by the orchestrator. Automated D-27 (view-memory.spec.js, 03-17 gate): geometries 21, textures 6, programs 11, allocPage 10, allocWorker 0 after warm-up and after 56 changes |
 
 ---
@@ -111,4 +111,4 @@ Statuses set in 03-17 Task 1 from the full gate at HEAD `7f44aef` (2026-11-08): 
 - [x] Feedback latency < 120s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-11-11 (real-phone row by user acceptance)
