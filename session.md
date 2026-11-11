@@ -48,7 +48,7 @@
 
 ### Next step (resume here after /clear)
 - State: phases 1–3 complete, phase 4 not started. Live = dev-1.2 (app code 97c44c1); later commits are docs only. Working tree clean, main = origin/main.
-- Open for the user: 30-second Pixel check (with the 3D view scrolled away, does the small glasses picture show in the bottom bar while editing?).
+- Pixel check done 2026-11-11: user confirmed on the real Pixel that the bottom-bar thumbnail shows and works with the 3D view scrolled away (dev-1.2).
 - Next command: `/gsd-discuss-phase 4` (Durchblick refraction view, mobile degradation, offline service worker with update prompt).
 - Carry into phase 4 from `.planning/phases/03-*/deferred-items.md`: CI flaky reporting, fullscreen legend (MINOR 2), a11y.spec.js:215 timeout, `window.__eyeglassView` production gate (AR-03-04), real Pixel performance trace.
 - Rules: bump `version.js` (dev-1.3) with the next deployed change; lens-critic gate on the phase 4 plan and result; ask before every push.
