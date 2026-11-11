@@ -47,7 +47,7 @@
 - Unverified: whether the iOS decimal keypad has a minus key; Austrian terminology (Basiskurve vs Durchbiegung); conic constants for aspheric lenses (manufacturers don't publish them).
 
 ### Next step (resume here after /clear)
-- State: phases 1–3 complete, phase 4 not started. Live = dev-1.3 (checked 2026-11-11). dev-1.5 is committed but not live yet: it holds the dev-1.4 layout fixes plus the readability pass (quick task 261111-s53: heading scale, 16 px explanations, reading width about 66 characters). Three CI runs failed e2e/layout.spec.js:116 (R Sph at 725 px, limit 720 px) because a Rx card label took three lines in the runner font; fixed by an 8 px column gap in the Rx card. Check the footer after the next green run.
+- State: phases 1–3 complete, phase 4 not started. Live = dev-1.5 (footer checked 2026-11-11 after green run 43107142219): Rx card labels with the unit on its own line, aligned result values, readability pass (quick task 261111-s53: heading scale, 16 px explanations, reading width about 66 characters), 8 px column gap in the Rx card.
 - Pixel check done 2026-11-11: user confirmed on the real Pixel that the bottom-bar thumbnail shows and works with the 3D view scrolled away (dev-1.2).
 - Next command: `/gsd-discuss-phase 4` (Durchblick refraction view, mobile degradation, offline service worker with update prompt).
 - Carry into phase 4 from `.planning/phases/03-*/deferred-items.md`: CI flaky reporting, fullscreen legend (MINOR 2), a11y.spec.js:215 timeout, `window.__eyeglassView` production gate (AR-03-04), real Pixel performance trace.
