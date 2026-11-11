@@ -645,7 +645,7 @@ form#rx {
 }
 
 .rx-table tbody th[scope='row'] {
-  width: 25%;
+  width: 20%;
 }
 
 /* Field labels: hidden in table mode (the column header shows the term), visible in card mode. */
@@ -672,6 +672,25 @@ form#rx {
    (a lone button on its own line pushed the value down on a 412 px phone, 2026-11-08). */
 dt .term {
   flex-wrap: nowrap;
+}
+
+/* Rx column headers: the "i" button stays beside its term in table mode too; the term text
+   wraps instead (a button alone on a second line looked uneven at desktop width, user 2026-11-11).
+   The term text is one flex item that breaks between words only ("Sph" never becomes "Sp|h").
+   No gap: the 44 px button already leaves 10 px around its 24 px icon. */
+.rx-table thead .term {
+  flex-wrap: nowrap;
+  column-gap: 0;
+  text-align: start;
+}
+
+.rx-table thead tr:first-child th {
+  vertical-align: middle;
+}
+
+.rx-table thead .term-text {
+  overflow-wrap: break-word;
+  hyphens: manual;
 }
 
 .input-group {
@@ -901,7 +920,6 @@ td:has(.msg-out) input[aria-invalid='true'] {
      block-level flex adds no baseline strut, so a two-line term stays 44 px high. */
   .rx-table thead .term {
     display: flex;
-    flex-wrap: nowrap;
   }
 
   .rx-table thead tr:first-child th:first-child {
