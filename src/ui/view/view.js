@@ -252,6 +252,7 @@ function mount({ slot }) {
    * 03-13: stage boxes no label may cover: the badge, and the keyboard hint while it is shown
    * (#view-stage:focus-visible). Measured on badge text, focus and size changes, never per frame.
    */
+  let fsOn = false;
   function updateAvoid(inRender = false) {
     const stageEl = $('view-stage');
     const boxes = [];
@@ -267,7 +268,8 @@ function mount({ slot }) {
       fsBox = { x: fsButton.offsetLeft, y: inset, w, h };
       corner = { top: fsBox, low: { x: fsButton.offsetLeft, y: stageEl.clientHeight - inset - h, w, h } };
     }
-    if (stageEl.matches(':focus-visible') && keysState !== 'hidden') {
+    // In fullscreen the hint (outside the stage) is covered: its box would only cost callouts.
+    if (!fsOn && stageEl.matches(':focus-visible') && keysState !== 'hidden') {
       // 03-CI: in #view-labels coordinates (the stage's padding box, like the badge's offsetTop),
       // not the border box: the 1 px stage border otherwise lets a label overlap the hint by 1 px.
       const b = stageEl.getBoundingClientRect();
@@ -834,7 +836,11 @@ function mount({ slot }) {
     },
   });
   if (controls.pointer) setText('view-hint', t('view.hint.pointer'));
-  createFullscreen({ stage: $('view-stage'), button: fsButton, onChange: (on) => controls.setFullscreen(on) });
+  createFullscreen({ stage: $('view-stage'), button: fsButton, onChange: (on) => {
+    fsOn = on;
+    controls.setFullscreen(on);
+    updateAvoid();
+  } });
 
   /**
    * 03-15 (lens-critic MINOR 11): the thumbnail pose, or null for 'not now'. Front direction,

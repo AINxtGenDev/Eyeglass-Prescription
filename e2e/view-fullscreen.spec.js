@@ -80,6 +80,27 @@ test.describe('without the element Fullscreen API', () => {
     await roundTrip(page, { css: true });
   });
 
+  test('CSS fallback: Tab stays inside the stage, the page behind is inert (WCAG 2.4.11)', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await btn(page).click();
+    await expect.poll(async () => fills(await stageBox(page)), { timeout: 10_000 }).toBe(true);
+    await btn(page).focus();
+    const reached = new Set();
+    for (const key of ['Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
+      await page.keyboard.press(key);
+      reached.add(await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName));
+    }
+    // Only the stage and its button (BODY when focus wraps past the end of the document).
+    expect([...reached].filter((id) => !['view-stage', 'view-fullscreen', 'BODY'].includes(id))).toEqual([]);
+    expect(await page.locator('#view-tools, #rx').evaluateAll((els) => els.map((e) => e.closest('[inert]') !== null))).toEqual([true, true]);
+    await btn(page).click();
+    await expect.poll(async () => fills(await stageBox(page)), { timeout: 10_000 }).toBe(false);
+    expect(await page.locator('[inert]').count()).toBe(0);
+    await expect(page.locator('.col-results')).toHaveAttribute('tabindex', '0');
+    await expect(btn(page)).toBeFocused();
+  });
+
   test('fullscreen button: Esc leaves the CSS fallback', async ({ page }) => {
     test.setTimeout(120_000);
     await settledView(page);
