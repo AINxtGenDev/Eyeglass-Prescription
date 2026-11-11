@@ -320,7 +320,7 @@ test('Vogel raw value with clamp note (MINOR-1)', async ({ page }) => {
 
 test('footer shows the build commit', async ({ page }) => {
   await expect(page.locator('#app-commit')).toHaveText(/^([0-9a-f]{7}|dev)$/);
-  await expect(page.locator('#app-version')).toHaveText('dev-1.1');
+  await expect(page.locator('#app-version')).toHaveText('dev-1.2');
   await expect(page.locator('#app-date')).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
 });
 
