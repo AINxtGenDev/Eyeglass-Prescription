@@ -320,5 +320,18 @@ Start a fresh session with `/clear`, then run `/gsd-discuss-phase 1` (or `/gsd-p
 - **Live check, chrome-devtools at 1710×1000:** footer commit 09f1366; 3D stage 913×571; real click on the button → 1710×1000 (CSS fallback in that MCP tab, the API is refused there since the MCP browser restart; the API path was clicked live-equivalent on the local build earlier), exit → 913×571; no overflow, console clean.
 - **For the user:** reload (tap "Neue Version" if shown); footer must show 09f1366.
 
+## 2026-11-11 — dev-1.2: Rx headers, copyright, phase-3 gate
+
+- **User: "it works excellent on my phone and desktop"** (Pixel 7 Pro + desktop, live 09f1366). Recorded as VIZ-06 Complete by user acceptance; the real-phone measurement (SC-4 "measured and recorded") is **accepted unmet**, the 412 px desktop-GPU numbers are supporting evidence only (lens-critic MA-1 wording). Item (iv), whether the bar thumbnail shows on the Pixel, is unknown.
+- **Version label dev-1.2** (user). `version.js` (APP_VERSION) is now the only place; vite.config.js injects it, smoke.spec.js imports it. User rule: bump it with every deployed change. The footer date is the build day.
+- **Rx column headers on desktop** (user screenshot): the (i) buttons wrapped under "Sph (dpt)", "Achse (°)", "PD (mm, je Auge)". Now the term text is one flex item that breaks between words only, no gap to the 44 px button, header row centred, eye column 20 % (was 25 %). chrome-devtools: 1710 and 1280 every (i) beside its term (Sph/Zyl/Achse one line, PD two); 412 and 320 card mode unchanged; no overflow; console clean.
+- **Footer copyright** (user): "© 2026 Franz Plessl, Georg Plessl, Werner Plessl. Alle Rechte vorbehalten." on its own line under the version (`footer.rights` in de-AT.js). chrome-devtools 1710/412/320: no overflow.
+- **gsd-verifier:** passed 5/5 with SC-4 by override; now `human_needed` until lens-critic confirms the re-review fixes (03-VERIFICATION.md).
+- **lens-critic re-review: NEEDS WORK** (0 BLOCKER, 2 MAJOR, 9 MINOR; 03-LENS-CRITIC-RERUN.md). M1 and M2 of the first review confirmed fixed.
+  - MA-1 fixed (wording, 03-VALIDATION rows filled, status approved with two rows accepted unmet).
+  - MA-2 fixed: in the CSS fullscreen fallback the page behind is `inert`, the tabindex-0 results column leaves the Tab order, focus returns to the button. New e2e (8/8). chrome-devtools 1280 and Pixel 412: Tab cycles stage → button only, 16 inert elements, all restored on exit, "3D drehen" on/off as before.
+  - MINOR 3 (off-grid D-04(c) worst 0,1169 mm at axis 150) pinned, guard 0,12 mm; MINOR 6 and 8 fixed; MINOR 2 partly (hint box skipped in fullscreen); MINOR 1, 4, 5 and the rest of 2 deferred (deferred-items.md); MINOR 9 accepted.
+- **Tests:** lint clean; unit 1800/1800; e2e fullscreen/heat/controls/a11y/smoke 167 passed, 1 failed: `a11y.spec.js:215` "everything open" times out at 30 s under 4 workers. The baseline 0776c4a build fails the same way (4/4), so it is pre-existing; logged in deferred-items.md.
+
 ### Next step
-User's Pixel results → 03-VALIDATION Pixel row + VIZ-06 in REQUIREMENTS.md → docs commit → gsd-verifier → phase complete → /gsd-secure-phase 3.
+CI/deploy of this push → live check (footer dev-1.2 · 2026-11-11, copyright, headers) → lens-critic confirms MA-1/MA-2 (or the user accepts) → phase complete → /gsd-secure-phase 3. Ask the user for a 30-second Pixel check: does the small glasses picture show in the bottom bar while editing?
