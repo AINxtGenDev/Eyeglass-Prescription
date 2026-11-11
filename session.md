@@ -47,8 +47,8 @@
 - Unverified: whether the iOS decimal keypad has a minus key; Austrian terminology (Basiskurve vs Durchbiegung); conic constants for aspheric lenses (manufacturers don't publish them).
 
 ### Next step (resume here after /clear)
-- State: phases 1–3 complete, phase 4 not started. Live = dev-1.2 (app code 97c44c1); later commits are docs only. Working tree clean, main = origin/main.
+- State: phases 1–3 complete, phase 4 not started. Live = dev-1.3 (app code 007f18c: Rx card inputs aligned when only one label wraps, 2026-11-11). Working tree clean, main = origin/main.
 - Pixel check done 2026-11-11: user confirmed on the real Pixel that the bottom-bar thumbnail shows and works with the 3D view scrolled away (dev-1.2).
 - Next command: `/gsd-discuss-phase 4` (Durchblick refraction view, mobile degradation, offline service worker with update prompt).
 - Carry into phase 4 from `.planning/phases/03-*/deferred-items.md`: CI flaky reporting, fullscreen legend (MINOR 2), a11y.spec.js:215 timeout, `window.__eyeglassView` production gate (AR-03-04), real Pixel performance trace.
-- Rules: bump `version.js` (dev-1.3) with the next deployed change; lens-critic gate on the phase 4 plan and result; ask before every push.
+- Rules: bump `version.js` (dev-1.4) with the next deployed change; lens-critic gate on the phase 4 plan and result; ask before every push.
