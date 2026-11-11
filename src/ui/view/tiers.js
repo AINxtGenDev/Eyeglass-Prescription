@@ -6,7 +6,7 @@
 // reduced, and its vertices are exact. Its sag error between vertices is measured, not proven for
 // every input (mesh/tessellation.test.js, 03-LC M1, full grid scan): ≤ 0,01 mm (≤ 0,025 mm for
 // custom nₑ < 1,49) for every scanned lens up to etMax 31 mm; above that up to 0,0174 mm below
-// etMax 35 mm and 0,106 mm above (etMax 58,6 mm). A tier only changes the pixel ratio, the
+// etMax 35 mm and ≥ 0,117 mm above (etMax 58,6 mm). A tier only changes the pixel ratio, the
 // transmission render target scale, dispersion and the chart texture size; realism degrades,
 // correctness never does.
 

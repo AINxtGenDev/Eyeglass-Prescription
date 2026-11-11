@@ -10,7 +10,7 @@ export const SPOKES = 720; // = frameOutline default point count; never changed 
 // Rim grading exponent, measured, 03-RESEARCH Pattern 1 table: max sag error 0,0074–0,0078 mm
 // for nₑ ≥ 1,49 at 64 rings × 720 spokes on the research lenses. Not a bound for every input
 // (03-LC M1, full grid scan in tessellation.test.js): ≤ 0,01 mm holds up to etMax 31 mm; large
-// frames with a strong minus reach 0,0174 mm below etMax 35 mm and 0,106 mm above (at the far
+// frames with a strong minus reach 0,0174 mm below etMax 35 mm and ≥ 0,117 mm above (at the far
 // corner, angular: a higher GRADING does not help). The vertices themselves are exact.
 export const GRADING = 2.5;
 

@@ -53,7 +53,7 @@ export async function settledXsec(page, { timeout = SETTLE_MS } = {}) {
 /**
  * settled(), then wait until the 3D view has nothing pending (03-05): #view[data-pending] = ''
  * (the lazy chunk loaded and the latest mesh request is attached), then one more frame.
- * Three.js and the first mesh can take a few seconds on CI, hence the 15 s default.
+ * Three.js and the first mesh can take a few seconds on CI, hence the SETTLE_VIEW_MS (25 s) default.
  * @param {import('@playwright/test').Page} page
  */
 export async function settledView(page, { timeout = SETTLE_VIEW_MS } = {}) {

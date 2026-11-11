@@ -8,7 +8,8 @@
 // - nₑ ≥ 1,49, etMax ≤ 31 mm: every lens ≤ 0,01 mm. Between etMax 31,1 and 34,9 mm, 10 of
 //   51 397 lenses exceed it (worst 0,0174 mm, CR-39 panto 62×40/18 PD 40 −12 −6 × 30, etMax
 //   34,92). Above etMax 35 mm (879 lenses) the worst is 0,1062 mm (1,74 rechteckig 58×50/24 PD 25
-//   −12 −6 × 30, etMax 58,6).
+//   −12 −6 × 30, etMax 58,6). Off the grid the same lens at axis 150 reaches 0,1169 mm (0,204 %,
+//   lens-critic re-review 2026-11-11): within the accepted bound only through its 0,6 % clause.
 // - custom nₑ 1,40: etMax ≤ 35 mm all ≤ 0,025 mm (worst 0,0162); above, worst 0,0426 mm
 //   (rechteckig 62×55/18 PD 25 −6 −3 × 30, etMax 57,6).
 // - Worst error / local analytic thickness at the same point, over all lenses: 0,56 %.
@@ -210,6 +211,10 @@ const SCAN_WORST_ABOVE_35 = [
   ['idx167', 'panto', 62, 40, 14, 25, -12, -3, 60, 0.01973, 45.99],
   ['idx174', 'rechteckig', 58, 50, 24, 25, -12, -6, 30, 0.10618, 58.6],
   ['custom', 'rechteckig', 62, 55, 18, 25, -6, -3, 30, 0.04262, 57.62],
+  // lens-critic re-review 2026-11-11 (MINOR 3): off the grid's axes, axis 150 is worse than the
+  // grid worst: 0,1169 mm at 0,204 % of local thickness (accepted bound: ≤ 0,11 mm OR ≤ 0,6 %).
+  ['idx174', 'rechteckig', 58, 50, 24, 25, -12, -6, 150, 0.11686, 58.6],
+  ['custom', 'rechteckig', 62, 55, 18, 25, -6, -3, 150, 0.04466, 57.62],
 ];
 const scanSpec = ([m, shape, A, B, DBL, monoPD, sph, cyl, axisDeg]) => gridLens(m, { shape, A, B, DBL, monoPD, sph, cyl, axisDeg });
 
@@ -217,7 +222,7 @@ const scanSpec = ([m, shape, A, B, DBL, monoPD, sph, cyl, axisDeg]) => gridLens(
 const ETMAX_HOLDS_MM = 31;
 /** Regression guards (measured full-scan worst, rounded up), NOT accepted bounds. */
 const GUARD_TO_35_MM = 0.02; // nₑ ≥ 1,49, 31 < etMax ≤ 35: measured 0,0174
-const GUARD_ABOVE_35_MM = 0.11; // nₑ ≥ 1,49, etMax > 35: measured 0,1062
+const GUARD_ABOVE_35_MM = 0.12; // nₑ ≥ 1,49, etMax > 35: grid 0,1062, off-grid axis 150 0,1169
 const GUARD_LOW_ABOVE_35_MM = 0.045; // custom nₑ 1,40, etMax > 35: measured 0,0426
 const GUARD_FRACTION = 0.006; // error / local thickness at the same point: measured 0,0056
 
