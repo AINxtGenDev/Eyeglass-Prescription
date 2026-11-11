@@ -971,7 +971,9 @@ td:has(.msg-out) input[aria-invalid='true'] {
   .rx-table tbody tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: var(--space-4);
+    /* 8 px, not 16: at 360 px the cells are then 143 px wide, and "Sph rechtes Auge" (141 px in
+       DejaVu Sans 600, the CI runner font) stays on one line (e2e/layout.spec.js:116). */
+    column-gap: var(--space-2);
     margin-block-end: var(--space-4);
     padding: var(--space-4);
     border: 1px solid var(--line);
@@ -1008,9 +1010,9 @@ td:has(.msg-out) input[aria-invalid='true'] {
     overflow: visible;
     clip: auto;
     /* pre-line: the label strings carry a line break before "in <unit>", so every card label
-       has the unit on its own line (user 2026-11-11). The break sits before "in": with the
-       wider CI font (DejaVu Sans) "Sph rechtes Auge in" did not fit a 139 px cell at 360 px,
-       gave three lines and pushed R Sph below the summary bar (e2e/layout.spec.js:116). */
+       has the unit on its own line (user 2026-11-11). A first line that wraps gives three
+       lines and pushes R Sph below the summary bar at 360 px (e2e/layout.spec.js:116), see the
+       column gap above. */
     white-space: pre-line;
     display: block;
     font-size: 0.875rem;
