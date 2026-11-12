@@ -129,7 +129,7 @@ Breakpoints (px, `min-width` media queries plus container queries):
 | Phone | `< 600px` viewport | One column, page padding 16 px, summary bar on |
 | Tablet | `600–899px` viewport | One column, page padding 24 px, summary bar on |
 | Desktop | `≥ 900px` viewport | Two-column grid, page padding 32 px, summary bar off |
-| Sticky results | `(min-width: 900px) and (min-height: 600px)` | Results column is sticky; below 600 px height it scrolls normally |
+| Sticky results | `(min-width: 900px) and (min-height: 480px)` | Results column is sticky; below 480 px height it scrolls normally (600 px until dev-1.6: a tablet in landscape reports about 590 px and got a blank area below the inputs) |
 | Rx table mode | container `rx` `≥ 560px` | Real table layout; below: one card per eye (D-03, breakpoint fixed here) |
 | Rx card 1-col | container `rx` `< 280px` | Fields stack 1 per row inside an eye card (only at extreme zoom) |
 | Comparison table mode | container `cmp` `≥ 480px` | Material table and A/B table as real tables; below: stacked rows with visible cell labels |

@@ -252,6 +252,41 @@ test.describe('1280 × 800', () => {
   });
 });
 
+// Tablet in landscape (user 2026-11-12): about 1164 × 593 with the browser toolbar. The results
+// column is sticky there too; without it the page was as long as the results column and the area
+// below the inputs stayed blank. A landscape phone (915 × 412) is too low for it.
+test.describe('1164 × 593, tablet landscape', () => {
+  test.use({ viewport: { width: 1164, height: 593 } });
+
+  test('sticky results: the page is as long as the inputs, not as the results', async ({ page }) => {
+    await settled(page);
+    const m = await page.evaluate(() => {
+      const res = document.querySelector('.col-results');
+      return {
+        position: getComputedStyle(res).position,
+        resultsHeight: res.getBoundingClientRect().height,
+        resultsContent: res.scrollHeight,
+        inputsHeight: document.querySelector('.col-inputs').getBoundingClientRect().height,
+        viewport: window.innerHeight,
+      };
+    });
+    expect(m.position).toBe('sticky');
+    expect(m.resultsHeight, 'results column fits the viewport').toBeLessThanOrEqual(m.viewport);
+    expect(m.resultsContent, 'results scroll inside their column').toBeGreaterThan(m.resultsHeight);
+    expect(m.inputsHeight, 'inputs set the page length').toBeGreaterThan(m.resultsHeight);
+    await expectNoHorizontalScroll(page, 'at 1164 px');
+  });
+});
+
+test.describe('915 × 412, phone landscape', () => {
+  test.use({ viewport: { width: 915, height: 412 } });
+
+  test('results column is not sticky', async ({ page }) => {
+    await settled(page);
+    expect(await page.locator('.col-results').evaluate((el) => getComputedStyle(el).position)).toBe('static');
+  });
+});
+
 // RES-06: the full 'Wichtiger Hinweis' text is always readable. At the page bottom the sticky
 // results column must not slide over the full-width block below the two columns (02-09 fix).
 for (const width of [1280, 900]) {

@@ -111,8 +111,11 @@ footer {
   }
 }
 
-/* Sticky results only when the viewport is high enough to show a useful part of them. */
-@media (min-width: 900px) and (min-height: 600px) {
+/* Sticky results only when the viewport is high enough to show a useful part of them: the 3D view
+   with its toolbar needs about 450 px. 480 px, not 600: a tablet in landscape reports about
+   590 px with the browser toolbar, and without sticky the much longer results column left a blank
+   area below the inputs (user 2026-11-12). Landscape phones (about 400 px high) stay non-sticky. */
+@media (min-width: 900px) and (min-height: 480px) {
   .col-results {
     position: sticky;
     top: 16px;
@@ -1118,8 +1121,9 @@ td:has(.msg-out) input[aria-invalid='true'] {
   margin-block-start: var(--space-4);
 }
 
+/* centre, not end: a label with an info button is 44 px high with its text in the middle. */
 .value-grid dt {
-  align-self: end;
+  align-self: center;
 }
 
 .value-grid[hidden] {
