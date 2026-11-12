@@ -87,17 +87,34 @@ test('UX-02 switch only in Expert', async ({ page }) => {
 test.describe('320×640', () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
-  test('VIZ-05 Dickenkarte frames the heat eye (MAJOR 4)', async ({ page }) => {
+  // dev-1.7 (user 2026-11-12, amends MAJOR 4): the Dickenkarte frames both lenses, because the two
+  // eyes often differ. One lens had about 4 px/mm here; both lenses have about 2 px/mm.
+  test('VIZ-05 Dickenkarte frames both lenses', async ({ page }) => {
     await settledView(page);
     await expertOn(page);
     await heatOn(page);
     const s = await ev(page, () => window.__eyeglassView.heatScale());
-    // Default rule: larger max(ct, etMax); the example's eyes tie within 0,05 mm (4,6 / 4,6) → OD.
+    // Default rule for the numbers: larger max(ct, etMax); the example's eyes tie (4,6 / 4,6) → OD.
     expect(s.eye).toBe('OD');
     const { target } = await ev(page, () => window.__eyeglassView.camera());
-    const box = (await ev(page, () => window.__eyeglassView.frameInfo())).eyeBox[s.eye];
+    const { OD, OS } = (await ev(page, () => window.__eyeglassView.frameInfo())).eyeBox;
     for (const k of ['x', 'y', 'z']) {
-      expect(Math.abs(target[k] - (box.min[k] + box.max[k]) / 2), `target.${k}`).toBeLessThanOrEqual(0.5);
+      const mid = (Math.min(OD.min[k], OS.min[k]) + Math.max(OD.max[k], OS.max[k])) / 2;
+      expect(Math.abs(target[k] - mid), `target.${k}`).toBeLessThanOrEqual(0.5);
+    }
+    // Every corner of both eye boxes is inside the stage.
+    const stage = await page.locator('#view-stage').boundingBox();
+    const pts = await ev(
+      page,
+      (boxes) =>
+        boxes.flatMap((b) =>
+          [b.min.x, b.max.x].flatMap((x) => [b.min.y, b.max.y].map((y) => window.__eyeglassView.project(x, y, b.max.z))),
+        ),
+      [OD, OS],
+    );
+    expect(pts).toHaveLength(8);
+    for (const [x, y] of pts) {
+      expect(x >= 0 && x <= stage.width && y >= 0 && y <= stage.height, `corner ${x.toFixed(0)},${y.toFixed(0)} inside ${stage.width}×${stage.height}`).toBe(true);
     }
     const [a, b] = await ev(
       page,
@@ -106,7 +123,7 @@ test.describe('320×640', () => {
     );
     const px10 = Math.hypot(a[0] - b[0], a[1] - b[1]);
     test.info().annotations.push({ type: 'scale', description: `${(px10 / 10).toFixed(2)} px/mm at 320×640` });
-    expect(px10).toBeGreaterThanOrEqual(30);
+    expect(px10).toBeGreaterThanOrEqual(15);
   });
 
   test('VIZ-05 axe and no horizontal scroll at 320 (Expert + Dickenkarte)', async ({ page }) => {
@@ -298,51 +315,62 @@ async function expectLayoutRule(page) {
 
 const noteVisible = (page) => page.locator('#view-callout-note').isVisible();
 
-test('VIZ-05 callouts equal table', async ({ page }) => {
-  await settledView(page);
-  await expertOn(page);
-  await heatOn(page);
-  const info = await labelsInfo(page);
-  expect(info.calloutsFit).toBe(true);
-  const s = await ev(page, () => window.__eyeglassView.heatScale());
-  const callouts = await expectCalloutsEqualTable(page, info, s.eye);
-  expect([5, 6]).toContain(callouts.length);
-  expect(callouts.map((c) => c.key).slice(0, 5)).toEqual(['centre', 'nasal', 'temporal', 'superior', 'inferior']);
-  // One marker dot per callout.
-  expect(info.labels.filter((l) => l.kind === 'dot')).toHaveLength(callouts.length);
-  // Both lenses stay coloured; the picker shows the default (heat) eye.
-  await expect(page.locator(`#view-heat-eye input[value=${s.eye}]`)).toBeChecked();
-  await expect(page.locator('#view-heat-eye legend')).toHaveText('Zahlen am Glas für');
-  expect(await noteVisible(page)).toBe(false);
+// dev-1.7: next to two lenses the callouts need the desktop stage; phones get the table-only note.
+test.describe('1280×800 callouts', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('VIZ-05 callouts equal table', async ({ page }) => {
+    await settledView(page);
+    await expertOn(page);
+    await heatOn(page);
+    const info = await labelsInfo(page);
+    expect(info.calloutsFit).toBe(true);
+    const s = await ev(page, () => window.__eyeglassView.heatScale());
+    const callouts = await expectCalloutsEqualTable(page, info, s.eye);
+    expect([5, 6]).toContain(callouts.length);
+    expect(callouts.map((c) => c.key).slice(0, 5)).toEqual(['centre', 'nasal', 'temporal', 'superior', 'inferior']);
+    // One marker dot per callout.
+    expect(info.labels.filter((l) => l.kind === 'dot')).toHaveLength(callouts.length);
+    // Both lenses stay coloured; the picker shows the default (heat) eye.
+    await expect(page.locator(`#view-heat-eye input[value=${s.eye}]`)).toBeChecked();
+    await expect(page.locator('#view-heat-eye legend')).toHaveText('Zahlen am Glas für');
+    expect(await noteVisible(page)).toBe(false);
+  });
+
+  test('VIZ-05 eye picker', async ({ page }) => {
+    await settledView(page);
+    await expertOn(page);
+    await heatOn(page);
+    expect((await ev(page, () => window.__eyeglassView.heatScale())).eye).toBe('OD');
+    const tableBefore = plain(await page.locator('#view-heat-table').textContent());
+    const cameraBefore = await ev(page, () => window.__eyeglassView.camera());
+    await page.locator('#view-heat-eye label', { hasText: 'Linkes Glas' }).click();
+    await page.waitForFunction(() => window.__eyeglassView.heatScale().eye === 'OS');
+    await frames(page);
+    await expect(page.locator('#view-heat-eye input[value=OS]')).toBeChecked();
+    // dev-1.7: the picker moves the numbers, not the camera (both lenses stay framed).
+    expect(await ev(page, () => window.__eyeglassView.camera()), 'camera unchanged').toEqual(cameraBefore);
+    // The left lens sits on the stage's right, next to the fullscreen button: at 1280 px its callouts
+    // may not all fit, then none is shown and the note says so (all-or-nothing rule).
+    const info = await expectLayoutRule(page);
+    expect(await noteVisible(page)).toBe(!info.calloutsFit);
+    if (info.calloutsFit) await expectCalloutsEqualTable(page, info, 'OS');
+    expect(plain(await page.locator('#view-heat-table').textContent()), 'table unchanged').toBe(tableBefore);
+  });
 });
 
-test('VIZ-05 eye picker', async ({ page }) => {
-  await settledView(page);
-  await expertOn(page);
-  await heatOn(page);
-  expect((await ev(page, () => window.__eyeglassView.heatScale())).eye).toBe('OD');
-  const tableBefore = plain(await page.locator('#view-heat-table').textContent());
-  await page.locator('#view-heat-eye label', { hasText: 'Linkes Glas' }).click();
-  await page.waitForFunction(() => window.__eyeglassView.heatScale().eye === 'OS');
-  await frames(page);
-  await expect(page.locator('#view-heat-eye input[value=OS]')).toBeChecked();
-  const { target } = await ev(page, () => window.__eyeglassView.camera());
-  const box = (await ev(page, () => window.__eyeglassView.frameInfo())).eyeBox.OS;
-  for (const k of ['x', 'y', 'z']) expect(Math.abs(target[k] - (box.min[k] + box.max[k]) / 2), `target.${k}`).toBeLessThanOrEqual(0.5);
-  const info = await labelsInfo(page);
-  expect(info.calloutsFit).toBe(true);
-  expect([5, 6]).toContain((await expectCalloutsEqualTable(page, info, 'OS')).length);
-  expect(plain(await page.locator('#view-heat-table').textContent()), 'table unchanged').toBe(tableBefore);
-});
-
-test('VIZ-05 callouts fit on phones (MAJOR 4)', async ({ page }, info) => {
+test('VIZ-05 phones: both lenses, numbers in the table (dev-1.7)', async ({ page }, info) => {
   test.skip(info.project.name !== 'mobile', 'mobile project (360×780) only');
   await settledView(page);
   await expertOn(page);
   await heatOn(page);
   const li = await expectLayoutRule(page);
-  expect(li.calloutsFit, 'all callouts at 360×780').toBe(true);
-  expect([5, 6]).toContain(li.labels.filter((l) => l.kind === 'callout').length);
+  // Five callouts do not fit next to two lenses on a 328 px stage: none is shown, the note says so
+  // and the table below lists both eyes.
+  expect(li.calloutsFit, 'callouts at 360×780').toBe(false);
+  await expect(page.locator('#view-callout-note')).toHaveText('Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle.');
+  await expect(page.locator('#view-heat-table')).toBeVisible();
+  for (const col of ['OD', 'OS']) await expect(cell(page, 'thickest', col)).toHaveText(/\d,\d/);
 });
 
 for (const vp of [
@@ -378,15 +406,14 @@ for (const vp of [
   });
 }
 
-test('VIZ-05 iso labels', async ({ page }, info) => {
+test('VIZ-05 iso labels', async ({ page }) => {
   await settledView(page);
   await expertOn(page);
   await heatOn(page);
   const ticks = (await page.locator('#view-legend text').allTextContents()).map(plain);
   const isos = (await labelsInfo(page)).labels.filter((l) => l.kind === 'iso');
   for (const l of isos) expect(ticks, `iso label ${l.text} is a legend tick`).toContain(plain(l.text));
-  // The 400 px desktop stage keeps at least one; on a phone they may all yield to the callouts.
-  if (info.project.name === 'desktop') expect(isos.length).toBeGreaterThanOrEqual(1);
+  // They may all yield to the callouts (dev-1.7: also on the 400 px desktop stage, with two lenses).
   test.info().annotations.push({ type: 'iso labels', description: isos.map((l) => l.text).join(' ') || 'none' });
 });
 

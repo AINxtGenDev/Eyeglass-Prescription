@@ -317,7 +317,8 @@ test('RES-03 no GPU churn over 5 compare start/end cycles (T-03-39)', async ({ p
 // ---- A3 (03-14 orchestrator amendment): the keyboard hint fades, the callouts come back. ----
 for (const motion of /** @type {const} */ (['reduce', 'no-preference'])) {
   test.describe(`A3 keyboard hint, motion ${motion}`, () => {
-    test.use({ viewport: { width: 412, height: 915 }, reducedMotion: motion });
+    // dev-1.7: 1280 px, not 412: next to two lenses the callouts need the desktop stage.
+    test.use({ viewport: { width: 1280, height: 800 }, reducedMotion: motion });
     test('hint shows on keyboard focus, then hides; the callouts return and equal the table', async ({ page }, testInfo) => {
       desktopOnly(testInfo);
       test.setTimeout(120_000);
@@ -333,8 +334,17 @@ for (const motion of /** @type {const} */ (['reduce', 'no-preference'])) {
       expect(await ev(page, () => window.__eyeglassView.keysHint())).toBe('shown');
       await expect(page.locator('#view-keys')).toBeVisible();
       const note = page.locator('#view-callout-note');
-      await expect(note).toBeVisible({ timeout: 15_000 });
-      expect((await labelsInfo(page)).labels.filter((l) => l.kind === 'callout')).toEqual([]);
+      // dev-1.7: with both lenses framed the hint (below the lenses) no longer blocks a callout at
+      // this size. The rule still holds while it shows: no callout on the hint, or none at all
+      // plus the note.
+      await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, 0)))));
+      const shown = await labelsInfo(page);
+      const keys = await page.locator('#view-keys').boundingBox();
+      const onHint = shown.labels.filter(
+        (l) => l.kind === 'callout' && l.rect.x < keys.x + keys.width && keys.x < l.rect.x + l.rect.w && l.rect.y < keys.y + keys.height && keys.y < l.rect.y + l.rect.h,
+      );
+      expect(onHint, 'callouts on the keyboard hint').toEqual([]);
+      expect(await note.isVisible(), 'note shown iff the callouts do not fit').toBe(!shown.calloutsFit);
       // After KEYS_SHOW_MS (+ the 300 ms fade with motion) the hint is hidden and no obstacle.
       await page.waitForFunction(() => window.__eyeglassView.keysHint() === 'hidden', null, { timeout: 15_000 });
       await expect(note).toBeHidden({ timeout: 15_000 });

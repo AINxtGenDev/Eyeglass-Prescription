@@ -16,7 +16,8 @@
 // - Seite (R1-3): from the side the screen's vertical axis is world y and its horizontal axis is
 //   world z, so the box fit uses the side eye's eyeBox y and z half-extents. The temples run out of
 //   the picture on purpose (the near one fades in 03-11).
-// - Dickenkarte (R1-5, 03-12): Vorne direction, box fit of the heat eye's eyeBox x and y extents.
+// - Dickenkarte (R1-5, 03-12; dev-1.7): Vorne direction, box fit of the x and y extents of both
+//   eyes' eyeBox (one eye until dev-1.6).
 // - A/B compare (03-14, RES-03, D-24 as amended): one camera for both halves, each lens recentred
 //   on its own boxing centre (lens-local coordinates). compareContext unions the A and B lens + rim
 //   boxes, so every pose fits both halves at ONE scale (the larger configuration decides). Default,
@@ -197,9 +198,11 @@ export function cameraContext({ frameData: f, lensRadius, aspect, side }) {
  * A preset pose: { target, dir (unit, target → camera), distance }.
  * @param {'default' | 'front' | 'side' | 'top' | 'heat'} name
  * @param {ReturnType<typeof cameraContext>} ctx
- * @param {'OD' | 'OS'} [eye] heat eye (03-12)
+ *
+ * Callers may still pass the heat eye as a third argument; it is ignored since dev-1.7 (the heat
+ * pose frames both eyes).
  */
-export function presetPose(name, ctx, eye = 'OD') {
+export function presetPose(name, ctx) {
   const sphere = (dir, r) => ({ target: { ...ORIGIN }, dir: { ...dir }, distance: fitDistance(r) });
   /** 03-14 compare: aspect-aware fit of the A ∪ B box about the origin. */
   const aboutOrigin = (dir) => ({
@@ -229,7 +232,8 @@ export function presetPose(name, ctx, eye = 'OD') {
     }
     case 'heat': {
       if (!ctx.eyeBox) return sphere(FRONT_DIR, ctx.front.r);
-      const b = ctx.eyeBox[eye];
+      // dev-1.7 (user 2026-11-12): both lenses, the two eyes often differ. `eye` no longer frames.
+      const b = unionBox([ctx.eyeBox.OD, ctx.eyeBox.OS]);
       return { target: boxCentre(b), dir: { ...FRONT_DIR }, distance: fitBoxDistance(half(b, 'y'), half(b, 'x'), ctx.aspect, FOV_DEG, HEAT_FIT_MARGIN) };
     }
     default:

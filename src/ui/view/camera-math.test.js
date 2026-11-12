@@ -171,7 +171,15 @@ describe('VIZ-03 camera math (03-09)', () => {
     closeVec(sOS.target, res.sideTarget.OS);
     closeVec(sOS.dir, { x: 1, y: 0, z: 0 });
     const h = presetPose('heat', ctx, 'OS');
-    const eo = res.eyeBox.OS;
+    // dev-1.7: the Dickenkarte frames both lenses (the union of the two eye boxes), for either eye.
+    const { OD: bo, OS: bs } = res.eyeBox;
+    const eo = { min: {}, max: {} };
+    for (const k of ['x', 'y', 'z']) {
+      eo.min[k] = Math.min(bo.min[k], bs.min[k]);
+      eo.max[k] = Math.max(bo.max[k], bs.max[k]);
+    }
+    expect(presetPose('heat', ctx, 'OD')).toEqual(h);
+    expect(eo.max.x - eo.min.x).toBeGreaterThan(1.9 * (bs.max.x - bs.min.x));
     closeVec(h.target, { x: (eo.min.x + eo.max.x) / 2, y: (eo.min.y + eo.max.y) / 2, z: (eo.min.z + eo.max.z) / 2 });
     closeVec(h.dir, { x: 0, y: 0, z: 1 });
     // 03-13: the Dickenkarte fit uses HEAT_FIT_MARGIN (room for the on-lens callouts and the badge).

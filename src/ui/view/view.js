@@ -56,6 +56,10 @@
 // priority rule (label-layout.js) around the badge and the keyboard hint. Picking an eye frames it
 // (goTo('heat', eye)); the table is unchanged. #view-callout-note (all callouts or none) is written
 // only at settle points (requestSettle: controls onSettle, eye / mode / text / size changes).
+// dev-1.7 (user 2026-11-12, amends 03-12 / 03-13): the 'heat' pose frames BOTH lenses, because the
+// two eyes often differ. The heat eye and the picker now only choose which lens carries the
+// numbers; neither moves the camera. On a phone-width stage the callouts do not fit next to two
+// lenses, so the all-or-nothing rule shows the table-only note there.
 // 03-14 (RES-03, D-24 as amended, D-25, lens-critic round 2 MINOR 4): inputs.compare (pipeline)
 // switches to the A/B layout (compare3d.js): the compared eye (compareEye over thickest(m) of A
 // and B) as Vorher (A) | Nachher (B) side by side in two scissor halves of the one renderer with
@@ -955,13 +959,12 @@ function mount({ slot }) {
       if (r.checked) pickHeatEye(/** @type {'OD' | 'OS'} */ (r.value));
     });
   }
-  /** 03-13: the picker moves the callouts, iso labels and the camera framing; the table stays. */
+  /** 03-13: the picker moves the callouts and iso labels; the camera and the table stay (dev-1.7). */
   function pickHeatEye(eye) {
     pickedEye = eye;
     if (cmp || mode !== 'heat' || !heatState?.table?.[eye] || heatState.eye === eye) return;
     heatState.eye = eye;
     applyHeatLabels();
-    controls.goTo('heat', eye);
     scheduleAria();
   }
   /** 03-14: a lens group's position as drawn in the A/B pass (recentred, x = 0). */
@@ -1035,7 +1038,6 @@ function mount({ slot }) {
     const key = JSON.stringify(eyes.map((e) => [e, last.eyes[e].result.surfaces, last.eyes[e].result.metrics, last.eyes[e].frame]));
     if (heatState?.key === key) return;
     const eye = pickedEye && eyes.includes(pickedEye) ? pickedEye : defaultHeatEye(eyes);
-    const prevEye = heatState?.eye;
     if (eyes.length === 0) {
       heatState = { key, scale: null, levels: null, eye, table: null };
       $('view-legend').hidden = true;
@@ -1059,8 +1061,6 @@ function mount({ slot }) {
     renderLegend({ min: scale.min, max: scale.max, levels });
     renderHeatTable(table);
     applyHeatLabels();
-    // A new heat eye while the camera is still on the heat pose: frame it (no tween on re-mesh).
-    if (prevEye !== undefined && prevEye !== eye && controls.preset() === 'heat') controls.goTo('heat', eye, { cut: true });
     view.requestRender();
     scheduleAria();
   }
