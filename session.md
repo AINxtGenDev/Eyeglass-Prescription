@@ -47,11 +47,11 @@
 - Unverified: whether the iOS decimal keypad has a minus key; Austrian terminology (Basiskurve vs Durchbiegung); conic constants for aspheric lenses (manufacturers don't publish them).
 
 ### Next step (resume here after /clear)
-- State: phases 1–3 complete, phase 4 not started. Live = dev-1.5 (footer checked 2026-11-11 after green run 43107142219): Rx card labels with the unit on its own line, aligned result values, readability pass (quick task 261111-s53: heading scale, 16 px explanations, reading width about 66 characters), 8 px column gap in the Rx card.
+- State: phases 1–3 complete, phase 4 not started. Live = dev-1.5 (footer checked 2026-11-11 after green run 43107142219). dev-1.6 (2026-11-12) is committed, check the footer after its CI run: the results column is sticky from 480 px viewport height instead of 600 px, because the user's tablet in landscape (about 1164 × 593 with the browser toolbar) got a long blank area below the inputs; result card labels are centred in their row. New tests in e2e/layout.spec.js at 1164 × 593 and 915 × 412.
 - Pixel check done 2026-11-11: user confirmed on the real Pixel that the bottom-bar thumbnail shows and works with the 3D view scrolled away (dev-1.2).
 - Next command: `/gsd-discuss-phase 4` (Durchblick refraction view, mobile degradation, offline service worker with update prompt).
 - Carry into phase 4 from `.planning/phases/03-*/deferred-items.md`: CI flaky reporting, fullscreen legend (MINOR 2), a11y.spec.js:215 timeout, `window.__eyeglassView` production gate (AR-03-04), real Pixel performance trace.
 - Local testing (user 2026-11-11): lint + unit + build + only the affected e2e specs before a push; CI runs the full suite before deploy.
 - Runner font check (2026-11-11): CI uses DejaVu Sans, wider than the local Noto Sans. Reproduce layout budgets locally with a fontconfig file that lists only `/usr/share/fonts/truetype/dejavu`: `FONTCONFIG_FILE=<file> npx playwright test e2e/layout.spec.js` (gave the exact CI value).
 - CI note 2026-11-11: four runs failed at `playwright install --with-deps` (runner could not resolve the Ubuntu mirrors); a `||` fallback was tried locally and reverted because test/ci/workflow-structure.test.js forbids it.
-- Rules: bump `version.js` (dev-1.6) with the next deployed change; lens-critic gate on the phase 4 plan and result; ask before every push.
+- Rules: bump `version.js` (dev-1.7) with the next deployed change; lens-critic gate on the phase 4 plan and result; ask before every push.
