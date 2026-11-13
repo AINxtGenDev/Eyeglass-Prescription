@@ -55,6 +55,7 @@ import {
   scheduleFirst,
 } from './timing.js';
 import { createRegistrationGate } from './sw-core.js';
+import { takeHandover, applySnapshot } from './handover.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 // Test-only user timings (?perfmarks, 02-20): update() segments as 'u:*' measures for the perf
@@ -83,6 +84,13 @@ let lastFrame = null;
 let lastExpert = null;
 /** The last custom material read (02-12: a blocking custom field blocks both eyes too). */
 let lastCustom = null;
+/**
+ * 04-07 (D-21): the confirmation after an update reload: 'done' (this tab clicked), 'done.other'
+ * (another tab updated), 'lost' (the handover was invalid or did not apply), null (normal load).
+ * 04-14 passes it to update.js, which shows it after the first result paint.
+ */
+// eslint-disable-next-line no-unused-vars -- read by the 04-14 banner wiring
+let handoverKind = null;
 
 /**
  * Not-ready status of an eye: its own Rx/PD fields first; when they do not block, a blocking
@@ -215,6 +223,41 @@ function initExample(onInput) {
   };
 }
 
+/** No input blocks right now (Rx, PD, frame, Expert and custom fields); read fresh from the fields. */
+function formValid() {
+  const read = readRx();
+  const fr = readFrame();
+  const materialId = currentMaterialId();
+  return (
+    EYES.every((eye) => read[eye].firstBlockedFieldId === null) &&
+    fr.firstBlockedFieldId === null &&
+    !readExpertOverrides(materialId).blocked &&
+    !readCustomMaterial().blocked
+  );
+}
+
+/**
+ * 04-07 (D-21): a handover written just before an update reload, applied once through the normal
+ * input path. With a comparison, A's values are run through one input frame (so currentConfig()
+ * holds them) before 'Variante vergleichen' freezes them, as when the user clicks it.
+ */
+function restoreHandover() {
+  const ho = takeHandover();
+  if (ho === null) return;
+  if ('lost' in ho) {
+    handoverKind = 'lost';
+    return;
+  }
+  const res = applySnapshot(ho, document, {
+    startCompare: () => {
+      update(performance.now());
+      $('cmp-start').click();
+    },
+    isValid: formValid,
+  });
+  handoverKind = res === 'lost' ? 'lost' : ho.origin === 'self' ? 'done' : 'done.other';
+}
+
 function init() {
   applyDictionary();
   initToggletips();
@@ -295,6 +338,8 @@ function init() {
   startEventTiming();
   writeBusyTiming();
   startWorker();
+  // 04-07: after every input listener above is bound, before the first input frame.
+  restoreHandover();
   scheduleFirst();
 }
 
