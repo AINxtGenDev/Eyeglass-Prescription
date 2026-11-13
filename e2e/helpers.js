@@ -211,16 +211,18 @@ export async function holdWarpWorker(page, { startHeld = false } = {}) {
     const body = await response.text();
     await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
   });
-  const worker = () => {
-    const w = page.workers().find((x) => WARP_WORKER_URL.test(new URL(x.url()).pathname));
-    if (!w) throw new Error('holdWarpWorker: warp worker not found');
-    return w;
+  const find = () => page.workers().find((x) => WARP_WORKER_URL.test(new URL(x.url()).pathname));
+  // The worker is created lazily on the first Durchblick entry and may still be loading.
+  const worker = async () => {
+    await expect.poll(() => Boolean(find()), { message: 'holdWarpWorker: warp worker not found', timeout: SETTLE_MS }).toBe(true);
+    return /** @type {import('@playwright/test').Worker} */ (find());
   };
   return {
-    hold: () => worker().evaluate(() => {
-      self.__hold = true;
-    }),
-    release: () => worker().evaluate(() => self.__release()),
+    hold: async () =>
+      (await worker()).evaluate(() => {
+        self.__hold = true;
+      }),
+    release: async () => (await worker()).evaluate(() => self.__release()),
   };
 }
 

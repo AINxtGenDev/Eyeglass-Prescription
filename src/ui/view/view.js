@@ -122,6 +122,8 @@ import {
 import { enableBarThumb, disableBarThumb } from '../summary-bar.js';
 import { createCompare3d } from './compare3d.js';
 import { thickest } from '../../state/compare.js';
+import { createRefraction } from './refraction.js';
+import { createRefMode, writeRefTech } from './ref-mode.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -243,6 +245,12 @@ function mount({ slot }) {
     pendingMesh = v;
     writePending();
   };
+  const setWarpPending = (/** @type {boolean} */ on) => {
+    pendingWarp = on;
+    writePending();
+  };
+  // 04-08: Technische Angaben names the Durchblick eye point and its sources (engine constants).
+  writeRefTech();
   const badge = /** @type {HTMLElement} */ (slot.querySelector('.view-badge'));
   const setBadge = (key) => {
     const text = key ? t(key) : '';
@@ -371,6 +379,7 @@ function mount({ slot }) {
     } else {
       chart.reupload();
       shadow.reupload();
+      refraction?.reupload(); // 04-08: redrawn from the last warp
       setText('view-status', '');
       showUnavailable(null);
       requestThumb();
@@ -1241,12 +1250,31 @@ function mount({ slot }) {
     protrusionKey = null;
     paintProtrusion();
   }
-  // Hook points filled by Task 3 (refraction pass and ref-mode).
-  function enterRefPass() {}
-  function leaveRefPass() {}
-  function refAfterRender() {}
-  const refAriaLabel = () => null;
-  const refInfo = () => ({ mode, lens: 'on', panels: [], tier: 'fein', drawnGen: 0 });
+  // The Durchblick pass (refraction.js, created on the first entry: its chart texture costs nothing
+  // for users who never open it) and its lane (ref-mode.js). One renderer, one WebGL context.
+  let refraction = null;
+  const getRefraction = () => (refraction ??= createRefraction({ renderer: view.renderer, labelsEl }));
+  const refMode = createRefMode({
+    getRefraction,
+    canvasEl,
+    setBadge,
+    setWarpPending,
+    scheduleAria: () => scheduleAria(),
+    requestRender: () => view.requestRender(),
+  });
+  function enterRefPass() {
+    refMode.enter(last);
+    view.setPass(() => getRefraction().renderPass());
+  }
+  function leaveRefPass() {
+    refMode.leave();
+    view.setPass(compare3d.renderPass);
+  }
+  function refAfterRender() {
+    refraction?.layoutPills();
+  }
+  const refAriaLabel = () => refMode.ariaLabel();
+  const refInfo = () => ({ mode, ...refMode.info() });
 
   view.beforeRender(() => {
     const p = view.camera.position;
@@ -1256,6 +1284,7 @@ function mount({ slot }) {
     frame.setFade(nearTempleFade(dir));
   });
   view.onResize(() => {
+    if (mode === 'ref') refMode.resize();
     syncCompare(true); // the split depends on the stage width
     if (attachedOnce) refresh();
     updateAvoid(true);
@@ -1382,6 +1411,8 @@ function mount({ slot }) {
   function update(inputs) {
     last = inputs;
     if (attachedOnce) scheduleAria();
+    // 04-08 (D-13): the size block with this result paint, then the warp job (latest wins).
+    if (mode === 'ref') refMode.update(inputs);
     /** slot → { item (without buffers), meta (with key) } */
     const want = {};
     for (const eye of SLOTS) {

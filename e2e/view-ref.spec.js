@@ -217,7 +217,7 @@ test('item 4: oblique cylinder −2,00 / −2,00 × 30: head, two li, joined ari
   await expect(size.locator('ul.ref-dirs').nth(1).locator('li')).toHaveText([d1, d2]);
   await expect(size).toContainText('Mit Zylinder verändert das Glas die Bildgröße in zwei Richtungen verschieden stark');
   await expect(size).toContainText('Weil Sie von hinten durch die Brille schauen, liegen schräge Richtungen im Bild gespiegelt');
-  const joined = `Rechtes Glas: Bild ${d1}, ${d2}.`;
+  const joined = plain(`Rechtes Glas: Bild ${d1}, ${d2}.`); // the label is read through plain() (NBSP → space)
   await expect.poll(async () => plain(await page.locator('#view-canvas').getAttribute('aria-label')), { timeout: 5000 }).toContain(joined);
   expect(plain(await page.locator('#view-canvas').getAttribute('aria-label'))).toMatch(/^Durchblick mit Glas: /);
 });
