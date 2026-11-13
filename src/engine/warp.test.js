@@ -9,6 +9,7 @@ import {
   CELL_DIAGONAL,
   prepareWarp,
   classifyDirection,
+  warpGrid,
 } from './warp.js';
 import { evaluateLens } from './evaluate.js';
 
@@ -288,4 +289,448 @@ describe('REF-01 wearer-view axis golden (D-07)', () => {
       }
     });
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// Task 2: warp grid, N10 error bounds, E10 visibility
+// ---------------------------------------------------------------------------------------------
+
+const TAN_FIELD = Math.tan((FIELD_HALF_ANGLE_DEG * Math.PI) / 180);
+/** UI-SPEC field rule: pxPerTan = longSidePx / (2 · tan(half-angle)). */
+const panelOf = (wPx, hPx) => ({ wPx, hPx, pxPerTan: Math.max(wPx, hPx) / (2 * TAN_FIELD) });
+// UI-SPEC "Layout of the picture" geometries (assumed; Task 3 replaces them by measured ones)
+const PANEL_412 = panelOf(189, 285); // 246,8 px/tan
+const PANEL_320 = panelOf(288, 216); // 249,4 px/tan
+const PANEL_400 = panelOf(199, 250); // 216,5 px/tan
+const PANEL_TABLET = panelOf(581, 593);
+const CHART_SQUARE_TAN = Math.tan((6 * Math.PI) / 180);
+
+const tierGrid = (ctx, panel, tier) =>
+  warpGrid(ctx, panel, REF_GRID_TIERS[tier].cellPx, { leafPx: REF_GRID_TIERS[tier].leafPx });
+
+/** Wearer eye tan of panel px (x right, y up from the bottom edge). */
+const tanAt = (panel, x, y) => [(x - panel.wPx / 2) / panel.pxPerTan, (y - panel.hPx / 2) / panel.pxPerTan];
+
+/**
+ * The DRAWN interpolant (lens-critic MINOR 1): two triangles per cell split along CELL_DIAGONAL
+ * 'sw-ne' (lower-left → upper-right), barycentric on the triangle that contains the point.
+ * @returns {[number, number]} object tan at panel px (x, y)
+ */
+function drawnInterp(g, x, y) {
+  const i = Math.min(Math.floor(x / g.cellX), g.nx - 1);
+  const j = Math.min(Math.floor(y / g.cellY), g.ny - 1);
+  const fx = x / g.cellX - i;
+  const fy = y / g.cellY - j;
+  const at = (a, b, c) => g.uv[2 * ((j + b) * (g.nx + 1) + i + a) + c];
+  const out = [0, 0];
+  for (let c = 0; c < 2; c++) {
+    const sw = at(0, 0, c);
+    const se = at(1, 0, c);
+    const ne = at(1, 1, c);
+    const nw = at(0, 1, c);
+    out[c] = fx >= fy ? sw + fx * (se - sw) + fy * (ne - se) : sw + fy * (nw - sw) + fx * (ne - nw);
+  }
+  return out;
+}
+
+/** Max drawn-interpolant error (px) over the outermost all-class-1 cells along every panel edge. */
+function edgeInterpErrorPx(ctx, panel, g) {
+  let worst = 0;
+  const cells = new Set();
+  for (let i = 0; i < g.nx; i++) cells.add(`${i},0`).add(`${i},${g.ny - 1}`);
+  for (let j = 0; j < g.ny; j++) cells.add(`0,${j}`).add(`${g.nx - 1},${j}`);
+  for (const key of cells) {
+    const [i, j] = key.split(',').map(Number);
+    const corners = [0, 1, g.nx + 1, g.nx + 2].map((d) => g.cls[j * (g.nx + 1) + i + d]);
+    if (!corners.every((c) => c === REF_CLASS.LENS)) continue;
+    for (const [fx, fy] of [
+      [2 / 3, 1 / 3],
+      [1 / 3, 2 / 3],
+      [0.5, 0.5],
+    ]) {
+      const x = (i + fx) * g.cellX;
+      const y = (j + fy) * g.cellY;
+      const exact = classifyDirection(ctx, ...tanAt(panel, x, y));
+      expect(exact.cls).toBe(REF_CLASS.LENS);
+      const d = drawnInterp(g, x, y);
+      worst = Math.max(worst, Math.hypot(d[0] - exact.objTan[0], d[1] - exact.objTan[1]) * panel.pxPerTan);
+    }
+  }
+  return worst;
+}
+
+/** Class on the horizontal centre line as drawn: the leaf there in mixed cells, else the cell's class. */
+function drawnClassOnCentreLine(g, panel, x) {
+  const y = panel.hPx / 2;
+  const i = Math.min(Math.floor(x / g.cellX), g.nx - 1);
+  const j = Math.min(Math.floor(y / g.cellY), g.ny - 1);
+  const k = j * (g.nx + 1) + i;
+  const corners = [g.cls[k], g.cls[k + 1], g.cls[k + g.nx + 1], g.cls[k + g.nx + 2]];
+  if (corners.every((c) => c === corners[0])) return corners[0];
+  const hRatio = g.cellY / g.cellX;
+  for (let l = 0; l < g.leafCount; l++) {
+    const x0 = g.leaves[6 * l];
+    const y0 = g.leaves[6 * l + 1];
+    const s = g.leaves[6 * l + 2];
+    if (x >= x0 && x < x0 + s && y >= y0 && y < y0 + s * hRatio) return g.leaves[6 * l + 3];
+  }
+  throw new Error(`no leaf covers (${x}, ${y})`);
+}
+
+/** Class transitions (px) along a scan; classAt(x) gives the class at panel px x. */
+function transitions(classAt, wPx, step) {
+  const out = [];
+  let prev = classAt(step / 2);
+  for (let x = step / 2 + step; x < wPx; x += step) {
+    const c = classAt(x);
+    if (c !== prev) out.push({ x: x - step / 2, from: prev, to: c });
+    prev = c;
+  }
+  return out;
+}
+
+/** True class boundaries on the centre line: 0,25 px scan, then bisection to 1e-6 px. */
+function trueBoundaries(ctx, panel) {
+  const cls = (x) => classifyDirection(ctx, ...tanAt(panel, x, panel.hPx / 2)).cls;
+  return transitions(cls, panel.wPx, 0.25).map(({ x, from }) => {
+    let a = x - 0.125;
+    let b = x + 0.125;
+    while (b - a > 1e-6) {
+      const m = (a + b) / 2;
+      if (cls(m) === from) a = m;
+      else b = m;
+    }
+    return (a + b) / 2;
+  });
+}
+
+/** Max distance between the drawn and the true class boundaries on the centre line (px). */
+function boundaryErrorPx(ctx, panel, g) {
+  const truth = trueBoundaries(ctx, panel);
+  const drawn = transitions((x) => drawnClassOnCentreLine(g, panel, x), panel.wPx, 0.05).map((t) => t.x);
+  expect(truth.length).toBeGreaterThan(0);
+  expect(drawn.length).toBe(truth.length);
+  return Math.max(...truth.map((t, k) => Math.abs(t - drawn[k])));
+}
+
+describe('REF-01 warp grid (D-12)', () => {
+  it('layout of the reply: sizes, cell sizes, rays = grid points + leaf centres', () => {
+    const { ctx } = item12(-4);
+    const g = warpGrid(ctx, PANEL_320, 6, { leafPx: 1 });
+    expect(g.ok).toBe(true);
+    expect(g.nx).toBe(48);
+    expect(g.ny).toBe(36);
+    expect(g.cellX).toBe(6);
+    expect(g.cellY).toBe(6);
+    expect(g.uv).toBeInstanceOf(Float32Array);
+    expect(g.uv.length).toBe(2 * 49 * 37);
+    expect(g.cls).toBeInstanceOf(Uint8Array);
+    expect(g.cls.length).toBe(49 * 37);
+    expect(g.leaves).toBeInstanceOf(Float32Array);
+    expect(g.leaves.length).toBe(6 * g.leafCount);
+    expect(g.leafCount).toBeGreaterThan(0);
+    expect(g.rays).toBe(49 * 37 + g.leafCount);
+    // a panel that does not divide evenly: cellX = wPx / nx ≤ cellPx
+    const h = warpGrid(ctx, PANEL_412, 10, { leafPx: 3 });
+    expect(h.nx).toBe(19);
+    expect(h.ny).toBe(29);
+    expect(h.cellX).toBeCloseTo(189 / 19, 12);
+    expect(h.cellY).toBeCloseTo(285 / 29, 12);
+    expect(h.cellX).toBeLessThanOrEqual(10);
+  });
+
+  it('grid point (i, j) is the direction at panel px (i·cellX, j·cellY): centre = tan (0, 0), +x right, +y up', () => {
+    const { ctx } = lensCtx({ sph: -2, cyl: -2, axisDeg: 30 });
+    const g = warpGrid(ctx, PANEL_412, 6, { leafPx: 1 });
+    for (const [i, j] of [
+      [0, 0],
+      [g.nx, 0],
+      [0, g.ny],
+      [g.nx, g.ny],
+      [7, 31],
+      [g.nx / 2, g.ny / 2],
+    ]) {
+      const k = j * (g.nx + 1) + i;
+      const ref = classifyDirection(ctx, ...tanAt(PANEL_412, i * g.cellX, j * g.cellY));
+      expect(g.cls[k]).toBe(ref.cls);
+      expect(g.uv[2 * k]).toBeCloseTo(ref.objTan[0], 6);
+      expect(g.uv[2 * k + 1]).toBeCloseTo(ref.objTan[1], 6);
+    }
+    // the centre grid point looks straight ahead
+    const c = (g.ny / 2) * (g.nx + 1) + g.nx / 2;
+    expect(Math.abs(g.uv[2 * c])).toBeLessThan(1e-7);
+    expect(Math.abs(g.uv[2 * c + 1])).toBeLessThan(1e-7);
+    // corner (nx, ny) is the upper right: positive tan in both
+    const ur = g.ny * (g.nx + 1) + g.nx;
+    expect(g.uv[2 * ur]).toBeGreaterThan(0);
+    expect(g.uv[2 * ur + 1]).toBeGreaterThan(0);
+  });
+
+  it('every class value is 1…5 and no uv is NaN; uniform cells are not refined, mixed cells are', () => {
+    for (const [o, panel] of [
+      [{ sph: -4 }, PANEL_412],
+      [{ sph: 12 }, PANEL_400],
+    ]) {
+      const { ctx } = lensCtx(o);
+      const g = tierGrid(ctx, panel, 'fein');
+      expect(g.cls.every((c) => c >= 1 && c <= 5)).toBe(true);
+      expect(g.uv.every(Number.isFinite)).toBe(true);
+      expect(g.leafCount).toBe(0); // default frame: no rim, all class 1
+      expect(g.rimInField).toBe(false);
+    }
+    const { ctx } = item12(-4);
+    const g = tierGrid(ctx, PANEL_320, 'mittel');
+    expect(g.uv.every(Number.isFinite)).toBe(true);
+    expect(g.leaves.every(Number.isFinite)).toBe(true);
+    const leafSide = effectiveLeafPx('mittel');
+    for (let l = 0; l < g.leafCount; l++) {
+      const [x0, y0, s, cls, u, v] = g.leaves.subarray(6 * l, 6 * l + 6);
+      expect(s).toBeLessThanOrEqual(leafSide + 1e-9);
+      // each leaf carries its centre ray's class and uv
+      const ref = classifyDirection(ctx, ...tanAt(PANEL_320, x0 + s / 2, y0 + (s * g.cellY) / g.cellX / 2));
+      expect(cls).toBe(ref.cls);
+      if (ref.objTan) {
+        expect(u).toBeCloseTo(ref.objTan[0], 5);
+        expect(v).toBeCloseTo(ref.objTan[1], 5);
+      } else {
+        expect([u, v]).toEqual([0, 0]);
+      }
+    }
+    // a leaf exists only inside a cell whose corners differ
+    for (let l = 0; l < g.leafCount; l++) {
+      const i = Math.floor((g.leaves[6 * l] + 1e-6) / g.cellX);
+      const j = Math.floor((g.leaves[6 * l + 1] + 1e-6) / g.cellY);
+      const k = j * (g.nx + 1) + i;
+      const c = [g.cls[k], g.cls[k + 1], g.cls[k + g.nx + 1], g.cls[k + g.nx + 2]];
+      expect(c.every((x) => x === c[0])).toBe(false);
+    }
+  });
+
+  it('M2: a larger leafPx gives fewer rays; tiers are monotonic rays(grob) ≤ rays(mittel) ≤ rays(fein)', () => {
+    const { ctx } = item12(-4);
+    expect(warpGrid(ctx, PANEL_320, 6, { leafPx: 2 }).rays).toBeLessThan(warpGrid(ctx, PANEL_320, 6, { leafPx: 1 }).rays);
+    for (const sph of [-4, 4]) {
+      const c = item12(sph).ctx;
+      for (const panel of [PANEL_320, PANEL_TABLET]) {
+        const [f, m, g] = ['fein', 'mittel', 'grob'].map((t) => tierGrid(c, panel, t).rays);
+        console.info(`rays item-12 ${sph} ${panel.wPx}×${panel.hPx}: fein ${f}, mittel ${m}, grob ${g}`);
+        expect(g).toBeLessThanOrEqual(m);
+        expect(m).toBeLessThanOrEqual(f);
+      }
+    }
+  });
+
+  it('N3: rimInField true for the item-12 frame at 320 px, false for the default frame at 412 px; past-rim and no-view flags', () => {
+    const a = tierGrid(item12(-4).ctx, PANEL_320, 'fein');
+    expect(a.rimInField).toBe(true);
+    expect(a.pastRimInField).toBe(false);
+    expect(a.noViewInField).toBe(false);
+    const b = tierGrid(lensCtx({ sph: -4 }).ctx, PANEL_412, 'fein');
+    expect(b.rimInField).toBe(false);
+    expect(b.pastRimInField).toBe(false);
+    expect(b.noViewInField).toBe(false);
+    // synthetic: hemispherical back, small round frame → rim face and past the rim in one panel
+    const steep = { ...PLATE, ca: 0.2, cb: 0.2 };
+    const small = prepareWarp({ surfaces: steep, frame: { shape: 'rund', A: 14, B: 14 }, eye: 'OD' });
+    const c = warpGrid(small, panelOf(300, 300), 10, { leafPx: 3 });
+    expect(c.pastRimInField).toBe(true);
+    expect(c.rimInField).toBe(true);
+    expect(c.cls.every((x) => x >= 1 && x <= 5)).toBe(true);
+    // no view: missed back with the plane hit inside a large outline
+    const large = prepareWarp({ surfaces: steep, frame: { shape: 'rund', A: 60, B: 60 }, eye: 'OD' });
+    expect(warpGrid(large, panelOf(300, 300), 10, { leafPx: 3 }).noViewInField).toBe(true);
+  });
+
+  it('maxObjTan is the largest class-1 |objTan| of the grid', () => {
+    const { ctx } = lensCtx({ sph: -4 });
+    const g = tierGrid(ctx, PANEL_412, 'fein');
+    let m = 0;
+    for (let k = 0; k < g.cls.length; k++) m = Math.max(m, Math.hypot(g.uv[2 * k], g.uv[2 * k + 1]));
+    expect(g.maxObjTan).toBeCloseTo(m, 6);
+    expect(g.maxObjTan).toBeGreaterThan(0.5);
+  });
+
+  it('leaf buffer growth: many mixed cells (fine leaves on a big panel) keep every leaf intact', () => {
+    const { ctx } = item12(4);
+    const g = warpGrid(ctx, PANEL_TABLET, 6, { leafPx: 0.5 });
+    expect(g.leafCount).toBeGreaterThan(4096);
+    expect(g.leaves.length).toBe(6 * g.leafCount);
+    for (let l = 0; l < g.leafCount; l++) {
+      const cls = g.leaves[6 * l + 3];
+      expect(cls >= 1 && cls <= 5).toBe(true);
+    }
+  });
+
+  it('E2 for the grid: the central Jacobian at tier fein equals LensResult.magnification within 0,05 pp', () => {
+    for (const o of [{ sph: -4 }, { sph: -2, cyl: -2, axisDeg: 30 }]) {
+      const { lens, ctx } = lensCtx(o);
+      const g = tierGrid(ctx, PANEL_412, 'fein');
+      const ic = g.nx / 2;
+      const jc = g.ny / 2;
+      const uv = (i, j, c) => g.uv[2 * (j * (g.nx + 1) + i) + c];
+      const dx = (2 * g.cellX) / PANEL_412.pxPerTan;
+      const dy = (2 * g.cellY) / PANEL_412.pxPerTan;
+      const j11 = (uv(ic + 1, jc, 0) - uv(ic - 1, jc, 0)) / dx;
+      const j21 = (uv(ic + 1, jc, 1) - uv(ic - 1, jc, 1)) / dx;
+      const j12 = (uv(ic, jc + 1, 0) - uv(ic, jc - 1, 0)) / dy;
+      const j22 = (uv(ic, jc + 1, 1) - uv(ic, jc - 1, 1)) / dy;
+      // eigenvalues of M = J⁻¹: trace(M) = trace(J)/det(J), det(M) = 1/det(J)
+      const det = j11 * j22 - j12 * j21;
+      const tr = (j11 + j22) / det;
+      const disc = Math.sqrt(Math.max(0, (tr * tr) / 4 - 1 / det));
+      const eig = [tr / 2 - disc, tr / 2 + disc];
+      const sm = lens.magnification.meridians.map((m) => m.sm).sort((a, b) => a - b);
+      if (sm.length === 1) sm.push(sm[0]);
+      expect(Math.abs(eig[0] - sm[0])).toBeLessThan(0.0005);
+      expect(Math.abs(eig[1] - sm[1])).toBeLessThan(0.0005);
+    }
+  });
+
+  it('invalid ctx returns that failure object; invalid panel or cell size gives a failure, never an exception', () => {
+    const bad = prepareWarp({});
+    expect(warpGrid(bad, PANEL_412, 6)).toBe(bad);
+    expect(warpGrid(undefined, PANEL_412, 6).ok).toBe(false);
+    const { ctx } = lensCtx({ sph: -1 });
+    for (const [panel, cell, opt] of [
+      [{ wPx: 0, hPx: 10, pxPerTan: 10 }, 6, {}],
+      [{ wPx: 10, hPx: NaN, pxPerTan: 10 }, 6, {}],
+      [null, 6, {}],
+      [PANEL_412, 0, {}],
+      [PANEL_412, 6, { leafPx: -1 }],
+    ]) {
+      const r = warpGrid(ctx, panel, cell, opt);
+      expect(r.ok).toBe(false);
+      expect(Object.isFrozen(r)).toBe(true);
+    }
+  });
+});
+
+// N10 worst-case set (default frame, OD): both diagonal orientations of the oblique cylinder.
+const N10_CASES = [
+  { name: '−12,00 CR-39', o: { sph: -12 } },
+  { name: '−10,00 / −4,00 × 30 CR-39', o: { sph: -10, cyl: -4, axisDeg: 30 } },
+  { name: '−10,00 / −4,00 × 120 CR-39', o: { sph: -10, cyl: -4, axisDeg: 120 } },
+  { name: '+12,00 CR-39', o: { sph: 12 } },
+  { name: '+8,00 / −6,00 × 135 1,74', o: { sph: 8, cyl: -6, axisDeg: 135, materialId: 'idx174' } },
+];
+
+describe('REF-02 grid error bounds (N10)', () => {
+  for (const tier of Object.keys(REF_GRID_TIERS)) {
+    it(`${tier}: drawn (sw-ne) interpolant error at the panel edge ≤ 0,5 px at 216,5 px/tan (400 px column)`, () => {
+      for (const { name, o } of N10_CASES) {
+        const { ctx } = lensCtx(o);
+        const g = tierGrid(ctx, PANEL_400, tier);
+        const err = edgeInterpErrorPx(ctx, PANEL_400, g);
+        console.info(`N10 ${tier} ${name}: edge error ${err.toFixed(4)} px`);
+        expect(err, name).toBeLessThanOrEqual(0.5);
+      }
+    });
+
+    it(`${tier}: class boundary on the centre line within 2 px of the true one (item-12 frame, 249,4 px/tan)`, () => {
+      for (const sph of [-4, 4]) {
+        const { ctx } = item12(sph);
+        const g = tierGrid(ctx, PANEL_320, tier);
+        const err = boundaryErrorPx(ctx, PANEL_320, g);
+        console.info(`N10 ${tier} item-12 ${sph}: boundary error ${err.toFixed(3)} px`);
+        expect(err).toBeLessThanOrEqual(2);
+      }
+    });
+  }
+});
+
+/**
+ * E10 edge-midpoint shift (UI-SPEC "How visible the effect is"): the shift of the chart point at
+ * the middle of a panel edge between "Mit Glas" and "Ohne Glas", CSS px. side 'long' = the edges
+ * at the ends of the long axis; max over the two opposite edges.
+ */
+function edgeMidShiftPx(ctx, panel, side) {
+  const vertical = (panel.hPx >= panel.wPx) === (side === 'long');
+  const half = (vertical ? panel.hPx : panel.wPx) / 2 / panel.pxPerTan;
+  let worst = 0;
+  for (const s of [-1, 1]) {
+    const e = vertical ? [0, s * half] : [s * half, 0];
+    const r = classifyDirection(ctx, ...e);
+    expect(r.cls).toBe(REF_CLASS.LENS);
+    worst = Math.max(worst, Math.hypot(r.objTan[0] - e[0], r.objTan[1] - e[1]) * panel.pxPerTan);
+  }
+  return worst;
+}
+
+/**
+ * E10 tick offset: on the edges of `side` (long side = the two long edges), the distance along the
+ * edge between the outermost tick and where its chart line crosses the line 14 px inside that edge
+ * in "Mit Glas". Max over both edges and both ends.
+ */
+function tickOffsetPx(ctx, panel, side) {
+  const P = panel.pxPerTan;
+  const alongVertical = (panel.hPx >= panel.wPx) === (side === 'long');
+  const alongHalf = (alongVertical ? panel.hPx : panel.wPx) / 2; // half-length of the edge, px
+  const across = (alongVertical ? panel.wPx : panel.hPx) / 2 - 14; // the 14 px line, px from the centre
+  const nMax = Math.floor(alongHalf / (CHART_SQUARE_TAN * P));
+  let worst = 0;
+  for (const s of [-1, 1]) {
+    for (const n of [-nMax, nMax]) {
+      const target = n * CHART_SQUARE_TAN;
+      const chartAlong = (c) => {
+        const dir = alongVertical ? [(s * across) / P, c] : [c, (s * across) / P];
+        const r = classifyDirection(ctx, ...dir);
+        expect(r.cls).toBe(REF_CLASS.LENS);
+        return alongVertical ? r.objTan[1] : r.objTan[0];
+      };
+      let a = 0;
+      let b = (Math.sign(n) * alongHalf * 1.5) / P;
+      for (let k = 0; k < 60; k++) {
+        const m = (a + b) / 2;
+        if ((chartAlong(m) - target) * Math.sign(n) < 0) a = m;
+        else b = m;
+      }
+      worst = Math.max(worst, Math.abs((a + b) / 2 - target) * P);
+    }
+  }
+  return worst;
+}
+
+describe('REF-01 visibility (E10)', () => {
+  const lens = (o) => lensCtx(o).ctx;
+  it('412 two-panel (189 × 285): −1,00 and 0,00 / −1,00 × 180 reach 3,0 px, −0,75 does not', () => {
+    const m1 = lens({ sph: -1 });
+    const c180 = lens({ sph: 0, cyl: -1, axisDeg: 180 });
+    const m075 = lens({ sph: -0.75 });
+    const v = {
+      m1Mid: edgeMidShiftPx(m1, PANEL_412, 'long'),
+      m1Tick: tickOffsetPx(m1, PANEL_412, 'long'),
+      c180Mid: edgeMidShiftPx(c180, PANEL_412, 'long'),
+      c180Tick: tickOffsetPx(c180, PANEL_412, 'long'),
+      c180TickShort: tickOffsetPx(c180, PANEL_412, 'short'),
+      m075Mid: edgeMidShiftPx(m075, PANEL_412, 'long'),
+    };
+    console.info('E10 412', JSON.stringify(v));
+    expect(v.m1Mid).toBeGreaterThanOrEqual(3.0);
+    expect(v.m1Tick).toBeGreaterThanOrEqual(2.5);
+    expect(v.c180Mid).toBeGreaterThanOrEqual(3.0);
+    expect(v.c180Tick).toBeGreaterThanOrEqual(2.5);
+    expect(v.c180TickShort).toBeLessThanOrEqual(0.5);
+    expect(v.m075Mid).toBeLessThan(3.0);
+  });
+
+  it('320 one-panel (288 × 216): 0,00 / −1,00 × 90 reaches 3,0 px along the long side, ≤ 0,5 px across', () => {
+    const c90 = lens({ sph: 0, cyl: -1, axisDeg: 90 });
+    const v = {
+      c90Mid: edgeMidShiftPx(c90, PANEL_320, 'long'),
+      c90Tick: tickOffsetPx(c90, PANEL_320, 'long'),
+      c90TickShort: tickOffsetPx(c90, PANEL_320, 'short'),
+    };
+    console.info('E10 320', JSON.stringify(v));
+    expect(v.c90Mid).toBeGreaterThanOrEqual(3.0);
+    expect(v.c90Tick).toBeGreaterThanOrEqual(2.5);
+    expect(v.c90TickShort).toBeLessThanOrEqual(0.5);
+  });
+
+  it('N6: 400 px desktop column (199 × 250): −1,00 edge midpoint and tick offset', () => {
+    const m1 = lens({ sph: -1 });
+    const v = { m1Mid: edgeMidShiftPx(m1, PANEL_400, 'long'), m1Tick: tickOffsetPx(m1, PANEL_400, 'long') };
+    console.info('E10 400', JSON.stringify(v));
+    expect(v.m1Mid).toBeGreaterThan(2.5);
+    expect(v.m1Tick).toBeGreaterThan(2.5);
+  });
 });
