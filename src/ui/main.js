@@ -54,6 +54,7 @@ import {
   schedule,
   scheduleFirst,
 } from './timing.js';
+import { createRegistrationGate } from './sw-core.js';
 
 const EYES = /** @type {const} */ (['OD', 'OS']);
 // Test-only user timings (?perfmarks, 02-20): update() segments as 'u:*' measures for the perf
@@ -240,7 +241,25 @@ function init() {
   $('disclaimer-jump').addEventListener('click', () => $('disclaimer').focus());
   initTiming({ update });
   initCompareView();
+  // 04-06 (D-22, D-25): the service worker registers after the first result paint or, on an empty
+  // page, on idle after load; update.js (with workbox-window) is its own chunk.
+  setText('tech-offline', t('serviceWorker' in navigator ? 'tech.offline.pending' : 'tech.offline.unsupported'));
+  const swGate = createRegistrationGate({
+    onStart: () =>
+      import('./update.js').then(
+        ({ start }) => start(),
+        (err) => {
+          console.warn('offline support could not load', err);
+          setText('tech-offline', t('tech.offline.failed'));
+        },
+      ),
+    setTimeoutFn: (cb, ms) => setTimeout(cb, ms),
+    requestIdle: typeof requestIdleCallback === 'function' ? (cb, opts) => requestIdleCallback(cb, opts) : null,
+  });
+  if (document.readyState === 'complete') swGate.loaded();
+  else window.addEventListener('load', () => swGate.loaded(), { once: true });
   initPipeline({
+    onFirstPaint: swGate.firstPaint,
     onBench,
     onPainted: timeResultFrame,
     onCompute: (ms) => pushTiming(timings.compute, ms),

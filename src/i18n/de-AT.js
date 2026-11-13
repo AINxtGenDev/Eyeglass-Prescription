@@ -640,6 +640,12 @@ export default Object.freeze({
   'tech.view.reason.paused': 'Grafik vom Browser angehalten',
   // Code review A-WR-02 / B-WR-06: the view could not start, or a lens could not be built twice.
   'tech.view.reason.error': 'Fehler beim Aufbau der Ansicht',
+  // Offline (04-06, D-25; UI-SPEC "Offline status line"): one quiet line, never a toast.
+  'tech.offline.pending': 'Offline-Speicherung wird vorbereitet …',
+  'tech.offline.ready': 'Offline verfügbar: Diese Version ist auf dem Gerät gespeichert und rechnet auch ohne Internet.',
+  'tech.offline.waiting': 'Eine neue Version ist geladen und wartet auf „Aktualisieren“.',
+  'tech.offline.unsupported': 'Offline nicht verfügbar: Ihr Browser unterstützt das nicht. Online funktioniert alles wie gewohnt.',
+  'tech.offline.failed': 'Offline nicht verfügbar: Die Speicherung ist fehlgeschlagen. Online funktioniert alles wie gewohnt.',
 
   // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View").
   'view.title': '3D-Ansicht Ihrer Brille',

@@ -58,11 +58,13 @@ const lap = (name, start) => {
 
 // Timing hooks, injected by initPipeline (the ENG-09 readouts own them; no import cycle).
 // currentConfig (02-08): the frame and material of the last input frame, from main.js.
-let onBench, onPainted, onCompute, onComparePainted, onCompareStarted, currentConfig;
+// onFirstPaint (04-06, D-22): called once, after the first painted result (service-worker gate).
+let onBench, onPainted, onCompute, onComparePainted, onCompareStarted, currentConfig, onFirstPaint;
+let firstPaintDone = false;
 
 /** Wire the timing hooks; call once before startWorker(). */
 export function initPipeline(hooks) {
-  ({ onBench, onPainted, onCompute, onComparePainted, onCompareStarted, currentConfig } = hooks);
+  ({ onBench, onPainted, onCompute, onComparePainted, onCompareStarted, currentConfig, onFirstPaint } = hooks);
   setText('cmp-footnote', t('cmp.footnote'));
   $('cmp-run').addEventListener('click', runCompareFromButton);
   $('cmp-start').addEventListener('click', startConfigCompare);
@@ -174,6 +176,10 @@ function paintDeliveries() {
   // The selected row is the main result; it is painted in the next frame, not in this one.
   scheduleComparePaint();
   refreshView();
+  if (!firstPaintDone) {
+    firstPaintDone = true;
+    onFirstPaint?.();
+  }
 }
 
 // ---- 3D view (03-05) ----

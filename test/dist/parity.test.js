@@ -40,6 +40,11 @@ const PARITY_ALLOW = Object.freeze([
     why: 'warp sync-fallback chunk (exists once 04-08 imports warp-client from ref-mode.js): expected to cascade like mesh-protocol (round-4 NEW-12, inferred, not measured)',
     normalisedEqual: true,
   },
+  {
+    re: new RegExp('^update-' + HASH + '\\.js$'),
+    why: 'service-worker registration chunk (04-06, src/ui/update.js): imports the entry chunk by its hashed name (hash cascade, measured 2026-11-13)',
+    normalisedEqual: true,
+  },
 ]);
 
 const WORKER_RE = /worker[^/]*\.js$/;
