@@ -35,3 +35,9 @@
   11–14 (`npx vitest run --project unit`). 04-15 changes no file under `src/`. This looks like CPU
   contention, not a logic failure. It was not "fixed" by raising the timeout (04-15 rule). Re-run
   `npm run test:coverage` on an idle machine before the push in 04-13.
+
+## Orchestrator notes during execution (2026-11-13)
+
+- **White band in a 320×640 screenshot (04-06).** Playwright screenshot `04-06-320x640-ready.png` shows a white band across the top, over the "Erneut messen" button. Nothing in `src/ui/style.css` is fixed or sticky at the top at that width (only `#summary-bar`, fixed at the bottom; `.col-results` is sticky only at ≥ 900 px), so it is probably a capture artifact. Re-check in the chrome-devtools MCP during the 04-08 D-30 pass.
+- **Durchblick time budgets (04-05).** With `BENCH_GATE=1` the Grenzfall Rx misses the UI-SPEC budgets (combined medians fein 56,4 / mittel 17,1 / grob 12,7 ms against 30 / 15 / 8 ms, load 0,4–2,1); the rim case exceeds the normal budgets at the 320 panel (fein ~41 ms, grob 8,2 / 9,2 ms) and at the 639×800 fullscreen panel (all tiers). Ray-count and monotonic gates pass. For the lens-critic result review in 04-13.
+- **Coverage timeout under load.** `src/engine/diagnostics.test.js` ("ENG-07 extremes grid", "MAT-02 optimality sample") exceeds its 120 s limit under coverage at load ≥ 8; on an idle machine the full coverage run passed after waves 1, 2 and 3 (1900, 1961, 2045 tests). Watch the first CI run.

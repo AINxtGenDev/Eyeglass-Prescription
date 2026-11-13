@@ -328,8 +328,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-05-PLAN.md — Degradation guard (nextGuard), warp worker lane with latest-wins client, tier bench
-- [ ] 04-06-PLAN.md — Service worker registered after first paint, offline note, pwa Playwright project and switch server, offline/scope/CSP tests
+- [x] 04-05-PLAN.md — Degradation guard (nextGuard), warp worker lane with latest-wins client, tier bench
+- [x] 04-06-PLAN.md — Service worker registered after first paint, offline note, pwa Playwright project and switch server, offline/scope/CSP tests
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 5/15 | In Progress|  |
+| 4. Refraction View & Offline | 7/15 | In Progress|  |
