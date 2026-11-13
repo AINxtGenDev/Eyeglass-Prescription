@@ -5,6 +5,7 @@ export default [
   {
     ignores: [
       'dist/**',
+      'dist-e2e/**',
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
@@ -16,7 +17,7 @@ export default [
   js.configs.recommended,
   // Node globals for configs, tests and e2e. No browser globals here (flat-config globals merge, Pitfall B).
   {
-    files: ['*.config.js', 'test/**/*.js', 'src/**/*.test.js', 'e2e/**/*.js'],
+    files: ['*.config.js', 'test/**/*.js', 'src/**/*.test.js', 'e2e/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: { globals: { ...globals.node } },
   },
   // Browser globals ONLY for the UI layer. No HTML injection sinks (XSS mitigation T-01-05).

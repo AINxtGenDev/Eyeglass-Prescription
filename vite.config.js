@@ -58,6 +58,16 @@ export default defineConfig({
           // Grenzfall bench exceed the 5 s default under v8 coverage (CI runs test:coverage).
           testTimeout: 30_000,
           include: ['src/**/*.test.js', 'test/**/*.test.js'],
+          exclude: ['test/dist/**', 'node_modules/**'],
+        },
+      },
+      // Reads build output; runs after `npm run build` and `npm run build:e2e` (`npm run test:dist`).
+      {
+        test: {
+          name: 'dist',
+          environment: 'node',
+          include: ['test/dist/**/*.test.js'],
+          testTimeout: 30_000,
         },
       },
     ],
