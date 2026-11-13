@@ -214,6 +214,9 @@ const ALL_STATES = {
 for (const [name, st] of Object.entries(ALL_STATES)) {
   test(`axe WCAG 2.2 AA zero violations and no overflow at 320 px: ${name}`, async ({ page }) => {
     if (name.startsWith('3D ')) test.setTimeout(120_000); // SwiftShader renders on the CPU
+    // F-03 (03 deferred-items): this state hits the 30 s default under 4 parallel workers, on the
+    // baseline build 0776c4a too (axe over every open tip and <details> at both viewports).
+    if (name.startsWith('everything open')) test.setTimeout(90_000);
     await settled(page);
     await st.setup(page);
     for (const vp of VIEWPORTS) {
