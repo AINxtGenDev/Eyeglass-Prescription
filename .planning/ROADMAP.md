@@ -346,8 +346,8 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 04-11-PLAN.md — A/B comparison in Durchblick, leak test across mode switches
-- [ ] 04-14-PLAN.md — "Aktualisieren" banner and update wiring, build B update e2e, kill-switch rehearsal and sibling-site check
+- [x] 04-11-PLAN.md — A/B comparison in Durchblick, leak test across mode switches
+- [x] 04-14-PLAN.md — "Aktualisieren" banner and update wiring, build B update e2e, kill-switch rehearsal and sibling-site check
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 11/15 | In Progress|  |
+| 4. Refraction View & Offline | 13/15 | In Progress|  |
