@@ -411,6 +411,7 @@ const viewFocus = (page) =>
     return {
       key,
       inResult: !!a.closest('section#result'),
+      inViewMode: !!a.closest('fieldset#view-mode'),
       inOdCard: !!a.closest('#result-od-card'),
       focusVisible: a.matches(':focus-visible'),
       outline: cs.outlineStyle === 'none' ? 0 : parseFloat(cs.outlineWidth),
@@ -453,7 +454,11 @@ test('D-29 keyboard path through the view', async ({ page }) => {
       expect(firstOd, `${at}: result cards before the stage`).toBeLessThan(stage);
       const lastResult = seen.slice(0, stage).findLastIndex((x) => x.inResult);
       expect(lastResult, `${at}: section#result focusables before the stage`).toBeGreaterThanOrEqual(0);
-      expect(keys[lastResult + 1], `${at}: the stage right after the last focusable of section#result`).toBe('#view-stage');
+      // 04-UI-SPEC "DOM inside #view": fieldset#view-mode ("Darstellung") is always visible since 04-08 and sits
+      // before the stage in DOM = tab order, so one stop (the checked radio of that group) may come in between.
+      const between = seen.slice(lastResult + 1, stage);
+      expect(between.length, `${at}: at most the "Darstellung" stop between section#result and the stage`).toBeLessThanOrEqual(1);
+      expect(between.every((x) => x.inViewMode), `${at}: only fieldset#view-mode between section#result and the stage`).toBe(true);
     }
     // From the stage: Vollbild (2026-11-10, the button inside the stage) → Vorne → Seite → Oben → Ansicht zurücksetzen (→ '3D drehen' on a coarse pointer).
     expect(keys.slice(stage, stage + viewOrder.length), `${at}: order from the stage`).toEqual(viewOrder);
