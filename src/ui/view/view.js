@@ -1409,143 +1409,147 @@ function mount({ slot }) {
     }
   }
 
-  window.__eyeglassView = Object.freeze({
-    memory: () => ({ ...view.renderer.info.memory, programs: view.renderer.info.programs?.length ?? 0 }),
-    /** 03-15: buffer-set allocations of every page pool (lens slots incl. A, frame, frameA) and worker re-allocations. */
-    allocs: () => ({ page: lenses.allocCount() + frame.allocCount() + frameA.allocCount(), worker: workerReallocs }),
-    meshMode: () => client.mode(),
-    viewName: () => controls.viewName(),
-    /** 03-12: 'glass' | 'heat', and the engine scale / levels / heat eye of the painted map (null in Glas). */
-    mode: () => mode,
-    heatScale: () =>
-      heatState?.scale
-        ? { ...heatState.scale, ...heatState.levels, values: [...heatState.levels.values], eye: heatState.eye, uniforms: heat.uniforms() }
-        : null,
-    /** 03-12 test-only: [x, y, z] world mm of an eye's optical centre on the rim plane and its engine CT, or null. */
-    ocWorld: (e) => {
-      const r = last?.eyes[e]?.result;
-      if (!r?.ok || !lenses.visible(e)) return null;
-      const g = lenses.group(e).position;
-      return [g.x + r.surfaces.oc.x, g.y + r.surfaces.oc.y, g.z, r.metrics.ct];
-    },
-    /** 03-13 test-only: the visible projected labels (kind, callout key, text, viewport rect) and calloutsFit. */
-    labelsInfo: () => ({
-      labels: [...labelsEl.children]
-        .filter((el) => !(/** @type {HTMLElement} */ (el).hidden))
-        .map((el) => {
-          const c = el.classList;
-          const r = el.getBoundingClientRect();
-          const kind = c.contains('view-dot')
-            ? 'dot'
-            : c.contains('view-label--callout')
-              ? 'callout'
-              : c.contains('view-label--iso')
-                ? 'iso'
-                : c.contains('view-label--caption')
-                  ? 'caption'
-                  : 'eye';
-          const d = /** @type {HTMLElement} */ (el).dataset;
-          return { kind, key: d.key ?? null, half: d.half ?? null, text: el.textContent, rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
-        }),
-      calloutsFit: calloutsFit(),
-    }),
-    /** 03-14 test-only: the A/B state and the projected outline width (CSS px) of each half's lens. */
-    compareInfo: () => {
-      const cs = compare3d.state();
-      const widthPx = { A: null, B: null };
-      if (cmp) {
-        const eye = cmp.eye;
-        const fa = cmp.specA?.[eye]?.frame;
-        const fb = last?.eyes[eye]?.frame;
-        const halves = cs.split ? ['A', 'B'] : [cs.shown];
-        if (halves.includes('A') && fa && cs.aEye === eye && lenses.visible('A')) {
-          widthPx.A = compare3d.widthPx('A', frameOutline(fa.shape, fa.A, fa.B, eye), frameA.lensZ()[eye]);
+  // F-04 / AR-03-04: test handle only in non-production builds (dev and `vite build --mode e2e`); Vite
+  // replaces MODE statically, so the production bundle drops this branch (test/dist/hooks.test.js).
+  if (import.meta.env.MODE !== 'production') {
+    window.__eyeglassView = Object.freeze({
+      memory: () => ({ ...view.renderer.info.memory, programs: view.renderer.info.programs?.length ?? 0 }),
+      /** 03-15: buffer-set allocations of every page pool (lens slots incl. A, frame, frameA) and worker re-allocations. */
+      allocs: () => ({ page: lenses.allocCount() + frame.allocCount() + frameA.allocCount(), worker: workerReallocs }),
+      meshMode: () => client.mode(),
+      viewName: () => controls.viewName(),
+      /** 03-12: 'glass' | 'heat', and the engine scale / levels / heat eye of the painted map (null in Glas). */
+      mode: () => mode,
+      heatScale: () =>
+        heatState?.scale
+          ? { ...heatState.scale, ...heatState.levels, values: [...heatState.levels.values], eye: heatState.eye, uniforms: heat.uniforms() }
+          : null,
+      /** 03-12 test-only: [x, y, z] world mm of an eye's optical centre on the rim plane and its engine CT, or null. */
+      ocWorld: (e) => {
+        const r = last?.eyes[e]?.result;
+        if (!r?.ok || !lenses.visible(e)) return null;
+        const g = lenses.group(e).position;
+        return [g.x + r.surfaces.oc.x, g.y + r.surfaces.oc.y, g.z, r.metrics.ct];
+      },
+      /** 03-13 test-only: the visible projected labels (kind, callout key, text, viewport rect) and calloutsFit. */
+      labelsInfo: () => ({
+        labels: [...labelsEl.children]
+          .filter((el) => !(/** @type {HTMLElement} */ (el).hidden))
+          .map((el) => {
+            const c = el.classList;
+            const r = el.getBoundingClientRect();
+            const kind = c.contains('view-dot')
+              ? 'dot'
+              : c.contains('view-label--callout')
+                ? 'callout'
+                : c.contains('view-label--iso')
+                  ? 'iso'
+                  : c.contains('view-label--caption')
+                    ? 'caption'
+                    : 'eye';
+            const d = /** @type {HTMLElement} */ (el).dataset;
+            return { kind, key: d.key ?? null, half: d.half ?? null, text: el.textContent, rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
+          }),
+        calloutsFit: calloutsFit(),
+      }),
+      /** 03-14 test-only: the A/B state and the projected outline width (CSS px) of each half's lens. */
+      compareInfo: () => {
+        const cs = compare3d.state();
+        const widthPx = { A: null, B: null };
+        if (cmp) {
+          const eye = cmp.eye;
+          const fa = cmp.specA?.[eye]?.frame;
+          const fb = last?.eyes[eye]?.frame;
+          const halves = cs.split ? ['A', 'B'] : [cs.shown];
+          if (halves.includes('A') && fa && cs.aEye === eye && lenses.visible('A')) {
+            widthPx.A = compare3d.widthPx('A', frameOutline(fa.shape, fa.A, fa.B, eye), frameA.lensZ()[eye]);
+          }
+          if (halves.includes('B') && fb && lenses.visible(eye)) {
+            widthPx.B = compare3d.widthPx('B', frameOutline(fb.shape, fb.A, fb.B, eye), lenses.group(eye).position.z);
+          }
         }
-        if (halves.includes('B') && fb && lenses.visible(eye)) {
-          widthPx.B = compare3d.widthPx('B', frameOutline(fb.shape, fb.A, fb.B, eye), lenses.group(eye).position.z);
+        return { active: cs.active, split: cs.split, eye: cs.eye, shown: cs.shown, aReady: cs.aEye === cs.eye, widthPx };
+      },
+      /**
+       * 03-15 test-only: thumbnail copies, the share of thumbnail pixels that are not the #f3f4f6
+       * background, each eye's projected box width in thumbnail px, the viewport sizes of the last
+       * thumbnail pass and of the last main pass, the passes of the last thumbnail frame.
+       */
+      thumbInfo: () => {
+        const st = view.thumbStats();
+        let nonBackgroundRatio = 0;
+        if (thumbCanvas && st.copies > 0) {
+          const d = /** @type {CanvasRenderingContext2D} */ (thumbCanvas.getContext('2d')).getImageData(0, 0, thumbCanvas.width, thumbCanvas.height).data;
+          let n = 0;
+          for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 243) > 6 || Math.abs(d[i + 1] - 244) > 6 || Math.abs(d[i + 2] - 246) > 6) n++;
+          nonBackgroundRatio = n / (d.length / 4);
         }
-      }
-      return { active: cs.active, split: cs.split, eye: cs.eye, shown: cs.shown, aReady: cs.aEye === cs.eye, widthPx };
-    },
-    /**
-     * 03-15 test-only: thumbnail copies, the share of thumbnail pixels that are not the #f3f4f6
-     * background, each eye's projected box width in thumbnail px, the viewport sizes of the last
-     * thumbnail pass and of the last main pass, the passes of the last thumbnail frame.
-     */
-    thumbInfo: () => {
-      const st = view.thumbStats();
-      let nonBackgroundRatio = 0;
-      if (thumbCanvas && st.copies > 0) {
-        const d = /** @type {CanvasRenderingContext2D} */ (thumbCanvas.getContext('2d')).getImageData(0, 0, thumbCanvas.width, thumbCanvas.height).data;
-        let n = 0;
-        for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 243) > 6 || Math.abs(d[i + 1] - 244) > 6 || Math.abs(d[i + 2] - 246) > 6) n++;
-        nonBackgroundRatio = n / (d.length / 4);
-      }
-      return {
-        copies: st.copies,
-        passes: st.passes,
-        passesPerThumbFrame: st.passesPerThumbFrame,
-        nonBackgroundRatio,
-        lensWidthPx: thumbLast ? { ...thumbLast.lensWidthPx } : { OD: null, OS: null },
-        renderViewports: thumbLast ? thumbLast.renderViewports.map((v) => ({ ...v })) : [],
-        mainViewports: compare3d.lastViewports(),
-        src: thumbLast ? { ...thumbLast.src } : null,
-        // MINOR 3: the self-timing guard (off = ?thumbguardoff).
-        guard: { ...thumbGuard, thresholdMs: THUMB_SLOW_MS, run: THUMB_SLOW_RUN, off: THUMB_GUARD_OFF },
-      };
-    },
-    /** 03-15 test-only: copy a thumbnail with the next render that allows it. */
-    requestThumb: () => requestThumb(),
-    /** 03-14 A3 test-only: keyboard hint 'off' | 'shown' | 'fading' | 'hidden'. */
-    keysHint: () => keysState,
-    /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
-    rotateActive: () => controls.rotateActive(),
-    /** 03-09: camera state, derived limits and the side eye. */
-    camera: () => controls.state(),
-    limits: () => controls.limits(),
-    sideEye: () => currentSideEye(),
-    ior: (s) => lenses.ior(s),
-    edgeMax: (s) => lenses.edgeMax(s),
-    /** Test-only (03-07): frame measured from its attached buffers; lens group z (MINOR 9). */
-    frameInfo: () => frame.info(),
-    /** Test-only (03-07, round 2 MINOR 7): slot lists of the last 10 mesh jobs sent. */
-    meshJobs: () => jobLog.map((j) => [...j]),
-    /** 03-08 (D-12): the active quality tier, and a slot's glass dispersion. */
-    tier: () => view.tier(),
-    dispersion: (s) => lenses.dispersion(s),
-    /** World point (mm) → canvas CSS px [x, y] in the current view. */
-    project: (x, y, z) => view.project(x, y, z),
-    /** Test-only (03-08): chart and contact shadow state. */
-    sceneInfo: () => ({
-      chartVisible: chart.mesh.visible,
-      chartZ: chart.mesh.position.z,
-      chartSize: chart.size(),
-      chartRect: chart.rect(),
-      shadowVisible: shadow.mesh.visible,
-    }),
-    /** 03-09: RGBA at several CSS pixels [[x, y], …] after ONE fresh render. */
-    pixels: (points) => {
-      view.render();
-      const gl = view.renderer.getContext();
-      const c = view.renderer.domElement;
-      const k = c.width / c.clientWidth;
-      return points.map(([x, y]) => {
+        return {
+          copies: st.copies,
+          passes: st.passes,
+          passesPerThumbFrame: st.passesPerThumbFrame,
+          nonBackgroundRatio,
+          lensWidthPx: thumbLast ? { ...thumbLast.lensWidthPx } : { OD: null, OS: null },
+          renderViewports: thumbLast ? thumbLast.renderViewports.map((v) => ({ ...v })) : [],
+          mainViewports: compare3d.lastViewports(),
+          src: thumbLast ? { ...thumbLast.src } : null,
+          // MINOR 3: the self-timing guard (off = ?thumbguardoff).
+          guard: { ...thumbGuard, thresholdMs: THUMB_SLOW_MS, run: THUMB_SLOW_RUN, off: THUMB_GUARD_OFF },
+        };
+      },
+      /** 03-15 test-only: copy a thumbnail with the next render that allows it. */
+      requestThumb: () => requestThumb(),
+      /** 03-14 A3 test-only: keyboard hint 'off' | 'shown' | 'fading' | 'hidden'. */
+      keysHint: () => keysState,
+      /** 03-10: '3D drehen' state on the touch path (false on the pointer path). */
+      rotateActive: () => controls.rotateActive(),
+      /** 03-09: camera state, derived limits and the side eye. */
+      camera: () => controls.state(),
+      limits: () => controls.limits(),
+      sideEye: () => currentSideEye(),
+      ior: (s) => lenses.ior(s),
+      edgeMax: (s) => lenses.edgeMax(s),
+      /** Test-only (03-07): frame measured from its attached buffers; lens group z (MINOR 9). */
+      frameInfo: () => frame.info(),
+      /** Test-only (03-07, round 2 MINOR 7): slot lists of the last 10 mesh jobs sent. */
+      meshJobs: () => jobLog.map((j) => [...j]),
+      /** 03-08 (D-12): the active quality tier, and a slot's glass dispersion. */
+      tier: () => view.tier(),
+      dispersion: (s) => lenses.dispersion(s),
+      /** World point (mm) → canvas CSS px [x, y] in the current view. */
+      project: (x, y, z) => view.project(x, y, z),
+      /** Test-only (03-08): chart and contact shadow state. */
+      sceneInfo: () => ({
+        chartVisible: chart.mesh.visible,
+        chartZ: chart.mesh.position.z,
+        chartSize: chart.size(),
+        chartRect: chart.rect(),
+        shadowVisible: shadow.mesh.visible,
+      }),
+      /** 03-09: RGBA at several CSS pixels [[x, y], …] after ONE fresh render. */
+      pixels: (points) => {
+        view.render();
+        const gl = view.renderer.getContext();
+        const c = view.renderer.domElement;
+        const k = c.width / c.clientWidth;
+        return points.map(([x, y]) => {
+          const out = new Uint8Array(4);
+          gl.readPixels(Math.floor(x * k), c.height - 1 - Math.floor(y * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+          return [...out];
+        });
+      },
+      /** RGBA at CSS pixel (x, y) of the canvas, read in the same task as a fresh render. */
+      pixel: (x, y) => {
+        view.render();
+        const gl = view.renderer.getContext();
+        const c = view.renderer.domElement;
+        const k = c.width / c.clientWidth;
         const out = new Uint8Array(4);
         gl.readPixels(Math.floor(x * k), c.height - 1 - Math.floor(y * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
         return [...out];
-      });
-    },
-    /** RGBA at CSS pixel (x, y) of the canvas, read in the same task as a fresh render. */
-    pixel: (x, y) => {
-      view.render();
-      const gl = view.renderer.getContext();
-      const c = view.renderer.domElement;
-      const k = c.width / c.clientWidth;
-      const out = new Uint8Array(4);
-      gl.readPixels(Math.floor(x * k), c.height - 1 - Math.floor(y * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
-      return [...out];
-    },
-  });
+      },
+    });
+  }
 
   return { update };
 }

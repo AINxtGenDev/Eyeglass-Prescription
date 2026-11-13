@@ -34,11 +34,19 @@ jobs:
       - run: npm run lint
       # Unit, property, CI-gate tests; coverage thresholds fail the step with exit 1.
       - run: npm run test:coverage
+      # The deployed artifact: ./dist (production mode, no test handle).
       # GITHUB_SHA is baked into index.html as <meta name="app-commit">.
       - run: npm run build
+      # Same commit, `vite build --mode e2e` into ./dist-e2e: differs from ./dist only by the
+      # MODE-gated test handle (F-04, orchestrator decision 5). Never uploaded.
+      - run: npm run build:e2e
       - run: npx playwright install --with-deps chromium
-      # Smoke test against vite preview at /Eyeglass-Prescription/.
+      # Full e2e suite against dist-e2e (vite preview on 4174 at /Eyeglass-Prescription/).
       - run: npm run test:e2e
+      # Hook-free live subset (e2e/support/live-specs.js) against the deployed ./dist on 4173.
+      - run: npm run test:e2e:live
+      # Reads both builds: no hook strings in ./dist, parity of ./dist and ./dist-e2e (M4).
+      - run: npm run test:dist
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
@@ -84,7 +92,7 @@ jobs:
           done
           echo "Live page did not serve commit ${GITHUB_SHA::7} within 10 minutes"
           exit 1
-      # Same smoke spec against the live host (DEPL-01).
-      - run: npm run test:e2e
+      # The hook-free live subset against the live host (DEPL-01); the live site has no test handle.
+      - run: npm run test:e2e:live
         env:
           BASE_URL: https://ainxtgendev.github.io/Eyeglass-Prescription/
