@@ -26,7 +26,20 @@ dev-1.8 at d07e16d passes lint, 2138 unit tests, both builds, 684 e2e tests, the
 
 Task 2 (approve the phase-4 push, the first service-worker deploy) has not been asked or answered. Nothing has been pushed. Task 3 has not run.
 
-**lens-critic verdict:** inserted by orchestrator
+**lens-critic verdict (2026-11-14, phase-result review):** PASS WITH FINDINGS — 0 BLOCKER, 2 MAJOR, 9 MINOR; none ship-blocking. Under the gate rule the phase is done only once the MAJORs are fixed or accepted by the user.
+- MAJOR 1: BENCH_GATE timing budgets red on the Grenzfall Rx (57 / 17 / 13 ms vs 30 / 15 / 8) and the 639×800 rim case; mitigated by phone start tier mittel and the tested step-down guard. Re-base with a written reason or accept; the Task 3 phone trace must confirm ≤ 200 ms or the "vereinfacht" note.
+- MAJOR 2: the chart texture is 4096² regardless of tier (`src/ui/view/refraction.js:55`, `:136-137`), costing about 64 MB of canvas and 89 MB of GPU memory, never measured on a phone. Suggested: 2048 on phone tiers, release the source canvas after upload, and add first-entry time and context loss to Task 3.
+- m1: the rim note shows when the rim band is 5–6 px of #221e1c beside #1a1a1a squares (1164 px).
+- m2: the fullscreen Dickenkarte note points to a hidden table.
+- m3: `view.caption.ref` "So sehen Sie mit dieser Brille …" overclaims, because the picture is always sharp.
+- m4: 1 px overflow at 320 px @150 % (result cards, WCAG 1.4.10).
+- m5: ReadPixels GPU-stall warning at 412 px (likely the bar thumbnail `scene.js:159`, unverified).
+- m6: kill build shows `update.done.other` and `tech.offline.failed` wording.
+- m7: the ENG-09 worker-controlled measurement used an uncommitted scratch spec.
+- m8: the first CI run may flake under load.
+- m9: the remaining open list (pool 10→12, A/B under 360 px wording, 2,99 px edge, MINOR 11).
+Confirmed in code: the warp grid uses the engine's `traceFromEye` and its surfaces (no second optics copy); the tested build is the deployed build; the SW scope, prompt mode, handover and kill switch are safe to deploy; the rollback statement is honest.
+**gsd-verifier (9d6f9ab):** human_needed, no gaps. SC1 and SC3 are verified in code; SC2 (phone) and SC4 (this verdict or user acceptance) are pending.
 
 ## Guards (step 1)
 
