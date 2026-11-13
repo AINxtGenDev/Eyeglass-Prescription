@@ -9,6 +9,18 @@
     <script type="module" src="./src/ui/main.js"></script>
   </head>
   <body>
+    <!-- 04-14 (D-20, D-21): update banner and its confirmation. First in the DOM, so the first Tab
+         reaches it; shown at the bottom by style.css; filled by src/ui/update.js. -->
+    <div id="app-update" role="region" data-i18n-aria-label="update.region" hidden>
+      <p class="app-update-title" id="app-update-title"><span data-i18n="update.title"></span></p>
+      <p class="app-update-body" id="app-update-body"></p>
+      <div class="app-update-actions">
+        <button type="button" class="btn-primary" id="app-update-apply" data-i18n="update.apply"></button>
+        <button type="button" id="app-update-later" data-i18n="update.later"></button>
+        <button type="button" id="app-update-close" data-i18n="update.close" hidden></button>
+      </div>
+    </div>
+    <p id="app-update-live" class="visually-hidden" role="status"></p>
     <header>
       <h1 data-i18n="app.title">Brillenglas-Rechner</h1>
       <div class="expert-switch">

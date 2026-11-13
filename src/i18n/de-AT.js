@@ -646,6 +646,21 @@ export default Object.freeze({
   'tech.offline.waiting': 'Eine neue Version ist geladen und wartet auf „Aktualisieren“.',
   'tech.offline.unsupported': 'Offline nicht verfügbar: Ihr Browser unterstützt das nicht. Online funktioniert alles wie gewohnt.',
   'tech.offline.failed': 'Offline nicht verfügbar: Die Speicherung ist fehlgeschlagen. Online funktioniert alles wie gewohnt.',
+  // Update banner and confirmation (04-14, D-20, D-21; UI-SPEC Copywriting "Update banner").
+  'update.region': 'Hinweis zur neuen Version',
+  'update.title': 'Neue Version verfügbar',
+  'update.body':
+    '„Aktualisieren“ lädt die neue Version sofort. Ihre Eingaben bleiben erhalten. Mit „Später“ startet sie, wenn Sie alle Fenster dieser Seite geschlossen und die Seite wieder geöffnet haben.',
+  'update.body.reset':
+    '„Aktualisieren“ lädt die neue Version sofort. Ihre Eingaben werden dabei zurückgesetzt. Mit „Später“ startet sie, wenn Sie alle Fenster dieser Seite geschlossen und die Seite wieder geöffnet haben.',
+  'update.apply': 'Aktualisieren',
+  'update.applying': 'Wird aktualisiert …',
+  'update.later': 'Später',
+  'update.failed': 'Die neue Version konnte nicht geladen werden. Ihre Eingaben sind unverändert. Versuchen Sie es später noch einmal.',
+  'update.done': 'Neue Version {version} geladen. Ihre Eingaben wurden übernommen.',
+  'update.done.other': 'Neue Version {version} geladen, weil sie in einem anderen Fenster gestartet wurde. Ihre Eingaben wurden übernommen.',
+  'update.done.lost': 'Neue Version {version} geladen. Ihre Eingaben konnten nicht übernommen werden – bitte tragen Sie sie erneut ein.',
+  'update.close': 'Schließen',
 
   // 3D-Ansicht (03-05, VIZ-01, VIZ-04; UI-SPEC "Copywriting → View").
   'view.title': '3D-Ansicht Ihrer Brille',

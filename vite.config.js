@@ -13,6 +13,10 @@ const commit = (process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
 // Build date (ISO 8601, UTC) shown next to the version in the footer.
 const buildDate = new Date().toISOString().slice(0, 10);
 
+// 04-14: only the test build B (`npm run build:b`) sets this override, so the update e2e
+// sees a second version label; e2e/smoke.spec.js asserts the real label on every normal build.
+const appVersion = process.env.APP_VERSION_OVERRIDE ?? APP_VERSION;
+
 // The commit must be in index.html itself (verify-live greps the HTML),
 // so it is injected into the page, not only defined in the JS bundle.
 const appMeta = {
@@ -21,7 +25,7 @@ const appMeta = {
     return html
       .replaceAll('%APP_COMMIT%', commit)
       .replaceAll('%APP_DATE%', buildDate)
-      .replaceAll('%APP_VERSION%', APP_VERSION);
+      .replaceAll('%APP_VERSION%', appVersion);
   },
 };
 
@@ -119,7 +123,21 @@ export default defineConfig({
       // projects (Eyeglass-Prescription, interior-design, simplify_llm, testing, workflow; gh api
       // 2026-11-13); their cached data could be cleared. Whether the four siblings use Cache
       // Storage: checked read-only in 04-14 Task 3, result recorded on the next line.
-      // Sibling Cache Storage use: not checked yet (04-14 Task 3).
+      // Siblings checked 2026-11-13 (read-only GET of the published files, 04-14; grep for
+      // serviceWorker, sw.js, manifest, workbox, caches.open/keys, CacheStorage):
+      //   simplify_llm: https://ainxtgendev.github.io/simplify_llm/ (200), index.html and its one
+      //     script assets/index-DHSxdNom.js: no match; sw.js 404, manifest 404 → no worker, no
+      //     Cache Storage use found.
+      //   testing: https://ainxtgendev.github.io/testing/ (200), index.html (incl. its inline
+      //     script) and power_calc.js: no match; sw.js 404 → no worker, no Cache Storage use found.
+      //   interior-design: https://ainxtgendev.github.io/interior-design/ → 301 to its custom
+      //     domain its custom domain (Pages cname), a different origin: outside the blast
+      //     radius (it has a manifest.webmanifest, but sw.js 404 and no match in its HTML or its
+      //     10 referenced chunks).
+      //   workflow: no repo and no Pages site (gh api repos/AINxtGenDev/workflow 404,
+      //     https://ainxtgendev.github.io/workflow/ 404).
+      // So today a kill deploy clears only our own caches on this origin; re-check before a real
+      // kill deploy, because a sibling can add a worker at any time.
       selfDestroying: SW_KILL,
     }),
   ],

@@ -221,6 +221,83 @@ footer {
   outline-offset: -3px;
 }
 
+/* 04-14 (D-20, UI-SPEC "Update banner #app-update"): non-modal, fixed at the bottom, above the
+   summary bar (z-index 10) and below the CSS fullscreen stage (100). No animation. --bar-h and
+   --update-h are written by update.js (ResizeObserver, CSSOM: CSP-safe). */
+#app-update {
+  position: fixed;
+  z-index: 20;
+  right: var(--space-6);
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+  width: min(400px, 100vw - 48px);
+  box-sizing: border-box;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--fg);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 2px 8px rgb(26 26 26 / 0.25);
+}
+
+#app-update[hidden],
+html.view-fs-open #app-update {
+  display: none;
+}
+
+.app-update-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.app-update-title[hidden] {
+  display: none;
+}
+
+.app-update-body {
+  margin: var(--space-2) 0 0;
+  font-size: 0.875rem;
+}
+
+.app-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.app-update-actions .btn-primary {
+  width: auto;
+}
+
+.app-update-actions [aria-disabled='true'] {
+  cursor: default;
+}
+
+html.app-update-open {
+  scroll-padding-bottom: calc(var(--update-h, 0px) + var(--space-6) + var(--space-2));
+}
+
+@media (max-width: 899.98px) {
+  #app-update {
+    right: auto;
+    inset-inline: var(--space-2);
+    /* The bar's height already holds the safe-area padding while it is shown. */
+    bottom: calc(max(var(--bar-h, 0px), env(safe-area-inset-bottom)) + var(--space-2));
+    width: auto;
+  }
+
+  /* Hidden while a text field or select has focus (update.js), so it never sits on the field. */
+  #app-update.app-update--field {
+    display: none;
+  }
+
+  html.app-update-open {
+    scroll-padding-bottom: calc(72px + var(--update-h, 0px) + var(--space-2));
+  }
+}
+
 .bar-label {
   font-size: 0.875rem;
   line-height: 1.4;

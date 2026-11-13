@@ -85,6 +85,9 @@ export default defineConfig({
     // MINOR 9: the switch server's served build is global state, so this project matches exactly
     // one file and runs its tests one at a time in file order. Keep every switch-dependent test in
     // pwa.spec.js; never add a second file to this project. Not created in E2E_LIVE mode.
+    // 04-14: the update tests swap the served build through /__switch/a | b | kill, so two tests
+    // must never run at the same time. The switch-server command builds nothing (plan-checker
+    // warning 4): pwa.spec.js builds dist-b/ and dist-kill/ lazily, only when its switch describe runs.
     ...(LIVE
       ? []
       : [

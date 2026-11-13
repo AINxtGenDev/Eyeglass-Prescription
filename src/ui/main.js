@@ -39,6 +39,7 @@ import {
   cardMaterial,
   updateXsec,
   refreshView,
+  currentCompareConfig,
 } from './pipeline.js';
 import {
   initTiming,
@@ -89,7 +90,6 @@ let lastCustom = null;
  * (another tab updated), 'lost' (the handover was invalid or did not apply), null (normal load).
  * 04-14 passes it to update.js, which shows it after the first result paint.
  */
-// eslint-disable-next-line no-unused-vars -- read by the 04-14 banner wiring
 let handoverKind = null;
 
 /**
@@ -241,6 +241,13 @@ function formValid() {
  * input path. With a comparison, A's values are run through one input frame (so currentConfig()
  * holds them) before 'Variante vergleichen' freezes them, as when the user clicks it.
  */
+/**
+ * 04-14 (D-21): the form as the handover needs it at reload time (update.js snapshots it). valid:
+ * no input blocks (else a half-typed input would be reported as lost after the update); compareA:
+ * the frozen Vorher (A); bEstimated: lens height B is the estimate, so it is not handed over.
+ */
+const formState = () => ({ valid: formValid(), compareA: currentCompareConfig(), bEstimated: readFrame().bEstimated });
+
 function restoreHandover() {
   const ho = takeHandover();
   if (ho === null) return;
@@ -290,7 +297,7 @@ function init() {
   const swGate = createRegistrationGate({
     onStart: () =>
       import('./update.js').then(
-        ({ start }) => start(),
+        ({ start }) => start({ handoverKind, formState }),
         (err) => {
           console.warn('offline support could not load', err);
           setText('tech-offline', t('tech.offline.failed'));
