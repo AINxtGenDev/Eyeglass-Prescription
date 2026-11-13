@@ -66,3 +66,26 @@
 - Runner font check (2026-11-11): CI uses DejaVu Sans, wider than the local Noto Sans. Reproduce layout budgets locally with a fontconfig file that lists only `/usr/share/fonts/truetype/dejavu`: `FONTCONFIG_FILE=<file> npx playwright test e2e/layout.spec.js` (gave the exact CI value).
 - CI note 2026-11-11: four runs failed at `playwright install --with-deps` (runner could not resolve the Ubuntu mirrors); a `||` fallback was tried locally and reverted because test/ci/workflow-structure.test.js forbids it.
 - Rules: bump `version.js` (dev-1.8) with the next deployed change; lens-critic gate on the phase 4 plan and result; ask before every push.
+
+## 2026-11-13 — Phase 4 planning and execution (local only, not pushed)
+
+### Done
+- `/gsd-plan-phase 4`: 15 plans in 9 waves; lens-critic plan review passed after five rounds (`04-LENS-CRITIC-R1…R5.md`). P0 feasibility trace fixed the field at 30° and the grid tiers (fein 6/1, mittel 8/2, grob 10/3 px).
+- `/gsd-execute-phase 4 --auto`, waves 1–5 merged on `main` (10 of 15 plans: 04-01…04-09, 04-15):
+  - Engine: reverse trace from the eye, spectacle magnification (15 mm eye point), warp grid with aperture classes and quadtree rim leaves.
+  - Warp worker and client, stale-job guard, transfer of the warp buffers.
+  - Offline: vite-plugin-pwa service worker scoped to `/Eyeglass-Prescription/`, "Aktualisieren / Später" banner with input handover, documented kill switch; separate `build:e2e` so the test hook never reaches production.
+  - Durchblick (third view mode, also in Simple view): both lenses, size text per eye and direction, "Mit Glas | Ohne Glas", reference ticks, rim drawing from the quadtree, one-panel eye picker below 360 px, blocked/empty/failed/no-WebGL states, no computing while the view is off screen.
+  - M3 hard gate (accepted SC1 decision): on-screen pixel tests for axis direction and eye swap pass, 106/0 vs oracle 103/0; flipped or mirrored pictures fail.
+- Wave-5 gate on `main` (commit d0d22e7): lint, 2130 unit tests, both builds, test:dist 17/1 skipped, a11y 32/32, affected e2e 198 passed, pwa 5/5, live subset 323. chrome-devtools MCP pass at 320 and 412 px clean.
+- Fixed after wave 5: the a11y keyboard-path test assumed nothing between the results and the 3D view; since 04-08 the "Darstellung" switch sits there by spec. Test updated (e62826e).
+
+### Open items (for the lens-critic result review, details in `.planning/phases/04-refraction-view-offline/deferred-items.md`)
+- Chart texture 4096² costs about 89 MB GPU memory (phones).
+- "Grenzfall" prescription misses its time budgets under `BENCH_GATE=1` (fein 56 / mittel 17 / grob 13 ms vs 30 / 15 / 8); the automatic step-down in 04-10 is the mitigation.
+- Rim check (M3 c) samples a different line than planned; the past-rim note can practically never appear on screen.
+- −1,00 lens shifts the edge 2,99 px on the 400 px desktop column, just under the 3,0 px threshold.
+- Coverage-run timeouts in `diagnostics.test.js` under heavy load (pass on an idle machine); watch the first CI run.
+
+### Next step (resume here after /clear)
+- Wave 6 (04-10, automatic grid step-down on slow devices) running. Then 04-11 + 04-14 (parallel), 04-12, then 04-13: dev-1.8, full gate, lens-critic result review, **push only after user approval**, live check and real-phone check.
