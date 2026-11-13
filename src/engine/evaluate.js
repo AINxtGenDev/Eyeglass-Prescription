@@ -53,6 +53,12 @@
  *   effects are not modelled in v1. null for a customMaterial without νe (02-12).
  * @property {null|{ n: number, ct: number, c1: number, k1: number, ca: number, cb: number,
  *   axisRad: number, oc: { x: number, y: number } }} surfaces
+ * @property {null|{ hMm: number, shape: number,
+ *   meridians: Array<{ deg: number|null, wearerDeg: number|null, F: number, power: number, sm: number }> }} magnification
+ *   (04-01, REF-01) spectacle magnification per principal meridian (magnification.js): hMm = back
+ *   vertex → eye point in mm, shape / power = shape and power factor, sm = SM dimensionless (1 = no change), F = the
+ *   meridian's back-vertex power in dpt, deg = TABO meridian 1…180 (null without cylinder),
+ *   wearerDeg = 180 − deg. null when the lens is not computed.
  */
 
 import { nasalSign } from './conventions.js';
@@ -63,6 +69,7 @@ import { solveCT, optimiseBaseCurve, BACK_CONVEX_MAX_DPT } from './solve.js';
 import { computeMetrics, maxRadiusFromOC, extremeIndices, farthestIndexFromOC } from './metrics.js';
 import { frontSagAt, backSagAt } from './design.js';
 import { frameOutline } from './frame/outline.js';
+import { spectacleMagnification } from './magnification.js';
 import { SHAPES } from './frame/shapes.js';
 
 const fin = Number.isFinite;
@@ -72,7 +79,7 @@ const optPositive = (v) => v == null || (fin(v) && v > 0);
 const optNonNeg = (v) => v == null || (fin(v) && v >= 0);
 
 function fail(eye, diagnostics) {
-  return { ok: false, eye, diagnostics, metrics: null, intermediates: null, surfaces: null };
+  return { ok: false, eye, diagnostics, metrics: null, intermediates: null, surfaces: null, magnification: null };
 }
 
 function invalidReason(spec) {
@@ -252,7 +259,9 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
     sags,
     abbe: m.ve ?? null,
   };
-  if (!allFinite(metrics) || !allFinite(intermediates)) {
+  // REF-01 (D-05): spectacle magnification per principal meridian at the eye point (h = 15 mm).
+  const magnification = spectacleMagnification({ n: s.n, ctMm: s.ct, D1: intermediates.D1, sph, cyl, axisDeg });
+  if (!allFinite(metrics) || !allFinite(intermediates) || !allFinite(magnification)) {
     return fail(eye, [diag('NON_FINITE_RESULT', {})]);
   }
   const diagnostics = [diag(r.binding === 'minCT' ? 'CT_SET_BY_MIN_CT' : 'CT_SET_BY_MIN_ET', {})];
@@ -281,6 +290,7 @@ export function evaluateLens(spec, { outlinePoints = 720 } = {}) {
       axisRad: s.axisRad,
       oc: s.oc,
     },
+    magnification,
   };
 }
 

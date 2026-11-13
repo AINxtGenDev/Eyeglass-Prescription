@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtGramWhole, fmtMs, fmtConic, fmtIsoValue, fmtIsoStep } from './format.js';
+import { fmtDiopter, fmtAxis, fmtMm, fmtGram, fmtGramWhole, fmtMs, fmtConic, fmtIsoValue, fmtIsoStep, fmtPercent } from './format.js';
 
 const NBSP = ' ';
 const MINUS = '−';
@@ -77,5 +77,21 @@ describe('fmtIsoValue / fmtIsoStep (03-12, VIZ-05 iso lines: 1–2 decimals)', (
     [0.5, `0,5${NBSP}mm`],
   ])('fmtIsoStep(%d) -> %j', (v, s) => {
     expect(fmtIsoStep(v)).toBe(s);
+  });
+});
+
+describe('fmtPercent (04-01, UI-SPEC MINOR 5: one decimal below 3 %, whole percent from 3 %)', () => {
+  test.each([
+    [0.02949, `2,9${NBSP}%`],
+    [0.0296, `3${NBSP}%`],
+    [0.056037, `6${NBSP}%`],
+    [0.12991, `13${NBSP}%`],
+    [0.0006, `0,1${NBSP}%`],
+    [0.00004, `0,0${NBSP}%`],
+    [0, `0,0${NBSP}%`],
+    [0.014187, `1,4${NBSP}%`],
+    [0.077669, `8${NBSP}%`],
+  ])('fmtPercent(%d) -> %j', (v, s) => {
+    expect(fmtPercent(v)).toBe(s);
   });
 });

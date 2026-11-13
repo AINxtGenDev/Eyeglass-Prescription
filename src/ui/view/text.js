@@ -4,8 +4,9 @@
 // (LensResult.metrics.etMax.value) and lead (frontLeadMm(...).value from the same engine helper
 // and rim depth as the Expert rim lines in frame-input.js paintRim).
 import { bevelSplit } from '../../engine/rim.js';
+import { END_LABEL_TOL_DEG } from '../../engine/profile.js';
 import { t } from '../../i18n/t.js';
-import { fmtMm } from '../../i18n/format.js';
+import { fmtMm, fmtAxis, fmtPercent } from '../../i18n/format.js';
 
 /**
  * A protrusion or lead counts only from 0,05 mm on, so a shown '0,0 mm' never appears (UI-SPEC:
@@ -105,4 +106,129 @@ export function ariaGlass({ viewName, OD, OS, frame, material }) {
     DBL: frame ? sizeNf.format(frame.DBL) : DASH,
     material,
   });
+}
+
+// ── 04-01 Durchblick size block (REF-01, D-05, D-07; UI-SPEC "Size block #view-ref-size", "Rules
+// [BP]", "Canvas accessible name in Durchblick", N6, N7). Every value comes from
+// LensResult.magnification (engine magnification.js); nothing here computes optics.
+
+/** UI-SPEC weak-lens note, raised from 1,2 to 1,3 per lens-critic N6 (+0,75 CR-39 in 62×55 reads 1,3 % at under 3 px). */
+export const WEAK_NOTE_MAX_PCT = 1.3;
+
+const NBSP = '\u00a0';
+const SAME_PCT = '0,0' + NBSP + '%';
+
+/**
+ * Direction words for a principal meridian θ (TABO 1…180; 0 ≡ 180), first match wins. The 15° band
+ * equals END_LABEL_TOL_DEG in src/engine/profile.js (exactly 15° off counts as oblique, as there).
+ * The oblique path uses the on-screen angle φ = 180° − θ: the wearer looks from behind, so x is
+ * mirrored (D-07, RESEARCH Pitfall 1).
+ * @param {number} deg
+ */
+export function refDirWords(deg) {
+  const th = deg === 0 ? 180 : deg;
+  const kind = dirKind(th);
+  if (kind === 'v' || kind === 'h') return t(`view.ref.dir.${kind}`);
+  const d = fmtAxis(th);
+  if (kind !== 'obl') return t(`view.ref.dir.${kind}`, { deg: d });
+  const phi = 180 - th;
+  return t('view.ref.dir.obl', { deg: d, path: t(phi < 90 ? 'view.ref.path.rise' : 'view.ref.path.fall') });
+}
+
+/** @param {number} th TABO 1…180 @returns {'v'|'h'|'nearV'|'nearH'|'obl'} */
+function dirKind(th) {
+  if (th === 90) return 'v';
+  if (th === 180) return 'h';
+  const off = Math.abs(th - 90);
+  if (off < END_LABEL_TOL_DEG) return 'nearV';
+  if (th < END_LABEL_TOL_DEG || th > 180 - END_LABEL_TOL_DEG) return 'nearH';
+  return 'obl';
+}
+
+/** The change words for one meridian; the word follows the engine sign of SM − 1, never F (M3). */
+function change(sm) {
+  const pct = fmtPercent(Math.abs(sm - 1));
+  if (pct === SAME_PCT) return { text: t('view.ref.chg.same'), pct, larger: false };
+  return { text: t(sm < 1 ? 'view.ref.chg.smaller' : 'view.ref.chg.larger', { pct }), pct, larger: sm > 1 };
+}
+
+/** fmtPercent string → number, or Infinity for a whole-percent value (≥ 3 %). */
+const pctValue = (pct) => (pct.includes(',') ? Number(pct.slice(0, -2).replace(',', '.')) : Infinity);
+
+/**
+ * The size block #view-ref-size.
+ * @param {Array<{ who: 'od'|'os'|'a'|'b', mag: { meridians: Array<{ deg: number|null, F: number, sm: number }> } | null,
+ *   cyl: number }>} entries in display order (OD then OS, A then B); mag null = blocked / not computed
+ * @param {{ picture?: boolean, compare?: boolean, rimInField?: boolean, pastRimInField?: boolean }} [opts]
+ *   picture = the Durchblick picture is shown; rimInField / pastRimInField from the warp of the shown panels
+ * @returns {{ title: string, entries: Array<{ who: string, blocked: boolean, kind: 'line'|'cyl', head: string,
+ *   dirs: string[], joined: string }>, notes: string[] }}
+ */
+export function refSizeBlock(entries, { picture = false, compare = false, rimInField = false, pastRimInField = false } = {}) {
+  const out = [];
+  let computed = 0;
+  let weak = true;
+  let cylForm = false;
+  let cylSame = false;
+  let oblique = false;
+  let shape = false;
+  for (const { who, mag, cyl } of entries) {
+    const whoText = t(`view.ref.who.${who}`);
+    if (mag == null) {
+      const head = t('view.ref.blocked', { who: whoText });
+      out.push({ who, blocked: true, kind: 'line', head, dirs: [], joined: head });
+      continue;
+    }
+    computed++;
+    const ms = mag.meridians;
+    const chgs = ms.map((m) => change(m.sm));
+    ms.forEach((m, i) => {
+      if (pctValue(chgs[i].pct) > WEAK_NOTE_MAX_PCT) weak = false;
+      if (chgs[i].larger && m.F <= 0) shape = true;
+    });
+    if (ms.length === 1 || chgs[0].text === chgs[1].text) {
+      if (ms.length === 2 && cyl !== 0) cylSame = true;
+      const head = t('view.ref.line', { who: whoText, chg: chgs[0].text });
+      out.push({ who, blocked: false, kind: 'line', head, dirs: [], joined: head });
+      continue;
+    }
+    cylForm = true;
+    const dirWords = ms.map((m) => refDirWords(m.deg));
+    if (ms.some((m) => dirKind(m.deg === 0 ? 180 : m.deg) === 'obl')) oblique = true;
+    out.push({
+      who,
+      blocked: false,
+      kind: 'cyl',
+      head: t('view.ref.lineCyl.head', { who: whoText }),
+      dirs: ms.map((m, i) => t('view.ref.lineCyl.dir', { dir: dirWords[i], chg: chgs[i].text })),
+      joined: t('view.ref.lineCyl', { who: whoText, dir1: dirWords[0], chg1: chgs[0].text, dir2: dirWords[1], chg2: chgs[1].text }),
+    });
+  }
+  const notes = [];
+  if (picture) notes.push(t('view.ref.edge'));
+  if (picture && rimInField) notes.push(t('view.ref.rimNote'));
+  if (picture && rimInField && pastRimInField) notes.push(t('view.ref.rimPastNote'));
+  if (picture && computed > 0 && weak) notes.push(t('view.ref.weakNote'));
+  if (cylForm) notes.push(t('view.ref.cylNote'));
+  if (cylSame) notes.push(t('view.ref.cylSameNote'));
+  if (oblique) notes.push(t('view.ref.axisNote'));
+  if (shape) notes.push(t('view.ref.shapeNote'));
+  if (compare) notes.push(t('view.ref.abNote'));
+  return { title: t('view.ref.size.title'), entries: out, notes };
+}
+
+/**
+ * The accessible name of #view-canvas in Durchblick, from the same joined size strings.
+ * @param {{ lens: 'on'|'off', layout: 'two'|'one'|'compare', eye: 'od'|'os',
+ *   entries: Array<{ joined: string }> }} o eye = the shown eye for 'one' and 'compare'
+ */
+export function refAria({ lens, layout, eye, entries }) {
+  const layoutText =
+    layout === 'two'
+      ? t('view.aria.ref.layout.two')
+      : layout === 'one'
+        ? t('view.aria.ref.layout.one', { side: t(`view.aria.ref.side.${eye}`) })
+        : t('view.aria.ref.layout.compare', { who: t(`view.ref.who.${eye}`) });
+  const lines = entries.map((e) => e.joined + '.').join(' ');
+  return t('view.aria.ref', { lens: t(`view.aria.ref.lens.${lens}`), layout: layoutText, lines }).trim();
 }

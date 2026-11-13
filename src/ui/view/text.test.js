@@ -6,6 +6,8 @@ import { evaluateLens } from '../../engine/evaluate.js';
 import { frameOutline } from '../../engine/frame/outline.js';
 import { bevelSplit, frontLeadMm } from '../../engine/rim.js';
 import { protrusionLines, protrusionCompareLines, protrusionKind, ariaGlass, PROTRUSION_FLUSH_MM } from './text.js';
+import { refDirWords, refSizeBlock, refAria, WEAK_NOTE_MAX_PCT } from './text.js';
+import { t } from '../../i18n/t.js';
 
 const FRAME = { shape: 'rechteckig', A: 52, B: 38, DBL: 18 };
 const spec = (o) => ({
@@ -151,6 +153,199 @@ describe('D-19/D-29 view text (03-11)', () => {
     expect(s).toContain('Fassung Rund 49,5□18,');
     expect(ariaGlass({ viewName: 'von oben', OD: null, OS: null, frame: null, material: 'x' })).toBe(
       '3D-Ansicht der Brille, von oben. Rechtes Glas: nicht berechnet. Linkes Glas: nicht berechnet. Fassung – –□–, Material x.',
+    );
+  });
+});
+
+describe('REF-01 size block (D-05, E4)', () => {
+  const N = ' ';
+  const BIG = { shape: 'rechteckig', A: 62, B: 55, DBL: 24 };
+  /** One size-block entry from a real engine result (LensResult.magnification, h = 15 mm). */
+  const entry = (who, o = {}) => {
+    const s = spec({ eye: who === 'os' ? 'OS' : 'OD', sph: 0, cyl: 0, axisDeg: 0, ...o });
+    const r = evaluateLens(s);
+    expect(r.ok).toBe(true);
+    return { who, mag: r.magnification, cyl: s.cyl };
+  };
+  const blocked = (who) => ({ who, mag: null, cyl: 0 });
+  const PIC = { picture: true };
+
+  test('WEAK_NOTE_MAX_PCT is 1,3 (N6)', () => expect(WEAK_NOTE_MAX_PCT).toBe(1.3));
+
+  test.each([
+    [90, 'senkrecht (90°)'],
+    [180, 'waagrecht (180°)'],
+    [0, 'waagrecht (180°)'],
+    [85, 'fast senkrecht (85°)'],
+    [95, 'fast senkrecht (95°)'],
+    [5, 'fast waagrecht (5°)'],
+    [175, 'fast waagrecht (175°)'],
+    [15, 'schräg (15°, im Bild von links oben nach rechts unten)'],
+    [75, 'schräg (75°, im Bild von links oben nach rechts unten)'],
+    [105, 'schräg (105°, im Bild von links unten nach rechts oben)'],
+    [165, 'schräg (165°, im Bild von links unten nach rechts oben)'],
+    [30, 'schräg (30°, im Bild von links oben nach rechts unten)'],
+    [120, 'schräg (120°, im Bild von links unten nach rechts oben)'],
+  ])('refDirWords(%d) -> %j (on-screen φ = 180° − θ)', (deg, s) => {
+    expect(refDirWords(deg)).toBe(s);
+  });
+
+  test('E4: OD −2,00/−2,00×30 head, two li and the joined string', () => {
+    const b = refSizeBlock([entry('od', { sph: -2, cyl: -2, axisDeg: 30 })]);
+    expect(b.title).toBe('Bildgröße in der Glasmitte, verglichen mit dem Blick ohne Brille');
+    const [e] = b.entries;
+    expect(e.kind).toBe('cyl');
+    expect(e.blocked).toBe(false);
+    expect(e.head).toBe('Rechtes Glas: Bild');
+    expect(e.dirs).toEqual([
+      `schräg (30°, im Bild von links oben nach rechts unten) etwa 2,9${N}% kleiner`,
+      `schräg (120°, im Bild von links unten nach rechts oben) etwa 6${N}% kleiner`,
+    ]);
+    expect(e.joined).toBe(
+      'Rechtes Glas: Bild schräg (30°, im Bild von links oben nach rechts unten) etwa 2,9 % kleiner, schräg (120°, im Bild von links unten nach rechts oben) etwa 6 % kleiner',
+    );
+    expect(b.notes).toEqual([t('view.ref.cylNote'), t('view.ref.axisNote')]);
+  });
+
+  test('E4: OS with the same Rx gives the same direction words (never mirrored per eye)', () => {
+    const od = refSizeBlock([entry('od', { sph: -2, cyl: -2, axisDeg: 30 })]).entries[0];
+    const os = refSizeBlock([entry('os', { sph: -2, cyl: -2, axisDeg: 30 })]).entries[0];
+    expect(os.head).toBe('Linkes Glas: Bild');
+    expect(os.dirs).toEqual(od.dirs);
+    expect(os.joined).toBe(od.joined.replace('Rechtes Glas', 'Linkes Glas'));
+  });
+
+  test('E4: −2,00/−1,00×90 → 90° carries Sph, 180° carries Sph + Cyl, no axis note', () => {
+    const b = refSizeBlock([entry('od', { sph: -2, cyl: -1, axisDeg: 90 })]);
+    expect(b.entries[0].dirs).toEqual([`senkrecht (90°) etwa 2,9${N}% kleiner`, `waagrecht (180°) etwa 4${N}% kleiner`]);
+    expect(b.notes).toEqual([t('view.ref.cylNote')]);
+  });
+
+  test('UI-SPEC example −1,00/−1,00×5: near words, no path', () => {
+    const b = refSizeBlock([entry('od', { sph: -1, cyl: -1, axisDeg: 5 })]);
+    expect(b.entries[0].dirs).toEqual([`fast waagrecht (5°) etwa 1,4${N}% kleiner`, `fast senkrecht (95°) etwa 2,9${N}% kleiner`]);
+    expect(b.notes).not.toContain(t('view.ref.axisNote'));
+  });
+
+  test.each([
+    ['OD −4,00', 'od', { sph: -4 }, 'Rechtes Glas: Bild etwa 6 % kleiner'],
+    ['OS +4,00', 'os', { sph: 4 }, 'Linkes Glas: Bild etwa 8 % größer'],
+    ['OD −6,00 in 1,67', 'od', { sph: -6, materialId: 'idx167' }, 'Rechtes Glas: Bild etwa 8 % kleiner'],
+    ['OD −10,00', 'od', { sph: -10 }, 'Rechtes Glas: Bild etwa 13 % kleiner'],
+    ['OD manual base curve 6 plano', 'od', { baseCurve: 6 }, 'Rechtes Glas: Bild etwa 0,7 % größer'],
+  ])('single line %s', (_, who, o, s) => {
+    const [e] = refSizeBlock([entry(who, o)]).entries;
+    expect(e.kind).toBe('line');
+    expect(e.head).toBe(s);
+    expect(e.joined).toBe(s);
+    expect(e.dirs).toEqual([]);
+  });
+
+  test('plano default CR-39 → "etwa 0,1 % größer" with edge, weakNote and shapeNote', () => {
+    const b = refSizeBlock([entry('od')], PIC);
+    expect(b.entries[0].head).toBe('Rechtes Glas: Bild etwa 0,1 % größer');
+    expect(b.notes).toEqual([t('view.ref.edge'), t('view.ref.weakNote'), t('view.ref.shapeNote')]);
+  });
+
+  test('−0,25 on manual base curve 6 → "etwa 0,3 % größer" + shapeNote (word follows SM − 1, not F)', () => {
+    const b = refSizeBlock([entry('od', { sph: -0.25, baseCurve: 6 })]);
+    expect(b.entries[0].head).toBe('Rechtes Glas: Bild etwa 0,3 % größer');
+    expect(b.notes).toContain(t('view.ref.shapeNote'));
+  });
+
+  test('CR-39 62×55/24 +5,00/−6,00×90: the −1,00 direction reads "etwa 0,1 % größer", shapeNote on', () => {
+    const b = refSizeBlock([entry('od', { sph: 5, cyl: -6, axisDeg: 90, frame: BIG })]);
+    expect(b.entries[0].dirs).toEqual([`senkrecht (90°) etwa 10${N}% größer`, `waagrecht (180°) etwa 0,1${N}% größer`]);
+    expect(b.notes).toContain(t('view.ref.shapeNote'));
+  });
+
+  test('"praktisch gleich groß" only when the formatted value is "0,0 %" (−0,25 on manual base 3: −0,014 %)', () => {
+    const b = refSizeBlock([entry('od', { sph: -0.25, baseCurve: 3 })]);
+    expect(b.entries[0].head).toBe('Rechtes Glas: Bild praktisch gleich groß');
+    expect(b.notes).not.toContain(t('view.ref.shapeNote'));
+    // the default plano lens does not reach it
+    expect(refSizeBlock([entry('od')]).entries[0].head).not.toContain('gleich groß');
+  });
+
+  describe('weak note (N6, ≤ 1,3 %)', () => {
+    const weak = (entries) => refSizeBlock(entries, PIC).notes.includes(t('view.ref.weakNote'));
+    test('−0,75 / −0,75 on (both "etwa 1,1 % kleiner")', () => {
+      const b = refSizeBlock([entry('od', { sph: -0.75 }), entry('os', { sph: -0.75 })], PIC);
+      expect(b.entries.map((e) => e.head)).toEqual(['Rechtes Glas: Bild etwa 1,1 % kleiner', 'Linkes Glas: Bild etwa 1,1 % kleiner']);
+      expect(weak([entry('od', { sph: -0.75 }), entry('os', { sph: -0.75 })])).toBe(true);
+    });
+    test('+0,75 / +0,75 on', () => expect(weak([entry('od', { sph: 0.75 }), entry('os', { sph: 0.75 })])).toBe(true));
+    test('+0,75 in 62×55 (1,3 %) on', () => {
+      const e = entry('od', { sph: 0.75, frame: BIG });
+      expect(refSizeBlock([e]).entries[0].head).toBe('Rechtes Glas: Bild etwa 1,3 % größer');
+      expect(weak([e])).toBe(true);
+    });
+    test('−1,00 / −1,00 off', () => expect(weak([entry('od', { sph: -1 }), entry('os', { sph: -1 })])).toBe(false));
+    test('+1,00 off', () => expect(weak([entry('od', { sph: 1 })])).toBe(false));
+    test('hidden when no eye is computed', () => expect(weak([blocked('od'), blocked('os')])).toBe(false));
+    test('blocked eyes are ignored', () => expect(weak([entry('od', { sph: -0.75 }), blocked('os')])).toBe(true));
+    test('only with the picture', () => {
+      expect(refSizeBlock([entry('od', { sph: -0.75 })]).notes).not.toContain(t('view.ref.weakNote'));
+    });
+  });
+
+  test('N7: −4,00/−0,50×90 prints "6 %" twice → one line and cylSameNote, not cylNote', () => {
+    const b = refSizeBlock([entry('od', { sph: -4, cyl: -0.5, axisDeg: 90 })]);
+    expect(b.entries[0].kind).toBe('line');
+    expect(b.entries[0].head).toBe('Rechtes Glas: Bild etwa 6 % kleiner');
+    expect(b.notes).toContain(t('view.ref.cylSameNote'));
+    expect(b.notes).not.toContain(t('view.ref.cylNote'));
+  });
+
+  test('note order: edge, rimNote, rimPastNote, cylNote, cylSameNote, axisNote, shapeNote, abNote', () => {
+    const b = refSizeBlock(
+      [entry('a', { sph: -2, cyl: -2, axisDeg: 30 }), entry('b', { sph: -4, cyl: -0.5, axisDeg: 90 }), entry('od', { sph: 5, cyl: -6, axisDeg: 90, frame: BIG })],
+      { picture: true, compare: true, rimInField: true, pastRimInField: true },
+    );
+    expect(b.entries.map((e) => e.head.split(':')[0])).toEqual(['Vorher (A)', 'Nachher (B)', 'Rechtes Glas']);
+    expect(b.notes).toEqual(
+      ['edge', 'rimNote', 'rimPastNote', 'cylNote', 'cylSameNote', 'axisNote', 'shapeNote', 'abNote'].map((k) => t(`view.ref.${k}`)),
+    );
+  });
+
+  test('note gating: picture, rimInField, pastRimInField and compare', () => {
+    const e = [entry('od', { sph: -4 })];
+    expect(refSizeBlock(e, { picture: false, rimInField: true, pastRimInField: true, compare: false }).notes).toEqual([]);
+    expect(refSizeBlock(e, { picture: true, rimInField: false, pastRimInField: true }).notes).toEqual([t('view.ref.edge')]);
+    expect(refSizeBlock(e, { picture: true, rimInField: true, pastRimInField: false }).notes).toEqual([t('view.ref.edge'), t('view.ref.rimNote')]);
+    expect(refSizeBlock(e, { compare: true }).notes).toEqual([t('view.ref.abNote')]);
+    expect(refSizeBlock(e).notes).toEqual([]);
+  });
+
+  test('a blocked eye → "Linkes Glas: nicht berechnet"', () => {
+    const b = refSizeBlock([entry('od', { sph: -4 }), blocked('os')]);
+    expect(b.entries[1]).toEqual({
+      who: 'os',
+      blocked: true,
+      kind: 'line',
+      head: 'Linkes Glas: nicht berechnet',
+      dirs: [],
+      joined: 'Linkes Glas: nicht berechnet',
+    });
+  });
+
+  test('refAria: UI-SPEC example (OD −4,00, OS +4,00, mit Glas, two panels)', () => {
+    const { entries } = refSizeBlock([entry('od', { sph: -4 }), entry('os', { sph: 4 })], PIC);
+    expect(refAria({ lens: 'on', layout: 'two', eye: 'od', entries })).toBe(
+      'Durchblick mit Glas: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Linkes Glas links, rechtes Glas rechts. Rechtes Glas: Bild etwa 6 % kleiner. Linkes Glas: Bild etwa 8 % größer.',
+    );
+  });
+
+  test('refAria: one panel, comparison, ohne Glas, and the joined cylinder form', () => {
+    const cylEntries = refSizeBlock([entry('os', { sph: -2, cyl: -2, axisDeg: 30 })]).entries;
+    expect(refAria({ lens: 'off', layout: 'one', eye: 'os', entries: cylEntries })).toBe(
+      'Durchblick ohne Glas, zum Vergleich: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Nur das linke Glas. ' +
+        cylEntries[0].joined +
+        '.',
+    );
+    const ab = refSizeBlock([entry('a', { sph: -4 }), entry('b', { sph: -4, materialId: 'idx167' })], { compare: true }).entries;
+    expect(refAria({ lens: 'on', layout: 'compare', eye: 'od', entries: ab })).toBe(
+      `Durchblick mit Glas: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Rechtes Glas, links Vorher (A), rechts Nachher (B). ${ab[0].joined}. ${ab[1].joined}.`,
     );
   });
 });

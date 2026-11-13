@@ -69,6 +69,18 @@ export function fmtIsoValue(v) {
   return typographicMinus(isoNf.format(v));
 }
 
+/**
+ * Size change as a percentage (04-01, UI-SPEC fmtPercent, MINOR 5): v = |SM − 1| ≥ 0 as a
+ * fraction. One decimal below 3 %, whole percent from 3 % (the value is decided on the rounded
+ * one-decimal string): 0.02949 → "2,9 %", 0.0296 → "3 %", 0.056037 → "6 %", 0.00004 → "0,0 %".
+ */
+export function fmtPercent(v) {
+  const p = v * 100;
+  const one = oneDecimalNf.format(p);
+  if (Number(one.replace(',', '.')) < 3) return one + NBSP + '%';
+  return intNf.format(p) + NBSP + '%';
+}
+
 /** Iso-line step with unit, 1–2 decimals: 0.25 → "0,25 mm", 1 → "1,0 mm". */
 export function fmtIsoStep(v) {
   return typographicMinus(isoNf.format(v)) + NBSP + 'mm';

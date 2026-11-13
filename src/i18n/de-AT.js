@@ -707,6 +707,54 @@ export default Object.freeze({
   'view.aria.eyeBlocked': '{eye} Glas: nicht berechnet.',
   'view.aria.eye.od': 'Rechtes',
   'view.aria.eye.os': 'Linkes',
+  // 04-01 (REF-01, D-05; UI-SPEC "Size block #view-ref-size"): {pct} = fmtPercent(|SM − 1|) of the
+  // engine LensResult.magnification, {deg} = fmtAxis; strings built in src/ui/view/text.js.
+  'view.ref.size.title': 'Bildgröße in der Glasmitte, verglichen mit dem Blick ohne Brille',
+  'view.ref.line': '{who}: Bild {chg}',
+  'view.ref.lineCyl.head': '{who}: Bild',
+  'view.ref.lineCyl.dir': '{dir} {chg}',
+  'view.ref.lineCyl': '{who}: Bild {dir1} {chg1}, {dir2} {chg2}',
+  'view.ref.chg.smaller': 'etwa {pct} kleiner',
+  'view.ref.chg.larger': 'etwa {pct} größer',
+  'view.ref.chg.same': 'praktisch gleich groß',
+  'view.ref.dir.v': 'senkrecht (90°)',
+  'view.ref.dir.h': 'waagrecht (180°)',
+  'view.ref.dir.nearV': 'fast senkrecht ({deg})',
+  'view.ref.dir.nearH': 'fast waagrecht ({deg})',
+  'view.ref.dir.obl': 'schräg ({deg}, im Bild {path})',
+  'view.ref.path.rise': 'von links unten nach rechts oben',
+  'view.ref.path.fall': 'von links oben nach rechts unten',
+  'view.ref.blocked': '{who}: nicht berechnet',
+  'view.ref.who.od': 'Rechtes Glas',
+  'view.ref.who.os': 'Linkes Glas',
+  'view.ref.who.a': 'Vorher (A)',
+  'view.ref.who.b': 'Nachher (B)',
+  'view.ref.edge': 'Zum Bildrand hin verändert das Glas die Größe stärker als in der Mitte. Die Prozentwerte gelten für die Glasmitte.',
+  // 04-01, NOT in the approved UI-SPEC copy table (N3, lens-critic MINOR 8): flagged for lens-critic.
+  'view.ref.rimNote': 'Der dunkle Streifen im Bild ist der Rand Ihrer Fassung.',
+  // 04-01, NOT in the approved copy table (MINOR 8): only when class-5 picture is on screen.
+  'view.ref.rimPastNote': 'Außerhalb des Rands sehen Sie am Glas vorbei.',
+  'view.ref.weakNote': 'Bei so schwachen Gläsern ist der Unterschied im Bild kaum zu sehen. Das ist richtig so – die Werte oben zeigen ihn.',
+  'view.ref.cylNote':
+    'Mit Zylinder verändert das Glas die Bildgröße in zwei Richtungen verschieden stark, deshalb wirkt das Bild leicht gestaucht oder gestreckt. Eine der beiden Gradzahlen ist die Achse aus Ihrem Brillenpass, die andere liegt 90° daneben.',
+  // 04-01, NOT in the approved copy table (N7, wording lens-critic round-2 NEW-9): flagged for lens-critic.
+  'view.ref.cylSameNote': 'Mit Ihrem Zylinder ist die Bildgröße in beiden Richtungen fast gleich, darum steht hier nur ein Wert.',
+  'view.ref.axisNote':
+    'Weil Sie von hinten durch die Brille schauen, liegen schräge Richtungen im Bild gespiegelt; die Angabe in Klammern beschreibt sie so, wie Sie sie im Bild sehen.',
+  'view.ref.shapeNote':
+    'Die gewölbte Vorderseite und die Dicke des Glases vergrößern das Bild ein wenig. Wo Ihr Glas nur schwach oder gar nicht verkleinert, kann das überwiegen: Dann wirkt das Bild dort leicht vergrößert, auch bei einem Minuswert oder 0,00.',
+  'view.ref.abNote': 'Material und Fassung ändern den Durchblick meist nur wenig; der größere Unterschied liegt bei Dicke und Gewicht.',
+  // 04-01 (UI-SPEC "Canvas accessible name in Durchblick"): {lines} = the size entries (joined form).
+  'view.aria.ref': 'Durchblick {lens}: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. {layout} {lines}',
+  'view.aria.ref.lens.on': 'mit Glas',
+  'view.aria.ref.lens.off': 'ohne Glas, zum Vergleich',
+  'view.aria.ref.layout.two': 'Linkes Glas links, rechtes Glas rechts.',
+  // UI-SPEC writes "Nur das {rechte/linke} Glas." and "{Rechtes/Linkes} Glas, …": {side} comes from
+  // view.aria.ref.side.* (04-01, NOT in the copy table, flagged), {who} from view.ref.who.*.
+  'view.aria.ref.layout.one': 'Nur das {side} Glas.',
+  'view.aria.ref.layout.compare': '{who}, links Vorher (A), rechts Nachher (B).',
+  'view.aria.ref.side.od': 'rechte',
+  'view.aria.ref.side.os': 'linke',
   // 03-12 (VIZ-05, UX-02; UI-SPEC "Copywriting → Heatmap"). {min}/{max} = fmtMm of the engine
   // scale (heatScale), {step} = fmtIsoStep, {mm} = fmtMm of a heatCallouts value.
   'view.mode.legend': 'Darstellung',
