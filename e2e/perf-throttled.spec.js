@@ -781,15 +781,26 @@ test('Durchblick input → picture and the grid tier on the 4× proxy (04-10, in
     const sph = page.locator('#rx-od-sph');
     const rows = [];
     for (let i = 0; i < EDITS; i++) {
-      const n0 = (await page.evaluate(() => window.__eyeglassView.ref())).sampleN;
+      const r0 = await page.evaluate(() => window.__eyeglassView.ref());
       await sph.selectText();
       await page.evaluate(() => 0);
       await sleep(50);
       await page.keyboard.insertText(['-4,25', '-4,00'][i % 2]);
       await sleep(REF_QUIET_MS);
-      await page.waitForFunction((k) => window.__eyeglassView.ref().sampleN > k && document.getElementById('view').dataset.pending === '', n0, { timeout: 120_000 });
+      await page.waitForFunction((k) => window.__eyeglassView.ref().sampleN > k && document.getElementById('view').dataset.pending === '', r0.sampleN, { timeout: 120_000 });
       const r = await page.evaluate(() => window.__eyeglassView.ref());
-      rows.push({ ms: r.lastSampleMs, counted: r.lastSampleCounted, tier: r.tier, computeMs: r.computeMs, rays: r.replies.reduce((a, x) => a + x.rays, 0) });
+      // The edit's own job: its counted sample and its reply (a step's re-trace comes after it and
+      // is not a counted sample). The logs are capped at 20 entries, more than one run adds.
+      const counted = r.samples.slice(r0.samples.length);
+      const job = r.replyLog.find((j) => j.gen > (r0.replyLog.at(-1)?.gen ?? 0));
+      rows.push({
+        ms: counted[0] ?? r.lastSampleMs,
+        counted: counted.length > 0,
+        jobTier: job?.replies[0]?.tier ?? null,
+        tierAfter: r.tier,
+        computeMs: job?.computeMs ?? r.computeMs,
+        rays: job ? job.replies.reduce((a, x) => a + x.rays, 0) : null,
+      });
     }
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     await cdp.detach();

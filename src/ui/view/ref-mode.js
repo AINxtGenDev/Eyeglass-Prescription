@@ -503,7 +503,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     warm = true;
     lastComputeMs = typeof d.computeMs === 'number' ? d.computeMs : null;
     lastReplies = d.items.map((it) => ({ panel: it.panel, eye: it.eye, tier: it.tier, rays: it.rays, nx: it.nx, ny: it.ny, rimInField: it.rimInField }));
-    replyLog.push({ gen: d.gen, replies: lastReplies });
+    replyLog.push({ gen: d.gen, computeMs: lastComputeMs, replies: lastReplies });
     if (replyLog.length > SAMPLE_LOG) replyLog.shift();
     writeGridTech();
     writeTimeTech();
@@ -670,7 +670,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       lastSampleCounted,
       computeMs: lastComputeMs,
       replies: lastReplies.map((r) => ({ ...r })),
-      replyLog: replyLog.map((j) => ({ gen: j.gen, replies: j.replies.map((r) => ({ ...r })) })),
+      replyLog: replyLog.map((j) => ({ gen: j.gen, computeMs: j.computeMs, replies: j.replies.map((r) => ({ ...r })) })),
       drawnGen,
       jobs,
       lastJobExcluded,
