@@ -20,15 +20,17 @@ import {
   holdWarpWorker,
   changedPixels,
   inscribedLowerWindows,
+  holdMeshWorker,
+  WARP_WORKER_URL,
 } from './helpers.js';
-/* global window, document */
+/* global window, document, self, requestAnimationFrame */
 
 let threeWarnings;
 test.beforeEach(({ page }) => {
   threeWarnings = noThreeWarnings(page);
 });
 test.use({ reducedMotion: 'reduce' });
-guardPage(test, { view: true });
+const guard = guardPage(test, { view: true });
 test.afterEach(() => {
   expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
 });
@@ -80,6 +82,18 @@ async function setRx(page, od, os = od, pd = '32') {
     await page.locator(`#rx-${eye}-axis`).fill(rx.axis ?? '');
   }
   await settled(page);
+}
+
+/**
+ * 04-09 (M4): type a value without scrolling the field into view. On the phone layout fill() scrolls
+ * to the Rx field and takes the stage off screen, where no warp job is posted by design; the tests
+ * of the warp lane keep the stage on screen this way (the app listens to 'input').
+ */
+async function fillInPlace(page, selector, value) {
+  await page.locator(selector).evaluate((el, v) => {
+    /** @type {HTMLInputElement} */ (el).value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
 }
 
 async function refOn(page) {
@@ -320,8 +334,8 @@ test('item 9: stale picture stays with the badge "Durchblick wird berechnet …"
   const probe = [[p.x + p.w / 2 + 2.5 * p.squarePx, p.y + p.h / 2 + 0.5 * p.squarePx]];
   const before = await pixels(page, probe);
   await warp.hold();
-  await page.locator('#rx-od-sph').fill('-8,00');
-  await page.locator('#rx-os-sph').fill('-8,00');
+  await fillInPlace(page, '#rx-od-sph', '-8,00');
+  await fillInPlace(page, '#rx-os-sph', '-8,00');
   await settled(page);
   await expect(page.locator('.view-badge')).toHaveText('Durchblick wird berechnet …');
   await expect(page.locator('#view')).toHaveAttribute('data-pending', 'warp');
@@ -339,7 +353,7 @@ test('numbers never wait for the warp (D-13): a Sph edit paints the card with th
   await warp.hold();
   const thick = page.locator('#result-od-thick');
   const was = await thick.textContent();
-  await page.locator('#rx-od-sph').fill('-7,25');
+  await fillInPlace(page, '#rx-od-sph', '-7,25');
   await expect(page.locator('#result')).toHaveAttribute('data-pending', '', { timeout: 5000 });
   await expect(thick).not.toHaveText(was ?? '');
   await expect(page.locator('#view-ref-size .ref-line').first()).toContainText('kleiner');
@@ -589,4 +603,296 @@ test.describe('two-panel gate (1280×800)', () => {
       expect(isChart(lensPx), `${p.id} chart colour where Node says class 1`).toBe(true);
     }
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// 04-09 Task 1: one-panel mode, blocked / empty / failed / no-WebGL states, stage visibility (M4).
+
+const VIEW_CHUNK = '**/assets/view-*.js';
+const VIEW_CHUNK_RE = /\/assets\/view-[^/]*\.js$/;
+const BLOCKED_OS = 'Linkes Glas – nicht berechnet';
+
+/** Zyl set and Achse empty: the left eye has a field error (Fehler), so it is not computed (view.spec VIZ-01). */
+async function blockOs(page) {
+  await page.locator('#rx-os-cyl').fill('-1,00');
+  await page.locator('#rx-os-axis').fill('');
+  await page.locator('#rx-os-axis').blur();
+  await settled(page);
+}
+/** The "Durchblick für" picker (one-panel mode). */
+async function pickEye(page, eye) {
+  await page.locator('#view-ref-eye label', { hasText: eye === 'OS' ? 'Linkes Glas' : 'Rechtes Glas' }).click();
+}
+/** Visible tick marks of one panel (svg#view-ref-ticks; none while it does not exist). */
+const panelTicks = (page, id) => page.locator(`#view-ref-ticks g[data-panel="${id}"]:not([display="none"]) g.ref-tick:not([display="none"])`);
+
+/**
+ * Serve the real warp worker; while self.__fail is true every 'warp' reply carries ok: false items
+ * (the worker's own item-failure shape, warp-protocol.js), so the page takes its failure path.
+ */
+async function failWarpWorker(page) {
+  const patch =
+    '{const post = self.postMessage.bind(self); self.__fail = true;' +
+    "self.postMessage = (m, ...rest) => { if (self.__fail && m && m.type === 'warp') post({ ...m, items: m.items.map((it) => ({ panel: it.panel, ok: false, code: 'WARP_FAILED' })) }); else post(m, ...rest); };}\n";
+  await page.route(WARP_WORKER_URL, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
+  });
+  const find = () => page.workers().find((x) => WARP_WORKER_URL.test(new URL(x.url()).pathname));
+  return {
+    heal: async () => {
+      await expect.poll(() => Boolean(find())).toBe(true);
+      await find().evaluate(() => {
+        self.__fail = false;
+      });
+    },
+  };
+}
+
+test('item 10: one eye blocked: its panel is the fill with the pill, no ticks, size line "nicht berechnet"; the other renders', async ({ page }) => {
+  test.setTimeout(120_000);
+  await settledView(page);
+  await blockOs(page);
+  await refOn(page);
+  const size = page.locator('#view-ref-size');
+  await expect(size).toContainText('Linkes Glas: nicht berechnet');
+  await expect(size).toContainText('Rechtes Glas: Bild');
+  let st = await refState(page);
+  if (st.panels.length === 1) {
+    // One panel: the default eye is the computable one (OS has no SM); the picker still offers OS.
+    expect(st.panels[0].eye).toBe('OD');
+    await expect(page.locator('#view-ref-eye')).toBeVisible();
+    await expect(page.locator('#view-ref-eye input[value=OD]')).toBeChecked();
+    const p = st.panels[0];
+    const [c] = await pixels(page, [[p.x + p.w / 2 + 0.5 * p.squarePx, p.y + p.h / 2 + 0.5 * p.squarePx]]);
+    expect(isChart(c), `OD renders: ${c}`).toBe(true);
+    await pickEye(page, 'OS');
+    await expect.poll(async () => (await refState(page)).panels[0]?.eye).toBe('OS');
+    await settledRef(page);
+    st = await refState(page);
+  }
+  const L = st.panels.find((p) => p.eye === 'OS');
+  const pill = page.locator('#view-labels .ref-pill--blocked:visible');
+  await expect(pill).toHaveText(BLOCKED_OS);
+  await expect(pill).toBeVisible();
+  const pb = await pill.boundingBox();
+  const cv = await page.locator('#view-canvas').boundingBox();
+  // centred in its panel (± 2 px)
+  expect(Math.abs(pb.x + pb.width / 2 - (cv.x + L.x + L.w / 2))).toBeLessThanOrEqual(2);
+  expect(Math.abs(pb.y + pb.height / 2 - (cv.y + L.y + L.h / 2))).toBeLessThanOrEqual(2);
+  const pts = [];
+  for (let a = 1; a < 10; a++) for (let b = 1; b < 10; b++) if (a !== 5 && b !== 5) pts.push([L.x + (a * L.w) / 10, L.y + (b * L.h) / 10]);
+  (await pixels(page, pts)).forEach((c, i) => expect(near(c, SURFACE), `blocked panel point ${pts[i]}: ${c}`).toBe(true));
+  await expect(panelTicks(page, L.id)).toHaveCount(0);
+  const R = st.panels.find((p) => p.eye === 'OD');
+  if (R) {
+    const [c] = await pixels(page, [[R.x + R.w / 2 + 0.5 * R.squarePx, R.y + R.h / 2 + 0.5 * R.squarePx]]);
+    expect(isChart(c), `right panel renders: ${c}`).toBe(true);
+    await expect(page.locator('#view-labels .ref-pill', { hasText: /^Rechtes Glas$/ })).toBeVisible();
+  }
+});
+
+test('no eye computable: empty panels, no pills, caption view.empty, size block hidden', async ({ page }) => {
+  await settledView(page);
+  await refOn(page);
+  await page.locator('#example-clear').click();
+  for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('');
+  await settled(page);
+  await expect(page.locator('#view-caption')).toHaveText('Noch keine Gläser – tragen Sie den Sph-Wert ein.');
+  await expect(page.locator('#view-ref-size')).toBeHidden();
+  await expect(page.locator('#view-labels .ref-pill:visible')).toHaveCount(0);
+  await expect(page.locator('#view-status')).toHaveText('');
+  const g = await canvasGeom(page);
+  const pts = [];
+  for (let a = 1; a < 10; a++) for (let b = 1; b < 10; b++) pts.push([(a * g.rw) / 10, (b * g.rh) / 10]);
+  (await pixels(page, pts)).forEach((c, i) => expect(near(c, SURFACE), `stage point ${pts[i]}: ${c}`).toBe(true));
+});
+
+test('item 11: the stage crossing 360 px shows / hides the picker; OD −2,00 / OS −5,00 → default "Linkes Glas"', async ({ page, isMobile }) => {
+  test.setTimeout(120_000);
+  test.skip(isMobile, 'resizes a desktop window');
+  await settledView(page);
+  await setRx(page, { sph: '-2,00' }, { sph: '-5,00' });
+  await refOn(page);
+  const picker = page.locator('#view-ref-eye');
+  await expect(picker).toBeHidden();
+  expect((await refState(page)).panels.length).toBe(2);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await expect.poll(async () => (await refState(page)).panels.length).toBe(1);
+  // Below 900 px the view sits after the result cards (view-place.js): bring the stage on screen (M4).
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await settledRef(page);
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('input[value=OS]')).toBeChecked();
+  const one = await refState(page);
+  expect(one.panels[0].eye).toBe('OS');
+  await expect(page.locator('#view-ref-side')).toHaveText('Sie schauen selbst durch Ihr linkes Glas.');
+  await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Linkes Glas']);
+  // Switching the eye changes the picture, not the scale; the size block lists both eyes.
+  await pickEye(page, 'OD');
+  await expect.poll(async () => (await refState(page)).panels[0].eye).toBe('OD');
+  await settledRef(page);
+  expect((await refState(page)).panels[0].pxPerTan).toBe(one.panels[0].pxPerTan);
+  await expect(page.locator('#view-ref-size .ref-line')).toHaveCount(2);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect.poll(async () => (await refState(page)).panels.length).toBe(2);
+  await expect(picker).toBeHidden();
+});
+
+test('warp failure: the Fehler box with "Erneut versuchen"; the retry re-posts the job; the size block stays', async ({ page }) => {
+  test.setTimeout(120_000);
+  await settledView(page);
+  const warp = await failWarpWorker(page);
+  await page.locator('#view-mode label', { hasText: 'Durchblick' }).click();
+  const status = page.locator('#view-status');
+  await expect(status).toHaveClass(/view-failed/, { timeout: 30_000 });
+  await expect(status).toContainText('Der Durchblick konnte nicht berechnet werden. Die übrigen Ergebnisse gelten unverändert.');
+  const retry = status.getByRole('button', { name: 'Erneut versuchen' });
+  await expect(retry).toBeVisible();
+  await expect(page.locator('#view-ref-size .ref-line').first()).toContainText('Rechtes Glas: Bild');
+  await expect(page.locator('#view-ref-ticks g:not([display="none"]) g.ref-tick:not([display="none"])')).toHaveCount(0);
+  const jobs = (await refState(page)).jobs;
+  await warp.heal();
+  await retry.click();
+  await settledRef(page);
+  expect((await refState(page)).jobs).toBe(jobs + 1);
+  await expect(status).not.toHaveClass(/view-failed/);
+  await expect(status).toHaveText('');
+  await expect(page.locator('.view-badge')).toHaveText('Durchblick · berechnet');
+});
+
+test('no WebGL 2: Durchblick is not offered, the size block is shown with the no-picture scope', async ({ page }) => {
+  await settledView(page);
+  const all = threeWarnings;
+  threeWarnings = () => all().filter((w) => !w.includes('3D view: no WebGL2'));
+  await page.goto('./?nowebgl');
+  await settledView(page);
+  await expect(page.locator('#view-mode')).toHaveCount(0);
+  await expect(page.locator('#view-stage')).toContainText('WebGL 2 fehlt');
+  const size = page.locator('#view-ref-size');
+  await expect(size).toBeVisible();
+  await expect(size.locator('.ref-title')).toHaveText('Bildgröße in der Glasmitte, verglichen mit dem Blick ohne Brille');
+  await expect(size).toContainText('Rechtes Glas: Bild');
+  await expect(size).not.toContainText('Zum Bildrand hin');
+  await expect(size).not.toContainText('Bei so schwachen Gläsern');
+  await expect(page.locator('#view-ref-scope')).toHaveText(
+    `Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille 15,0${N}mm hinter dem Glas (angenommener Wert).`,
+  );
+  await expect(page.locator('#view-ref-lens')).toBeHidden();
+  await expect(page.locator('#view-ref-side')).toBeHidden();
+  await page.locator('#rx-od-sph').fill('-4,00');
+  await settledView(page);
+  await expect(size.locator('.ref-line').first()).toHaveText(`Rechtes Glas: Bild etwa 6${N}% kleiner`);
+});
+
+test('3D chunk failed: the size block is still shown with the no-picture scope', async ({ page }) => {
+  await settledView(page);
+  guard.allowFailed(VIEW_CHUNK_RE);
+  await page.route(VIEW_CHUNK, (route) => route.abort());
+  await page.goto('./');
+  await settled(page);
+  await expect(page.locator('#view-stage')).toContainText('Die 3D-Ansicht konnte nicht geladen werden.');
+  const size = page.locator('#view-ref-size');
+  await expect(size).toBeVisible();
+  await expect(size).toContainText('Rechtes Glas: Bild');
+  await expect(size).not.toContainText('Zum Bildrand hin');
+  await expect(page.locator('#view-ref-scope')).toContainText('Berechnet für ein ruhendes Auge');
+  await expect(page.locator('#view-ref-lens')).toBeHidden();
+  await page.locator('#rx-od-sph').fill('-4,00');
+  await settled(page);
+  await expect(size.locator('.ref-line').first()).toHaveText(`Rechtes Glas: Bild etwa 6${N}% kleiner`);
+});
+
+test('webglcontextlost in Durchblick: redrawn from the last warp on restore', async ({ page }) => {
+  await settledView(page);
+  await refOn(page);
+  const { panels, drawnGen } = await refState(page);
+  const p = panels[0];
+  const probe = [[p.x + p.w / 2 + 0.5 * p.squarePx, p.y + p.h / 2 + 0.5 * p.squarePx]];
+  const before = await pixels(page, probe);
+  const lost = await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const c = /** @type {HTMLCanvasElement} */ (document.getElementById('view-canvas'));
+        const ext = c.getContext('webgl2')?.getExtension('WEBGL_lose_context');
+        if (!ext) return res(false);
+        window.__loseExt = ext;
+        c.addEventListener('webglcontextlost', () => res(true), { once: true });
+        ext.loseContext();
+      }),
+  );
+  expect(lost).toBe(true);
+  await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const c = document.getElementById('view-canvas');
+        c.addEventListener('webglcontextrestored', () => requestAnimationFrame(() => setTimeout(res, 0)), { once: true });
+        window.__loseExt.restoreContext();
+      }),
+  );
+  await expect(page.locator('#view-status')).toHaveText('');
+  expect((await refState(page)).drawnGen, 'no new trace').toBe(drawnGen);
+  await expect.poll(() => pixels(page, probe)).toEqual(before);
+});
+
+test.describe('stage visibility (M4) at 412×915', () => {
+  test.use({ viewport: { width: 412, height: 915 } });
+  test.skip(({ isMobile }) => !isMobile, 'phone layout: mobile project only');
+
+  test('item 13: off-screen: no warp job, the re-mesh and bar thumbnail run; back on screen: exactly one job', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await page.goto('./?thumbguardoff');
+    await settledView(page);
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await refOn(page);
+    await expect.poll(async () => (await refState(page)).onScreen).toBe(true);
+    const jobs0 = (await refState(page)).jobs;
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await expect.poll(async () => (await refState(page)).onScreen).toBe(false);
+    const thumb0 = (await ev(page, () => window.__eyeglassView.thumbInfo())).copies;
+    const mesh0 = (await refState(page)).meshSent;
+    await page.locator('#rx-od-sph').fill('-3,25');
+    await settledView(page);
+    await expect.poll(async () => (await refState(page)).meshSent, 'the re-mesh ran').toBeGreaterThan(mesh0);
+    await expect
+      .poll(async () => (await ev(page, () => window.__eyeglassView.thumbInfo())).copies, { message: 'the bar thumbnail updated', timeout: 30_000 })
+      .toBeGreaterThan(thumb0);
+    await expect(page.locator('#bar-view-slot')).toBeVisible();
+    expect((await refState(page)).jobs, 'no warp job off-screen').toBe(jobs0);
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await expect.poll(async () => (await refState(page)).onScreen).toBe(true);
+    await settledRef(page);
+    expect((await refState(page)).jobs, 'exactly one job on return').toBe(jobs0 + 1);
+    await page.waitForTimeout(300);
+    expect((await refState(page)).jobs).toBe(jobs0 + 1);
+  });
+});
+
+test('item 14: leaving Durchblick with a deferred re-mesh shows "3D wird aktualisiert …" until the mesh attaches', async ({ page, isMobile }) => {
+  test.setTimeout(120_000);
+  // On a phone the edited field and the stage are never both on screen (typing scrolls the stage off).
+  test.skip(isMobile, 'needs the stage on screen while typing: desktop layout');
+  await settledView(page);
+  const gate = await holdMeshWorker(page);
+  await page.goto('./');
+  await settledView(page);
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await refOn(page);
+  await expect.poll(async () => (await refState(page)).onScreen).toBe(true);
+  const mesh0 = (await refState(page)).meshSent;
+  await page.locator('#rx-od-sph').fill('-3,75');
+  await settledRef(page);
+  const st = await refState(page);
+  expect(st.meshSent, 'on screen: the re-mesh is deferred').toBe(mesh0);
+  expect(st.meshDeferred).toBe(true);
+  await gate.hold();
+  await page.locator('#view-mode label', { hasText: 'Glas' }).first().click();
+  await expect(page.locator('.view-badge')).toHaveText('3D wird aktualisiert …');
+  await expect(page.locator('#view')).toHaveAttribute('data-pending', 'mesh');
+  await gate.release();
+  await settledView(page);
+  await expect(page.locator('.view-badge')).toHaveText('Visueller Eindruck');
 });

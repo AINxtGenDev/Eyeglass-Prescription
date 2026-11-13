@@ -52,6 +52,26 @@ export function panelLayout({ stageW, stageH, compare = false, shownEye = 'OD' }
   return { panels, split };
 }
 
+/** Default-eye tie band: 0,05 percentage points of |SM − 1| (UI-SPEC "Narrow stage fallback"). */
+const DEFAULT_EYE_TIE = 0.0005;
+const EPS = 1e-12;
+
+/**
+ * One-panel default eye (D-06 as amended): the eye with the larger |SM − 1| over its principal
+ * meridians; ties within 0,05 percentage points go to the right eye; an eye without a computed
+ * lens (null) never wins.
+ * @param {{ OD?: { meridians: Array<{ sm: number }> } | null, OS?: { meridians: Array<{ sm: number }> } | null }} mags
+ * @returns {'OD' | 'OS'}
+ */
+export function defaultRefEye(mags) {
+  const size = (m) => (m?.meridians?.length ? Math.max(...m.meridians.map((x) => Math.abs(x.sm - 1))) : null);
+  const od = size(mags?.OD);
+  const os = size(mags?.OS);
+  if (os === null) return 'OD';
+  if (od === null) return 'OS';
+  return os - od > DEFAULT_EYE_TIE + EPS ? 'OS' : 'OD';
+}
+
 /**
  * The two triangles of a cell (vertex offsets sw, se, nw, ne → 0, 1, 2, 3) for a diagonal name.
  * Counter-clockwise in y-up panel coordinates. Throws on an unknown name.
@@ -98,3 +118,4 @@ export function checkerInk(u, v) {
   const j = Math.floor(v / CHART_SQUARE_TAN);
   return ((i + j) & 1) === 0;
 }
+

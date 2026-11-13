@@ -12,6 +12,7 @@ import {
   cellSplit,
   checkerInk,
   inLetterBand,
+  defaultRefEye,
 } from './ref-layout.js';
 
 const close = (a, b, tol = 0.1) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
@@ -142,5 +143,40 @@ describe('REF-01 chart definition (D-08)', () => {
     expect(inLetterBand(2.99 * S)).toBe(true);
     expect(inLetterBand(3 * S)).toBe(false);
     expect(inLetterBand(-2 * S)).toBe(false);
+  });
+});
+
+// 04-09 (D-06 as amended, UI-SPEC "Narrow stage fallback"): one panel below 360 px and its default eye.
+describe('REF-01 one-panel mode (04-09)', () => {
+  const mag = (...sms) => ({ meridians: sms.map((sm) => ({ sm })) });
+  test('defaultRefEye: the larger max |SM − 1| over the meridians', () => {
+    expect(defaultRefEye({ OD: mag(0.97), OS: mag(0.93) })).toBe('OS');
+    expect(defaultRefEye({ OD: mag(1.08), OS: mag(0.95) })).toBe('OD');
+    // a cylinder: the larger meridian counts
+    expect(defaultRefEye({ OD: mag(0.99, 0.94), OS: mag(0.95) })).toBe('OD');
+    expect(defaultRefEye({ OD: mag(0.97), OS: mag(1.01, 0.96) })).toBe('OS');
+  });
+  test('defaultRefEye: ties within 0,05 percentage points → OD', () => {
+    expect(defaultRefEye({ OD: mag(0.95), OS: mag(0.9496) })).toBe('OD');
+    expect(defaultRefEye({ OD: mag(0.95), OS: mag(0.9495) })).toBe('OD');
+    expect(defaultRefEye({ OD: mag(0.95), OS: mag(0.9493) })).toBe('OS');
+    expect(defaultRefEye({ OD: mag(1.0), OS: mag(1.0) })).toBe('OD');
+  });
+  test('defaultRefEye: one eye null → the other; both null → OD', () => {
+    expect(defaultRefEye({ OD: null, OS: mag(0.99) })).toBe('OS');
+    expect(defaultRefEye({ OD: mag(0.99), OS: null })).toBe('OD');
+    expect(defaultRefEye({ OD: null, OS: null })).toBe('OD');
+    expect(defaultRefEye({})).toBe('OD');
+  });
+  test('below 360 px: one panel for the shown eye, full width; switching the eye keeps pxPerTan', () => {
+    const od = panelLayout({ stageW: 288, stageH: 216, shownEye: 'OD' });
+    const os = panelLayout({ stageW: 288, stageH: 216, shownEye: 'OS' });
+    expect(od.split).toBe(false);
+    expect(od.panels.map((p) => [p.id, p.eye, p.x, p.y, p.w, p.h])).toEqual([['R', 'OD', 0, 0, 288, 216]]);
+    expect(os.panels.map((p) => [p.id, p.eye, p.x, p.w])).toEqual([['L', 'OS', 0, 288]]);
+    expect(os.panels[0].pxPerTan).toBe(od.panels[0].pxPerTan);
+    close(od.panels[0].pxPerTan, 249.4);
+    expect(panelLayout({ stageW: 359, stageH: 270 }).split).toBe(false);
+    expect(panelLayout({ stageW: 360, stageH: 270 }).split).toBe(true);
   });
 });

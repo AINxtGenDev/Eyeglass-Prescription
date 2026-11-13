@@ -119,11 +119,12 @@ import {
   fitBoxDistance,
   FOV_DEG,
 } from './camera-math.js';
-import { enableBarThumb, disableBarThumb } from '../summary-bar.js';
+import { enableBarThumb, disableBarThumb, holdBarThumb } from '../summary-bar.js';
 import { createCompare3d } from './compare3d.js';
 import { thickest } from '../../state/compare.js';
 import { createRefraction } from './refraction.js';
 import { createRefMode, writeRefTech } from './ref-mode.js';
+import { showRefNoPicture, hideRefNoPicture } from './ref-size.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -313,8 +314,15 @@ function mount({ slot }) {
     showNoWebgl();
     $('view-mode').remove();
     setPending('');
-    return { update: () => setPending('') };
+    // 04-09 (UI-SPEC States, T-04-39): the engine size block is still shown, without the picture notes.
+    return {
+      update: (inputs) => {
+        showRefNoPicture(inputs?.eyes);
+        setPending('');
+      },
+    };
   }
+  hideRefNoPicture(); // a successful retry after a failed chunk (pipeline.js painted it)
   setText('view-caption', t('view.caption.glass'));
   // ---- 03-15 (UX-03, D-14, R1-8): the phone bar thumbnail ----
   const thumbCanvas = /** @type {HTMLCanvasElement | null} */ (document.querySelector('#bar-view-slot canvas.bar-thumb'));
@@ -380,7 +388,8 @@ function mount({ slot }) {
       chart.reupload();
       shadow.reupload();
       refraction?.reupload(); // 04-08: redrawn from the last warp
-      setText('view-status', '');
+      if (mode === 'ref') refMode.restoreStatus();
+      else setText('view-status', '');
       showUnavailable(null);
       requestThumb();
     }
@@ -519,6 +528,9 @@ function mount({ slot }) {
   let badgeTimer = null;
   let stash = null;
   let paintFrame = null;
+  /** 04-09 (M4): a re-mesh deferred while the Durchblick stage is on screen; mesh jobs sent (test handle). */
+  let meshDeferred = false;
+  let meshSent = 0;
 
   const giveBackAll = (items) => {
     for (const it of items ?? []) {
@@ -900,8 +912,9 @@ function mount({ slot }) {
    */
   function thumbSpec() {
     if (thumbGuard.tripped) return null;
-    // 04-08: the pass draws the Durchblick, not the glasses (the M4 thumbnail rule is 04-09/04-10).
-    if (mode === 'ref') return null;
+    // 04-09 (M4): in Durchblick the thumbnail runs as in Glas while the stage is off screen (its own
+    // 3D pass, scene.js thumb.pass); on screen the re-mesh is deferred, so there is no current mesh.
+    if (mode === 'ref' && (refMode.onScreen() || meshDeferred)) return null;
     if (!narrowMq.matches || barEl.hidden || barEl.classList.contains('thumb-off') || contextLost || !attachedOnce || controls.busy()) return null;
     if (outstanding !== null) return null;
     const ctx = cameraCtx();
@@ -943,6 +956,8 @@ function mount({ slot }) {
     view.setThumb({
       canvas: thumbCanvas,
       source: thumbSpec,
+      // 04-09: the glasses, also while the main pass draws the Durchblick.
+      pass: () => compare3d.renderPass(),
       // A4 (03-16): no backdrop in the thumbnail pass (eye chart, and the contact shadow, which the
       // front pose sees as a grey strip along the bottom edge): the glasses on the plain background.
       hide: [chart.mesh, shadow.mesh],
@@ -1257,6 +1272,12 @@ function mount({ slot }) {
   const refMode = createRefMode({
     getRefraction,
     canvasEl,
+    stageEl: $('view-stage'),
+    onVisibility: (onScreen) => {
+      // M4: off screen the deferred re-mesh runs (and with it the bar thumbnail), as in Glas.
+      if (!onScreen && meshDeferred) runDeferredMesh();
+      syncBarHold();
+    },
     setBadge,
     setWarpPending,
     scheduleAria: () => scheduleAria(),
@@ -1269,12 +1290,23 @@ function mount({ slot }) {
   function leaveRefPass() {
     refMode.leave();
     view.setPass(compare3d.renderPass);
+    // UI-SPEC D-10: a deferred re-mesh runs now; the badge reads 'view.badge.updating' until it attaches.
+    if (meshDeferred) runDeferredMesh();
+    syncBarHold();
+  }
+  function runDeferredMesh() {
+    meshDeferred = false;
+    if (last) update(last);
+  }
+  /** M4: the bar is the .thumb-off text bar while a deferred re-mesh leaves no current thumbnail. */
+  function syncBarHold() {
+    holdBarThumb(meshDeferred && refMode.isOn());
   }
   function refAfterRender() {
     refraction?.layoutPills();
   }
   const refAriaLabel = () => refMode.ariaLabel();
-  const refInfo = () => ({ mode, ...refMode.info() });
+  const refInfo = () => ({ mode, ...refMode.info(), meshSent, meshDeferred });
 
   view.beforeRender(() => {
     const p = view.camera.position;
@@ -1500,6 +1532,15 @@ function mount({ slot }) {
     }
 
     syncCompare();
+    // 04-09 (M4): in Durchblick with the stage on screen the re-mesh is deferred (the stage shows the
+    // warp); it runs when the stage leaves the screen or the Durchblick is left (runDeferredMesh).
+    if (refMode.isOn() && refMode.onScreen()) {
+      meshDeferred = true;
+      syncBarHold();
+      clearBadgeTimer();
+      setPending('');
+      return;
+    }
     const send = Object.entries(want).filter(([slotName, w]) => w.meta.key !== attachedKey[slotName]);
     const sig = JSON.stringify(send.map(([slotName, w]) => [slotName, w.meta.key]));
     if (outstanding !== null && outstanding.sig === sig) {
@@ -1523,6 +1564,7 @@ function mount({ slot }) {
     const take = (slotName) => (slotName === 'frame' ? frame.take() : slotName === 'frameA' ? frameA.take() : lenses.takeSpare(slotName));
     const items = send.map(([slotName, w]) => ({ ...w.item, buffers: take(slotName) }));
     const { gen, dropped } = client.requestMesh(items);
+    meshSent++;
     giveBackAll(dropped);
     outstanding = { gen, sig };
     jobLog.push(send.map(([slotName]) => slotName));

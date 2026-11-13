@@ -115,6 +115,22 @@ export function createRefraction({ renderer, labelsEl }) {
     return el;
   };
   const pills = { OD: pill('OD'), OS: pill('OS') };
+  // 04-09 (UI-SPEC States "One eye blocked"): the centred pill on the fill of a blocked eye's panel,
+  // created on first use (no hidden extra nodes for users who never block an eye).
+  /** @type {Record<string, HTMLElement>} */
+  const blockedPills = {};
+  const blockedPill = (eye) => {
+    if (blockedPills[eye]) return blockedPills[eye];
+    const el = document.createElement('span');
+    el.className = 'view-label ref-pill ref-pill--blocked';
+    el.classList.toggle('ref-pill--one', !split);
+    el.textContent = t('view.ref.pill.blocked', { who: t(PILL_KEY[eye]) });
+    el.hidden = true;
+    labelsEl.append(el);
+    return (blockedPills[eye] = el);
+  };
+  /** @type {Set<string>} panel ids drawn as the blocked fill */
+  const blocked = new Set();
 
   function freePanel(s) {
     scene.remove(s.group);
@@ -213,10 +229,11 @@ export function createRefraction({ renderer, labelsEl }) {
         divider.scale.set(REF_DIVIDER_PX, stage.H, 1);
         divider.position.set(left.x + left.w + REF_DIVIDER_PX / 2, stage.H / 2, 0);
       }
-      for (const el of Object.values(pills)) {
+      for (const el of [...Object.values(pills), ...Object.values(blockedPills)]) {
         el.classList.toggle('ref-pill--one', !split);
         el.hidden = true;
       }
+      blocked.clear();
       showDivider();
     },
     /**
@@ -251,6 +268,7 @@ export function createRefraction({ renderer, labelsEl }) {
       }
       s.obj = item.uv;
       writeUv(s);
+      blocked.delete(id);
       s.group.visible = true;
       showDivider();
       return true;
@@ -266,6 +284,16 @@ export function createRefraction({ renderer, labelsEl }) {
     },
     clear() {
       for (const id of panels.keys()) this.clearPanel(id);
+      blocked.clear();
+    },
+    /** 04-09: a panel whose eye is not computed: the plain fill with the centred "nicht berechnet" pill. */
+    setBlocked(id, on) {
+      const s = panels.get(id);
+      if (!s) return;
+      if (on) {
+        this.clearPanel(id);
+        blocked.add(id);
+      } else blocked.delete(id);
     },
     /** Bild toggle (D-02): 'off' = identity mapping on the same scale, same class mask. */
     setLens(next) {
@@ -287,9 +315,23 @@ export function createRefraction({ renderer, labelsEl }) {
         const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         if (el.style.transform !== tf) el.style.transform = tf;
       }
+      const shownBlocked = new Set();
+      for (const id of blocked) {
+        const s = panels.get(id);
+        if (!s) continue;
+        const el = blockedPill(s.p.eye);
+        shownBlocked.add(el);
+        if (el.hidden) el.hidden = false;
+        const x = s.p.x + (s.p.w - el.offsetWidth) / 2;
+        const y = s.p.y + (s.p.h - el.offsetHeight) / 2;
+        const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+        if (el.style.transform !== tf) el.style.transform = tf;
+      }
+      for (const el of Object.values(blockedPills)) if (!shownBlocked.has(el) && !el.hidden) el.hidden = true;
     },
     hidePills() {
-      for (const el of Object.values(pills)) el.hidden = true;
+      for (const el of [...Object.values(pills), ...Object.values(blockedPills)]) el.hidden = true;
+      blocked.clear();
     },
     /** Context restore (Pitfall 7): re-upload the chart canvas and the grid buffers. */
     reupload() {
@@ -308,7 +350,7 @@ export function createRefraction({ renderer, labelsEl }) {
       divider.geometry.dispose();
       for (const m of [chartMat, rimMat, noViewMat, dividerMat]) m.dispose();
       chartTex.dispose();
-      for (const el of Object.values(pills)) el.remove();
+      for (const el of [...Object.values(pills), ...Object.values(blockedPills)]) el.remove();
     },
   };
 }

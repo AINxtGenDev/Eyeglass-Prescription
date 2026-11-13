@@ -14,6 +14,8 @@ const DASH = '–';
 const NARROW = '(max-width: 899.98px)';
 
 let resultInView = false;
+/** 04-09 (M4): the view holds the thumbnail off (a deferred Durchblick re-mesh: no current lens). */
+let held = false;
 /** @type {MediaQueryList | null} */
 let narrow = null;
 
@@ -44,7 +46,10 @@ function fitThumb() {
   const range = document.createRange();
   range.selectNodeContents(values);
   const valuesFit = () => range.getBoundingClientRect().width <= values.clientWidth + 0.5;
-  if (bar.classList.contains('has-thumb')) {
+  if (bar.classList.contains('has-thumb') && held) {
+    bar.classList.add('thumb-off');
+    $('bar-view-slot').hidden = true;
+  } else if (bar.classList.contains('has-thumb')) {
     // 03-LC (MINOR 6): the label must stay on one line too (a 'Vorher (A):' / 'Nachher (B):' prefix
     // next to the thumbnail would wrap it and grow the bar over the 72 px scroll padding).
     const label = document.createRange();
@@ -98,6 +103,18 @@ export function enableBarThumb() {
 export function disableBarThumb() {
   $('bar-view-slot').hidden = true;
   $('summary-bar').classList.remove('has-thumb', 'thumb-off');
+  fitThumb();
+}
+
+/**
+ * 04-09 (M4): while the Durchblick stage is on screen the 3D re-mesh is deferred, so in the rare
+ * overlap with the visible bar the bar is the .thumb-off text bar (never a thumbnail of an outdated
+ * lens). view.js releases the hold when the re-mesh runs.
+ * @param {boolean} on
+ */
+export function holdBarThumb(on) {
+  if (held === on) return;
+  held = on;
   fitThumb();
 }
 
