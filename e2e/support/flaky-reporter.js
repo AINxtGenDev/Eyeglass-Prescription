@@ -22,7 +22,8 @@ export default class FlakyReporter {
     for (const t of flaky) {
       const [, project, , ...titles] = t.titlePath();
       const where = `${path.relative(this.rootDir, t.location.file)}:${t.location.line}`;
-      lines.push(`- ${project} › ${where} › ${titles.join(' › ')}`);
+      // A config without named projects has an empty project title; skip empty parts.
+      lines.push(`- ${[project, where, ...titles].filter(Boolean).join(' › ')}`);
     }
     try {
       appendFileSync(file, `${lines.join('\n')}\n`);

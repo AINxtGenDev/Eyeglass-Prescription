@@ -84,6 +84,13 @@ describe('flaky reporter', () => {
     expect(String(errors.mock.calls[0][0])).toContain('flaky-reporter');
   });
 
+  test('a config without named projects gives no empty " › " part', () => {
+    const file = path.join(dir, 'summary.md');
+    process.env.GITHUB_STEP_SUMMARY = file;
+    run([fakeTest('', 'worker.spec.js', 42, ['race'], 'flaky')]);
+    expect(readFileSync(file, 'utf8')).toContain('- e2e/worker.spec.js:42 › race');
+  });
+
   test('does not claim stdio, so the dot reporter keeps the console', () => {
     expect(new FlakyReporter().printsToStdio()).toBe(false);
   });
