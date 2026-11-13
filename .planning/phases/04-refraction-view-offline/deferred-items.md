@@ -24,3 +24,14 @@
   plan: the live subset and the `perf` project may depend on some of them (`perfmarks` in the perf
   project, `nowebgl` in the no-WebGL specs), so each switch needs a check of which build its specs
   run against before it is gated.
+
+## From 04-15 (2026-11-13, out of scope: files not touched by 04-15)
+
+- **Engine grid test times out under `--coverage` at load average 8–11.** `npm run test:coverage` in the
+  04-15 worktree (three parallel executors on 8 cores, start 13:13:52) gave 1905/1906. The one failure:
+  `src/engine/diagnostics.test.js:206` (ENG-07 extremes grid) `Test timed out in 120000ms`, after 147 s.
+  An earlier 04-15 run reported 2 failures, but its log was in a scratchpad file shared with other
+  worktrees, so it is not used as evidence. The same suite without coverage passed 1906/1906 at load
+  11–14 (`npx vitest run --project unit`). 04-15 changes no file under `src/`. This looks like CPU
+  contention, not a logic failure. It was not "fixed" by raising the timeout (04-15 rule). Re-run
+  `npm run test:coverage` on an idle machine before the push in 04-13.
