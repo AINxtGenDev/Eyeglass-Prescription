@@ -20,6 +20,8 @@ export default defineConfig({
   // One retry on CI (Playwright's recommended default): a runner timing flake no longer blocks the
   // deploy, and a test that passes only on the retry is still reported as flaky.
   retries: process.env.CI ? 1 : 0,
+  // F-01: on CI the flaky reporter lists those retried passes in the job summary.
+  reporter: process.env.CI ? [['dot'], ['./e2e/support/flaky-reporter.js']] : 'list',
   use: { baseURL },
   // Local runs serve a build under the real base path: dist-e2e on 4174 by default, the production
   // dist on 4173 with E2E_LIVE=1. With BASE_URL set (e.g. the live Pages URL) no server is started.
