@@ -811,6 +811,20 @@ export default Object.freeze({
     'Quellen: Die Formel (Formfaktor × Brechwertfaktor) steht so in Lehrunterlagen der Augenoptik; dort ist h der Hornhautscheitelabstand. Dass h bis zur Eintrittspupille reicht, stammt aus unserer eigenen Herleitung und dem US-Patent 8 805 612 B2; dessen bevorzugtes Modell ist Hornhautscheitelabstand + 3,05 mm. Eine Lehrbuchseite dafür ist noch nicht geprüft.',
   'tech.ref.rounding':
     'Prozentwerte ab 3 % ganzzahlig gerundet, weil der angenommene HSA sie um etwa ein Zehntel ihres Werts verschieben kann',
+  // 04-10 (REF-02, D-16): the degraded note (shown only after an automatic step-down) and the grid
+  // lines. {tier} = tech.ref.tier.*, {nx} × {ny} = the shown panel's grid points across and down
+  // (UI-SPEC writes {n} × {n}; a panel is not square, so the two sides get their own placeholder),
+  // {degraded} = tech.ref.degraded after a step (else ''), {ms} = fmtMs.
+  'view.ref.degraded':
+    'Vereinfachte Darstellung: Ihr Gerät braucht für das Bild zu lange, deshalb wird es mit weniger Rechenpunkten gezeichnet und wirkt etwas kantiger. Die Prozentwerte sind davon nicht betroffen.',
+  'tech.ref.grid': 'Durchblick-Raster: Stufe {tier}, {nx} × {ny} Punkte je Glas{degraded}',
+  'tech.ref.tier.fein': 'fein',
+  'tech.ref.tier.mittel': 'mittel',
+  'tech.ref.tier.grob': 'grob',
+  'tech.ref.degraded': ' (automatisch vereinfacht, weil die Berechnung zu lange dauerte)',
+  'tech.ref.stillSlow': ' – auch in der Stufe grob noch über 200 ms',
+  'tech.ref.time': 'Durchblick bis zum Bild zuletzt: {ms}',
+  'tech.ref.compute': 'davon Rechenzeit im Hintergrund: {ms}',
   // 03-12 (VIZ-05, UX-02; UI-SPEC "Copywriting → Heatmap"). {min}/{max} = fmtMm of the engine
   // scale (heatScale), {step} = fmtIsoStep, {mm} = fmtMm of a heatCallouts value.
   'view.mode.legend': 'Darstellung',

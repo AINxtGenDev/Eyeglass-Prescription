@@ -51,3 +51,29 @@ export function dispersionFor(tier, abbe) {
   if (!TIER_SETTINGS[tier]?.dispersion || typeof abbe !== 'number' || !(abbe > 0)) return 0;
   return 20 / abbe;
 }
+
+// 04-10 (D-15, REF-02): the Durchblick grid tiers (cell and leaf sizes: REF_GRID_TIERS in
+// engine/warp.js, fixed by P0). They share the word 'mittel' with the quality tiers above but are a
+// separate table (PATTERNS bite 10): a grid tier is never passed to stepDown, a quality tier never
+// to refStepDown.
+
+/** Grid tiers from fine to coarse. */
+export const REF_TIER_ORDER = Object.freeze(/** @type {const} */ (['fein', 'mittel', 'grob']));
+
+/**
+ * The grid start tier from the device class: 'fein' on 'hoch', else 'mittel' (phones start one step
+ * down; 04-05: the Grenzfall Rx on fein costs about 56 ms in Node, about 4 × that on a mid phone).
+ * @param {'hoch' | 'mittel' | 'sparsam'} qualityTier
+ * @returns {'fein' | 'mittel'}
+ */
+export function refStartTier(qualityTier) {
+  return qualityTier === 'hoch' ? 'fein' : 'mittel';
+}
+
+/**
+ * One grid tier down (fein → mittel → grob); grob stays grob.
+ * @param {'fein' | 'mittel' | 'grob'} tier
+ */
+export function refStepDown(tier) {
+  return tier === 'fein' ? 'mittel' : 'grob';
+}

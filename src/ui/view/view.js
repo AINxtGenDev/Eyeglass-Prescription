@@ -125,6 +125,7 @@ import { thickest } from '../../state/compare.js';
 import { createRefraction } from './refraction.js';
 import { createRefMode, writeRefTech } from './ref-mode.js';
 import { showRefNoPicture, hideRefNoPicture } from './ref-size.js';
+import { initGuard, nextGuard } from '../../state/guard.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -210,7 +211,7 @@ function showUnavailable(reasonKey) {
  *   03-14: A = the LensResults of configuration A (null while computing or on error), specA its specs
  * @typedef {{ eyes: { OD: ViewEye, OS: ViewEye }, frame?: ViewFrame | null, display?: ViewDisplay,
  *   current: boolean, compare?: ViewCompare | null, inputTs?: number | null }} ViewInputs
- *   inputTs = ?perfmarks only (03-15): the input event time of the latest main request
+ *   inputTs = the input event time of the latest main request (03-15 user timing, 04-10 guard t0)
  *   frame = the frame of the last input (drawn alone when no eye has a shown result)
  */
 
@@ -332,8 +333,10 @@ function mount({ slot }) {
   let thumbDirty = false;
   /** Test-only thumbInfo() data of the last copy. */
   let thumbLast = null;
-  /** MINOR 3: slow thumbnail frames in a row, tripped = off for the session, the last frame's ms. */
-  const thumbGuard = { slowRun: 0, tripped: false, lastMs: null, frames: 0 };
+  /** MINOR 3: tripped = off for the session, the last frame's ms, frames copied. */
+  const thumbGuard = { tripped: false, lastMs: null, frames: 0 };
+  /** F-06 (m5, 04-10): the slow run lives in the pure guard (04-05), a two-state order on → off. */
+  let thumbRun = initGuard('on');
   /** @param {boolean} [inRender] called right before a render that will carry it */
   function requestThumb(inRender = false) {
     if (!thumbCanvas || thumbGuard.tripped) return;
@@ -965,8 +968,10 @@ function mount({ slot }) {
         thumbDirty = false;
         thumbGuard.frames++;
         thumbGuard.lastMs = ms;
-        thumbGuard.slowRun = ms > THUMB_SLOW_MS ? thumbGuard.slowRun + 1 : 0;
-        if (!THUMB_GUARD_OFF && thumbGuard.slowRun >= THUMB_SLOW_RUN) {
+        thumbRun = nextGuard(thumbRun, ms, { budgetMs: THUMB_SLOW_MS, need: THUMB_SLOW_RUN, last: 'off', down: () => 'off' });
+        // ?thumbguardoff: the guard measures but never trips (the run is reset instead).
+        if (THUMB_GUARD_OFF) thumbRun = initGuard('on');
+        else if (thumbRun.tier === 'off') {
           thumbGuard.tripped = true;
           disableBarThumb();
           return;
@@ -1304,6 +1309,7 @@ function mount({ slot }) {
   }
   function refAfterRender() {
     refraction?.layoutPills();
+    refMode.afterRender(); // 04-10: the guard clock's t1
   }
   const refAriaLabel = () => refMode.ariaLabel();
   const refInfo = () => ({ mode, ...refMode.info(), meshSent, meshDeferred });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { TIER_SETTINGS, pickTier, stepDown, dispersionFor } from './tiers.js';
+import { TIER_SETTINGS, pickTier, stepDown, dispersionFor, REF_TIER_ORDER, refStartTier, refStepDown } from './tiers.js';
+import { REF_GRID_TIERS } from '../../engine/warp.js';
 
 describe('D-12 quality tiers (03-08)', () => {
   it('pickTier: only a coarse primary pointer on a small screen is a phone (mittel)', () => {
@@ -34,5 +35,39 @@ describe('D-12 quality tiers (03-08)', () => {
     expect(dispersionFor('hoch', undefined)).toBe(0);
     expect(dispersionFor('mittel', 56)).toBe(0);
     expect(dispersionFor('sparsam', 56)).toBe(0);
+  });
+});
+
+// 04-10 (D-15, PATTERNS bite 10): the Durchblick grid tiers share the word 'mittel' with the quality
+// tiers but are a separate table; a grid tier never passes through stepDown.
+describe('D-15 Durchblick grid tiers (04-10)', () => {
+  it('REF_TIER_ORDER is fein → mittel → grob and names exactly the REF_GRID_TIERS keys', () => {
+    expect(REF_TIER_ORDER).toEqual(['fein', 'mittel', 'grob']);
+    expect(Object.isFrozen(REF_TIER_ORDER)).toBe(true);
+    expect([...REF_TIER_ORDER].sort()).toEqual(Object.keys(REF_GRID_TIERS).sort());
+  });
+
+  it('refStartTier: fein on the hoch device class, mittel on phones', () => {
+    expect(refStartTier('hoch')).toBe('fein');
+    expect(refStartTier('mittel')).toBe('mittel');
+    expect(refStartTier('sparsam')).toBe('mittel');
+    expect(refStartTier(pickTier({ coarse: true, minScreen: 360 }))).toBe('mittel');
+    expect(refStartTier(pickTier({ coarse: false, minScreen: 1080 }))).toBe('fein');
+  });
+
+  it('refStepDown goes one grid tier at a time and stays at grob', () => {
+    expect(refStepDown('fein')).toBe('mittel');
+    expect(refStepDown('mittel')).toBe('grob');
+    expect(refStepDown('grob')).toBe('grob');
+  });
+
+  it('grid and quality tiers never mix: separate functions, refStartTier never returns a quality tier', () => {
+    expect(refStepDown).not.toBe(stepDown);
+    for (const q of Object.keys(TIER_SETTINGS)) {
+      const g = refStartTier(q);
+      expect(['hoch', 'sparsam']).not.toContain(g);
+      expect(REF_TIER_ORDER).toContain(g);
+    }
+    for (const g of REF_TIER_ORDER) expect(REF_TIER_ORDER).toContain(refStepDown(g));
   });
 });

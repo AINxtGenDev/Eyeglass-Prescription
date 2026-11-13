@@ -744,3 +744,94 @@ test('3D-Neuaufbau, orbit and ENG-09 (c) with 3D on the 4× proxy (03-15, inform
 function paintsOk(v) {
   return Object.values(v.remesh).every((r) => r.inputToPaintMs.n > 0) && Number.isFinite(v.eng09cWith3d.result.med);
 }
+
+// 04-10 (D-17, REF-02; UI-SPEC Verification chrome-devtools item 4): input → Durchblick paint at 4×
+// with the UI-SPEC clock (ref-mode.js: t0 = the input event timestamp, t1 = the first rAF after the
+// render that drew the job), the grid tier reached and the worker compute time (tech.ref.compute),
+// which the throttling does not reach. Informational: it asserts only that every edit's picture
+// arrives (a sample per edit, the latest input drawn). The quiet method of 02-22: selectText and one
+// flush outside the measured span, then Input.insertText, then a Node-side timer, then the reads.
+const REF_QUIET_MS = Number(process.env.PERF_REF_QUIET_MS ?? 4000);
+
+test('Durchblick input → picture and the grid tier on the 4× proxy (04-10, informational)', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'CDP sessions are Chromium-only');
+  test.setTimeout(30 * 60_000);
+  const rate = 4;
+  const out = { rate, workerThrottled: false, note: WORKER_NOTE, rendering: SOFTWARE_NOTE, budgetMs: 200, budgetSource: 'INP good, https://web.dev/articles/inp', layouts: {} };
+  for (const [name, vp, frame] of [
+    ['desktop1280x800', { width: 1280, height: 800 }, null],
+    ['desktop1280x800-rim', { width: 1280, height: 800 }, { shape: 'rund', A: 40, B: 28, DBL: 14, pd: '40' }],
+  ]) {
+    await page.setViewportSize(vp);
+    await page.goto('./');
+    await settledView(page, { timeout: 120_000 });
+    if (frame) {
+      await page.locator(`input[name=frame-shape][value=${frame.shape}]`).check();
+      await page.locator('#frame-a').fill(String(frame.A));
+      await page.locator('#frame-b').fill(String(frame.B));
+      await page.locator('#frame-dbl').fill(String(frame.DBL));
+      for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-pd`).fill(frame.pd);
+      await settledView(page, { timeout: 120_000 });
+    }
+    await page.locator('#view-mode label', { hasText: 'Durchblick' }).click();
+    await page.waitForFunction(() => window.__eyeglassView.ref().drawnGen > 0 && document.getElementById('view').dataset.pending === '', null, { timeout: 120_000 });
+    const startTier = (await page.evaluate(() => window.__eyeglassView.ref())).tier;
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+    const sph = page.locator('#rx-od-sph');
+    const rows = [];
+    for (let i = 0; i < EDITS; i++) {
+      const r0 = await page.evaluate(() => window.__eyeglassView.ref());
+      await sph.selectText();
+      await page.evaluate(() => 0);
+      await sleep(50);
+      await page.keyboard.insertText(['-4,25', '-4,00'][i % 2]);
+      await sleep(REF_QUIET_MS);
+      await page.waitForFunction((k) => window.__eyeglassView.ref().sampleN > k && document.getElementById('view').dataset.pending === '', r0.sampleN, { timeout: 120_000 });
+      const r = await page.evaluate(() => window.__eyeglassView.ref());
+      // The edit's own job: its counted sample and its reply (a step's re-trace comes after it and
+      // is not a counted sample). The logs are capped at 20 entries, more than one run adds.
+      const counted = r.samples.slice(r0.samples.length);
+      const job = r.replyLog.find((j) => j.gen > (r0.replyLog.at(-1)?.gen ?? 0));
+      rows.push({
+        ms: counted[0] ?? r.lastSampleMs,
+        counted: counted.length > 0,
+        jobTier: job?.replies[0]?.tier ?? null,
+        tierAfter: r.tier,
+        computeMs: job?.computeMs ?? r.computeMs,
+        rays: job ? job.replies.reduce((a, x) => a + x.rays, 0) : null,
+      });
+    }
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await cdp.detach();
+    const end = await page.evaluate(() => ({
+      ref: window.__eyeglassView.ref(),
+      grid: document.getElementById('tech-ref-grid').textContent,
+      time: document.getElementById('tech-ref-time').textContent,
+      compute: document.getElementById('tech-ref-compute').textContent,
+    }));
+    out.layouts[name] = {
+      startTier,
+      tierReached: end.ref.tier,
+      degraded: end.ref.degraded,
+      stillSlow: end.ref.guard.stillSlow,
+      inputToPictureMs: stats(rows.map((x) => x.ms)),
+      countedInputToPictureMs: stats(rows.filter((x) => x.counted).map((x) => x.ms)),
+      computeMs: stats(rows.map((x) => x.computeMs)),
+      samples: rows.map((x) => ({ ...x, ms: r1(x.ms), computeMs: r1(x.computeMs) })),
+      panels: end.ref.panels.map(({ eye, w, h, rim }) => ({ eye, w, h, rim })),
+      tech: { grid: end.grid, time: end.time, compute: end.compute },
+    };
+    const L = out.layouts[name];
+    console.info(
+      `Durchblick ${name} 4×: input → picture ${JSON.stringify(L.inputToPictureMs)}; tier ${startTier} → ${L.tierReached}${L.stillSlow ? ' (stillSlow)' : ''}; ` +
+        `worker compute ${JSON.stringify(L.computeMs)} — ${WORKER_NOTE}; ${SOFTWARE_NOTE}`,
+    );
+    // The latest picture arrives: the last edit is drawn (no warp pending) and every edit gave a sample.
+    expect(rows.length).toBe(EDITS);
+    expect(rows.every((x) => Number.isFinite(x.ms))).toBe(true);
+  }
+  const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : {};
+  writeFileSync(OUT, JSON.stringify({ ...prev, durchblick: out }, null, 2));
+  console.info(`durchblick results added to ${OUT}`);
+});

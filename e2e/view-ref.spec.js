@@ -6,7 +6,10 @@
 // Reduced motion everywhere (instant camera cuts): SwiftShader renders ≈ 1 s per 3D frame (03-09).
 import { test, expect } from '@playwright/test';
 import { evaluateLens } from '../src/engine/evaluate.js';
-import { prepareWarp, classifyDirection, REF_CLASS, REF_GRID_TIERS } from '../src/engine/warp.js';
+import { prepareWarp, warpGrid, classifyDirection, REF_CLASS, REF_GRID_TIERS } from '../src/engine/warp.js';
+import { SHAPES } from '../src/engine/frame/shapes.js';
+import { validateFrame, RX_RANGES } from '../src/state/validate.js';
+import { REF_TIER_ORDER, refStepDown } from '../src/ui/view/tiers.js';
 import { EYE_POINT_MM } from '../src/engine/magnification.js';
 import { specFor } from '../src/state/bench-cases.js';
 import { CHART_SQUARE_TAN, CHART_BAND_SQUARES, checkerInk, inLetterBand } from '../src/ui/view/ref-layout.js';
@@ -23,7 +26,7 @@ import {
   holdMeshWorker,
   WARP_WORKER_URL,
 } from './helpers.js';
-/* global window, document, self, requestAnimationFrame */
+/* global window, document, self, requestAnimationFrame, MutationObserver */
 
 let threeWarnings;
 test.beforeEach(({ page }) => {
@@ -1239,5 +1242,228 @@ test.describe('item 25 one panel (320×640)', () => {
     for (const k of ['bottomL', 'bottomR']) expect(Math.abs(d[k] ?? 0), `${k} ≥ 2 px`).toBeGreaterThanOrEqual(2);
     for (const k of ['left', 'right']) expect(Math.abs(d[k] ?? 99), `${k} ≤ 1 px`).toBeLessThanOrEqual(1);
     if (SCRATCH) await page.locator('#view-stage').screenshot({ path: `${SCRATCH}/04-09-320-ticks-cyl90.png` });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// 04-10 (REF-02, D-15, D-16; UI-SPEC "Degradation", E5, E8): the grid tiers, the measured guard,
+// the degraded note and the Technische Angaben lines. The slow samples are made by holding the
+// warp worker's reply (holdWarpWorker) for HOLD_MS, so each sample is > the 200 ms budget whatever
+// the host; the percentages are engine values and are compared before and after the step.
+
+/** Hold per slow sample: over the 200 ms budget with margin (plan: release after 250 ms). */
+const HOLD_MS = 250;
+const DEGRADED_TEXT =
+  'Vereinfachte Darstellung: Ihr Gerät braucht für das Bild zu lange, deshalb wird es mit weniger Rechenpunkten gezeichnet und wirkt etwas kantiger. Die Prozentwerte sind davon nicht betroffen.';
+
+/** Wait for a sample taken after `n` (the clock's t1 has run). */
+async function sampleAfter(page, n) {
+  await page.waitForFunction((k) => window.__eyeglassView.ref().sampleN > k, n, { timeout: 120_000 });
+}
+
+/** One edit whose job is held HOLD_MS in the worker; resolves after its sample. */
+async function slowEdit(page, warp, selector, value) {
+  const { sampleN } = await refState(page);
+  await warp.hold();
+  await fillInPlace(page, selector, value);
+  await page.waitForTimeout(HOLD_MS);
+  await warp.release();
+  await sampleAfter(page, sampleN);
+  return refState(page);
+}
+
+/** One edit without a hold; resolves after its sample. */
+async function plainEdit(page, selector, value) {
+  const { sampleN } = await refState(page);
+  await fillInPlace(page, selector, value);
+  await sampleAfter(page, sampleN);
+  return refState(page);
+}
+
+const raysOf = (job) => job.replies.reduce((a, r) => a + r.rays, 0);
+
+/**
+ * The guard-integration body (desktop and the rim variant): two held edits → one step down, the
+ * note, the live text once, the badge; the job after the step carries the lower tier and its reply
+ * has fewer rays than the job before it for the same input (M2); the percentages are unchanged;
+ * two more edits never step back up.
+ * @returns {Promise<{ before: any, after: any, start: string, stepped: string }>}
+ */
+async function guardRun(page, warp, { values = ['-4,25', '-4,50'], afterValues = ['-4,75', '-5,00'], selector = '#rx-od-sph', eqRays = false } = {}) {
+  const st0 = await refState(page);
+  const start = st0.tier;
+  expect(st0.degraded).toBe(false);
+  await expect(page.locator('#view-ref-degraded')).toBeHidden();
+  const s1 = await slowEdit(page, warp, selector, values[0]);
+  expect(s1.lastSampleCounted, 'the first held edit is a counted sample').toBe(true);
+  expect(s1.lastSampleMs).toBeGreaterThan(200);
+  expect(s1.tier, 'one slow sample does not step').toBe(start);
+  expect(s1.guard.run).toBe(1);
+  const s2 = await slowEdit(page, warp, selector, values[1]);
+  expect(s2.lastSampleCounted).toBe(true);
+  expect(s2.lastSampleMs).toBeGreaterThan(200);
+  const stepped = refStepDown(start);
+  expect(s2.tier, 'two slow samples in a row: one tier down').toBe(stepped);
+  // The step job (same input, lower tier) is drawn: the stale badge goes, the degraded one shows.
+  await page.waitForFunction((tier) => window.__eyeglassView.ref().replies[0]?.tier === tier, stepped, { timeout: 120_000 });
+  await settledRef(page);
+  const st = await refState(page);
+  const after = st.replyLog.at(-1);
+  const before = st.replyLog.at(-2);
+  expect(after.replies.every((r) => r.tier === stepped), 'the posted job carries the lower tier').toBe(true);
+  expect(before.replies.every((r) => r.tier === start), 'the job before the step is at the start tier').toBe(true);
+  if (eqRays) expect(raysOf(after)).toBeLessThanOrEqual(raysOf(before));
+  else expect(raysOf(after), 'M2: a step cuts rays, not only the label').toBeLessThan(raysOf(before));
+  await expect(page.locator('#view-ref-degraded')).toBeVisible();
+  await expect(page.locator('#view-ref-degraded')).toHaveText(DEGRADED_TEXT);
+  await expect(page.locator('#view-ref-degraded svg.icon')).toHaveCount(1);
+  await expect(page.locator('#view-ref-live')).toHaveText(DEGRADED_TEXT);
+  await expect(page.locator('.view-badge')).toHaveText('Durchblick · vereinfacht');
+  const sizeBefore = plain(await page.locator('#view-ref-size').textContent());
+  // Two more edits (no hold): never back up; the live text is not rewritten.
+  await ev(page, () => {
+    window.__liveWrites = 0;
+    new MutationObserver((m) => (window.__liveWrites += m.length)).observe(document.getElementById('view-ref-live'), { childList: true, characterData: true, subtree: true });
+  });
+  for (const v of afterValues) {
+    const s = await plainEdit(page, selector, v);
+    expect(REF_TIER_ORDER.indexOf(s.tier), `never back up (${s.tier})`).toBeGreaterThanOrEqual(REF_TIER_ORDER.indexOf(stepped));
+  }
+  expect(await ev(page, () => window.__liveWrites), 'the live text is written once').toBe(0);
+  await expect(page.locator('#view-ref-degraded')).toBeVisible();
+  // Technische Angaben: the grid line names the path and the step; time and compute lines are set.
+  const grid = await page.locator('#tech-ref-grid').textContent();
+  expect(grid).toContain(`Stufe ${start} → ${stepped}`);
+  expect(grid).toContain('(automatisch vereinfacht, weil die Berechnung zu lange dauerte)');
+  await expect(page.locator('#tech-ref-time')).toHaveText(/^Durchblick bis zum Bild zuletzt: \d+,\d\d\u00a0ms$/);
+  await expect(page.locator('#tech-ref-compute')).toHaveText(/^davon Rechenzeit im Hintergrund: \d+,\d\d\u00a0ms$/);
+  return { before, after, start, stepped, sizeBefore };
+}
+
+test.describe('REF-02 degradation (04-10)', () => {
+  test('forced degraded (?refdegraded): note, live text once, badge "Durchblick · vereinfacht", tech grid at the lower tier', async ({ page }) => {
+    test.setTimeout(180_000);
+    await settledView(page);
+    await page.goto('./?refdegraded');
+    await settledView(page);
+    await refOn(page);
+    const st = await refState(page);
+    expect(st.tier).toBe(refStepDown(st.startTier));
+    expect(st.degraded).toBe(true);
+    await expect(page.locator('#view-ref-degraded')).toBeVisible();
+    await expect(page.locator('#view-ref-degraded')).toHaveText(DEGRADED_TEXT);
+    await expect(page.locator('#view-ref-live')).toHaveText(DEGRADED_TEXT);
+    await expect(page.locator('.view-badge')).toHaveText('Durchblick · vereinfacht');
+    const r = st.replies[0];
+    await expect(page.locator('#tech-ref-grid')).toHaveText(
+      `Durchblick-Raster: Stufe ${st.startTier} → ${st.tier}, ${r.nx + 1} × ${r.ny + 1} Punkte je Glas (automatisch vereinfacht, weil die Berechnung zu lange dauerte)`,
+    );
+    // Ohne Glas keeps its own badge; the note stays.
+    await page.locator('#view-ref-lens label', { hasText: 'Ohne Glas' }).click();
+    await expect(page.locator('.view-badge')).toHaveText('Durchblick · ohne Glas');
+    await expect(page.locator('#view-ref-degraded')).toBeVisible();
+    await page.locator('#view-ref-lens label', { hasText: 'Mit Glas' }).click();
+    await expect(page.locator('.view-badge')).toHaveText('Durchblick · vereinfacht');
+    // Leaving and re-entering does not announce again.
+    await page.locator('#view-mode label', { hasText: 'Glas' }).first().click();
+    await ev(page, () => {
+      window.__liveWrites = 0;
+      new MutationObserver((m) => (window.__liveWrites += m.length)).observe(document.getElementById('view-ref-live'), { childList: true, characterData: true, subtree: true });
+    });
+    await refOn(page);
+    await expect(page.locator('#view-ref-degraded')).toBeVisible();
+    expect(await ev(page, () => window.__liveWrites)).toBe(0);
+  });
+
+  test('a normal session shows no note, the start tier from the device class and the tech lines', async ({ page, isMobile }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await refOn(page);
+    const st = await refState(page);
+    expect(st.startTier).toBe(isMobile ? 'mittel' : 'fein');
+    expect(st.tier).toBe(st.startTier);
+    expect(st.degraded).toBe(false);
+    expect(st.lastJobExcluded, 'the entry job is a warm-up sample').toBe(true);
+    await expect(page.locator('#view-ref-degraded')).toBeHidden();
+    await expect(page.locator('#view-ref-live')).toHaveText('');
+    await expect(page.locator('.view-badge')).toHaveText('Durchblick · berechnet');
+    const r = st.replies[0];
+    await expect(page.locator('#tech-ref-grid')).toHaveText(`Durchblick-Raster: Stufe ${st.tier}, ${r.nx + 1} × ${r.ny + 1} Punkte je Glas`);
+    await expect(page.locator('#tech-ref-compute')).toHaveText(/^davon Rechenzeit im Hintergrund: \d+,\d\d\u00a0ms$/);
+    // The grid matches the tier's cell (REF_GRID_TIERS): nx = ceil(w / cellPx).
+    const p = st.panels[0];
+    expect(r.nx).toBe(Math.ceil(p.w / REF_GRID_TIERS[st.tier].cellPx));
+  });
+
+  test('guard integration: two held samples step one tier down with the note; fast samples never step back up', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the desktop project (fein → mittel); the phone start tier runs in "rim case from mittel"');
+    test.setTimeout(300_000);
+    await settledView(page);
+    const warp = await holdWarpWorker(page);
+    await refOn(page);
+    const run = await guardRun(page, warp, { values: ['-4,25', '-4,50'], afterValues: ['-4,75', '-4,50'] });
+    expect(run.start).toBe('fein');
+    // Back at −4,50 OD after two more edits: the size block (engine percentages) is the block shown
+    // right after the step for the same Rx.
+    expect(plain(await page.locator('#view-ref-size').textContent()), 'the percentages never degrade').toBe(run.sizeBefore);
+    const st = await refState(page);
+    const line =
+      `fein → mittel: rays ${raysOf(run.before)} → ${raysOf(run.after)}; grid ${JSON.stringify(run.after.replies.map(({ nx, ny }) => [nx, ny]))}; ` +
+      `counted samples ${JSON.stringify(st.samples.map((x) => Math.round(x)))} ms; tier at the end ${st.tier}`;
+    console.log('04-10 guard', line);
+    test.info().annotations.push({ type: '04-10 guard', description: line });
+  });
+
+  // Round-2 NEW-2 / round-3 MINOR D / round-4 MINOR NEW-14: the mittel → grob step in a rim case.
+  // The item-12 box A 40 / B 28 / DBL 14 / PD 40 at −4,00 CR-39 is kept (each value sits at a model
+  // limit, never below); the shape is the lever, tried in the order rechteckig, rund, panto.
+  // RIM_FRAME = the item-12 frame itself: the mobile project (360 × 780) shows ONE panel of
+  // 328 × 246 at 284,06 px/tan (the stage is below 360 px wide), not the two 179 × 270 panels the
+  // plan assumed, and there Node gives rimInField true for rechteckig at mittel (2336 rays) and grob
+  // (1684 rays), so no shape change is needed. The Node check below fails loudly if the panel drifts.
+  const RIM_FRAME = Object.freeze({ shape: 'rechteckig', A: 40, B: 28, DBL: 14, PD: 40 });
+
+  test('guard integration: rim case from mittel (phone start tier, item-12 box) steps to grob and cuts rays', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'needs the phone start tier');
+    test.setTimeout(300_000);
+    // The app accepts RIM_FRAME: no Außerhalb-des-Modells message, PD in range, a known shape.
+    expect(validateFrame({ A: RIM_FRAME.A, B: RIM_FRAME.B, DBL: RIM_FRAME.DBL })).toEqual({ A: null, B: null, DBL: null });
+    expect(RIM_FRAME.PD).toBeGreaterThanOrEqual(RX_RANGES.pd[0]);
+    expect(RIM_FRAME.PD).toBeLessThanOrEqual(RX_RANGES.pd[1]);
+    expect(Object.hasOwn(SHAPES, RIM_FRAME.shape)).toBe(true);
+    await settledView(page);
+    const warp = await holdWarpWorker(page);
+    const frame = { shape: RIM_FRAME.shape, A: RIM_FRAME.A, B: RIM_FRAME.B, DBL: RIM_FRAME.DBL };
+    await setFrame(page, frame);
+    await setRx(page, { sph: '-4,00' }, { sph: '-4,00' }, String(RIM_FRAME.PD));
+    await refOn(page);
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await settledRef(page);
+    const st = await refState(page);
+    expect(st.startTier, 'pickTier mittel → refStartTier mittel').toBe('mittel');
+    expect(st.tier).toBe('mittel');
+    // Node, at the panel the page reports: the rim is in the field at mittel and at grob.
+    const node = {};
+    for (const p of st.panels) {
+      const ctx = lensOf(p.eye, { sph: -4, cyl: 0, axisDeg: 0 }, { frame, pd: RIM_FRAME.PD });
+      for (const tier of ['mittel', 'grob']) {
+        const g = warpGrid(ctx, { wPx: p.w, hPx: p.h, pxPerTan: p.pxPerTan }, REF_GRID_TIERS[tier].cellPx, { leafPx: REF_GRID_TIERS[tier].leafPx });
+        expect(g.ok).toBe(true);
+        expect(g.rimInField, `Node: ${p.eye} ${tier} rim in the field at ${p.w} × ${p.h}`).toBe(true);
+        node[`${p.eye} ${tier}`] = { rays: g.rays, rimInField: g.rimInField };
+      }
+    }
+    // Browser, before the first slow sample: every panel's last reply has the rim in the field.
+    for (const r of st.replies) expect(r.rimInField, `reply ${r.eye}: rimInField`).toBe(true);
+    const eqRays = Object.keys(node).some((k) => k.endsWith('mittel') && node[k].rays === node[k.replace('mittel', 'grob')].rays);
+    const run = await guardRun(page, warp, { values: ['-4,25', '-4,00'], afterValues: ['-4,25', '-4,00'], eqRays });
+    expect(run.start).toBe('mittel');
+    expect(run.stepped).toBe('grob');
+    for (const r of run.after.replies) expect(r.rimInField).toBe(true);
+    const line =
+      `panel ${st.panels.map((p) => `${p.eye} ${p.w} × ${p.h} at ${p.pxPerTan.toFixed(2)}`).join(', ')}; RIM_FRAME ${JSON.stringify(RIM_FRAME)}; ` +
+      `Node ${JSON.stringify(node)}; browser mittel ${JSON.stringify(run.before.replies.map(({ eye, rays, rimInField }) => ({ eye, rays, rimInField })))} → grob ${JSON.stringify(run.after.replies.map(({ eye, rays, rimInField }) => ({ eye, rays, rimInField })))}`;
+    console.log('04-10 rim', line);
+    test.info().annotations.push({ type: '04-10 rim', description: line });
   });
 });

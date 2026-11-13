@@ -10,8 +10,8 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const DIST = path.join(root, 'dist');
 const DIST_E2E = path.join(root, 'dist-e2e');
-// 04-10 adds the forced-degraded hook name here.
-const HOOK_STRINGS = ['__eyeglassView'];
+// 04-10: 'refdegraded', the forced-degraded Durchblick hook (src/ui/view/ref-mode.js).
+const HOOK_STRINGS = ['__eyeglassView', 'refdegraded'];
 
 function requireBuilds() {
   for (const d of [DIST, DIST_E2E]) {
