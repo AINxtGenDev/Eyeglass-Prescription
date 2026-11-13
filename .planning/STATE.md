@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-11-13T10:56:36.776Z"
-last_activity: 2026-11-13 -- Phase 4 planning complete
+last_updated: "2026-11-13T10:57:33.356Z"
+last_activity: 2026-11-13 -- Phase 4 execution started
 progress:
   total_phases: 4
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-06)
 
 **Core value:** A non-expert can type in their paper prescription and, within a few minutes, see correctly computed lens thickness and weight for their frame — and how material or frame choice changes it.
-**Current focus:** Phase 03 — 3D lenses & frame
+**Current focus:** Phase 4 — Refraction View & Offline
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-11-13 -- Phase 4 planning complete
+Phase: 4 (Refraction View & Offline) — EXECUTING
+Plan: 1 of 15
+Status: Executing Phase 4
+Last activity: 2026-11-13 -- Phase 4 execution started
 
 Progress: [████████░░] 75% (3 of 4 phases)
 
