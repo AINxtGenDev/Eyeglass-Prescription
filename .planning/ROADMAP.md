@@ -333,8 +333,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-07-PLAN.md — Input handover across the update reload, storage allow-list, update controller logic
-- [ ] 04-08-PLAN.md — First Durchblick: mode switch, traced chart for both eyes, Mit/Ohne Glas, size block, axis and eye-swap pixel tests as hard gate
+- [x] 04-07-PLAN.md — Input handover across the update reload, storage allow-list, update controller logic
+- [x] 04-08-PLAN.md — First Durchblick: mode switch, traced chart for both eyes, Mit/Ohne Glas, size block, axis and eye-swap pixel tests as hard gate
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 7/15 | In Progress|  |
+| 4. Refraction View & Offline | 9/15 | In Progress|  |
