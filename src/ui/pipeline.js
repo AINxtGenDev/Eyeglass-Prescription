@@ -932,6 +932,11 @@ function startConfigCompare() {
   refreshView(); // 03-14: the 3D view switches to the A/B layout
 }
 
+/** 04-07 (D-21): a read-only copy of the frozen Vorher (A) for the update handover, or null. */
+export function currentCompareConfig() {
+  return configA === null ? null : structuredClone(configA);
+}
+
 /** 'Vergleich beenden': back to one configuration (B stays current), focus on the CTA. */
 function endConfigCompare() {
   configA = null;

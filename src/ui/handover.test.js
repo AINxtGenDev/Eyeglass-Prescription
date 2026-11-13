@@ -191,6 +191,7 @@ describe('takeHandover (read once, delete before use, T-04-26)', () => {
     ['unknown radio group', JSON.stringify(valid({ radios: { 'view-mode': 'heat' } }))],
     ['compareA with a string size', JSON.stringify(valid({ compareA: { frame: { shape: 'oval', A: '50', B: 30, DBL: 18 }, materialId: 'cr39', custom: null } }))],
     ['compareA with NaN-like custom', JSON.stringify(valid({ compareA: { frame: null, materialId: 'custom', custom: { customMaterial: { ne: 'x', density: 1, ve: null }, minCT: 1, minET: 1 } } }))],
+    ['unknown top-level key', JSON.stringify(valid({ lost: false }))],
     ['missing valid flag', JSON.stringify({ ...valid(), valid: undefined })],
   ])('wrong shape (%s) → lost, key removed', (_name, raw) => {
     const s = fakeStorage({ [HANDOVER_KEY]: raw });
