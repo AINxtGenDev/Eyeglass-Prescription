@@ -68,6 +68,14 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   // skipped the A1 default fit (and Pos1 with no frame data put the camera at the origin).
   controls.enabled = false;
   let inputEnabled = false;
+  /** B-WR-08: enable() was called once (first mesh attach). */
+  let enabledOnce = false;
+  /** 04-08 (D-10): Durchblick shows no 3D camera, so no input moves it (suspend / resume). */
+  let suspended = false;
+  const applyEnabled = () => {
+    inputEnabled = enabledOnce && !suspended;
+    controls.enabled = inputEnabled;
+  };
   reduced.addEventListener('change', () => {
     controls.enableDamping = !reduced.matches;
   });
@@ -222,6 +230,9 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
   /** Fullscreen on/off (touch only: the page cannot scroll there, so one finger turns the view). */
   /** @type {(on: boolean) => void} */
   let fsHook = () => {};
+  /** 04-08: the touch path's '3D drehen' switch (setActive), no-op on the pointer path. */
+  /** @type {(on: boolean) => void} */
+  let setRotate = () => {};
   const syncZoom = () => {
     controls.enableZoom = pointer ? document.activeElement === stage : active;
   };
@@ -261,8 +272,10 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
       setIcon();
       setText('view-hint', t(on ? 'view.hint.touchOn' : 'view.hint.touchOff'));
     };
+    setRotate = setActive;
     let activeBeforeFs = false;
     fsHook = (on) => {
+      if (suspended) return; // Durchblick: fullscreen does not turn the 3D rotation on
       if (on) {
         activeBeforeFs = active;
         ratio = 1; // the stage fills the screen; the observer confirms with its next callback
@@ -336,8 +349,28 @@ export function createControls({ camera, stage, scene, getContext, onPose = () =
     setFullscreen: (/** @type {boolean} */ on) => fsHook(on),
     /** B-WR-08: accept keys and drags (view.js calls it on the first mesh attach). */
     enable() {
-      inputEnabled = true;
-      controls.enabled = true;
+      enabledOnce = true;
+      applyEnabled();
+    },
+    /**
+     * 04-08 (D-10, entering Durchblick): no drag, wheel or key moves the camera, a running tween
+     * stops where it is, and '3D drehen' is switched off (the page scrolls through the picture).
+     * Returns the state resume() needs: the preset, its eye and whether '3D drehen' was on.
+     */
+    suspend() {
+      const saved = { preset: name, eye: eyeArg, rotate: active };
+      suspended = true;
+      tween = null;
+      flush();
+      setRotate(false);
+      applyEnabled();
+      return saved;
+    },
+    /** 04-08 (leaving Durchblick): input back on, '3D drehen' as it was before suspend(). */
+    resume(/** @type {{ rotate: boolean }} */ saved) {
+      suspended = false;
+      applyEnabled();
+      if (saved.rotate) setRotate(true);
     },
     /** Frame attach or resize: new limits; a preset view (not 'free') follows its new pose. */
     refresh() {

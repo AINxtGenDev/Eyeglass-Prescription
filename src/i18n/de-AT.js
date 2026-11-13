@@ -652,8 +652,9 @@ export default Object.freeze({
   'view.stage.label': '3D-Ansicht steuern',
   'view.badge.glass': 'Visueller Eindruck',
   'view.badge.updating': '3D wird aktualisiert …',
+  // 04-08 (D-11): points to the Durchblick, where the refraction is computed.
   'view.caption.glass':
-    'Visueller Eindruck – die Lichtbrechung im Glas ist nur angenähert. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
+    'Visueller Eindruck – die Lichtbrechung ist hier nur angenähert; berechnet zeigt sie die Darstellung „Durchblick“. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
   'view.loading': '3D-Ansicht wird aufgebaut …',
   // 03-06 (D-17, UI-SPEC States): eye labels and the blocked, empty, load-failure and no-WebGL states.
   'view.eye.od': 'R',
@@ -761,6 +762,55 @@ export default Object.freeze({
   'view.aria.ref.layout.compare': '{who}, links Vorher (A), rechts Nachher (B).',
   'view.aria.ref.side.od': 'rechte',
   'view.aria.ref.side.os': 'linke',
+  // 04-08 (REF-01, D-09…D-11; UI-SPEC "Mode switch and view", "Toggles", Technische Angaben).
+  'view.mode.ref': 'Durchblick',
+  'view.title.ref': 'Durchblick durch Ihre Brille',
+  'view.stage.label.ref': 'Durchblick-Bild',
+  'view.fullscreen.enter.ref': 'Durchblick im Vollbild',
+  'view.badge.ref': 'Durchblick · berechnet',
+  'view.badge.refOff': 'Durchblick · ohne Glas',
+  'view.badge.refDegraded': 'Durchblick · vereinfacht',
+  'view.badge.refUpdating': 'Durchblick wird berechnet …',
+  'view.ref.loading': 'Durchblick wird berechnet …',
+  'view.caption.ref':
+    'So sehen Sie mit dieser Brille geradeaus in die Ferne – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds.',
+  // {h} = fmtMm(EYE_POINT_MM); always "angenommener Wert", because h contains the assumed 12 mm HSA (MINOR 4).
+  'view.ref.scope':
+    'Der Durchblick zeigt Größe und Verzerrung, nicht die Schärfe. Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille {h} hinter dem Glas (angenommener Wert).',
+  'view.ref.scope.noPicture':
+    'Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille {h} hinter dem Glas (angenommener Wert).',
+  'view.hint.ref':
+    'Tipp: Schalten Sie zwischen „Mit Glas“ und „Ohne Glas“ um und achten Sie auf die Kästchen am Bildrand: Dort verschieben sie sich am stärksten. Die kurzen Striche am Rand zeigen, wo die Kästchenkanten ohne Glas liegen.',
+  'view.ref.side.two':
+    'Sie schauen selbst durch die Brille: Ihr rechtes Glas ist rechts im Bild. In den anderen Darstellungen ist es umgekehrt, dort sehen Sie die Brille von vorne.',
+  // UI-SPEC writes "{rechtes/linkes}": {side} = view.viewName.od / .os ("rechtes" / "linkes").
+  'view.ref.side.one': 'Sie schauen selbst durch Ihr {side} Glas.',
+  'view.ref.side.compare': 'Sie schauen selbst durch Ihr {side} Glas: links Vorher (A), rechts Nachher (B), gleicher Maßstab.',
+  'view.ref.pill.od': 'Rechtes Glas',
+  'view.ref.pill.os': 'Linkes Glas',
+  'view.ref.pill.blocked': '{who} – nicht berechnet',
+  'view.ref.noView': 'hier kein Durchblick',
+  'view.ref.failed': 'Der Durchblick konnte nicht berechnet werden. Die übrigen Ergebnisse gelten unverändert.',
+  'view.refLens.legend': 'Bild',
+  'view.refLens.on': 'Mit Glas',
+  'view.refLens.off': 'Ohne Glas',
+  'view.refEye.legend': 'Durchblick für',
+  'view.refEye.od': 'Rechtes Glas',
+  'view.refEye.os': 'Linkes Glas',
+  // {h} {hsa} {pupil} = fmtMm of the engine constants (magnification.js), {field} = the fixed half-angle.
+  'tech.ref.eye':
+    'Durchblick: Augenpunkt in der Eintrittspupille, {h} hinter der Glasrückfläche (HSA {hsa}, angenommener Wert, + {pupil} bis zur Eintrittspupille, {source}); Blick geradeaus in die Ferne; Bildfeld {field} Halbwinkel',
+  'tech.ref.source.assumed': 'angenommener Wert',
+  // orchestrator decision 3: the 3 mm cites the Le Grand computation, no textbook claim.
+  'tech.ref.source.cited': 'Quelle: {cite}',
+  'tech.ref.source.cite': 'Le Grand & El Hage, Schema-Auge (Greivenkamp, OPTI-502), 3,04 mm, gerundet',
+  'tech.ref.formula':
+    'Bildgröße = Formfaktor × Wirkungsfaktor: 1 / (1 − CT/n · D1) × 1 / (1 − h · F), F = Sph entlang der Achse, Sph + Cyl senkrecht dazu',
+  // 04-08, NOT in the approved copy table (lens-critic M5, wording round-2 NEW-9): flagged for lens-critic.
+  'tech.ref.formulaSource':
+    'Quellen: Die Formel (Formfaktor × Brechwertfaktor) steht so in Lehrunterlagen der Augenoptik; dort ist h der Hornhautscheitelabstand. Dass h bis zur Eintrittspupille reicht, stammt aus unserer eigenen Herleitung und dem US-Patent 8 805 612 B2; dessen bevorzugtes Modell ist Hornhautscheitelabstand + 3,05 mm. Eine Lehrbuchseite dafür ist noch nicht geprüft.',
+  'tech.ref.rounding':
+    'Prozentwerte ab 3 % ganzzahlig gerundet, weil der angenommene HSA sie um etwa ein Zehntel ihres Werts verschieben kann',
   // 03-12 (VIZ-05, UX-02; UI-SPEC "Copywriting → Heatmap"). {min}/{max} = fmtMm of the engine
   // scale (heatScale), {step} = fmtIsoStep, {mm} = fmtMm of a heatCallouts value.
   'view.mode.legend': 'Darstellung',

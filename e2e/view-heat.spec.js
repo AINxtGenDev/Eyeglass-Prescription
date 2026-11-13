@@ -46,9 +46,14 @@ async function glassOn(page) {
   await frames(page);
 }
 
+// 04-08 (D-09): the switch itself is visible in Simple view (Glas | Durchblick); only the
+// Dickenkarte option is Expert-only.
+const heatOption = (page) => page.locator('#view-mode label', { hasText: 'Dickenkarte' });
+
 test('UX-02 switch only in Expert', async ({ page }) => {
   await settledView(page);
-  await expect(page.locator('#view-mode')).toBeHidden();
+  await expect(page.locator('#view-mode')).toBeVisible();
+  await expect(heatOption(page)).toBeHidden();
   expect(await mode(page)).toBe('glass');
   await expertOn(page);
   await expect(page.locator('#view-mode')).toBeVisible();
@@ -77,7 +82,7 @@ test('UX-02 switch only in Expert', async ({ page }) => {
   await page.waitForFunction(() => window.__eyeglassView.mode() === 'glass');
   await expect(page.locator('#view-legend')).toBeHidden();
   await expect(page.locator('#view-heat-table')).toBeHidden();
-  await expect(page.locator('#view-mode')).toBeHidden();
+  await expect(heatOption(page)).toBeHidden();
   await expect(page.locator('.view-badge')).toHaveText('Visueller Eindruck');
   await expect(page.locator('#view-canvas')).toHaveAttribute('aria-label', /^3D-Ansicht der Brille/, { timeout: 5000 });
   await expertOn(page);

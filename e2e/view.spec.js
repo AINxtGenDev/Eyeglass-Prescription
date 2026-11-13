@@ -57,7 +57,8 @@ test('VIZ-04 glass look', async ({ page }) => {
   await backgroundProbe(page);
   await expect(page.locator('.view-badge')).toHaveText('Visueller Eindruck');
   expect(plain(await page.locator('#view-caption').textContent())).toBe(
-    'Visueller Eindruck – die Lichtbrechung im Glas ist nur angenähert. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
+    // 04-08 (D-11): the caption now points to the computed Durchblick.
+    'Visueller Eindruck – die Lichtbrechung ist hier nur angenähert; berechnet zeigt sie die Darstellung „Durchblick“. Form und Dicke der Gläser sind maßstabsgetreu berechnet.',
   );
   expect(await page.evaluate(() => window.__eyeglassView.ior('OD'))).toBe(1.5);
   await material(page, 'idx174').check();

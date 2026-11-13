@@ -255,7 +255,9 @@ test('item 7: entering hides the tools, drops the tab stop, sets the Durchblick 
   const fs = page.locator('#view-fullscreen');
   const before = await ev(page, () => window.__eyeglassView.camera());
   await expect(stage).toHaveAttribute('tabindex', '0');
-  await refOn(page);
+  // Mode plumbing only: no drawn warp needed (D-10).
+  await page.locator('#view-mode label', { hasText: 'Durchblick' }).click();
+  await page.waitForFunction(() => window.__eyeglassView.mode() === 'ref');
   await expect(page.locator('#view-tools')).toBeHidden();
   await expect(stage).not.toHaveAttribute('tabindex', /.*/);
   await expect(stage).not.toHaveAttribute('aria-describedby', /.*/);
