@@ -311,8 +311,51 @@ Plans:
   3. After one visit the site loads and computes offline; when a new version is deployed the user sees an "Aktualisieren" prompt instead of a mid-session switch, and the service worker is scoped to `/Eyeglass-Prescription/`.
   4. `lens-critic` reviewed the phase plan and the phase result with verdict PASS (no open BLOCKER/MAJOR), or the user explicitly accepted the remaining findings.
 
-**Plans**: TBD
+**Plans**: 15 plans in 9 waves (planned 2026-11-13; engine first per CLAUDE.md, then vertical slices; five lens-critic plan rounds, PASS in round 5, records in 04-LENS-CRITIC-R1…R5.md; SC1 judged by Mit/Ohne Glas blink, reference ticks and text with on-screen axis and eye-swap pixel tests as hard gate, accepted by the user 2026-11-13)
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Engine: non-throwing reverse trace from the eye, spectacle magnification (eye point = vertex distance + 3,0 mm), per-direction size text
+- [ ] 04-02-PLAN.md — Gated debug hook, e2e build mode, dist test project, hook-free live subset, build-parity and env-gate tests, CI split
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-03-PLAN.md — Warp grid in the engine (aperture classes, quadtree, tiers), P0 feasibility sweep and stage measurements, CI ray-count gate
+- [ ] 04-04-PLAN.md — Offline packaging: pinned vite-plugin-pwa, manifest and icons, kill-switch flag with documented blast radius, build-shape tests
+- [ ] 04-15-PLAN.md — CI flaky-test report and the two known flaky tests (F-01, F-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-05-PLAN.md — Degradation guard (nextGuard), warp worker lane with latest-wins client, tier bench
+- [ ] 04-06-PLAN.md — Service worker registered after first paint, offline note, pwa Playwright project and switch server, offline/scope/CSP tests
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04-07-PLAN.md — Input handover across the update reload, storage allow-list, update controller logic
+- [ ] 04-08-PLAN.md — First Durchblick: mode switch, traced chart for both eyes, Mit/Ohne Glas, size block, axis and eye-swap pixel tests as hard gate
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04-09-PLAN.md — One-panel picker, blocked/failure/no-WebGL states, rim drawn from leaves, reference ticks, rim notes
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 04-10-PLAN.md — Grid start tiers, measured degradation with visible note, tech lines, thumbnail guard on nextGuard, 4× throttled proxy
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 04-11-PLAN.md — A/B comparison in Durchblick, leak test across mode switches
+- [ ] 04-14-PLAN.md — "Aktualisieren" banner and update wiring, build B update e2e, kill-switch rehearsal and sibling-site check
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 04-12-PLAN.md — Fullscreen info panel (F-02), axe matrix for every new state
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 04-13-PLAN.md — dev-1.8, full gate, ENG-09 re-measured, lens-critic result input, push approval with rollback, live checks, real-phone check (F-05)
 
 ## Progress
 
@@ -324,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 0/TBD | Not started | - |
+| 4. Refraction View & Offline | 0/15 | Planned | - |

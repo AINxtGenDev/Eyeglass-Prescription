@@ -533,13 +533,18 @@ export function startSW() {
 | A8 | `setOffline` may not block SW network fetches | Pitfall 10 | False-pass offline test; mitigated by route-abort + `fromServiceWorker()` |
 | A9 | Workbox repo URL for workbox-build/window | Audit | None functionally |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Kill-switch scope (Pitfall 6).** Plugin `selfDestroying` (all origin caches) or a custom scoped kill SW? Recommendation: document the plugin switch plus the risk, and let lens-critic decide. Do not build the custom one unless asked.
+   **RESOLVED:** plugin-native `selfDestroying`, no custom scoped kill SW (orchestrator decision 2). Per lens-critic M1 the flag lives in one constant (`sw-kill-switch.js`, 04-04) that the build tests read, the destroyer shape passes its own deploy gate, the app stops registering while the flag is on (04-14), the kill → re-enable path is rehearsed on the switch server (04-14 Task 3), and the four sibling Pages projects are checked read-only for Cache Storage use during execution (04-14 Task 3).
 2. **3,0 vs 3,04 mm pupil offset.** I recommend 3,0 (keeps the UI-SPEC strings; 0,04 mm is negligible). If 3,04 is chosen, re-run the string tests before the docs commit (UI-SPEC "vorläufig" note).
+   **RESOLVED:** 3,0 mm, cited as the 3,04 mm Le Grand computation with the rounding stated (orchestrator decision 1); 04-01 Task 2 adds a unit test that reproduces 3,04 mm from the six table values (lens-critic MINOR 4).
 3. **Primary textbook citation** (Bennett & Rabbetts) is not accessible. Neither source here is the textbook: the SM formula is proven by the derivation in this session (and corroborated by the study guides), and the 3,04 mm comes from the Le Grand eye data. Good enough for "cited", but the UI-SPEC's request for a textbook page stays open for a human.
+   **RESOLVED:** stays an open human item, no textbook claim (orchestrator decision 3). Per lens-critic M5 the source line is reworded: the product form is in the two study sources, which use the vertex distance as d; the entrance-pupil reference rests on the derivation (Pattern 2) and US 8,805,612 B2 (HSA + 3,05 mm); the textbook page is open (04-01 Task 2, 04-08 `tech.ref.formulaSource`).
 4. **F-05 real Pixel trace** needs the user's phone on the live site. It is a human checkpoint at the end of the phase.
+   **RESOLVED:** human check in 04-13 (Task 3, after the approved push).
 5. **Test-build split (Pitfall 9)** changes the CI structure tests. lens-critic should accept that "tested artifact = deployed artifact + gated hook".
+   **RESOLVED:** accepted by lens-critic once M4 is fixed (orchestrator decision 5): 04-02 adds the worker-bundle parity test and the `import.meta.env` allow-list, 04-08 adds a hook-free Durchblick smoke to `LIVE_SPECS`, 04-06 runs the live-safe `pwa` tests in verify-live.
 
 ## Environment Availability
 
