@@ -119,10 +119,10 @@ export default defineConfig({
       // again. Both directions are rehearsed on the switch server (e2e/pwa.spec.js 'kill switch
       // rehearsal', 04-14).
       // BLAST RADIUS: the plugin's self-destroying worker calls caches.keys() and deletes EVERY
-      // Cache Storage cache on the origin ainxtgendev.github.io, which serves five Pages
-      // projects (Eyeglass-Prescription, interior-design, simplify_llm, testing, workflow; gh api
-      // 2026-11-13); their cached data could be cleared. Whether the four siblings use Cache
-      // Storage: checked read-only in 04-14 Task 3, result recorded on the next line.
+      // Cache Storage cache on the origin ainxtgendev.github.io. Planning listed five Pages
+      // projects there; the 04-14 check below found three on this origin (Eyeglass-Prescription,
+      // simplify_llm, testing), one served from its own custom domain and one that does not exist.
+      // A sibling's cached data on this origin could be cleared.
       // Siblings checked 2026-11-13 (read-only GET of the published files, 04-14; grep for
       // serviceWorker, sw.js, manifest, workbox, caches.open/keys, CacheStorage):
       //   simplify_llm: https://ainxtgendev.github.io/simplify_llm/ (200), index.html and its one
@@ -131,7 +131,7 @@ export default defineConfig({
       //   testing: https://ainxtgendev.github.io/testing/ (200), index.html (incl. its inline
       //     script) and power_calc.js: no match; sw.js 404 → no worker, no Cache Storage use found.
       //   interior-design: https://ainxtgendev.github.io/interior-design/ → 301 to its custom
-      //     domain its custom domain (Pages cname), a different origin: outside the blast
+      //     domain (Pages cname), a different origin: outside the blast
       //     radius (it has a manifest.webmanifest, but sw.js 404 and no match in its HTML or its
       //     10 referenced chunks).
       //   workflow: no repo and no Pages site (gh api repos/AINxtGenDev/workflow 404,
