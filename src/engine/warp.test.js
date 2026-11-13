@@ -298,11 +298,12 @@ describe('REF-01 wearer-view axis golden (D-07)', () => {
 const TAN_FIELD = Math.tan((FIELD_HALF_ANGLE_DEG * Math.PI) / 180);
 /** UI-SPEC field rule: pxPerTan = longSidePx / (2 · tan(half-angle)). */
 const panelOf = (wPx, hPx) => ({ wPx, hPx, pxPerTan: Math.max(wPx, hPx) / (2 * TAN_FIELD) });
-// UI-SPEC "Layout of the picture" geometries (assumed; Task 3 replaces them by measured ones)
-const PANEL_412 = panelOf(189, 285); // 246,8 px/tan
-const PANEL_320 = panelOf(288, 216); // 249,4 px/tan
-const PANEL_400 = panelOf(199, 250); // 216,5 px/tan
-const PANEL_TABLET = panelOf(581, 593);
+// Measured panels (scripts/measure-stages.mjs, 04-P0-RESULTS.md section 0): #view-stage content
+// box on the production preview, two panels with a 2 px divider from 360 px, one panel below.
+const PANEL_412 = panelOf(189, 285); // 412 × 915 phone, 246,82 px/tan (= UI-SPEC)
+const PANEL_320 = panelOf(288, 216); // 320 × 640 phone, one panel, 249,42 px/tan (= UI-SPEC)
+const PANEL_400 = panelOf(198, 248.75); // 400 px desktop column, 215,42 px/tan: the smallest scale
+const PANEL_LARGEST = panelOf(639, 800); // largest measured panel (1280 × 800 fullscreen)
 const CHART_SQUARE_TAN = Math.tan((6 * Math.PI) / 180);
 
 const tierGrid = (ctx, panel, tier) =>
@@ -511,7 +512,7 @@ describe('REF-01 warp grid (D-12)', () => {
     expect(warpGrid(ctx, PANEL_320, 6, { leafPx: 2 }).rays).toBeLessThan(warpGrid(ctx, PANEL_320, 6, { leafPx: 1 }).rays);
     for (const sph of [-4, 4]) {
       const c = item12(sph).ctx;
-      for (const panel of [PANEL_320, PANEL_TABLET]) {
+      for (const panel of [PANEL_320, PANEL_LARGEST]) {
         const [f, m, g] = ['fein', 'mittel', 'grob'].map((t) => tierGrid(c, panel, t).rays);
         console.info(`rays item-12 ${sph} ${panel.wPx}×${panel.hPx}: fein ${f}, mittel ${m}, grob ${g}`);
         expect(g).toBeLessThanOrEqual(m);
@@ -552,7 +553,7 @@ describe('REF-01 warp grid (D-12)', () => {
 
   it('leaf buffer growth: many mixed cells (fine leaves on a big panel) keep every leaf intact', () => {
     const { ctx } = item12(4);
-    const g = warpGrid(ctx, PANEL_TABLET, 6, { leafPx: 0.5 });
+    const g = warpGrid(ctx, PANEL_LARGEST, 6, { leafPx: 0.5 });
     expect(g.leafCount).toBeGreaterThan(4096);
     expect(g.leaves.length).toBe(6 * g.leafCount);
     for (let l = 0; l < g.leafCount; l++) {
@@ -616,13 +617,14 @@ const N10_CASES = [
 
 describe('REF-02 grid error bounds (N10)', () => {
   for (const tier of Object.keys(REF_GRID_TIERS)) {
-    it(`${tier}: drawn (sw-ne) interpolant error at the panel edge ≤ 0,5 px at 216,5 px/tan (400 px column)`, () => {
+    // N10 limit 0,5 px; the P0-fixed tiers must keep the NEW-4 headroom, ≤ 0,45 px.
+    it(`${tier}: drawn (sw-ne) interpolant error at the panel edge ≤ 0,45 px (N10 limit 0,5 px) at 215,42 px/tan (measured 400 px column)`, () => {
       for (const { name, o } of N10_CASES) {
         const { ctx } = lensCtx(o);
         const g = tierGrid(ctx, PANEL_400, tier);
         const err = edgeInterpErrorPx(ctx, PANEL_400, g);
         console.info(`N10 ${tier} ${name}: edge error ${err.toFixed(4)} px`);
-        expect(err, name).toBeLessThanOrEqual(0.5);
+        expect(err, name).toBeLessThanOrEqual(0.45);
       }
     });
 
@@ -690,9 +692,12 @@ function tickOffsetPx(ctx, panel, side) {
   return worst;
 }
 
+// E10 values are pinned to their P0 measurement (04-P0-RESULTS.md section 5, production trace at
+// the measured geometries, lens-critic MINOR 2) with toBeCloseTo(measured, 2); the UI-SPEC
+// thresholds stay as additional bounds.
 describe('REF-01 visibility (E10)', () => {
   const lens = (o) => lensCtx(o).ctx;
-  it('412 two-panel (189 × 285): −1,00 and 0,00 / −1,00 × 180 reach 3,0 px, −0,75 does not', () => {
+  it('412 two-panel (measured 189 × 285): −1,00 and 0,00 / −1,00 × 180 reach 3,0 px, −0,75 does not', () => {
     const m1 = lens({ sph: -1 });
     const c180 = lens({ sph: 0, cyl: -1, axisDeg: 180 });
     const m075 = lens({ sph: -0.75 });
@@ -705,6 +710,12 @@ describe('REF-01 visibility (E10)', () => {
       m075Mid: edgeMidShiftPx(m075, PANEL_412, 'long'),
     };
     console.info('E10 412', JSON.stringify(v));
+    expect(v.m1Mid).toBeCloseTo(3.423, 2);
+    expect(v.m1Tick).toBeCloseTo(3.1852, 2);
+    expect(v.c180Mid).toBeCloseTo(3.423, 2);
+    expect(v.c180Tick).toBeCloseTo(2.9445, 2);
+    expect(v.c180TickShort).toBeCloseTo(0.3221, 2);
+    expect(v.m075Mid).toBeCloseTo(2.5353, 2);
     expect(v.m1Mid).toBeGreaterThanOrEqual(3.0);
     expect(v.m1Tick).toBeGreaterThanOrEqual(2.5);
     expect(v.c180Mid).toBeGreaterThanOrEqual(3.0);
@@ -713,7 +724,7 @@ describe('REF-01 visibility (E10)', () => {
     expect(v.m075Mid).toBeLessThan(3.0);
   });
 
-  it('320 one-panel (288 × 216): 0,00 / −1,00 × 90 reaches 3,0 px along the long side, ≤ 0,5 px across', () => {
+  it('320 one-panel (measured 288 × 216): 0,00 / −1,00 × 90 reaches 3,0 px along the long side, ≤ 0,5 px across', () => {
     const c90 = lens({ sph: 0, cyl: -1, axisDeg: 90 });
     const v = {
       c90Mid: edgeMidShiftPx(c90, PANEL_320, 'long'),
@@ -721,16 +732,128 @@ describe('REF-01 visibility (E10)', () => {
       c90TickShort: tickOffsetPx(c90, PANEL_320, 'short'),
     };
     console.info('E10 320', JSON.stringify(v));
+    expect(v.c90Mid).toBeCloseTo(3.4591, 2);
+    expect(v.c90Tick).toBeCloseTo(3.0314, 2);
+    expect(v.c90TickShort).toBeCloseTo(0.4498, 2);
     expect(v.c90Mid).toBeGreaterThanOrEqual(3.0);
     expect(v.c90Tick).toBeGreaterThanOrEqual(2.5);
     expect(v.c90TickShort).toBeLessThanOrEqual(0.5);
   });
 
-  it('N6: 400 px desktop column (199 × 250): −1,00 edge midpoint and tick offset', () => {
+  it('N6: 400 px desktop column (measured 198 × 248,75): −1,00 and 0,00 / −1,00 × 180, just below 3,0 px (P0 finding)', () => {
     const m1 = lens({ sph: -1 });
-    const v = { m1Mid: edgeMidShiftPx(m1, PANEL_400, 'long'), m1Tick: tickOffsetPx(m1, PANEL_400, 'long') };
+    const c180 = lens({ sph: 0, cyl: -1, axisDeg: 180 });
+    const v = {
+      m1Mid: edgeMidShiftPx(m1, PANEL_400, 'long'),
+      m1Tick: tickOffsetPx(m1, PANEL_400, 'long'),
+      c180Mid: edgeMidShiftPx(c180, PANEL_400, 'long'),
+      c180Tick: tickOffsetPx(c180, PANEL_400, 'long'),
+    };
     console.info('E10 400', JSON.stringify(v));
-    expect(v.m1Mid).toBeGreaterThan(2.5);
-    expect(v.m1Tick).toBeGreaterThan(2.5);
+    expect(v.m1Mid).toBeCloseTo(2.9876, 2);
+    expect(v.m1Tick).toBeCloseTo(2.952, 2);
+    expect(v.c180Mid).toBeCloseTo(2.9876, 2);
+    expect(v.c180Tick).toBeCloseTo(2.6366, 2);
+    // P0 finding (04-P0-RESULTS.md section 5): the long side 248,75 px is below the 250 px at
+    // which −1,00 reaches 3,0 px; recorded for lens-critic, not hidden by a looser bound.
+    expect(v.m1Mid).toBeLessThan(3.0);
+    expect(v.m1Tick).toBeGreaterThanOrEqual(2.5);
   });
+});
+
+// Ray counts recorded by P0 (04-P0-RESULTS.md section 8) for the item-12 frame, OD.
+const P0_RAYS = {
+  'item-12 −4,00 at 320 one-panel': { sph: -4, panel: PANEL_320, fein: 6549, mittel: 1900, grob: 1394 },
+  'item-12 +4,00 at 320 one-panel': { sph: 4, panel: PANEL_320, fein: 6421, mittel: 1900, grob: 1426 },
+  'item-12 −4,00 at largest 639 × 800': { sph: -4, panel: PANEL_LARGEST, fein: 23540, mittel: 9845, grob: 6609 },
+  'item-12 +4,00 at largest 639 × 800': { sph: 4, panel: PANEL_LARGEST, fein: 26356, mittel: 10421, grob: 7025 },
+};
+
+// Host-independent cost gate (lens-critic M2, round-2 NEW-2): runs in CI on every push; timing
+// never gates CI, the ray count does.
+describe('REF-02 ray-count gate (M2)', () => {
+  it('effectiveLeafPx(fein) ≤ effectiveLeafPx(mittel) ≤ effectiveLeafPx(grob) ≤ 2·√2; P0-fixed tiers', () => {
+    expect(REF_GRID_TIERS).toEqual({
+      fein: { cellPx: 6, leafPx: 1 },
+      mittel: { cellPx: 8, leafPx: 2 },
+      grob: { cellPx: 10, leafPx: 3 },
+    });
+    expect([effectiveLeafPx('fein'), effectiveLeafPx('mittel'), effectiveLeafPx('grob')]).toEqual([0.75, 2, 2.5]);
+    expect(effectiveLeafPx('fein')).toBeLessThanOrEqual(effectiveLeafPx('mittel'));
+    expect(effectiveLeafPx('mittel')).toBeLessThanOrEqual(effectiveLeafPx('grob'));
+    expect(effectiveLeafPx('grob')).toBeLessThanOrEqual(2 * Math.SQRT2);
+  });
+
+  for (const [name, c] of Object.entries(P0_RAYS)) {
+    it(`${name}: rays ≤ 1,1 × P0, rays(grob) ≤ rays(mittel) ≤ rays(fein), rays(grob) ≤ 0,5 · rays(fein)`, () => {
+      const { ctx } = item12(c.sph);
+      const rays = Object.fromEntries(['fein', 'mittel', 'grob'].map((t) => [t, tierGrid(ctx, c.panel, t).rays]));
+      console.info(`ray gate ${name}: ${JSON.stringify(rays)}`);
+      for (const t of ['fein', 'mittel', 'grob']) expect(rays[t], t).toBeLessThanOrEqual(1.1 * c[t]);
+      expect(rays.grob).toBeLessThanOrEqual(rays.mittel);
+      expect(rays.mittel).toBeLessThanOrEqual(rays.fein);
+      expect(rays.grob).toBeLessThanOrEqual(0.5 * rays.fein);
+    });
+  }
+});
+
+/** UI-SPEC P0 criteria 1, 2 and 4 on the 8 × 36 polar grid within tan √2 · tan(field). */
+function p0Criteria(o) {
+  const s = spec(o);
+  const lens = evaluateLens(s);
+  expect(lens.ok, 'accepted by the engine').toBe(true);
+  const ctx = prepareWarp({ surfaces: lens.surfaces, frame: s.frame, eye: s.eye });
+  const rDisc = Math.SQRT2 * TAN_FIELD;
+  const classes = new Set();
+  for (let k = 0; k <= 8; k++) {
+    for (let sp = 0; sp < (k === 0 ? 1 : 36); sp++) {
+      const a = (2 * Math.PI * sp) / 36;
+      const r = classifyDirection(ctx, ((rDisc * k) / 8) * Math.cos(a), ((rDisc * k) / 8) * Math.sin(a));
+      classes.add(r.cls);
+      // criteria 1 and 2: no back-inside ray that misses or reflects, no class-1 |tan| > 3 (both are class 3)
+      expect(r.cls).not.toBe(REF_CLASS.NO_VIEW);
+      if (r.cls === REF_CLASS.LENS) expect(Math.hypot(...r.objTan)).toBeLessThanOrEqual(OBJ_TAN_MAX);
+    }
+  }
+  // criterion 4: both principal meridians of the trace vs LensResult.magnification ≤ 0,05 pp
+  const { eig } = wearerMagnification(ctx);
+  const sm = lens.magnification.meridians.map((m) => m.sm).sort((a, b) => a - b);
+  if (sm.length === 1) sm.push(sm[0]);
+  expect(Math.abs(eig[0] - sm[0])).toBeLessThan(0.0005);
+  expect(Math.abs(eig[1] - sm[1])).toBeLessThan(0.0005);
+  return classes;
+}
+
+const ITEM12_SPEC = { frame: ITEM12_FRAME, monoPD: 40 };
+// The three G2 corner cases are the extremes of 04-P0-RESULTS.md section 1 / section 7.
+const P0_CI = [
+  ['item-12 −4,00 OD (rim in the field)', { ...ITEM12_SPEC, sph: -4 }, true],
+  ['item-12 +4,00 OD (rim in the field)', { ...ITEM12_SPEC, sph: 4 }, true],
+  ['default frame −10,00', { sph: -10 }, false],
+  ['default frame +12,00', { sph: 12 }, false],
+  [
+    'G2 corner 1: rund 40×28/14 PD 25, idx174, BC 0, −12,00 / −6,00 × 0, OD (largest class-1 |objTan|)',
+    { frame: { shape: 'rund', A: 40, B: 28, DBL: 14 }, monoPD: 25, materialId: 'idx174', baseCurve: 0, sph: -12, cyl: -6, axisDeg: 0 },
+    false,
+  ],
+  [
+    'G2 corner 2: rund 40×28/14 PD 40, cr39, BC 0, +12,00, OD (largest radial size change)',
+    { frame: { shape: 'rund', A: 40, B: 28, DBL: 14 }, monoPD: 40, baseCurve: 0, sph: 12 },
+    true,
+  ],
+  [
+    'G2 corner 3: rechteckig 62×55/24 PD 25, trivex, BC 10, +12,00, OD (largest tangential size change)',
+    { frame: { shape: 'rechteckig', A: 62, B: 55, DBL: 24 }, monoPD: 25, materialId: 'trivex', baseCurve: 10, sph: 12 },
+    null,
+  ],
+];
+
+describe('REF-01 P0 CI subset', () => {
+  for (const [name, o, rim] of P0_CI) {
+    it(`${name}: criteria 1, 2 and 4 on the 8 × 36 grid`, () => {
+      const classes = p0Criteria(o);
+      const hasRim = classes.has(2) || classes.has(4) || classes.has(5);
+      if (rim !== null) expect(hasRim).toBe(rim);
+    });
+  }
 });

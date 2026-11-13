@@ -21,16 +21,23 @@ export const REF_CLASS = Object.freeze({ LENS: 1, EDGE_BAND: 2, NO_VIEW: 3, RIM_
 /** UI-SPEC class 1 limit: an object direction with |tan| above this has no defined picture. */
 export const OBJ_TAN_MAX = 3;
 
-/** Field half-angle along the panel's longer side (deg); provisional until P0 (04-03 Task 3). */
+/**
+ * Field half-angle along the panel's longer side (deg), fixed by P0 with the production trace
+ * (.planning/phases/04-refraction-view-offline/04-P0-RESULTS.md section 1: G1 and G2 pass
+ * criteria 1, 2 and 4 at 30°, no step-down to 25° / 20° needed).
+ */
 export const FIELD_HALF_ANGLE_DEG = 30;
 
 /**
- * Grid tiers (provisional until P0, 04-03 Task 3): cell size and quadtree leaf target in CSS px.
+ * Grid tiers: cell size and quadtree leaf target in CSS px, fixed by P0 (04-P0-RESULTS.md
+ * sections 2 and 3: worst drawn edge error 0,167 / 0,281 / 0,437 px at the smallest measured
+ * scale 215,42 px per tan, ≤ 0,45 px; class boundary ≤ 1,22 px; rays(grob) ≤ rays(mittel) ≤
+ * rays(fein) and rays(grob) ≤ 0,29 · rays(fein) for the item-12 rim cases).
  * leafPx: N10 allows a 2 px class boundary; a leaf of side L gives a centre-sample boundary error
  * ≤ L·√2/2, so L ≤ 2,83 px; the quadtree halves cells, so the real leaf is effectiveLeafPx, and it
  * must not get finer on a step down (lens-critic M2, round-2 NEW-2: with grob leafPx 2 the real
  * grob leaf was 1,375 px, finer than mittel's 2 px, and cost +23 … +66 % rays in rim cases).
- * grob cell 10, not 11: lens-critic round 3 measured 0,4998 px for −10,00/−4,00×30 at cell 11.
+ * grob cell 10, not 11: P0 measured 0,5195 px at cell 11 (> 0,45) and 0,4373 px at cell 10.
  */
 export const REF_GRID_TIERS = Object.freeze({
   fein: Object.freeze({ cellPx: 6, leafPx: 1 }),
