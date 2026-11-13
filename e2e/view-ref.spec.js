@@ -33,7 +33,11 @@ test.beforeEach(({ page }) => {
   threeWarnings = noThreeWarnings(page);
 });
 test.use({ reducedMotion: 'reduce' });
-const guard = guardPage(test, { view: true });
+// 04-11: every test loads the page with ?refguardoff (the Durchblick guard measures but never
+// trips), so a slow CI runner cannot step an ordinary test down to "vereinfacht"; the 04-10
+// degradation tests keep the real guard.
+const REAL_GUARD = 'REF-02 degradation (04-10)';
+const guard = guardPage(test, { view: true, search: (info) => (info.titlePath.includes(REAL_GUARD) ? '' : '?refguardoff') });
 test.afterEach(() => {
   expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
 });
@@ -335,6 +339,14 @@ test('item 7: entering hides the tools, drops the tab stop, sets the Durchblick 
   await expect(fs).toHaveAccessibleName('3D-Ansicht im Vollbild');
   await expect(page.locator('#view-ref')).toBeHidden();
   await expect(page.locator('#view-caption')).toContainText('Visueller Eindruck');
+});
+
+test('04-11: ordinary Durchblick tests load with ?refguardoff (guard measures, never trips)', async ({ page }) => {
+  await settledView(page);
+  await refOn(page);
+  const st = await refState(page);
+  expect(st.guardOff).toBe(true);
+  expect(st.tier).toBe(st.startTier);
 });
 
 test('item 8: never an unwarped Mit Glas: first entry shows the status and no chart pixel until the warp', async ({ page }) => {
@@ -878,7 +890,7 @@ test.describe('stage visibility (M4) at 412×915', () => {
   test('item 13: off-screen: no warp job, the re-mesh and bar thumbnail run; back on screen: exactly one job', async ({ page }) => {
     test.setTimeout(120_000);
     await settledView(page);
-    await page.goto('./?thumbguardoff');
+    await page.goto('./?thumbguardoff&refguardoff');
     await settledView(page);
     await page.locator('#view-stage').scrollIntoViewIfNeeded();
     await refOn(page);
@@ -912,7 +924,7 @@ test('item 14: leaving Durchblick with a deferred re-mesh shows "3D wird aktuali
   test.skip(isMobile, 'needs the stage on screen while typing: desktop layout');
   await settledView(page);
   const gate = await holdMeshWorker(page);
-  await page.goto('./');
+  await page.goto('./?refguardoff');
   await settledView(page);
   await page.locator('#view-stage').scrollIntoViewIfNeeded();
   await refOn(page);
@@ -1340,7 +1352,7 @@ async function guardRun(page, warp, { values = ['-4,25', '-4,50'], afterValues =
   return { before, after, start, stepped, sizeBefore };
 }
 
-test.describe('REF-02 degradation (04-10)', () => {
+test.describe(REAL_GUARD, () => {
   test('forced degraded (?refdegraded): note, live text once, badge "Durchblick · vereinfacht", tech grid at the lower tier', async ({ page }) => {
     test.setTimeout(180_000);
     await settledView(page);
@@ -1383,6 +1395,7 @@ test.describe('REF-02 degradation (04-10)', () => {
     expect(st.startTier).toBe(isMobile ? 'mittel' : 'fein');
     expect(st.tier).toBe(st.startTier);
     expect(st.degraded).toBe(false);
+    expect(st.guardOff, '04-10 tests keep the real guard (no ?refguardoff)').toBe(false);
     expect(st.lastJobExcluded, 'the entry job is a warm-up sample').toBe(true);
     await expect(page.locator('#view-ref-degraded')).toBeHidden();
     await expect(page.locator('#view-ref-live')).toHaveText('');

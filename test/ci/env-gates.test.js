@@ -1,5 +1,6 @@
 // Tested artifact = deployed artifact except the gated hook (orchestrator decision 5, lens-critic M4).
-// A plan that adds a gate extends ALLOW_ENV in the same commit (04-10 adds src/ui/view/ref-mode.js).
+// A plan that adds a gate extends ALLOW_ENV in the same commit (04-10 adds src/ui/view/ref-mode.js;
+// 04-11's ?refguardoff sits inside that same ref-mode.js gate, so its expression is already listed).
 //
 // Every line in src/ (non-test .js) that mentions import.meta.env must be in an allowed file and
 // contain that file's allowed expression exactly; anything else could make dist and dist-e2e differ

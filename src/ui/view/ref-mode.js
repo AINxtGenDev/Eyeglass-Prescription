@@ -164,10 +164,17 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   const samples = [];
   /** The stage content box of the current layout (a step re-allocates the grids at this size). */
   let stageSize = { W: 0, H: 0 };
-  // UI-SPEC test hook (E8, M4): start one step down with the note shown, for axe and screenshots.
-  // The flag string exists only in non-production builds (test/dist/hooks.test.js).
+  /** Test-only (?refguardoff, read once like ?thumbguardoff): the guard measures but never trips. */
+  let guardOff = false;
+  // UI-SPEC test hooks (E8, M4). The flag strings exist only in non-production builds
+  // (test/dist/hooks.test.js):
+  // - refdegraded: start one step down with the note shown, for axe and screenshots;
+  // - refguardoff (04-11): counted samples still run through nextGuard, but its run is reset instead
+  //   of stepping, so ordinary Durchblick e2e tests cannot step down on a slow CI runner (the
+  //   guard and step-down tests load the page without it).
   if (import.meta.env.MODE !== 'production') {
     const FORCE_DEGRADED_FLAG = 'refdegraded';
+    const GUARD_OFF_FLAG = 'refguardoff';
     if (location.search.includes(FORCE_DEGRADED_FLAG)) {
       tier = refStepDown(tier);
       gridTier = tier;
@@ -175,6 +182,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       tierPath.push(tier);
       degraded = true;
     }
+    guardOff = location.search.includes(GUARD_OFF_FLAG);
   }
   const interrupt = () => {
     lastInterruptAt = performance.now();
@@ -522,7 +530,9 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       samples.push(ms);
       if (samples.length > SAMPLE_LOG) samples.shift();
       const was = guard.tier;
-      guard = nextGuard(guard, ms, { budgetMs: REF_BUDGET_MS, need: REF_SLOW_RUN, last: 'grob', down: refStepDown });
+      const next = nextGuard(guard, ms, { budgetMs: REF_BUDGET_MS, need: REF_SLOW_RUN, last: 'grob', down: refStepDown });
+      // ?refguardoff: the guard measures but never trips (the run is reset instead).
+      guard = guardOff ? { ...guard, run: 0 } : next;
       if (guard.tier !== was) stepTo(guard.tier);
     }
     writeGridTech();
@@ -664,6 +674,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       startTier,
       degraded,
       guard: { ...guard },
+      guardOff,
       samples: [...samples],
       lastSampleMs,
       sampleN,
