@@ -93,7 +93,9 @@ function closeOnEdit() {
 /** The controller's view (04-07 `ui`). */
 const ui = {
   show(bodyKey) {
-    if (laterChosen) return;
+    // The plugin can report the same waiting worker twice ('installed' as external, then
+    // 'waiting'); a second call must not reset an "Aktualisieren" in flight or a failure text.
+    if (laterChosen || mode === 'update') return;
     $('app-update-apply').textContent = t('update.apply');
     $('app-update-apply').removeAttribute('aria-disabled');
     open('update', t(bodyKey));

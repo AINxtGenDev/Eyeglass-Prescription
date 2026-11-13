@@ -8,18 +8,20 @@
 // - A test whose title contains @live must work against the live site: no switch server, no
 //   build files, no test handle.
 // - The switch-server-only tests (04-14) go into one test.describe('switch server only', …) with
-//   test.skip(LIVE, 'needs the local switch server'); 04-14 creates that describe.
+//   test.skip(LIVE, 'needs the local switch server') and test.skip(KILL, 'kill switch on').
 // - Pitfall 10: offline means context.setOffline(true) AND every request route-aborted, and the
 //   served responses are asserted to come from the service worker (fromServiceWorker()), so a
 //   cache miss fails the test instead of reaching a server.
 import { test, expect } from '@playwright/test';
-import { settled, settledView } from './helpers.js';
+import { execFileSync } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
+import { settled, settledCompare, settledView } from './helpers.js';
 import { swKillEffective } from '../sw-kill-switch.js';
+import { APP_VERSION } from '../version.js';
 import DE from '../src/i18n/de-AT.js';
-/* global window, document, location -- page.evaluate bodies run in the browser */
+/* global window, document, location, ServiceWorker, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
-// Read by the 'switch server only' describe that 04-14 adds (test.skip(LIVE, …)).
-// eslint-disable-next-line no-unused-vars -- used from 04-14 on
+// The live site has no switch server: the 'switch server only' describe is skipped there.
 const LIVE = Boolean(process.env.PWA_BASE_URL);
 // NEW-1: the same effective flag the build used. In CI the env var is never set, so KILL equals
 // SW_SELF_DESTROY; with the flag on there is no worker to test and the worker-dependent tests skip.
@@ -55,6 +57,18 @@ function recordResponses(page) {
 }
 
 const viewResponses = (seen) => seen.filter((r) => VIEW_CHUNK_RE.test(new URL(r.url()).pathname));
+
+/** Serve another build on the switch server: '/__switch/a' = dist, '/__switch/b' = dist-b (04-14). */
+async function switchTo(request, baseURL, switchPath) {
+  const r = await request.get(new URL(switchPath, baseURL).href);
+  expect(r.status(), switchPath).toBe(200);
+}
+
+// NEW-6: the switch server's served build is global state that survives a failed test, a worker
+// restart and, with a reused server, a previous run; reset to build A before the top-level tests.
+test.beforeAll(async ({ request }, testInfo) => {
+  if (!LIVE) await switchTo(request, testInfo.project.use.baseURL, '/__switch/a');
+});
 
 test('offline after one visit (item 17) @live', async ({ page, context }) => {
   test.skip(KILL, 'kill switch on');
@@ -182,4 +196,317 @@ test('CSP unchanged with the worker active (D-23) @live', async ({ page }) => {
   expect(meta).toBe(CSP);
   expect(await page.evaluate(() => window.__csp)).toEqual([]);
   expect(cspMessages).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------------------------
+// 04-14 (D-20, D-21; UI-SPEC Verification items 19–24, plan-checker warnings 3 and 4, MINOR 9):
+// the update prompt and the input handover, proven on the production build with a real second
+// version (dist-b, label 'dev-b') served by the switch server. Every test here needs the local
+// switch server and a registered worker, so the whole describe is skipped on the live site and
+// while the kill switch is on (with the flag on, update.js never registers).
+// ---------------------------------------------------------------------------------------------
+
+const HANDOVER_KEY = 'eyeglass-rx:v1:handover';
+const B_VERSION = 'dev-b';
+const doneText = (key, version = B_VERSION) => DE[key].replace('{version}', version);
+
+/** Rebuild out/ with `npm run <script>` when out/index.html is missing or older than dist/index.html. */
+function buildLazily(script, out) {
+  const stale = !existsSync(`${out}/index.html`) || statSync(`${out}/index.html`).mtimeMs < statSync('dist/index.html').mtimeMs;
+  console.log(`${out}: ${stale ? `building with npm run ${script}` : 'up to date, not rebuilt'}`);
+  if (stale) execFileSync('npm', ['run', script], { stdio: 'inherit', timeout: 180_000 });
+}
+
+/** The handover key of this tab (read in the test page, never in app code). */
+const handoverKey = (page) => page.evaluate((k) => window.sessionStorage.getItem(k), HANDOVER_KEY);
+
+/** Ask the registration for an update now (the switch server already serves build B). */
+async function checkForUpdate(page) {
+  await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r?.update()));
+}
+
+/** Wait until the update banner is shown in update mode. */
+async function bannerShown(page) {
+  await expect(page.locator('#app-update')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#app-update-apply')).toBeVisible();
+}
+
+/** Load the page on build A and wait until a worker controls it. */
+async function openOnA(page) {
+  await page.goto('./');
+  await settled(page);
+  await ready(page);
+  await expect(page.locator('#app-version')).toHaveText(APP_VERSION);
+}
+
+test.describe('switch server only', () => {
+  test.skip(LIVE, 'needs the local switch server');
+  test.skip(KILL, 'kill switch on');
+  test.describe.configure({ timeout: 180_000 });
+
+  test.beforeAll(() => {
+    // Belt and braces: a lazy build must never run in a kill or live run.
+    if (LIVE || KILL) return;
+    buildLazily('build:b', 'dist-b');
+  });
+
+  test.beforeEach(async ({ request, baseURL }) => {
+    await switchTo(request, baseURL, '/__switch/a');
+  });
+
+  test('item 19: banner, keyboard route, handover after "Aktualisieren"', async ({ page, request, baseURL }) => {
+    await page.setViewportSize({ width: 412, height: 915 });
+    await openOnA(page);
+    await page.locator('#rx-od-sph').fill('-3,25');
+    await page.locator('#rx-os-sph').fill('-2,75');
+    await settled(page);
+    // A non-field control at the top: the bar shows (the result is out of view) and the banner
+    // is not hidden for typing.
+    await page.locator('#expert').focus();
+    await page.evaluate(() => window.scrollTo(0, 0));
+
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await expect(page.locator('#expert'), 'the banner does not take focus').toBeFocused();
+    await expect(page.getByRole('region', { name: 'Hinweis zur neuen Version' })).toBeVisible();
+    await expect(page.locator('#app-update-body')).toHaveText(DE['update.body']);
+    await expect(page.locator('#app-update-live')).toContainText(DE['update.title']);
+    // First in the Tab order: the first tabbable element of the document is "Aktualisieren", and
+    // Shift+Tab from the header's switch goes back through "Später" to "Aktualisieren".
+    const firstTabbable = await page.evaluate(() => {
+      const all = [...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')];
+      const el = all.find((e) => e.tabIndex >= 0 && !e.disabled && e.getClientRects().length > 0);
+      return el?.id ?? null;
+    });
+    expect(firstTabbable).toBe('app-update-apply');
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('#app-update-later')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('#app-update-apply')).toBeFocused();
+    // Never on the summary bar (412 × 915, bar shown).
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    const [banner, bar] = await Promise.all([page.locator('#app-update').boundingBox(), page.locator('#summary-bar').boundingBox()]);
+    expect(banner.y + banner.height, 'banner bottom above the bar top').toBeLessThanOrEqual(bar.y);
+    await page.screenshot({ path: test.info().outputPath('04-14-banner-412x915.png') });
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await settled(page);
+    await expect(page.locator('#rx-od-sph')).toHaveValue('-3,25');
+    await expect(page.locator('#rx-os-sph')).toHaveValue('-2,75');
+    await expect(page.locator('#result-od-thick')).toHaveText(/^\d+,\d\smm$/);
+    expect(await handoverKey(page)).toBeNull();
+    await expect(page.locator('#app-update-body')).toHaveText(doneText('update.done'));
+    await expect(page.locator('#app-update-close')).toBeVisible();
+    await expect(page.locator('#app-update-apply')).toBeHidden();
+    await expect(page.locator('#app-update-live')).toHaveText(doneText('update.done'));
+    await page.screenshot({ path: test.info().outputPath('04-14-confirmation-412x915.png') });
+    // The confirmation hides on the first input edit.
+    await page.locator('#rx-od-sph').fill('-3,5');
+    await expect(page.locator('#app-update')).toBeHidden();
+  });
+
+  // N8: nothing is asserted about page D's banner; only the outcomes.
+  test('item 20: four pages, "Aktualisieren" in A reloads all with their own inputs', async ({ context, request, baseURL }) => {
+    const pageD = await context.newPage();
+    await openOnA(pageD);
+    await switchTo(request, baseURL, '/__switch/b');
+    const pageA = await context.newPage();
+    const pageB = await context.newPage();
+    const pageC = await context.newPage();
+    for (const p of [pageA, pageB, pageC]) {
+      await p.goto('./');
+      await settled(p);
+    }
+    await checkForUpdate(pageA);
+    for (const p of [pageA, pageB, pageC]) await bannerShown(p);
+    await pageC.locator('#app-update-later').click();
+    await expect(pageC.locator('#app-update')).toBeHidden();
+    const rx = new Map([
+      [pageA, '-2,25'],
+      [pageB, '-3,5'],
+      [pageC, '-4,75'],
+      [pageD, '-1,25'],
+    ]);
+    for (const [p, v] of rx) {
+      await p.locator('#rx-od-sph').fill(v);
+      await settled(p);
+    }
+
+    await pageA.locator('#app-update-apply').click();
+    for (const [p, v] of rx) {
+      await expect(p.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+      await settled(p);
+      await expect(p.locator('#rx-od-sph')).toHaveValue(v);
+      expect(await handoverKey(p)).toBeNull();
+    }
+    await expect(pageA.locator('#app-update-body')).toHaveText(doneText('update.done'));
+    for (const p of [pageB, pageC, pageD]) await expect(p.locator('#app-update-body')).toHaveText(doneText('update.done.other'));
+  });
+
+  test('item 20b: a first-visit page reloads too and loads its lazy chunks', async ({ context, request, baseURL }) => {
+    // The first page installs the worker (clientsClaim makes it controlled without a reload).
+    const first = await context.newPage();
+    await first.goto('./');
+    await settled(first);
+    await ready(first);
+    const other = await context.newPage();
+    await openOnA(other);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(other);
+    await bannerShown(other);
+
+    const seen = recordResponses(first);
+    await other.locator('#app-update-apply').click();
+    await expect(other.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await expect(first.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await settledView(first, { timeout: 60_000 });
+    await expect(first.locator('#view-stage')).not.toContainText(VIEW_LOAD_FAILED);
+    await expect(first.locator('#view-canvas')).toBeVisible();
+    const view = viewResponses(seen);
+    expect(view.length, 'the 3D chunk was requested after the reload').toBeGreaterThan(0);
+    for (const r of view) expect(r.status(), r.url()).toBe(200);
+  });
+
+  test('item 21: "Später" hides for this page only, stores nothing', async ({ page, request, baseURL }) => {
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    const lengths = () => page.evaluate(() => [window.sessionStorage.length, window.localStorage.length]);
+    const before = await lengths();
+    await page.locator('#app-update-later').click();
+    await expect(page.locator('#app-update')).toBeHidden();
+    expect(await page.evaluate(() => document.activeElement !== document.body && document.activeElement !== null)).toBe(true);
+    expect(await lengths()).toEqual(before);
+    await page.reload();
+    await settled(page);
+    await expect(page.locator('#app-version')).toHaveText(APP_VERSION);
+    await bannerShown(page);
+  });
+
+  test('item 22: hidden while a field has focus on a phone', async ({ page, request, baseURL }) => {
+    await page.setViewportSize({ width: 412, height: 915 });
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await page.locator('#rx-od-sph').focus();
+    await expect(page.locator('#app-update')).toBeHidden();
+    await page.screenshot({ path: test.info().outputPath('04-14-typing-412x915.png') });
+    await page.locator('.tip-btn').first().focus();
+    await expect(page.locator('#app-update')).toBeVisible();
+  });
+
+  test('item 23: no activation within 10 s → button back, update.failed, nothing written', async ({ page, request, baseURL }) => {
+    await page.addInitScript(() => {
+      const post = ServiceWorker.prototype.postMessage;
+      ServiceWorker.prototype.postMessage = function (msg, ...rest) {
+        if (msg && msg.type === 'SKIP_WAITING') return undefined;
+        return post.call(this, msg, ...rest);
+      };
+    });
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    const apply = page.locator('#app-update-apply');
+    await apply.click();
+    await expect(apply).toHaveText(DE['update.applying']);
+    await expect(apply).toBeDisabled();
+    await expect(apply).toBeEnabled({ timeout: 15_000 });
+    await expect(apply).toHaveText(DE['update.apply']);
+    await expect(page.locator('#app-update-body')).toHaveText(DE['update.failed']);
+    await expect(page.locator('#app-update-live')).toHaveText(DE['update.failed']);
+    expect(await handoverKey(page)).toBeNull();
+    await expect(page.locator('#app-version')).toHaveText(APP_VERSION);
+  });
+
+  test('item 24a: storage blocked before the banner → reset wording', async ({ page, request, baseURL }) => {
+    await page.addInitScript(() => {
+      window.Storage.prototype.setItem = () => {
+        throw new window.DOMException('blocked', 'SecurityError');
+      };
+    });
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await expect(page.locator('#app-update-body')).toHaveText(DE['update.body.reset']);
+  });
+
+  test('item 24b: storage blocked after the banner → warn first, second click reloads', async ({ page, request, baseURL }) => {
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await expect(page.locator('#app-update-body')).toHaveText(DE['update.body']);
+    await page.evaluate(() => {
+      window.__sameDocument = true;
+      window.Storage.prototype.setItem = () => {
+        throw new window.DOMException('blocked', 'SecurityError');
+      };
+    });
+    const apply = page.locator('#app-update-apply');
+    await apply.click();
+    await expect(page.locator('#app-update-body')).toHaveText(DE['update.body.reset']);
+    await expect(page.locator('#app-update-live')).toHaveText(DE['update.body.reset']);
+    await expect(apply).toBeEnabled();
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => window.__sameDocument === true), 'the first click did not reload').toBe(true);
+    await expect(page.locator('#app-version')).toHaveText(APP_VERSION);
+
+    await apply.click();
+    await expect(page.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await settled(page);
+    // No key was written (setItem threw), so no confirmation.
+    expect(await handoverKey(page)).toBeNull();
+    await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 500))));
+    await expect(page.locator('#app-update')).toBeHidden();
+  });
+
+  // 04-07 carry-over: a comparison is restored (focus on #cmp-diff, as on a click) and an
+  // estimated lens height B keeps its "geschätzt" note.
+  test('handover keeps a comparison and the B estimate', async ({ page, request, baseURL }) => {
+    await openOnA(page);
+    await page.locator('#cmp-start').click();
+    await settledCompare(page);
+    await expect(page.locator('#cmp-active')).toBeVisible();
+    await page.locator('#frame-a').fill('50');
+    await settledCompare(page);
+    const estimated = new RegExp(DE['frame.bEstimated'].replace('{B}', '.+'));
+    await expect(page.locator('#frame-b-echo')).toHaveText(estimated);
+    const bText = await page.locator('#frame-b-echo').textContent();
+    await page.locator('#expert').focus();
+
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await page.locator('#app-update-apply').click();
+    await expect(page.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await settledCompare(page);
+    await expect(page.locator('#cmp-active')).toBeVisible();
+    await expect(page.locator('#cmp-diff')).toBeFocused();
+    await expect(page.locator('#frame-a')).toHaveValue('50');
+    await expect(page.locator('#frame-b-echo')).toHaveText(bText ?? '');
+    await expect(page.locator('#app-update-body')).toHaveText(doneText('update.done'));
+  });
+
+  // 04-07 carry-over: formValid() goes into the snapshot, so an input that was already invalid
+  // at the update is restored as typed and not reported as lost.
+  test('handover of a half-typed invalid input is not reported as lost', async ({ page, request, baseURL }) => {
+    await openOnA(page);
+    await page.locator('#rx-od-cyl').fill('abc');
+    await settled(page);
+    await page.locator('#expert').focus();
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await page.locator('#app-update-apply').click();
+    await expect(page.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await settled(page);
+    await expect(page.locator('#rx-od-cyl')).toHaveValue('abc');
+    await expect(page.locator('#app-update-body')).toHaveText(doneText('update.done'));
+  });
 });

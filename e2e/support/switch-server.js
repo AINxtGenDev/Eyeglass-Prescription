@@ -6,13 +6,18 @@
 //   SWITCH_ROOT  directory to serve, default dist (the production build, the deployed artifact)
 // Every response carries Cache-Control: no-cache, so the browser always revalidates (update checks
 // see a swapped build at once). A path that resolves outside the served root is a 404 (T-04-25).
+// 04-14: GET /__switch/<name> swaps the served root (200 'ok'): a = dist (always restores the
+// production build, whatever is served now), b = dist-b (`npm run build:b`). Unknown names are a
+// 404. These paths are outside the base and exist only in this test server.
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 const PORT = Number(process.env.SWITCH_PORT ?? 4175);
-const ROOT = path.resolve(process.env.SWITCH_ROOT ?? 'dist');
+let ROOT = path.resolve(process.env.SWITCH_ROOT ?? 'dist');
 const BASE = '/Eyeglass-Prescription/';
+const SWITCH = '/__switch/';
+const ROOTS = { a: 'dist', b: 'dist-b' };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -47,6 +52,17 @@ function resolveFile(urlPath) {
 
 const server = http.createServer(async (req, res) => {
   const urlPath = new URL(req.url ?? '/', 'http://localhost').pathname;
+  if (urlPath.startsWith(SWITCH)) {
+    const name = urlPath.slice(SWITCH.length);
+    if (!Object.hasOwn(ROOTS, name)) {
+      send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found');
+      return;
+    }
+    ROOT = path.resolve(ROOTS[name]);
+    console.log(`switch server: now serving ${ROOT}`);
+    send(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' }, 'ok');
+    return;
+  }
   if (urlPath === '/' || urlPath === BASE.slice(0, -1)) {
     send(res, 302, { Location: BASE }, '');
     return;

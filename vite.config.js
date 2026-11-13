@@ -13,6 +13,10 @@ const commit = (process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
 // Build date (ISO 8601, UTC) shown next to the version in the footer.
 const buildDate = new Date().toISOString().slice(0, 10);
 
+// 04-14: only the test build B (`npm run build:b`) sets this override, so the update e2e
+// sees a second version label; e2e/smoke.spec.js asserts the real label on every normal build.
+const appVersion = process.env.APP_VERSION_OVERRIDE ?? APP_VERSION;
+
 // The commit must be in index.html itself (verify-live greps the HTML),
 // so it is injected into the page, not only defined in the JS bundle.
 const appMeta = {
@@ -21,7 +25,7 @@ const appMeta = {
     return html
       .replaceAll('%APP_COMMIT%', commit)
       .replaceAll('%APP_DATE%', buildDate)
-      .replaceAll('%APP_VERSION%', APP_VERSION);
+      .replaceAll('%APP_VERSION%', appVersion);
   },
 };
 

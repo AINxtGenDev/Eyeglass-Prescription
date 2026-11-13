@@ -2,6 +2,7 @@ references/
 node_modules/
 /dist/
 /dist-e2e/
+/dist-b/
 coverage/
 test-results/
 playwright-report/
