@@ -328,21 +328,27 @@ test('sync fallback: the comparison runs only after "Vergleich berechnen"', asyn
   await expect(run).toBeHidden();
 });
 
-test('no "rechnet …" for a normal edit', async ({ page }) => {
-  await page.goto('./');
-  await settled(page);
-  await page.evaluate(() => {
-    window.__statusSeen = [];
-    const el = document.getElementById('result-od-status');
-    new MutationObserver(() => window.__statusSeen.push(el.textContent)).observe(el, {
-      childList: true,
-      characterData: true,
-      subtree: true,
+// F-01 (lens-critic m1): this asserts something that must never happen, so a pass only on the CI
+// retry must fail the run instead of being hidden as "flaky".
+test.describe('never-happens race (F-01)', () => {
+  test.describe.configure({ retries: 0 });
+
+  test('no "rechnet …" for a normal edit', async ({ page }) => {
+    await page.goto('./');
+    await settled(page);
+    await page.evaluate(() => {
+      window.__statusSeen = [];
+      const el = document.getElementById('result-od-status');
+      new MutationObserver(() => window.__statusSeen.push(el.textContent)).observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
     });
+    for (const v of ['-1', '-2,5', '-3', '-4', '-2']) await etAt(page, v);
+    const seen = await page.evaluate(() => window.__statusSeen);
+    expect(seen).not.toContain('rechnet …');
   });
-  for (const v of ['-1', '-2,5', '-3', '-4', '-2']) await etAt(page, v);
-  const seen = await page.evaluate(() => window.__statusSeen);
-  expect(seen).not.toContain('rechnet …');
 });
 
 test('worker failure shows a German message, never NaN', async ({ page }) => {
