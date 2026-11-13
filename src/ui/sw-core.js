@@ -102,6 +102,8 @@ export function createUpdateController({ updateSW, probe, snapshot, write, reloa
   let warned = false;
   let reloading = false;
   let timer = null;
+  /** show() ran once for this page. */
+  let shown = false;
 
   /**
    * The single reload path, idempotent per page: write this tab's inputs, then reload in the same
@@ -123,6 +125,11 @@ export function createUpdateController({ updateSW, probe, snapshot, write, reloa
 
   return {
     show() {
+      // The plugin can report the same waiting worker twice, and update.js ignores the repeat on
+      // screen. The first report decides; a repeat must not set `warned` without the reset text
+      // being shown, or the click would reload without the warning. apply() probes again anyway.
+      if (shown) return;
+      shown = true;
       warned = !probe();
       ui.show(warned ? 'update.body.reset' : 'update.body');
     },

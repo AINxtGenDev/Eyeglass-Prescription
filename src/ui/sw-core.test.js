@@ -277,6 +277,17 @@ describe('createUpdateController (D-20, MINOR 9)', () => {
     expect(deps.updateSW).toHaveBeenCalledTimes(1);
   });
 
+  it('the plugin reporting the same waiting worker twice: the repeat changes nothing, the click still warns when storage broke in between (wave-7 race)', () => {
+    // show() #1 probe ok, show() #2 (repeat) would probe failed, apply() probe failed.
+    const { ctrl, deps, log } = setupController({ probeResults: [true, false, false, false] });
+    ctrl.show();
+    ctrl.show();
+    expect(log.filter((c) => c[0] === 'show')).toEqual([['show', 'update.body']]);
+    ctrl.apply();
+    expect(deps.updateSW).not.toHaveBeenCalled();
+    expect(log.at(-1)).toEqual(['body', 'update.body.reset', true]);
+  });
+
   it('a second click while applying does nothing', () => {
     const { ctrl, deps, tm } = setupController();
     ctrl.show();
