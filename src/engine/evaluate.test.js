@@ -830,3 +830,25 @@ describe('customMaterial (02-12, MAT-06): user-supplied ne, density, νe', () =>
     expect(evaluateLens(spec({ customMaterial: null }))).toEqual(evaluateLens(spec()));
   });
 });
+
+describe('REF-01 LensResult.magnification (04-01)', () => {
+  const finiteDeep = (v) => (typeof v === 'number' ? Number.isFinite(v) : v == null ? true : Object.values(v).every(finiteDeep));
+  it('an ok result carries magnification with finite numbers (h = 15 mm)', () => {
+    for (const o of [{}, { sph: 4 }, { sph: -2, cyl: -2, axisDeg: 30 }, { eye: 'OS', sph: 6, cyl: -1, axisDeg: 0 }]) {
+      const r = evaluateLens(spec(o));
+      expect(r.ok).toBe(true);
+      expect(r.magnification.hMm).toBe(15);
+      expect(r.magnification.meridians.length).toBe(o.cyl ? 2 : 1);
+      expect(finiteDeep(r.magnification)).toBe(true);
+      for (const m of r.magnification.meridians) expect(m.sm).toBeGreaterThan(0);
+    }
+  });
+  it('a failing result has magnification: null', () => {
+    const invalid = evaluateLens(spec({ eye: 'XX' }));
+    expect(invalid.ok).toBe(false);
+    expect(invalid.magnification).toBeNull();
+    const rejected = evaluateLens(spec({ cyl: 1 }));
+    expect(rejected.ok).toBe(false);
+    expect(rejected.magnification).toBeNull();
+  });
+});
