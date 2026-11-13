@@ -78,4 +78,13 @@ describe('npm pins', () => {
   test('@vitest/coverage-v8 equals the vitest version', () => {
     expect(deps['@vitest/coverage-v8']).toBe(deps.vitest);
   });
+
+  // D-18: the offline build plugin and its Workbox peers, legitimacy-checked (slopcheck [OK],
+  // no install scripts) in the RESEARCH audit 2026-11-13. Changing a pin needs a new check.
+  test('vite-plugin-pwa 2.0.0, workbox-build 7.4.1 and workbox-window 7.4.1 are dev pins', () => {
+    const dev = pkg.devDependencies ?? {};
+    expect(dev['vite-plugin-pwa']).toBe('2.0.0');
+    expect(dev['workbox-build']).toBe('7.4.1');
+    expect(dev['workbox-window']).toBe('7.4.1');
+  });
 });
