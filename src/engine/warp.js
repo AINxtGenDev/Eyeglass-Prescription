@@ -145,3 +145,123 @@ export function classifyDirection(ctx, wTanX, wTanY) {
   if (!(fin(ox) && fin(oy)) || Math.hypot(ox, oy) > OBJ_TAN_MAX) return NO_VIEW;
   return { cls: REF_CLASS.LENS, objTan: [ox, oy] };
 }
+
+const LEAF_FLOATS = 6;
+const LEAF_START = 1024;
+
+/**
+ * Warp grid of one panel (D-12): a regular grid of eye directions, uniform in eye tan, with the
+ * traced object direction and the class of every grid point, plus quadtree leaves for every cell
+ * whose four corners do not share a class. Panel px: origin at the panel's lower-left corner,
+ * +x right, +y up; the panel centre is wearer tan (0, 0); tan = (px − size/2) / pxPerTan.
+ * @param {object} ctx from prepareWarp
+ * @param {{ wPx: number, hPx: number, pxPerTan: number }} panel CSS px and the scale
+ * @param {number} cellPx largest cell side; nx = ceil(wPx / cellPx), cellX = wPx / nx (same for y)
+ * @param {{ leafPx?: number }} [opts] leaf target; mixed cells are halved until the leaf ≤ leafPx
+ * @returns {{ ok: true, nx: number, ny: number, cellX: number, cellY: number,
+ *   uv: Float32Array, cls: Uint8Array, leaves: Float32Array, leafCount: number, rays: number,
+ *   rimInField: boolean, pastRimInField: boolean, noViewInField: boolean, maxObjTan: number }
+ *   | { ok: false, code: string }}
+ *   uv: wearer object tan per grid point, row-major from the bottom row, (nx + 1)·(ny + 1) points
+ *   (0, 0 for classes 2–4); cls: class per grid point; leaves: [x0, y0, size, cls, u, v] per leaf,
+ *   x0/y0 = lower-left corner in panel px, size = leaf width px (leaf height = size · cellY / cellX),
+ *   cls/u/v from the leaf's centre ray; rays = classifyDirection calls (grid points + leaf
+ *   centres), the host-independent cost measure (lens-critic M2); maxObjTan = max class-1 |objTan|
+ */
+export function warpGrid(ctx, panel, cellPx, { leafPx = 1 } = {}) {
+  if (ctx?.ok !== true) return ctx?.ok === false ? ctx : failure('INVALID_CTX');
+  const { wPx, hPx, pxPerTan: P } = panel ?? {};
+  if (!(fin(wPx) && fin(hPx) && fin(P) && wPx > 0 && hPx > 0 && P > 0)) return failure('INVALID_PANEL');
+  if (!(fin(cellPx) && cellPx > 0 && fin(leafPx) && leafPx > 0)) return failure('INVALID_CELL');
+
+  const nx = Math.ceil(wPx / cellPx);
+  const ny = Math.ceil(hPx / cellPx);
+  const cellX = wPx / nx;
+  const cellY = hPx / ny;
+  const stride = nx + 1;
+  const uv = new Float32Array(2 * stride * (ny + 1));
+  const cls = new Uint8Array(stride * (ny + 1));
+  let leaves = new Float32Array(LEAF_FLOATS * LEAF_START);
+  let leafCount = 0;
+  let rays = 0;
+  let maxObjTan = 0;
+  const seen = [false, false, false, false, false, false];
+
+  // One sample: classify, fold in the finite check and the flags, write class and uv.
+  const sample = (x, y, out, o) => {
+    rays++;
+    const r = classifyDirection(ctx, (x - wPx / 2) / P, (y - hPx / 2) / P);
+    let c = r.cls;
+    let u = 0;
+    let v = 0;
+    if (r.objTan !== null) {
+      u = r.objTan[0];
+      v = r.objTan[1];
+      if (!(fin(u) && fin(v))) {
+        c = REF_CLASS.NO_VIEW;
+        u = 0;
+        v = 0;
+      } else if (c === REF_CLASS.LENS) {
+        const m = Math.hypot(u, v);
+        if (m > maxObjTan) maxObjTan = m;
+      }
+    }
+    seen[c] = true;
+    out[o] = u;
+    out[o + 1] = v;
+    return c;
+  };
+
+  for (let j = 0; j <= ny; j++) {
+    for (let i = 0; i <= nx; i++) {
+      const k = j * stride + i;
+      cls[k] = sample(i * cellX, j * cellY, uv, 2 * k);
+    }
+  }
+
+  // Mixed cells: split to the full quadtree depth (each halving step on both axes) so every leaf
+  // is ≤ effectiveLeafPx; each leaf carries its centre ray.
+  const m = 2 ** Math.max(0, Math.ceil(Math.log2(cellPx / leafPx)));
+  const lw = cellX / m;
+  const lh = cellY / m;
+  for (let j = 0; j < ny; j++) {
+    for (let i = 0; i < nx; i++) {
+      const k = j * stride + i;
+      const c0 = cls[k];
+      if (cls[k + 1] === c0 && cls[k + stride] === c0 && cls[k + stride + 1] === c0) continue;
+      for (let b = 0; b < m; b++) {
+        for (let a = 0; a < m; a++) {
+          if (LEAF_FLOATS * (leafCount + 1) > leaves.length) {
+            const grown = new Float32Array(2 * leaves.length);
+            grown.set(leaves);
+            leaves = grown;
+          }
+          const o = LEAF_FLOATS * leafCount++;
+          const x0 = i * cellX + a * lw;
+          const y0 = j * cellY + b * lh;
+          leaves[o] = x0;
+          leaves[o + 1] = y0;
+          leaves[o + 2] = lw;
+          leaves[o + 3] = sample(x0 + lw / 2, y0 + lh / 2, leaves, o + 4);
+        }
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    nx,
+    ny,
+    cellX,
+    cellY,
+    uv,
+    cls,
+    leaves: leaves.subarray(0, LEAF_FLOATS * leafCount),
+    leafCount,
+    rays,
+    rimInField: seen[REF_CLASS.EDGE_BAND] || seen[REF_CLASS.RIM_FACE],
+    pastRimInField: seen[REF_CLASS.PAST_RIM],
+    noViewInField: seen[REF_CLASS.NO_VIEW],
+    maxObjTan,
+  };
+}
