@@ -3,6 +3,7 @@ node_modules/
 /dist/
 /dist-e2e/
 /dist-b/
+/dist-kill/
 coverage/
 test-results/
 playwright-report/

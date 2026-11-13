@@ -123,7 +123,21 @@ export default defineConfig({
       // projects (Eyeglass-Prescription, interior-design, simplify_llm, testing, workflow; gh api
       // 2026-11-13); their cached data could be cleared. Whether the four siblings use Cache
       // Storage: checked read-only in 04-14 Task 3, result recorded on the next line.
-      // Sibling Cache Storage use: not checked yet (04-14 Task 3).
+      // Siblings checked 2026-11-13 (read-only GET of the published files, 04-14; grep for
+      // serviceWorker, sw.js, manifest, workbox, caches.open/keys, CacheStorage):
+      //   simplify_llm: https://ainxtgendev.github.io/simplify_llm/ (200), index.html and its one
+      //     script assets/index-DHSxdNom.js: no match; sw.js 404, manifest 404 → no worker, no
+      //     Cache Storage use found.
+      //   testing: https://ainxtgendev.github.io/testing/ (200), index.html (incl. its inline
+      //     script) and power_calc.js: no match; sw.js 404 → no worker, no Cache Storage use found.
+      //   interior-design: https://ainxtgendev.github.io/interior-design/ → 301 to its custom
+      //     domain its custom domain (Pages cname), a different origin: outside the blast
+      //     radius (it has a manifest.webmanifest, but sw.js 404 and no match in its HTML or its
+      //     10 referenced chunks).
+      //   workflow: no repo and no Pages site (gh api repos/AINxtGenDev/workflow 404,
+      //     https://ainxtgendev.github.io/workflow/ 404).
+      // So today a kill deploy clears only our own caches on this origin; re-check before a real
+      // kill deploy, because a sibling can add a worker at any time.
       selfDestroying: SW_KILL,
     }),
   ],

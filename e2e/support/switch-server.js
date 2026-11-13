@@ -7,8 +7,9 @@
 // Every response carries Cache-Control: no-cache, so the browser always revalidates (update checks
 // see a swapped build at once). A path that resolves outside the served root is a 404 (T-04-25).
 // 04-14: GET /__switch/<name> swaps the served root (200 'ok'): a = dist (always restores the
-// production build, whatever is served now), b = dist-b (`npm run build:b`). Unknown names are a
-// 404. These paths are outside the base and exist only in this test server.
+// production build, whatever is served now), b = dist-b (`npm run build:b`), kill = dist-kill
+// (`npm run build:kill`, the kill-switch rehearsal). Unknown names are a 404. These paths are
+// outside the base and exist only in this test server.
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,7 +18,7 @@ const PORT = Number(process.env.SWITCH_PORT ?? 4175);
 let ROOT = path.resolve(process.env.SWITCH_ROOT ?? 'dist');
 const BASE = '/Eyeglass-Prescription/';
 const SWITCH = '/__switch/';
-const ROOTS = { a: 'dist', b: 'dist-b' };
+const ROOTS = { a: 'dist', b: 'dist-b', kill: 'dist-kill' };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

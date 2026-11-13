@@ -17,6 +17,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { settled, settledCompare, settledView } from './helpers.js';
 import { swKillEffective } from '../sw-kill-switch.js';
+import { checkDestroyerSw } from '../test/dist/sw-shape.js';
 import { APP_VERSION } from '../version.js';
 import DE from '../src/i18n/de-AT.js';
 /* global window, document, location, ServiceWorker, requestAnimationFrame -- page.evaluate bodies run in the browser */
@@ -198,6 +199,33 @@ test('CSP unchanged with the worker active (D-23) @live', async ({ page }) => {
   expect(cspMessages).toEqual([]);
 });
 
+// lens-critic M1 / round-2 NEW-1 fix 4: the check for a real kill deploy (verify-live runs it).
+// A fresh browser context has no old worker, so this test proves only the deployed sw.js shape
+// and that the app does not register; it does NOT prove removal for returning visitors. Removal
+// is proven by the local rehearsal ('kill switch rehearsal' below) and, for a real kill deploy, by
+// the manual check (5) of the KILL SWITCH comment in a browser profile that has the old worker
+// installed.
+test('kill switch active @live', async ({ page }) => {
+  test.skip(!KILL, 'kill switch off');
+  await page.goto('./');
+  await settled(page);
+  await page.reload();
+  await settled(page);
+  await expect(page.locator('#tech-offline')).toHaveText(DE['tech.offline.failed'], { timeout: 30_000 });
+  // Time for a registration that should not happen (the gate starts update.js after the paint).
+  await page.waitForTimeout(3_000);
+  const state = await page.evaluate(async () => ({
+    registrations: (await navigator.serviceWorker.getRegistrations()).length,
+    caches: await window.caches.keys(),
+    sw: await (await fetch('sw.js', { cache: 'no-store' })).text(),
+  }));
+  expect(state.registrations).toBe(0);
+  expect(state.caches.filter((n) => n.includes('eyeglass-rx'))).toEqual([]);
+  expect(state.sw).not.toContain('precacheAndRoute');
+  expect(state.sw).toContain('caches.keys');
+  expect(state.sw).toContain('unregister');
+});
+
 // ---------------------------------------------------------------------------------------------
 // 04-14 (D-20, D-21; UI-SPEC Verification items 19–24, plan-checker warnings 3 and 4, MINOR 9):
 // the update prompt and the input handover, proven on the production build with a real second
@@ -237,6 +265,35 @@ async function openOnA(page) {
   await settled(page);
   await ready(page);
   await expect(page.locator('#app-version')).toHaveText(APP_VERSION);
+}
+
+/**
+ * page.reload() that tolerates a navigation the page or the worker starts meanwhile (the
+ * destroyer's client.navigate, a controllerchange reload): wait for that load, then retry.
+ */
+async function reloadTolerant(page) {
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      await page.reload();
+      return;
+    } catch (e) {
+      console.log(`kill rehearsal: reload interrupted (${String(e.message).split('\n')[0]}), retrying`);
+      await page.waitForLoadState('load').catch(() => {});
+      await page.waitForTimeout(500);
+    }
+  }
+  throw new Error('page.reload failed 3 times');
+}
+
+/** True once no worker controls the page, polled across navigations; false after ms. */
+async function uncontrolledWithin(page, ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const controlled = await page.evaluate(() => navigator.serviceWorker.controller !== null).catch(() => true);
+    if (!controlled) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
 }
 
 test.describe('switch server only', () => {
@@ -508,5 +565,70 @@ test.describe('switch server only', () => {
     await settled(page);
     await expect(page.locator('#rx-od-cyl')).toHaveValue('abc');
     await expect(page.locator('#app-update-body')).toHaveText(doneText('update.done'));
+  });
+
+  // lens-critic M1: the kill switch rehearsed both ways. The switch server's build A runs with the
+  // flag off; dist-kill is built with SW_KILL_REHEARSAL=1, which goes through the same
+  // swKillEffective → SW_KILL → selfDestroying + __SW_KILL__ path as the real constant (round-2
+  // NEW-1 fix 1), so this exercises production's destroyer worker AND production's
+  // no-registration app code.
+  test('kill switch rehearsal: kill and re-enable (M1)', async ({ page, request, baseURL }) => {
+    test.setTimeout(240_000);
+    buildLazily('build:kill', 'dist-kill');
+    expect(checkDestroyerSw('dist-kill'), 'dist-kill/sw.js is the destroyer').toEqual([]);
+
+    // (a) Build A installed, its caches present, plus a stand-in for a sibling project's cache.
+    await openOnA(page);
+    const cachesNow = () => page.evaluate(() => window.caches.keys());
+    const registrations = () => page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length));
+    expect((await cachesNow()).some((n) => n.includes('eyeglass-rx')), 'eyeglass-rx caches before the kill').toBe(true);
+    await page.evaluate(() => window.caches.open('sibling-probe'));
+    const before = await cachesNow();
+    console.log(`kill rehearsal: caches before the kill: ${JSON.stringify(before)}`);
+    expect(before).toContain('sibling-probe');
+
+    // (b) Kill: count main-frame navigations from here.
+    await switchTo(request, baseURL, '/__switch/kill');
+    let navigations = 0;
+    page.on('framenavigated', (f) => {
+      if (f === page.mainFrame()) navigations += 1;
+    });
+    await reloadTolerant(page);
+    if (!(await uncontrolledWithin(page, 5_000))) console.log('kill rehearsal: still controlled 5 s after the first reload');
+    await reloadTolerant(page);
+    await settled(page);
+    const navCount = navigations;
+    console.log(`kill rehearsal: navigations from /__switch/kill to the second reload: ${navCount}`);
+    // ≤ 4: the two test reloads plus at most two destroyer navigations; the first reload is still
+    // served from build A's precache, whose update.js registers, so one more destroyer cycle is
+    // possible; from the second load on dist-kill's update.js does not register (no loop).
+    expect(navCount).toBeLessThanOrEqual(4);
+    // dist-kill's update.js took the __SW_KILL__ no-registration branch.
+    await expect(page.locator('#tech-offline')).toHaveText(DE['tech.offline.failed'], { timeout: 30_000 });
+    await expect.poll(registrations, { timeout: 15_000 }).toBe(0);
+    await expect.poll(cachesNow, { timeout: 15_000 }).toEqual([]);
+    console.log(`kill rehearsal: registrations ${await registrations()}, caches after the kill: ${JSON.stringify(await cachesNow())}`);
+    await reloadTolerant(page);
+    await settled(page);
+    await expect(page.locator('#tech-offline')).toHaveText(DE['tech.offline.failed'], { timeout: 30_000 });
+    // Give a stray registration time to appear before asserting it does not.
+    await page.waitForTimeout(3_000);
+    expect(await registrations(), 'still no registration after one more reload').toBe(0);
+    expect(await cachesNow(), 'the sibling-probe cache is gone too: the blast radius').toEqual([]);
+
+    // (c) Re-enable: build A again registers, precaches and works offline.
+    await switchTo(request, baseURL, '/__switch/a');
+    await page.reload();
+    await settled(page);
+    await ready(page);
+    const scope = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope ?? null);
+    expect(scope).toBe(new URL('/Eyeglass-Prescription/', baseURL).href);
+    expect((await cachesNow()).some((n) => n.includes('eyeglass-rx')), 'precached again').toBe(true);
+    await goOffline(page.context());
+    const nav = await page.reload();
+    expect(nav?.fromServiceWorker(), 'offline reload served by the worker after re-enable').toBe(true);
+    await settled(page);
+    await expect(page.locator('#tech-offline')).toHaveText(READY, { timeout: 30_000 });
+    console.log('kill rehearsal: re-enabled, offline reload served by the worker');
   });
 });
