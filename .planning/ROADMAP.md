@@ -342,7 +342,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 04-10-PLAN.md — Grid start tiers, measured degradation with visible note, tech lines, thumbnail guard on nextGuard, 4× throttled proxy
+- [x] 04-10-PLAN.md — Grid start tiers, measured degradation with visible note, tech lines, thumbnail guard on nextGuard, 4× throttled proxy
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 10/15 | In Progress|  |
+| 4. Refraction View & Offline | 11/15 | In Progress|  |
