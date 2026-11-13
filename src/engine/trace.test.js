@@ -5,6 +5,8 @@ import { design, backSagAt } from './design.js';
 import { rxToMatrix, matrixToRx, vogelBaseCurve, sphericalEquivalent } from './power.js';
 import { K } from './conventions.js';
 import { evaluateLens } from './evaluate.js';
+import { traceFromEye, TRACE_STATUS } from './trace.js';
+import { frameOutline } from './frame/outline.js';
 
 const O = { x: 0, y: 0 };
 const q4 = (lo, hi) => fc.integer({ min: lo * 4, max: hi * 4 }).map((k) => k / 4);
@@ -189,5 +191,138 @@ describe('ENG-02 pipeline property: evaluateLens surfaces reproduce the Rx', () 
     );
     expect(okRuns).toBeGreaterThan(50);
     console.log(`[01-08] evaluateLens property: ${okRuns}/100 computable, worst element error ${worst.toExponential(3)} dpt`);
+  });
+});
+
+describe('REF-01 reverse trace from the eye (D-12)', () => {
+  const H = 15;
+  const lensSpec = (o = {}) => ({
+    eye: 'OD',
+    sph: -4,
+    cyl: 0,
+    axisDeg: 0,
+    materialId: 'cr39',
+    frame: { shape: 'rechteckig', A: 52, B: 38, DBL: 18 },
+    monoPD: 32,
+    fittingHeight: null,
+    baseCurve: null,
+    minCT: null,
+    minET: null,
+    ...o,
+  });
+  const plate = (n = 1.5) => ({ n, ct: 2, c1: 0, k1: 0, ca: 0, cb: 0, axisRad: 0, oc: { x: 0, y: 0 } });
+  const allFiniteDeep = (v) =>
+    typeof v === 'number' ? Number.isFinite(v) : typeof v === 'string' ? true : Object.values(v).every(allFiniteDeep);
+  const insidePolygon = (outline, px, py) => {
+    let inside = false;
+    const m = outline.length / 2;
+    for (let i = 0, j = m - 1; i < m; j = i++) {
+      const xi = outline[2 * i];
+      const yi = outline[2 * i + 1];
+      const xj = outline[2 * j];
+      const yj = outline[2 * j + 1];
+      if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+
+  it('TRACE_STATUS lists the five statuses and is frozen', () => {
+    expect(TRACE_STATUS).toEqual({ OK: 'ok', MISS_BACK: 'missBack', TIR_BACK: 'tirBack', MISS_FRONT: 'missFront', TIR_FRONT: 'tirFront' });
+    expect(Object.isFrozen(TRACE_STATUS)).toBe(true);
+  });
+
+  it('plane-parallel plate keeps every direction (objTan = eye tan within 1e-12)', () => {
+    const s = plate();
+    for (const ex of [0, 0.2, -0.2, 0.5, -0.5]) {
+      for (const ey of [0, 0.2, -0.2, 0.5, -0.5]) {
+        const r = traceFromEye(s, H, ex, ey);
+        expect(r.status).toBe('ok');
+        expect(Math.abs(r.objTan[0] - ex)).toBeLessThan(1e-12);
+        expect(Math.abs(r.objTan[1] - ey)).toBeLessThan(1e-12);
+      }
+    }
+  });
+
+  it('on-axis ray of −4,00 CR-39 (rechteckig 52×38/18, PD 32) leaves along the axis', () => {
+    const lens = evaluateLens(lensSpec());
+    expect(lens.ok).toBe(true);
+    const r = traceFromEye(lens.surfaces, H, 0, 0);
+    expect(r.status).toBe('ok');
+    expect(Math.abs(r.objTan[0])).toBeLessThan(1e-12);
+    expect(Math.abs(r.objTan[1])).toBeLessThan(1e-12);
+  });
+
+  it('missBack: a direction so oblique that the back seed leaves the sag domain (no exception)', () => {
+    const s = design({ sph: -20, cyl: -4, axisDeg: 0, n: 1.5, D1: 0.5, ct: 2, oc: O });
+    const r = traceFromEye(s, H, 5, 0);
+    expect(r).toEqual({ status: 'missBack' });
+  });
+
+  it('missFront: flat back hit, steep synthetic front out of reach (no exception)', () => {
+    // Synthetic: front radius 16,7 mm; the back hit at x ≈ 20 mm lies outside the front's domain.
+    const s = { ...plate(), c1: 0.06 };
+    const r = traceFromEye(s, H, 1.2, 0);
+    expect(r.status).toBe('missFront');
+    expect(r.back).toHaveLength(3);
+    expect(r.front).toBeUndefined();
+    expect(allFiniteDeep(r)).toBe(true);
+  });
+
+  it('tirFront with a real lens: −4,00 CR-39 OD, temporal at tan 1,97, back hit inside the frame outline', () => {
+    const lens = evaluateLens(lensSpec());
+    expect(lens.ok).toBe(true);
+    // OD: +x = nasal (conventions.js), so temporal = −x.
+    const r = traceFromEye(lens.surfaces, H, -1.97, 0);
+    expect(r.status).toBe('tirFront');
+    expect(r.back).toHaveLength(3);
+    expect(r.front).toHaveLength(3);
+    expect(r.objTan).toBeUndefined();
+    expect(allFiniteDeep(r)).toBe(true);
+    const outline = frameOutline('rechteckig', 52, 38, 'OD');
+    expect(insidePolygon(outline, r.back[0], r.back[1])).toBe(true);
+  });
+
+  it('tirBack (SYNTHETIC n = 0,6 < 1, branch coverage only: unreachable for any catalogue lens)', () => {
+    // n > 1 never reflects totally when entering glass from air; n = 0,6 makes η = 1/n > 1.
+    const r = traceFromEye(plate(0.6), H, 1, 0);
+    expect(r.status).toBe('tirBack');
+    expect(r.back).toHaveLength(3);
+    expect(r.front).toBeUndefined();
+    expect(allFiniteDeep(r)).toBe(true);
+  });
+
+  it('property: no exception, ok always has finite objTan (Sph −12…+12, Cyl 0…−6, CR-39/1,74, tan ≤ 0,816; 300 runs, seed 44)', () => {
+    let ok = 0;
+    let skipped = 0;
+    const counts = {};
+    fc.assert(
+      fc.property(
+        q4(-12, 12),
+        q4(-6, 0),
+        fc.integer({ min: 0, max: 179 }),
+        fc.constantFrom('cr39', 'idx174'),
+        fc.constantFrom('OD', 'OS'),
+        fc.double({ min: 0, max: 0.816, noNaN: true }),
+        fc.double({ min: 0, max: 2 * Math.PI, noNaN: true }),
+        (sph, cyl, axisDeg, materialId, eye, rho, phi) => {
+          const lens = evaluateLens(lensSpec({ sph, cyl, axisDeg, materialId, eye }));
+          if (!lens.ok) {
+            skipped++;
+            return;
+          }
+          const r = traceFromEye(lens.surfaces, H, rho * Math.cos(phi), rho * Math.sin(phi));
+          counts[r.status] = (counts[r.status] ?? 0) + 1;
+          expect(Object.values(TRACE_STATUS)).toContain(r.status);
+          expect(allFiniteDeep(r)).toBe(true);
+          if (r.status === 'ok') {
+            ok++;
+            expect(r.objTan.every(Number.isFinite)).toBe(true);
+          }
+        },
+      ),
+      { numRuns: 300, seed: 44 },
+    );
+    console.log(`[04-01] traceFromEye property: statuses ${JSON.stringify(counts)}, ${skipped} engine-rejected skipped`);
+    expect(ok).toBeGreaterThan(100);
   });
 });
