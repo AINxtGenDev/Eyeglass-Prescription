@@ -39,6 +39,8 @@ import {
 import { renderMaterialLine } from './material-input.js';
 import { renderGlassSettings, isExpert } from './expert.js';
 import { placeViewSlot } from './view-place.js';
+// 04-09: the no-chunk size block (engine text only; ref-size.js and text.js import no three.js).
+import { showRefNoPicture } from './view/ref-size.js';
 import { renderCrossSection, renderCrossSectionEmpty, renderCrossSectionPending, renderMeridianOptions } from './cross-section.js';
 import { renderRim, displayFrame } from './frame-input.js';
 
@@ -248,8 +250,11 @@ export function refreshView() {
       return;
     }
     if (viewLoading) {
-      // While the failure message is shown nothing is queued for the view.
-      if (viewFailed) $('view').dataset.pending = '';
+      // While the failure message is shown nothing is queued for the view; the size block follows.
+      if (viewFailed) {
+        $('view').dataset.pending = '';
+        showRefNoPicture(viewInputs().eyes);
+      }
       return;
     }
     viewLoading = true;
@@ -279,6 +284,7 @@ function loadView() {
         viewFailed = true;
         $('view').dataset.pending = '';
         showViewFailed({ msgKey: 'view.contextGone', reasonKey: 'tech.view.reason.error', retry: false });
+        showRefNoPicture(viewInputs().eyes);
       }
     },
     (err) => {
@@ -287,6 +293,8 @@ function loadView() {
       viewImportFailures++;
       $('view').dataset.pending = '';
       showViewFailed({ msgKey: 'view.loadFailed', reasonKey: 'tech.view.reason.loadFailed', retry: viewImportFailures > 1 ? 'reload' : true });
+      // 04-09 (UI-SPEC States, T-04-39): the size block is engine text and needs no picture.
+      showRefNoPicture(viewInputs().eyes);
     },
   );
 }

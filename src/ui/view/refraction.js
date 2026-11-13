@@ -8,10 +8,17 @@
 // - Grid: per panel (nx + 1)·(ny + 1) vertices at the warp grid points (panel px, y up), index
 //   from ref-layout.js gridTriangles, split along warp.js CELL_DIAGONAL, the interpolant the N10
 //   engine test bounds (lens-critic MINOR 1). Allocated in setLayout only; setWarp writes in place.
-// - Class mask: a cell whose four corners are all class 1 (lens) or all class 5 (past the rim) is
-//   chart; all class 3 is the flat "kein Durchblick" fill; every other cell, including every cell
-//   whose corners differ in class, is the flat rim colour (conservative until 04-09 draws the
-//   quadtree leaves): never a chart where no ray passes (T-04-32).
+// - Class mask: a cell whose four corners share class 1 (lens) or 5 (past the rim) is chart, class 3
+//   the flat "kein Durchblick" fill, class 2 / 4 the flat rim colour. 04-09 (D-12 (f), T-04-36): a
+//   cell whose corners differ is drawn from the engine quadtree leaves instead, one flat quad per
+//   leaf with the class and the uv of its own centre ray (classes 1 / 5 textured, 2 / 4 rim, 3 the
+//   fill), so no chart is ever interpolated across a class boundary and the rim sits exactly where
+//   the engine classes put it. Never a chart where no ray passes (T-04-32).
+// - "Kein Durchblick" zones (class 3) of at least 48 x 24 px get the pill view.ref.noView.
+// - Reference ticks (04-09, UI-SPEC "Reference ticks"): svg#view-ref-ticks in #view-labels, one <g>
+//   per panel, SVG presentation attributes only (CSP: no inline style attribute), built on a layout
+//   change only, positions from ref-layout.js tickPositions (panel centre and pxPerTan); a panel's
+//   ticks show while it shows a picture; N11 hides a tick whose sample point lies on the rim.
 // - Bild toggle: 'off' writes the identity uv (object tan = eye tan of each grid point) and keeps
 //   the class mask, so only the chart moves in the blink (N2).
 // - Chart (D-08): one canvas texture in object-tan space over |tan| ≤ CHART_EXTENT_TAN; checker
@@ -33,7 +40,7 @@ import {
 } from 'three';
 import { t } from '../../i18n/t.js';
 import { REF_CLASS } from '../../engine/warp.js';
-import { CHART_SQUARE_TAN, CHART_BAND_SQUARES, REF_DIVIDER_PX, gridTriangles } from './ref-layout.js';
+import { CHART_SQUARE_TAN, CHART_BAND_SQUARES, REF_DIVIDER_PX, gridTriangles, tickPositions, tickVisible, TICK_LEN_PX } from './ref-layout.js';
 import { INK, PAPER, canvasOf, drawLetterBand } from './backdrop.js';
 
 /**
@@ -53,6 +60,40 @@ const BACKGROUND_HEX = '#f3f4f6';
 /** Eye pill gap above the panel bottom (CSS px, UI-SPEC). */
 const PILL_GAP_PX = 8;
 const PILL_KEY = { OD: 'view.ref.pill.od', OS: 'view.ref.pill.os' };
+/** Tick strokes (UI-SPEC colour table). N4: the white under-stroke is 6 px, not 4: at device pixel ratio 1 the 1 px halo of a 4 px stroke was hard to see on the black squares (04-09 DPR check). */
+const TICK_UNDER = Object.freeze({ color: '#ffffff', width: 6 });
+const TICK_CORE = Object.freeze({ color: '#1a1a1a', width: 2 });
+/** A class-3 zone gets the noView pill from this size (CSS px, UI-SPEC). */
+const NO_VIEW_PILL_MIN = Object.freeze({ w: 48, h: 24 });
+/** Initial leaf capacity per panel (grown by doubling, the old geometry is disposed). */
+const LEAF_CAP0 = 2048;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** One flat quad per leaf: 4 vertices, two triangles sw-se-ne, sw-ne-nw (the CELL_DIAGONAL split). */
+function makeLeafGeometry(cap) {
+  const g = new BufferGeometry();
+  const pos = new BufferAttribute(new Float32Array(12 * cap), 3);
+  pos.setUsage(DynamicDrawUsage);
+  const uv = new BufferAttribute(new Float32Array(8 * cap), 2);
+  uv.setUsage(DynamicDrawUsage);
+  const idx = new Uint32Array(6 * cap);
+  for (let q = 0; q < cap; q++) {
+    const b = 4 * q;
+    idx.set([b, b + 1, b + 3, b, b + 3, b + 2], 6 * q);
+  }
+  g.setAttribute('position', pos);
+  g.setAttribute('uv', uv);
+  g.setIndex(new BufferAttribute(idx, 1));
+  g.setDrawRange(0, 0);
+  return g;
+}
+
+/** An SVG element with presentation attributes. */
+function svgEl(name, attrs) {
+  const el = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el;
+}
 
 /** The chart canvas: paper, ink squares where i + j is even (ref-layout.js checkerInk), the letter band. */
 function drawChart(size) {
@@ -115,10 +156,67 @@ export function createRefraction({ renderer, labelsEl }) {
     return el;
   };
   const pills = { OD: pill('OD'), OS: pill('OS') };
+  // 04-09 (UI-SPEC States "One eye blocked"): the centred pill on the fill of a blocked eye's panel,
+  // created on first use (no hidden extra nodes for users who never block an eye).
+  /** @type {Record<string, HTMLElement>} */
+  const blockedPills = {};
+  const blockedPill = (eye) => {
+    if (blockedPills[eye]) return blockedPills[eye];
+    const el = document.createElement('span');
+    el.className = 'view-label ref-pill ref-pill--blocked';
+    el.classList.toggle('ref-pill--one', !split);
+    el.textContent = t('view.ref.pill.blocked', { who: t(PILL_KEY[eye]) });
+    el.hidden = true;
+    labelsEl.append(el);
+    return (blockedPills[eye] = el);
+  };
+  /** @type {Set<string>} panel ids drawn as the blocked fill */
+  const blocked = new Set();
+  /** 04-09: "hier kein Durchblick" pills, pooled. */
+  /** @type {HTMLElement[]} */
+  const noViewPills = [];
+  const noViewPill = (i) => {
+    if (noViewPills[i]) return noViewPills[i];
+    const el = document.createElement('span');
+    el.className = 'view-label ref-pill ref-pill--noview';
+    el.textContent = t('view.ref.noView');
+    el.hidden = true;
+    labelsEl.append(el);
+    return (noViewPills[i] = el);
+  };
+  // 04-09: the reference ticks, under every pill (first child of #view-labels).
+  const ticksSvg = svgEl('svg', { id: 'view-ref-ticks', display: 'none', focusable: 'false' });
+  labelsEl.prepend(ticksSvg);
 
   function freePanel(s) {
     scene.remove(s.group);
     for (const g of s.geos) g.dispose();
+    s.leaf.mesh.geometry.dispose();
+  }
+
+  /** The panel's ticks (built on a layout change only; hidden until the panel shows a picture). */
+  function makeTicks(p) {
+    const g = svgEl('g', { 'data-panel': p.id, display: 'none' });
+    const list = [];
+    const L = TICK_LEN_PX;
+    for (const tk of tickPositions(p)) {
+      const [x1, y1, x2, y2] =
+        tk.edge === 'top'
+          ? [tk.x, tk.y, tk.x, tk.y + L]
+          : tk.edge === 'bottom'
+            ? [tk.x, tk.y, tk.x, tk.y - L]
+            : tk.edge === 'left'
+              ? [tk.x, tk.y, tk.x + L, tk.y]
+              : [tk.x, tk.y, tk.x - L, tk.y];
+      const el = svgEl('g', { class: 'ref-tick', 'data-edge': tk.edge, 'data-n': tk.n });
+      for (const st of [TICK_UNDER, TICK_CORE]) {
+        el.append(svgEl('line', { x1, y1, x2, y2, stroke: st.color, 'stroke-width': st.width, 'stroke-linecap': 'butt' }));
+      }
+      g.append(el);
+      list.push({ tick: tk, el });
+    }
+    ticksSvg.append(g);
+    return { g, list };
   }
 
   /** Grid geometry of one panel, sized for the tier's cell (the warp grid has the same nx, ny). */
@@ -170,9 +268,169 @@ export function createRefraction({ renderer, labelsEl }) {
       mesh.frustumCulled = false;
       group.add(mesh);
     }
+    // 04-09: the leaves of the mixed cells, one geometry with three groups (chart, rim, noView).
+    const leafMesh = new Mesh(makeLeafGeometry(LEAF_CAP0), [chartMat, rimMat, noViewMat]);
+    leafMesh.frustumCulled = false;
+    group.add(leafMesh);
     group.visible = false;
     scene.add(group);
-    return { p, nx, ny, stride, nv, tri: gridTriangles(nx, ny), eyeUv, uvAttr, chart, rim, noView, geos: [chart, rim, noView], group, obj: null };
+    const leaf = { mesh: leafMesh, cap: LEAF_CAP0, n: 0, nChart: 0, objUv: new Float32Array(2 * LEAF_CAP0), eyeUv: new Float32Array(2 * LEAF_CAP0) };
+    return {
+      p,
+      nx,
+      ny,
+      stride,
+      nv,
+      tri: gridTriangles(nx, ny),
+      eyeUv,
+      uvAttr,
+      chart,
+      rim,
+      noView,
+      geos: [chart, rim, noView],
+      group,
+      obj: null,
+      leaf,
+      ticks: makeTicks(p),
+      zones: [],
+    };
+  }
+
+  /** Leaf uv for the Bild toggle: object tan of the leaf's centre ray, or its eye tan ('off'). */
+  function writeLeafUv(s) {
+    const { leaf } = s;
+    const uv = /** @type {BufferAttribute} */ (leaf.mesh.geometry.getAttribute('uv'));
+    const out = uv.array;
+    const src = lens === 'off' ? leaf.eyeUv : leaf.objUv;
+    const R = CHART_EXTENT_TAN;
+    for (let q = 0; q < leaf.nChart; q++) {
+      const u = (src[2 * q] + R) / (2 * R);
+      const v = (src[2 * q + 1] + R) / (2 * R);
+      for (let k = 0; k < 4; k++) {
+        out[8 * q + 2 * k] = u;
+        out[8 * q + 2 * k + 1] = v;
+      }
+    }
+    uv.needsUpdate = true;
+  }
+
+  /**
+   * The quadtree leaves of one reply (warp.js warpGrid: [x0, y0, size, cls, u, v] in panel px, leaf
+   * height = size * cellY / cellX). Grouped by drawing class; each quad is flat in class and uv.
+   */
+  function writeLeaves(s, item) {
+    const L = item.leafCount;
+    const lv = item.leaves;
+    const { leaf, p } = s;
+    if (L > leaf.cap) {
+      const cap = Math.max(L, 2 * leaf.cap);
+      leaf.mesh.geometry.dispose();
+      leaf.mesh.geometry = makeLeafGeometry(cap);
+      leaf.cap = cap;
+      leaf.objUv = new Float32Array(2 * cap);
+      leaf.eyeUv = new Float32Array(2 * cap);
+    }
+    const isChart = (c) => c === REF_CLASS.LENS || c === REF_CLASS.PAST_RIM;
+    const isRim = (c) => c === REF_CLASS.EDGE_BAND || c === REF_CLASS.RIM_FACE;
+    let nChart = 0;
+    let nRim = 0;
+    for (let l = 0; l < L; l++) {
+      const c = lv[6 * l + 3];
+      if (isChart(c)) nChart++;
+      else if (isRim(c)) nRim++;
+    }
+    const next = [0, nChart, nChart + nRim];
+    const geo = leaf.mesh.geometry;
+    const posAttr = /** @type {BufferAttribute} */ (geo.getAttribute('position'));
+    const pos = posAttr.array;
+    const aspect = item.cellY / item.cellX;
+    const yBase = stage.H - p.y - p.h;
+    const P = p.pxPerTan;
+    for (let l = 0; l < L; l++) {
+      const o = 6 * l;
+      const x0 = lv[o];
+      const y0 = lv[o + 1];
+      const w = lv[o + 2];
+      const h = w * aspect;
+      const c = lv[o + 3];
+      const gi = isChart(c) ? 0 : isRim(c) ? 1 : 2;
+      const q = next[gi]++;
+      const X0 = p.x + x0;
+      const Y0 = yBase + y0;
+      pos.set([X0, Y0, 0, X0 + w, Y0, 0, X0, Y0 + h, 0, X0 + w, Y0 + h, 0], 12 * q);
+      if (gi === 0) {
+        leaf.objUv[2 * q] = lv[o + 4];
+        leaf.objUv[2 * q + 1] = lv[o + 5];
+        leaf.eyeUv[2 * q] = (x0 + w / 2 - p.w / 2) / P;
+        leaf.eyeUv[2 * q + 1] = (y0 + h / 2 - p.h / 2) / P;
+      }
+    }
+    geo.clearGroups();
+    geo.addGroup(0, 6 * nChart, 0);
+    geo.addGroup(6 * nChart, 6 * nRim, 1);
+    geo.addGroup(6 * (nChart + nRim), 6 * (L - nChart - nRim), 2);
+    geo.setDrawRange(0, 6 * L);
+    posAttr.needsUpdate = true;
+    leaf.n = L;
+    leaf.nChart = nChart;
+    writeLeafUv(s);
+  }
+
+  /** Class-3 zones (4-connected grid points) of at least NO_VIEW_PILL_MIN: their centres (stage px, y down). */
+  function noViewZones(s, item) {
+    const { nx, ny, stride, p } = s;
+    const cls = item.cls;
+    const seen = new Uint8Array(cls.length);
+    const out = [];
+    const steps = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ];
+    for (let k0 = 0; k0 < cls.length; k0++) {
+      if (seen[k0] || cls[k0] !== REF_CLASS.NO_VIEW) continue;
+      let iMin = Infinity;
+      let iMax = -Infinity;
+      let jMin = Infinity;
+      let jMax = -Infinity;
+      const stack = [k0];
+      seen[k0] = 1;
+      while (stack.length) {
+        const k = /** @type {number} */ (stack.pop());
+        const i = k % stride;
+        const j = (k - i) / stride;
+        iMin = Math.min(iMin, i);
+        iMax = Math.max(iMax, i);
+        jMin = Math.min(jMin, j);
+        jMax = Math.max(jMax, j);
+        for (const [di, dj] of steps) {
+          const a = i + di;
+          const b = j + dj;
+          if (a < 0 || a > nx || b < 0 || b > ny) continue;
+          const kk = b * stride + a;
+          if (!seen[kk] && cls[kk] === REF_CLASS.NO_VIEW) {
+            seen[kk] = 1;
+            stack.push(kk);
+          }
+        }
+      }
+      const w = (iMax - iMin) * item.cellX;
+      const h = (jMax - jMin) * item.cellY;
+      if (w >= NO_VIEW_PILL_MIN.w && h >= NO_VIEW_PILL_MIN.h) {
+        out.push({ x: p.x + ((iMin + iMax) / 2) * item.cellX, y: p.y + p.h - ((jMin + jMax) / 2) * item.cellY });
+      }
+    }
+    return out;
+  }
+
+  /** N11: per tick, hidden when its sample point lies on the rim face or edge band of this warp. */
+  function showTicks(s, item) {
+    for (const { tick, el } of s.ticks.list) {
+      if (tickVisible(item, s.p, tick)) el.removeAttribute('display');
+      else el.setAttribute('display', 'none');
+    }
+    s.ticks.g.removeAttribute('display');
   }
 
   /** Write the uv attribute for the Bild toggle state (texture coords of object tan). */
@@ -200,7 +458,11 @@ export function createRefraction({ renderer, labelsEl }) {
     setLayout(layout, stageSize, cellPx) {
       for (const s of panels.values()) freePanel(s);
       panels.clear();
+      ticksSvg.replaceChildren();
       stage = { W: stageSize.W, H: stageSize.H };
+      ticksSvg.setAttribute('width', String(stage.W));
+      ticksSvg.setAttribute('height', String(stage.H));
+      ticksSvg.removeAttribute('display');
       split = layout.split;
       camera.left = 0;
       camera.right = stage.W;
@@ -213,10 +475,11 @@ export function createRefraction({ renderer, labelsEl }) {
         divider.scale.set(REF_DIVIDER_PX, stage.H, 1);
         divider.position.set(left.x + left.w + REF_DIVIDER_PX / 2, stage.H / 2, 0);
       }
-      for (const el of Object.values(pills)) {
+      for (const el of [...Object.values(pills), ...Object.values(blockedPills)]) {
         el.classList.toggle('ref-pill--one', !split);
         el.hidden = true;
       }
+      blocked.clear();
       showDivider();
     },
     /**
@@ -229,6 +492,8 @@ export function createRefraction({ renderer, labelsEl }) {
       if (!s || !item?.ok || item.nx !== s.nx || item.ny !== s.ny) return false;
       if (!(item.uv instanceof Float32Array) || item.uv.length !== 2 * s.nv) return false;
       if (!(item.cls instanceof Uint8Array) || item.cls.length !== s.nv) return false;
+      if (!(Number.isInteger(item.leafCount) && item.leafCount >= 0)) return false;
+      if (!(item.leaves instanceof Float32Array) || item.leaves.length !== 6 * item.leafCount) return false;
       const cls = item.cls;
       const lists = { chart: s.chart.index.array, rim: s.rim.index.array, noView: s.noView.index.array };
       const n = { chart: 0, rim: 0, noView: 0 };
@@ -237,8 +502,9 @@ export function createRefraction({ renderer, labelsEl }) {
         for (let i = 0; i < s.nx; i++) {
           const k = j * stride + i;
           const c0 = cls[k];
-          const same = cls[k + 1] === c0 && cls[k + stride] === c0 && cls[k + stride + 1] === c0;
-          const to = same && (c0 === REF_CLASS.LENS || c0 === REF_CLASS.PAST_RIM) ? 'chart' : same && c0 === REF_CLASS.NO_VIEW ? 'noView' : 'rim';
+          // A mixed cell is drawn from its leaves (writeLeaves), never from the grid interpolant.
+          if (cls[k + 1] !== c0 || cls[k + stride] !== c0 || cls[k + stride + 1] !== c0) continue;
+          const to = c0 === REF_CLASS.LENS || c0 === REF_CLASS.PAST_RIM ? 'chart' : c0 === REF_CLASS.NO_VIEW ? 'noView' : 'rim';
           const c = 6 * (j * s.nx + i);
           lists[to].set(tri.subarray(c, c + 6), n[to]);
           n[to] += 6;
@@ -251,6 +517,10 @@ export function createRefraction({ renderer, labelsEl }) {
       }
       s.obj = item.uv;
       writeUv(s);
+      writeLeaves(s, item);
+      s.zones = noViewZones(s, item);
+      showTicks(s, item);
+      blocked.delete(id);
       s.group.visible = true;
       showDivider();
       return true;
@@ -261,16 +531,32 @@ export function createRefraction({ renderer, labelsEl }) {
       if (!s) return;
       s.obj = null;
       s.group.visible = false;
+      s.zones = [];
+      s.ticks.g.setAttribute('display', 'none');
       pills[s.p.eye].hidden = true;
       showDivider();
     },
     clear() {
       for (const id of panels.keys()) this.clearPanel(id);
+      blocked.clear();
+    },
+    /** 04-09: a panel whose eye is not computed: the plain fill with the centred "nicht berechnet" pill. */
+    setBlocked(id, on) {
+      const s = panels.get(id);
+      if (!s) return;
+      if (on) {
+        this.clearPanel(id);
+        blocked.add(id);
+      } else blocked.delete(id);
     },
     /** Bild toggle (D-02): 'off' = identity mapping on the same scale, same class mask. */
     setLens(next) {
       lens = next;
-      for (const s of panels.values()) if (s.obj !== null) writeUv(s);
+      for (const s of panels.values()) {
+        if (s.obj === null) continue;
+        writeUv(s);
+        writeLeafUv(s);
+      }
     },
     renderPass() {
       renderer.render(scene, camera);
@@ -287,18 +573,45 @@ export function createRefraction({ renderer, labelsEl }) {
         const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         if (el.style.transform !== tf) el.style.transform = tf;
       }
+      const shownBlocked = new Set();
+      for (const id of blocked) {
+        const s = panels.get(id);
+        if (!s) continue;
+        const el = blockedPill(s.p.eye);
+        shownBlocked.add(el);
+        if (el.hidden) el.hidden = false;
+        const x = s.p.x + (s.p.w - el.offsetWidth) / 2;
+        const y = s.p.y + (s.p.h - el.offsetHeight) / 2;
+        const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+        if (el.style.transform !== tf) el.style.transform = tf;
+      }
+      for (const el of Object.values(blockedPills)) if (!shownBlocked.has(el) && !el.hidden) el.hidden = true;
+      let z = 0;
+      for (const s of panels.values()) {
+        if (!s.group.visible) continue;
+        for (const zone of s.zones) {
+          const el = noViewPill(z++);
+          if (el.hidden) el.hidden = false;
+          const tf = `translate(${(zone.x - el.offsetWidth / 2).toFixed(1)}px, ${(zone.y - el.offsetHeight / 2).toFixed(1)}px)`;
+          if (el.style.transform !== tf) el.style.transform = tf;
+        }
+      }
+      for (let i = z; i < noViewPills.length; i++) if (!noViewPills[i].hidden) noViewPills[i].hidden = true;
     },
     hidePills() {
-      for (const el of Object.values(pills)) el.hidden = true;
+      for (const el of [...Object.values(pills), ...Object.values(blockedPills), ...noViewPills]) el.hidden = true;
+      blocked.clear();
+      ticksSvg.setAttribute('display', 'none');
     },
     /** Context restore (Pitfall 7): re-upload the chart canvas and the grid buffers. */
     reupload() {
       chartTex.needsUpdate = true;
       for (const s of panels.values()) {
         s.uvAttr.needsUpdate = true;
-        for (const g of s.geos) {
+        for (const g of [...s.geos, s.leaf.mesh.geometry]) {
           g.index.needsUpdate = true;
           g.getAttribute('position').needsUpdate = true;
+          g.getAttribute('uv').needsUpdate = true;
         }
       }
     },
@@ -308,7 +621,8 @@ export function createRefraction({ renderer, labelsEl }) {
       divider.geometry.dispose();
       for (const m of [chartMat, rimMat, noViewMat, dividerMat]) m.dispose();
       chartTex.dispose();
-      for (const el of Object.values(pills)) el.remove();
+      for (const el of [...Object.values(pills), ...Object.values(blockedPills), ...noViewPills]) el.remove();
+      ticksSvg.remove();
     },
   };
 }

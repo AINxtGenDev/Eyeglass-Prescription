@@ -12,7 +12,13 @@ import {
   cellSplit,
   checkerInk,
   inLetterBand,
+  defaultRefEye,
+  tickPositions,
+  tickVisible,
+  classAt,
+  TICK_SAMPLE_PX,
 } from './ref-layout.js';
+import { REF_CLASS } from '../../engine/warp.js';
 
 const close = (a, b, tol = 0.1) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 
@@ -142,5 +148,117 @@ describe('REF-01 chart definition (D-08)', () => {
     expect(inLetterBand(2.99 * S)).toBe(true);
     expect(inLetterBand(3 * S)).toBe(false);
     expect(inLetterBand(-2 * S)).toBe(false);
+  });
+});
+
+// 04-09 (D-06 as amended, UI-SPEC "Narrow stage fallback"): one panel below 360 px and its default eye.
+describe('REF-01 one-panel mode (04-09)', () => {
+  const mag = (...sms) => ({ meridians: sms.map((sm) => ({ sm })) });
+  test('defaultRefEye: the larger max |SM − 1| over the meridians', () => {
+    expect(defaultRefEye({ OD: mag(0.97), OS: mag(0.93) })).toBe('OS');
+    expect(defaultRefEye({ OD: mag(1.08), OS: mag(0.95) })).toBe('OD');
+    // a cylinder: the larger meridian counts
+    expect(defaultRefEye({ OD: mag(0.99, 0.94), OS: mag(0.95) })).toBe('OD');
+    expect(defaultRefEye({ OD: mag(0.97), OS: mag(1.01, 0.96) })).toBe('OS');
+  });
+  test('defaultRefEye: ties within 0,05 percentage points → OD', () => {
+    expect(defaultRefEye({ OD: mag(0.95), OS: mag(0.9496) })).toBe('OD');
+    expect(defaultRefEye({ OD: mag(0.95), OS: mag(0.9495) })).toBe('OD');
+    expect(defaultRefEye({ OD: mag(0.95), OS: mag(0.9493) })).toBe('OS');
+    expect(defaultRefEye({ OD: mag(1.0), OS: mag(1.0) })).toBe('OD');
+  });
+  test('defaultRefEye: one eye null → the other; both null → OD', () => {
+    expect(defaultRefEye({ OD: null, OS: mag(0.99) })).toBe('OS');
+    expect(defaultRefEye({ OD: mag(0.99), OS: null })).toBe('OD');
+    expect(defaultRefEye({ OD: null, OS: null })).toBe('OD');
+    expect(defaultRefEye({})).toBe('OD');
+  });
+  test('below 360 px: one panel for the shown eye, full width; switching the eye keeps pxPerTan', () => {
+    const od = panelLayout({ stageW: 288, stageH: 216, shownEye: 'OD' });
+    const os = panelLayout({ stageW: 288, stageH: 216, shownEye: 'OS' });
+    expect(od.split).toBe(false);
+    expect(od.panels.map((p) => [p.id, p.eye, p.x, p.y, p.w, p.h])).toEqual([['R', 'OD', 0, 0, 288, 216]]);
+    expect(os.panels.map((p) => [p.id, p.eye, p.x, p.w])).toEqual([['L', 'OS', 0, 288]]);
+    expect(os.panels[0].pxPerTan).toBe(od.panels[0].pxPerTan);
+    close(od.panels[0].pxPerTan, 249.4);
+    expect(panelLayout({ stageW: 359, stageH: 270 }).split).toBe(false);
+    expect(panelLayout({ stageW: 360, stageH: 270 }).split).toBe(true);
+  });
+});
+
+// 04-09 (UI-SPEC "Reference ticks", N1, N11).
+describe('REF-01 reference ticks (04-09)', () => {
+  const S = CHART_SQUARE_TAN;
+  const [L, R] = panelLayout({ stageW: 380, stageH: 285 }).panels; // 412 px phone, 189 × 285
+  test('ticks sit at centre ± n · square on every edge, from the panel geometry only', () => {
+    for (const p of [L, R]) {
+      const ticks = tickPositions(p);
+      const k = S * p.pxPerTan;
+      for (const t of ticks) {
+        if (t.edge === 'top' || t.edge === 'bottom') {
+          close(t.x, p.x + p.w / 2 + t.n * k, 1e-9);
+          expect(t.y).toBe(t.edge === 'top' ? p.y : p.y + p.h);
+          expect(t.x > p.x && t.x < p.x + p.w).toBe(true);
+        } else {
+          close(t.y, p.y + p.h / 2 - t.n * k, 1e-9);
+          expect(t.x).toBe(t.edge === 'left' ? p.x : p.x + p.w);
+          expect(t.y > p.y && t.y < p.y + p.h).toBe(true);
+        }
+      }
+      // 189 px wide, 25,94 px squares: n = −3 … +3 on top and bottom; 285 px high: n = −5 … +5 less the band
+      const ns = (edge) => ticks.filter((t) => t.edge === edge).map((t) => t.n);
+      expect(ns('top')).toEqual([-3, -2, -1, 0, 1, 2, 3]);
+      expect(ns('bottom')).toEqual(ns('top'));
+      expect(ns('left')).toEqual([-5, -4, -3, -2, -1, 0, 4, 5]);
+      expect(ns('right')).toEqual(ns('left'));
+    }
+  });
+  test('N1: no left/right tick for n = +1 … +3 (letter band); the same ticks for both panels of equal size', () => {
+    for (const t of tickPositions(R)) if (t.edge === 'left' || t.edge === 'right') expect([1, 2, 3]).not.toContain(t.n);
+    expect(tickPositions(L).map((t) => [t.edge, t.n])).toEqual(tickPositions(R).map((t) => [t.edge, t.n]));
+  });
+  test('the scale is the only input: the ticks do not move when the eye changes in one-panel mode', () => {
+    const a = panelLayout({ stageW: 288, stageH: 216, shownEye: 'OD' }).panels[0];
+    const b = panelLayout({ stageW: 288, stageH: 216, shownEye: 'OS' }).panels[0];
+    expect(tickPositions(a).map(({ edge, n, x, y }) => [edge, n, x, y])).toEqual(tickPositions(b).map(({ edge, n, x, y }) => [edge, n, x, y]));
+  });
+
+  /** A 2 × 2 cell warp, 10 px cells; the right column of cells is mixed with one rim leaf. */
+  const warp = () => {
+    const nx = 2;
+    const ny = 2;
+    const cls = new Uint8Array((nx + 1) * (ny + 1)).fill(REF_CLASS.LENS);
+    // grid points of the right column (i = 2) are rim face
+    for (let j = 0; j <= ny; j++) cls[j * (nx + 1) + 2] = REF_CLASS.RIM_FACE;
+    const leaves = new Float32Array([
+      // cell (1, 0): left half lens, right half rim face (two 5 × 10 leaves as 5-wide squares)
+      10, 0, 5, REF_CLASS.LENS, 0.1, 0.1,
+      15, 0, 5, REF_CLASS.RIM_FACE, 0, 0,
+      10, 5, 5, REF_CLASS.LENS, 0.1, 0.1,
+      15, 5, 5, REF_CLASS.EDGE_BAND, 0, 0,
+    ]);
+    return { nx, ny, cellX: 10, cellY: 10, cls, leaves, leafCount: 4 };
+  };
+  test('classAt: a uniform cell gives its class, a mixed cell the class of the leaf holding the point', () => {
+    const w = warp();
+    expect(classAt(w, 4, 4)).toBe(REF_CLASS.LENS);
+    expect(classAt(w, 12, 2)).toBe(REF_CLASS.LENS);
+    expect(classAt(w, 17, 2)).toBe(REF_CLASS.RIM_FACE);
+    expect(classAt(w, 17, 7)).toBe(REF_CLASS.EDGE_BAND);
+  });
+  test('N11 tickVisible: hidden when the 14 px sample point lies on rim face or edge band; visible without a warp', () => {
+    expect(TICK_SAMPLE_PX).toBe(14);
+    const w = warp();
+    const p20 = { x: 0, y: 0, w: 20, h: 20 };
+    const p18 = { x: 0, y: 0, w: 20, h: 18 };
+    // top edge, h 20: sample (17, 6) → leaf (15, 5) edge band; (12, 6) → leaf (10, 5) lens
+    expect(tickVisible(w, p20, { edge: 'top', x: 17, y: 0 })).toBe(false);
+    expect(tickVisible(w, p20, { edge: 'top', x: 12, y: 0 })).toBe(true);
+    // top edge, h 18: sample (17, 4) → leaf (15, 0) rim face
+    expect(tickVisible(w, p18, { edge: 'top', x: 17, y: 0 })).toBe(false);
+    // right edge: sample x = 20 − 14 = 6, a lens cell; left edge, y 17 → sample (14, 3) → leaf (10, 0) lens
+    expect(tickVisible(w, p20, { edge: 'right', x: 20, y: 16 })).toBe(true);
+    expect(tickVisible(w, p20, { edge: 'left', x: 0, y: 17 })).toBe(true);
+    expect(tickVisible(null, p20, { edge: 'top', x: 17, y: 0 })).toBe(true);
   });
 });

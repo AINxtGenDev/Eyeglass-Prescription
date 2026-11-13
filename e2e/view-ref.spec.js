@@ -20,15 +20,17 @@ import {
   holdWarpWorker,
   changedPixels,
   inscribedLowerWindows,
+  holdMeshWorker,
+  WARP_WORKER_URL,
 } from './helpers.js';
-/* global window, document */
+/* global window, document, self, requestAnimationFrame */
 
 let threeWarnings;
 test.beforeEach(({ page }) => {
   threeWarnings = noThreeWarnings(page);
 });
 test.use({ reducedMotion: 'reduce' });
-guardPage(test, { view: true });
+const guard = guardPage(test, { view: true });
 test.afterEach(() => {
   expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
 });
@@ -80,6 +82,46 @@ async function setRx(page, od, os = od, pd = '32') {
     await page.locator(`#rx-${eye}-axis`).fill(rx.axis ?? '');
   }
   await settled(page);
+}
+
+/**
+ * 04-09 (M4): type a value without scrolling the field into view. On the phone layout fill() scrolls
+ * to the Rx field and takes the stage off screen, where no warp job is posted by design; the tests
+ * of the warp lane keep the stage on screen this way (the app listens to 'input').
+ */
+async function fillInPlace(page, selector, value) {
+  await page.locator(selector).evaluate((el, v) => {
+    /** @type {HTMLInputElement} */ (el).value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
+}
+
+/**
+ * 04-09 (M4): bring the stage on screen and wait for a warp drawn after generation `gen` (a job is
+ * posted only while the stage is on screen; settledRef alone would accept the older picture).
+ */
+async function refRedrawn(page, gen) {
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await page.waitForFunction((g) => window.__eyeglassView.ref().drawnGen > g, gen, { timeout: 60_000 });
+  await settledRef(page);
+}
+
+/**
+ * 04-09 (item 5, item 12): no #f3f4f6 pixel inside any drawn panel (a 6 px lattice) and no
+ * "hier kein Durchblick" pill. Tolerance 1: an anti-aliased chart grey (r = g = b) can never be
+ * within 1 of (243, 244, 246), so only the real fill matches.
+ */
+async function noSurfaceInPanels(page) {
+  const { panels } = await refState(page);
+  for (const p of panels) {
+    expect(p.noView, `${p.id}: the warp reports no class-3 direction`).toBe(false);
+    const pts = [];
+    for (let x = p.x + 3.5; x < p.x + p.w - 1; x += 6) for (let y = p.y + 3.5; y < p.y + p.h - 1; y += 6) pts.push([x, y]);
+    const px = await pixels(page, pts);
+    const bad = pts.filter((_, i) => near(px[i], SURFACE, 1));
+    expect(bad, `${p.id}: #f3f4f6 pixels`).toEqual([]);
+  }
+  await expect(page.locator('#view-labels .ref-pill--noview:visible')).toHaveCount(0);
 }
 
 async function refOn(page) {
@@ -231,12 +273,16 @@ test('item 5: −6,00 (1,67) 8 %, −10,00 (CR-39) 13 %, edge note, edge squares
   const size = page.locator('#view-ref-size');
   await expect(size.locator('.ref-line').nth(0)).toHaveText(`Rechtes Glas: Bild etwa 8${N}% kleiner`);
   await expect(size).toContainText('Zum Bildrand hin verändert das Glas die Größe stärker als in der Mitte.');
+  // 04-09 (B2 (f)): no "kein Durchblick" zone anywhere in the field.
+  await noSurfaceInPanels(page);
+  const gen = (await refState(page)).drawnGen;
   await page.locator('input[name=material][value=cr39]').check();
-  await page.locator('#rx-od-sph').fill('-10,00');
-  await page.locator('#rx-os-sph').fill('-10,00');
-  await settledRef(page);
+  await fillInPlace(page, '#rx-od-sph', '-10,00');
+  await fillInPlace(page, '#rx-os-sph', '-10,00');
+  await refRedrawn(page, gen);
   await expect(size.locator('.ref-line').nth(0)).toHaveText(`Rechtes Glas: Bild etwa 13${N}% kleiner`);
   await expect(size.locator('.ref-line').nth(1)).toHaveText(`Linkes Glas: Bild etwa 13${N}% kleiner`);
+  await noSurfaceInPanels(page);
   const { panels } = await refState(page);
   for (const p of panels) {
     const { cx, cy } = centreOf(p);
@@ -320,8 +366,8 @@ test('item 9: stale picture stays with the badge "Durchblick wird berechnet …"
   const probe = [[p.x + p.w / 2 + 2.5 * p.squarePx, p.y + p.h / 2 + 0.5 * p.squarePx]];
   const before = await pixels(page, probe);
   await warp.hold();
-  await page.locator('#rx-od-sph').fill('-8,00');
-  await page.locator('#rx-os-sph').fill('-8,00');
+  await fillInPlace(page, '#rx-od-sph', '-8,00');
+  await fillInPlace(page, '#rx-os-sph', '-8,00');
   await settled(page);
   await expect(page.locator('.view-badge')).toHaveText('Durchblick wird berechnet …');
   await expect(page.locator('#view')).toHaveAttribute('data-pending', 'warp');
@@ -339,7 +385,7 @@ test('numbers never wait for the warp (D-13): a Sph edit paints the card with th
   await warp.hold();
   const thick = page.locator('#result-od-thick');
   const was = await thick.textContent();
-  await page.locator('#rx-od-sph').fill('-7,25');
+  await fillInPlace(page, '#rx-od-sph', '-7,25');
   await expect(page.locator('#result')).toHaveAttribute('data-pending', '', { timeout: 5000 });
   await expect(thick).not.toHaveText(was ?? '');
   await expect(page.locator('#view-ref-size .ref-line').first()).toContainText('kleiner');
@@ -588,5 +634,610 @@ test.describe('two-panel gate (1280×800)', () => {
       expect(near(rimPx, RIM), `${p.id} rim colour where Node says class 2/4`).toBe(true);
       expect(isChart(lensPx), `${p.id} chart colour where Node says class 1`).toBe(true);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// 04-09 Task 1: one-panel mode, blocked / empty / failed / no-WebGL states, stage visibility (M4).
+
+const VIEW_CHUNK = '**/assets/view-*.js';
+const VIEW_CHUNK_RE = /\/assets\/view-[^/]*\.js$/;
+const BLOCKED_OS = 'Linkes Glas – nicht berechnet';
+
+/** Zyl set and Achse empty: the left eye has a field error (Fehler), so it is not computed (view.spec VIZ-01). */
+async function blockOs(page) {
+  await page.locator('#rx-os-cyl').fill('-1,00');
+  await page.locator('#rx-os-axis').fill('');
+  await page.locator('#rx-os-axis').blur();
+  await settled(page);
+}
+/** The "Durchblick für" picker (one-panel mode). */
+async function pickEye(page, eye) {
+  await page.locator('#view-ref-eye label', { hasText: eye === 'OS' ? 'Linkes Glas' : 'Rechtes Glas' }).click();
+}
+/** Visible tick marks of one panel (svg#view-ref-ticks; none while it does not exist). */
+const panelTicks = (page, id) => page.locator(`#view-ref-ticks g[data-panel="${id}"]:not([display="none"]) g.ref-tick:not([display="none"])`);
+
+/**
+ * Serve the real warp worker; while self.__fail is true every 'warp' reply carries ok: false items
+ * (the worker's own item-failure shape, warp-protocol.js), so the page takes its failure path.
+ */
+async function failWarpWorker(page) {
+  const patch =
+    '{const post = self.postMessage.bind(self); self.__fail = true;' +
+    "self.postMessage = (m, ...rest) => { if (self.__fail && m && m.type === 'warp') post({ ...m, items: m.items.map((it) => ({ panel: it.panel, ok: false, code: 'WARP_FAILED' })) }); else post(m, ...rest); };}\n";
+  await page.route(WARP_WORKER_URL, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
+  });
+  const find = () => page.workers().find((x) => WARP_WORKER_URL.test(new URL(x.url()).pathname));
+  return {
+    heal: async () => {
+      await expect.poll(() => Boolean(find())).toBe(true);
+      await find().evaluate(() => {
+        self.__fail = false;
+      });
+    },
+  };
+}
+
+test('item 10: one eye blocked: its panel is the fill with the pill, no ticks, size line "nicht berechnet"; the other renders', async ({ page }) => {
+  test.setTimeout(120_000);
+  await settledView(page);
+  await blockOs(page);
+  await refOn(page);
+  const size = page.locator('#view-ref-size');
+  await expect(size).toContainText('Linkes Glas: nicht berechnet');
+  await expect(size).toContainText('Rechtes Glas: Bild');
+  let st = await refState(page);
+  if (st.panels.length === 1) {
+    // One panel: the default eye is the computable one (OS has no SM); the picker still offers OS.
+    expect(st.panels[0].eye).toBe('OD');
+    await expect(page.locator('#view-ref-eye')).toBeVisible();
+    await expect(page.locator('#view-ref-eye input[value=OD]')).toBeChecked();
+    const p = st.panels[0];
+    const [c] = await pixels(page, [[p.x + p.w / 2 + 0.5 * p.squarePx, p.y + p.h / 2 + 0.5 * p.squarePx]]);
+    expect(isChart(c), `OD renders: ${c}`).toBe(true);
+    await pickEye(page, 'OS');
+    await expect.poll(async () => (await refState(page)).panels[0]?.eye).toBe('OS');
+    await settledRef(page);
+    st = await refState(page);
+  }
+  const L = st.panels.find((p) => p.eye === 'OS');
+  const pill = page.locator('#view-labels .ref-pill--blocked:visible');
+  await expect(pill).toHaveText(BLOCKED_OS);
+  await expect(pill).toBeVisible();
+  const pb = await pill.boundingBox();
+  const cv = await page.locator('#view-canvas').boundingBox();
+  // centred in its panel (± 2 px)
+  expect(Math.abs(pb.x + pb.width / 2 - (cv.x + L.x + L.w / 2))).toBeLessThanOrEqual(2);
+  expect(Math.abs(pb.y + pb.height / 2 - (cv.y + L.y + L.h / 2))).toBeLessThanOrEqual(2);
+  const pts = [];
+  for (let a = 1; a < 10; a++) for (let b = 1; b < 10; b++) if (a !== 5 && b !== 5) pts.push([L.x + (a * L.w) / 10, L.y + (b * L.h) / 10]);
+  (await pixels(page, pts)).forEach((c, i) => expect(near(c, SURFACE), `blocked panel point ${pts[i]}: ${c}`).toBe(true));
+  await expect(panelTicks(page, L.id)).toHaveCount(0);
+  const R = st.panels.find((p) => p.eye === 'OD');
+  if (R) {
+    const [c] = await pixels(page, [[R.x + R.w / 2 + 0.5 * R.squarePx, R.y + R.h / 2 + 0.5 * R.squarePx]]);
+    expect(isChart(c), `right panel renders: ${c}`).toBe(true);
+    await expect(page.locator('#view-labels .ref-pill', { hasText: /^Rechtes Glas$/ })).toBeVisible();
+  }
+});
+
+test('no eye computable: empty panels, no pills, caption view.empty, size block hidden', async ({ page }) => {
+  await settledView(page);
+  await refOn(page);
+  await page.locator('#example-clear').click();
+  for (const eye of ['od', 'os']) await page.locator(`#rx-${eye}-sph`).fill('');
+  await settled(page);
+  await expect(page.locator('#view-caption')).toHaveText('Noch keine Gläser – tragen Sie den Sph-Wert ein.');
+  await expect(page.locator('#view-ref-size')).toBeHidden();
+  await expect(page.locator('#view-labels .ref-pill:visible')).toHaveCount(0);
+  await expect(page.locator('#view-status')).toHaveText('');
+  const g = await canvasGeom(page);
+  const pts = [];
+  for (let a = 1; a < 10; a++) for (let b = 1; b < 10; b++) pts.push([(a * g.rw) / 10, (b * g.rh) / 10]);
+  (await pixels(page, pts)).forEach((c, i) => expect(near(c, SURFACE), `stage point ${pts[i]}: ${c}`).toBe(true));
+});
+
+test('item 11: the stage crossing 360 px shows / hides the picker; OD −2,00 / OS −5,00 → default "Linkes Glas"', async ({ page, isMobile }) => {
+  test.setTimeout(120_000);
+  test.skip(isMobile, 'resizes a desktop window');
+  await settledView(page);
+  await setRx(page, { sph: '-2,00' }, { sph: '-5,00' });
+  await refOn(page);
+  const picker = page.locator('#view-ref-eye');
+  await expect(picker).toBeHidden();
+  expect((await refState(page)).panels.length).toBe(2);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await expect.poll(async () => (await refState(page)).panels.length).toBe(1);
+  // Below 900 px the view sits after the result cards (view-place.js): bring the stage on screen (M4).
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await settledRef(page);
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('input[value=OS]')).toBeChecked();
+  const one = await refState(page);
+  expect(one.panels[0].eye).toBe('OS');
+  await expect(page.locator('#view-ref-side')).toHaveText('Sie schauen selbst durch Ihr linkes Glas.');
+  await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Linkes Glas']);
+  // Switching the eye changes the picture, not the scale; the size block lists both eyes.
+  await pickEye(page, 'OD');
+  await expect.poll(async () => (await refState(page)).panels[0].eye).toBe('OD');
+  await settledRef(page);
+  expect((await refState(page)).panels[0].pxPerTan).toBe(one.panels[0].pxPerTan);
+  await expect(page.locator('#view-ref-size .ref-line')).toHaveCount(2);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect.poll(async () => (await refState(page)).panels.length).toBe(2);
+  await expect(picker).toBeHidden();
+});
+
+test('warp failure: the Fehler box with "Erneut versuchen"; the retry re-posts the job; the size block stays', async ({ page }) => {
+  test.setTimeout(120_000);
+  await settledView(page);
+  const warp = await failWarpWorker(page);
+  await page.locator('#view-mode label', { hasText: 'Durchblick' }).click();
+  const status = page.locator('#view-status');
+  await expect(status).toHaveClass(/view-failed/, { timeout: 30_000 });
+  await expect(status).toContainText('Der Durchblick konnte nicht berechnet werden. Die übrigen Ergebnisse gelten unverändert.');
+  const retry = status.getByRole('button', { name: 'Erneut versuchen' });
+  await expect(retry).toBeVisible();
+  await expect(page.locator('#view-ref-size .ref-line').first()).toContainText('Rechtes Glas: Bild');
+  await expect(page.locator('#view-ref-ticks g:not([display="none"]) g.ref-tick:not([display="none"])')).toHaveCount(0);
+  const jobs = (await refState(page)).jobs;
+  await warp.heal();
+  await retry.click();
+  await settledRef(page);
+  expect((await refState(page)).jobs).toBe(jobs + 1);
+  await expect(status).not.toHaveClass(/view-failed/);
+  await expect(status).toHaveText('');
+  await expect(page.locator('.view-badge')).toHaveText('Durchblick · berechnet');
+});
+
+test('no WebGL 2: Durchblick is not offered, the size block is shown with the no-picture scope', async ({ page }) => {
+  await settledView(page);
+  const all = threeWarnings;
+  threeWarnings = () => all().filter((w) => !w.includes('3D view: no WebGL2'));
+  await page.goto('./?nowebgl');
+  await settledView(page);
+  await expect(page.locator('#view-mode')).toHaveCount(0);
+  await expect(page.locator('#view-stage')).toContainText('WebGL 2 fehlt');
+  const size = page.locator('#view-ref-size');
+  await expect(size).toBeVisible();
+  await expect(size.locator('.ref-title')).toHaveText('Bildgröße in der Glasmitte, verglichen mit dem Blick ohne Brille');
+  await expect(size).toContainText('Rechtes Glas: Bild');
+  await expect(size).not.toContainText('Zum Bildrand hin');
+  await expect(size).not.toContainText('Bei so schwachen Gläsern');
+  await expect(page.locator('#view-ref-scope')).toHaveText(
+    `Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille 15,0${N}mm hinter dem Glas (angenommener Wert).`,
+  );
+  await expect(page.locator('#view-ref-lens')).toBeHidden();
+  await expect(page.locator('#view-ref-side')).toBeHidden();
+  await page.locator('#rx-od-sph').fill('-4,00');
+  await settledView(page);
+  await expect(size.locator('.ref-line').first()).toHaveText(`Rechtes Glas: Bild etwa 6${N}% kleiner`);
+});
+
+test('3D chunk failed: the size block is still shown with the no-picture scope', async ({ page }) => {
+  await settledView(page);
+  guard.allowFailed(VIEW_CHUNK_RE);
+  await page.route(VIEW_CHUNK, (route) => route.abort());
+  await page.goto('./');
+  await settled(page);
+  await expect(page.locator('#view-stage')).toContainText('Die 3D-Ansicht konnte nicht geladen werden.');
+  const size = page.locator('#view-ref-size');
+  await expect(size).toBeVisible();
+  await expect(size).toContainText('Rechtes Glas: Bild');
+  await expect(size).not.toContainText('Zum Bildrand hin');
+  await expect(page.locator('#view-ref-scope')).toContainText('Berechnet für ein ruhendes Auge');
+  await expect(page.locator('#view-ref-lens')).toBeHidden();
+  await page.locator('#rx-od-sph').fill('-4,00');
+  await settled(page);
+  await expect(size.locator('.ref-line').first()).toHaveText(`Rechtes Glas: Bild etwa 6${N}% kleiner`);
+});
+
+test('webglcontextlost in Durchblick: redrawn from the last warp on restore', async ({ page }) => {
+  await settledView(page);
+  await refOn(page);
+  const { panels, drawnGen } = await refState(page);
+  const p = panels[0];
+  const probe = [[p.x + p.w / 2 + 0.5 * p.squarePx, p.y + p.h / 2 + 0.5 * p.squarePx]];
+  const before = await pixels(page, probe);
+  const lost = await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const c = /** @type {HTMLCanvasElement} */ (document.getElementById('view-canvas'));
+        const ext = c.getContext('webgl2')?.getExtension('WEBGL_lose_context');
+        if (!ext) return res(false);
+        window.__loseExt = ext;
+        c.addEventListener('webglcontextlost', () => res(true), { once: true });
+        ext.loseContext();
+      }),
+  );
+  expect(lost).toBe(true);
+  await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const c = document.getElementById('view-canvas');
+        c.addEventListener('webglcontextrestored', () => requestAnimationFrame(() => setTimeout(res, 0)), { once: true });
+        window.__loseExt.restoreContext();
+      }),
+  );
+  await expect(page.locator('#view-status')).toHaveText('');
+  expect((await refState(page)).drawnGen, 'no new trace').toBe(drawnGen);
+  await expect.poll(() => pixels(page, probe)).toEqual(before);
+});
+
+test.describe('stage visibility (M4) at 412×915', () => {
+  test.use({ viewport: { width: 412, height: 915 } });
+  test.skip(({ isMobile }) => !isMobile, 'phone layout: mobile project only');
+
+  test('item 13: off-screen: no warp job, the re-mesh and bar thumbnail run; back on screen: exactly one job', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await page.goto('./?thumbguardoff');
+    await settledView(page);
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await refOn(page);
+    await expect.poll(async () => (await refState(page)).onScreen).toBe(true);
+    const jobs0 = (await refState(page)).jobs;
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    await expect.poll(async () => (await refState(page)).onScreen).toBe(false);
+    const thumb0 = (await ev(page, () => window.__eyeglassView.thumbInfo())).copies;
+    const mesh0 = (await refState(page)).meshSent;
+    await page.locator('#rx-od-sph').fill('-3,25');
+    await settledView(page);
+    await expect.poll(async () => (await refState(page)).meshSent, 'the re-mesh ran').toBeGreaterThan(mesh0);
+    await expect
+      .poll(async () => (await ev(page, () => window.__eyeglassView.thumbInfo())).copies, { message: 'the bar thumbnail updated', timeout: 30_000 })
+      .toBeGreaterThan(thumb0);
+    await expect(page.locator('#bar-view-slot')).toBeVisible();
+    expect((await refState(page)).jobs, 'no warp job off-screen').toBe(jobs0);
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await expect.poll(async () => (await refState(page)).onScreen).toBe(true);
+    await settledRef(page);
+    expect((await refState(page)).jobs, 'exactly one job on return').toBe(jobs0 + 1);
+    await page.waitForTimeout(300);
+    expect((await refState(page)).jobs).toBe(jobs0 + 1);
+  });
+});
+
+test('item 14: leaving Durchblick with a deferred re-mesh shows "3D wird aktualisiert …" until the mesh attaches', async ({ page, isMobile }) => {
+  test.setTimeout(120_000);
+  // On a phone the edited field and the stage are never both on screen (typing scrolls the stage off).
+  test.skip(isMobile, 'needs the stage on screen while typing: desktop layout');
+  await settledView(page);
+  const gate = await holdMeshWorker(page);
+  await page.goto('./');
+  await settledView(page);
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await refOn(page);
+  await expect.poll(async () => (await refState(page)).onScreen).toBe(true);
+  const mesh0 = (await refState(page)).meshSent;
+  await page.locator('#rx-od-sph').fill('-3,75');
+  await settledRef(page);
+  const st = await refState(page);
+  expect(st.meshSent, 'on screen: the re-mesh is deferred').toBe(mesh0);
+  expect(st.meshDeferred).toBe(true);
+  await gate.hold();
+  await page.locator('#view-mode label', { hasText: 'Glas' }).first().click();
+  await expect(page.locator('.view-badge')).toHaveText('3D wird aktualisiert …');
+  await expect(page.locator('#view')).toHaveAttribute('data-pending', 'mesh');
+  await gate.release();
+  await settledView(page);
+  await expect(page.locator('.view-badge')).toHaveText('Visueller Eindruck');
+});
+
+// ---------------------------------------------------------------------------------------------
+// 04-09 Task 2: rim and edge band from the leaves, reference ticks (items 12, 25).
+
+const SCRATCH = process.env.REF_SHOTS ?? null; // optional screenshot directory (D-30 pass)
+const RIM_NOTE = 'Der dunkle Streifen im Bild ist der Rand Ihrer Fassung.';
+const RIM_PAST_NOTE = 'Außerhalb des Rands sehen Sie am Glas vorbei.';
+const ITEM12_FRAME = Object.freeze({ shape: 'rechteckig', A: 40, B: 28, DBL: 14 });
+const ITEM12_PD = 40;
+// UI-SPEC item 12 in tan units (N9): [chart, edge band, rim face] eye tan from the panel centre, temporal.
+const ITEM12_TAN = Object.freeze({ '-4,00': [0.401, 0.453, 0.521], '+4,00': [0.361, 0.421, 0.521] });
+
+/** The ticks of a panel as drawn: edge, n, the edge point (stage px) and whether it is displayed. */
+const drawnTicks = (page, id) =>
+  ev(
+    page,
+    (pid) =>
+      [...document.querySelectorAll(`#view-ref-ticks g[data-panel="${pid}"] g.ref-tick`)].map((g) => {
+        const l = /** @type {SVGLineElement} */ (g.querySelector('line'));
+        return {
+          edge: g.getAttribute('data-edge'),
+          n: Number(g.getAttribute('data-n')),
+          x: Number(l.getAttribute('x1')),
+          y: Number(l.getAttribute('y1')),
+          shown: g.getAttribute('display') !== 'none' && g.parentElement?.getAttribute('display') !== 'none',
+        };
+      }),
+    id,
+  );
+
+/**
+ * Offset (CSS px) from a tick to the nearest chart colour change on the line 14 px inside the panel
+ * edge, searched ± `span` px along the edge; null when none (UI-SPEC "How visible", item 25).
+ */
+async function tickOffset(page, p, tk, span = 8) {
+  const along = tk.edge === 'top' || tk.edge === 'bottom';
+  const pts = [];
+  if (along) {
+    const y = rowAt(tk.edge === 'top' ? p.y + 14 : p.y + p.h - 14);
+    for (let x = Math.floor(tk.x - span) + 0.5; x <= tk.x + span; x += 1) pts.push([x, y]);
+  } else {
+    const x = rowAt(tk.edge === 'left' ? p.x + 14 : p.x + p.w - 14);
+    for (let y = Math.floor(tk.y - span) + 0.5; y <= tk.y + span; y += 1) pts.push([x, y]);
+  }
+  const px = await pixels(page, pts);
+  let best = null;
+  for (let i = 1; i < pts.length; i++) {
+    if (inkish(px[i]) === inkish(px[i - 1])) continue;
+    const mid = along ? (pts[i][0] + pts[i - 1][0]) / 2 : (pts[i][1] + pts[i - 1][1]) / 2;
+    const d = mid - (along ? tk.x : tk.y);
+    if (best === null || Math.abs(d) < Math.abs(best)) best = d;
+  }
+  return best;
+}
+/** The bottom outermost ticks (N5: the badge and the fullscreen button cover the top edge). */
+function outermost(ticks) {
+  const lr = (edge) => ticks.filter((t) => t.edge === edge && t.shown).sort((a, b) => a.n - b.n)[0];
+  const bottom = ticks.filter((t) => t.edge === 'bottom' && t.shown).sort((a, b) => a.n - b.n);
+  return { left: lr('left'), right: lr('right'), bottomL: bottom[0], bottomR: bottom.at(-1) };
+}
+
+async function setFrame(page, f) {
+  await page.locator(`input[name=frame-shape][value=${f.shape}]`).check();
+  await page.locator('#frame-a').fill(String(f.A));
+  await page.locator('#frame-b').fill(String(f.B));
+  await page.locator('#frame-dbl').fill(String(f.DBL));
+}
+
+test.describe('item 12 rim in the field (320×640, one panel)', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+  test.skip(({ isMobile }) => isMobile, 'the desktop project at 320 × 640 is the stated case');
+
+  test('item 12: lens → edge band → rim face exactly where the engine classes put them; Ohne Glas keeps the mask; Linkes Glas mirrors', async ({ page }) => {
+    test.setTimeout(240_000);
+    await settledView(page);
+    await setFrame(page, ITEM12_FRAME);
+    await setRx(page, { sph: '-4,00' }, { sph: '-4,00' }, String(ITEM12_PD));
+    await refOn(page);
+    const geom = await canvasGeom(page);
+    const size = page.locator('#view-ref-size');
+    for (const rxText of /** @type {const} */ (['-4,00', '+4,00'])) {
+      const sph = Number(rxText.replace(',', '.'));
+      let gen = (await refState(page)).drawnGen;
+      if ((await page.locator('#rx-od-sph').inputValue()) !== rxText) {
+        await fillInPlace(page, '#rx-od-sph', rxText);
+        await fillInPlace(page, '#rx-os-sph', rxText);
+        await refRedrawn(page, gen);
+      }
+      for (const eye of /** @type {const} */ (['OD', 'OS'])) {
+        if ((await refState(page)).panels[0].eye !== eye) {
+          gen = (await refState(page)).drawnGen;
+          await pickEye(page, eye);
+          await refRedrawn(page, gen);
+        }
+        const st = await refState(page);
+        expect(st.panels.length).toBe(1);
+        const p = st.panels[0];
+        expect(p.eye).toBe(eye);
+        const ctx = lensOf(eye, { sph, cyl: 0, axisDeg: 0 }, { frame: ITEM12_FRAME, pd: ITEM12_PD });
+        const side = eye === 'OD' ? 1 : -1; // temporal = screen right for OD, left for OS
+        const { cx, cy } = centreOf(p);
+        const [tChart, tBand, tFace] = ITEM12_TAN[rxText];
+        const xAt = (tan) => cx + side * tan * p.pxPerTan; // N9: tan × the measured pxPerTan
+        const y0 = rowAt(cy);
+        const cls = (pt) => classifyDirection(ctx, ...eyeTan(p, pixelCentre(geom, pt)));
+        // The rim samples on the centre row; the engine classes there are the premise.
+        const band = [xAt(tBand), y0];
+        const face = [xAt(tFace), y0];
+        expect(cls(band).cls, `${eye} ${rxText} Node: edge band at tan ${tBand}`).toBe(REF_CLASS.EDGE_BAND);
+        expect(cls(face).cls, `${eye} ${rxText} Node: rim face at tan ${tFace}`).toBe(REF_CLASS.RIM_FACE);
+        // The chart sample: the row nearest the centre line where the point is class 1 and ≥ 2 px
+        // from every checker edge both at the eye tan (Ohne) and the traced object tan (Mit).
+        let chart = null;
+        for (const d of [2.5, -2.5, 3.5, -3.5, 4.5, -4.5, 5.5, -5.5, 6.5, -6.5]) {
+          const pt = [xAt(tChart), y0 + d];
+          const [tx, ty] = eyeTan(p, pixelCentre(geom, pt));
+          const c = classifyDirection(ctx, tx, ty);
+          if (c.cls !== REF_CLASS.LENS) continue;
+          if (edgeTan(tx, ty) * p.pxPerTan < 2 || edgeTan(...c.objTan) * p.pxPerTan < 2) continue;
+          chart = pt;
+          break;
+        }
+        expect(chart, `${eye} ${rxText}: a clean chart point near the centre line`).not.toBeNull();
+        // D-12 (f): inside a MIXED grid cell (corners of different classes) the leaves decide: a
+        // class-1 point there is chart, a class-2 point rim (the 04-08 rule drew the whole cell as rim).
+        const cellPx = REF_GRID_TIERS[st.tier].cellPx;
+        const nx = Math.ceil(p.w / cellPx);
+        const ny = Math.ceil(p.h / cellPx);
+        const cX = p.w / nx;
+        const cY = p.h / ny;
+        const gridCls = (i, j) => classifyDirection(ctx, (i * cX - p.w / 2) / p.pxPerTan, (j * cY - p.h / 2) / p.pxPerTan).cls;
+        const mixedAt = (pt) => {
+          const [sx, sy] = pixelCentre(geom, pt);
+          const i = Math.floor((sx - p.x) / cX);
+          const j = Math.floor((p.y + p.h - sy) / cY);
+          const c = [gridCls(i, j), gridCls(i + 1, j), gridCls(i, j + 1), gridCls(i + 1, j + 1)];
+          return c.some((v) => v !== c[0]);
+        };
+        const leafPts = { lens: null, band: null };
+        // The lens end can sit on a grid column on the centre row, so the search covers the panel height.
+        const rows = [];
+        for (let dy = 0; dy < p.h / 2 - 2; dy += 2) rows.push(dy, -dy - 1);
+        for (const dy of rows) {
+          for (let dx = 0; dx < 60 && !(leafPts.lens && leafPts.band); dx += 1) {
+            const pt = [Math.floor(xAt(tChart) + side * dx) + 0.5, Math.floor(cy + dy) + 0.5];
+            if (!mixedAt(pt)) continue;
+            const [tx, ty] = eyeTan(p, pixelCentre(geom, pt));
+            const c = classifyDirection(ctx, tx, ty);
+            // ≥ 1 px from the class change and (lens) from every checker edge
+            const stable = [-1, 1].every((d) => classifyDirection(ctx, ...eyeTan(p, pixelCentre(geom, [pt[0] + d, pt[1]]))).cls === c.cls);
+            if (!stable) continue;
+            const clean = (u, v) => edgeTan(u, v) * p.pxPerTan >= 1.5 && !inLetterBand(v);
+            if (c.cls === REF_CLASS.LENS && !leafPts.lens && clean(...c.objTan) && clean(tx, ty)) leafPts.lens = pt;
+            if (c.cls === REF_CLASS.EDGE_BAND && !leafPts.band) leafPts.band = pt;
+          }
+        }
+        expect(leafPts.lens, `${eye} ${rxText}: a class-1 point in a mixed cell`).not.toBeNull();
+        expect(leafPts.band, `${eye} ${rxText}: a class-2 point in a mixed cell`).not.toBeNull();
+        for (const lensOn of [true, false]) {
+          await lens(page, lensOn);
+          const [l, b] = await pixels(page, [leafPts.lens, leafPts.band]);
+          const line = `${eye} ${rxText} ${lensOn ? 'Mit' : 'Ohne'} mixed cells: lens ${leafPts.lens.map((v) => v.toFixed(1))} → ${l}; band ${leafPts.band.map((v) => v.toFixed(1))} → ${b}`;
+          console.log('item 12', line);
+          test.info().annotations.push({ type: 'item 12 leaves', description: line });
+          expect(isChart(l), `leaf class 1 in a mixed cell is chart: ${l}`).toBe(true);
+          expect(near(b, RIM), `leaf class 2 in a mixed cell is rim: ${b}`).toBe(true);
+        }
+        for (const lensOn of [true, false]) {
+          await lens(page, lensOn);
+          const [c, b, f] = await pixels(page, [chart, band, face]);
+          const line = `${eye} ${rxText} ${lensOn ? 'Mit' : 'Ohne'}: chart ${chart.map((v) => v.toFixed(1))} → ${c}; band x ${band[0].toFixed(1)} → ${b}; face x ${face[0].toFixed(1)} → ${f}; ${p.pxPerTan.toFixed(2)} px/tan`;
+          console.log('item 12', line);
+          test.info().annotations.push({ type: 'item 12', description: line });
+          expect(isChart(c), `chart colour at tan ${tChart}: ${c}`).toBe(true);
+          expect(near(b, RIM), `edge band #221e1c at tan ${tBand}: ${b}`).toBe(true);
+          expect(near(f, RIM), `rim face #221e1c at tan ${tFace}: ${f}`).toBe(true);
+          await noSurfaceInPanels(page);
+          if (SCRATCH) await page.locator('#view-stage').screenshot({ path: `${SCRATCH}/04-09-320-item12-${rxText}-${eye}-${lensOn ? 'mit' : 'ohne'}.png` });
+        }
+        // N11: a tick is hidden exactly where its 14 px sample point is on the rim face or edge band.
+        const ticks = await drawnTicks(page, p.id);
+        expect(ticks.length).toBeGreaterThan(0);
+        for (const tk of ticks) {
+          const inX = tk.edge === 'left' ? p.x + 14 : tk.edge === 'right' ? p.x + p.w - 14 : tk.x;
+          const inY = tk.edge === 'top' ? p.y + 14 : tk.edge === 'bottom' ? p.y + p.h - 14 : tk.y;
+          const [tx, ty] = eyeTan(p, [inX, inY]);
+          const c = classifyDirection(ctx, tx, ty).cls;
+          // skip a sample point within 1,5 px of a class change (the grid resolves the boundary to ≤ 1 px)
+          const near1 = [-1.5, 1.5].some((dd) => {
+            const alongX = tk.edge === 'top' || tk.edge === 'bottom';
+            const [ux, uy] = eyeTan(p, alongX ? [inX + dd, inY] : [inX, inY + dd]);
+            return classifyDirection(ctx, ux, uy).cls !== c;
+          });
+          if (near1) continue;
+          const onRim = c === REF_CLASS.EDGE_BAND || c === REF_CLASS.RIM_FACE;
+          expect(tk.shown, `${eye} tick ${tk.edge} ${tk.n}: shown iff its sample point is not on the rim`).toBe(!onRim);
+        }
+        // N3 / MINOR 8: the rim note with a rim in the shown panel; the past-rim note iff class 5 is on screen.
+        expect(p.rim).toBe(true);
+        await expect(size).toContainText(RIM_NOTE);
+        if (p.pastRim) await expect(size).toContainText(RIM_PAST_NOTE);
+        else await expect(size).not.toContainText(RIM_PAST_NOTE);
+        test.info().annotations.push({ type: 'item 12 notes', description: `${eye} ${rxText}: rim ${p.rim}, pastRim ${p.pastRim}` });
+      }
+      await pickEye(page, 'OD');
+    }
+  });
+});
+
+test.describe('item 25 reference ticks (412×915, two panels)', () => {
+  test.use({ viewport: { width: 412, height: 915 } });
+  test.skip(({ isMobile }) => isMobile, 'one run of the 412 layout (desktop project)');
+
+  test('item 25 (a)–(d): ticks on the Ohne-Glas square edges; −1,00 and −1,00 × 180 move them; weak note at −0,75', async ({ page }) => {
+    test.setTimeout(240_000);
+    await settledView(page);
+    await refOn(page);
+    let st = await refState(page);
+    expect(st.panels.length).toBe(2);
+    // (a) Ohne Glas, the load Rx: every drawn tick sits on a chart colour change within ± 1 px.
+    await lens(page, false);
+    for (const p of st.panels) {
+      const ticks = (await drawnTicks(page, p.id)).filter((t) => t.shown);
+      expect(ticks.filter((t) => (t.edge === 'left' || t.edge === 'right') && t.n >= 1 && t.n <= 3), 'N1: no tick in the letter band').toEqual([]);
+      for (const tk of ticks) {
+        // skip a sample line within 1,5 px of a perpendicular square edge (mixed colours there)
+        const along = tk.edge === 'top' || tk.edge === 'bottom';
+        const lineAt = along ? (tk.edge === 'top' ? p.y + 14 : p.y + p.h - 14) : tk.edge === 'left' ? p.x + 14 : p.x + p.w - 14;
+        const t = along ? (p.y + p.h / 2 - rowAt(lineAt)) / p.pxPerTan : (rowAt(lineAt) - p.x - p.w / 2) / p.pxPerTan;
+        if (Math.abs(t / S - Math.round(t / S)) * p.squarePx < 1.5) continue;
+        const d = await tickOffset(page, p, tk);
+        expect(d, `${p.id} ${tk.edge} ${tk.n}: a colour change near the tick`).not.toBeNull();
+        expect(Math.abs(d), `${p.id} ${tk.edge} ${tk.n}: Ohne Glas offset ${d}`).toBeLessThanOrEqual(1);
+      }
+    }
+    await lens(page, true);
+    const offsets = async (label) => {
+      st = await refState(page);
+      const out = {};
+      for (const p of st.panels) {
+        const o = outermost(await drawnTicks(page, p.id));
+        out[p.id] = {};
+        for (const [k, tk] of Object.entries(o)) out[p.id][k] = tk ? await tickOffset(page, p, tk) : null;
+      }
+      const line = `${label}: ${JSON.stringify(out, (_, v) => (typeof v === 'number' ? Number(v.toFixed(2)) : v))}`;
+      console.log('item 25', line);
+      test.info().annotations.push({ type: 'item 25', description: line });
+      return out;
+    };
+    const redraw = async (od, os = od) => {
+      const gen = (await refState(page)).drawnGen;
+      for (const [eye, rx] of [
+        ['od', od],
+        ['os', os],
+      ]) {
+        await fillInPlace(page, `#rx-${eye}-sph`, rx.sph);
+        await fillInPlace(page, `#rx-${eye}-cyl`, rx.cyl ?? '');
+        await fillInPlace(page, `#rx-${eye}-axis`, rx.axis ?? '');
+      }
+      await refRedrawn(page, gen);
+    };
+    // (b) OD and OS −1,00, Mit Glas: the outermost left/right ticks ≥ 2 px off; Ohne Glas ± 1 px.
+    await redraw({ sph: '-1,00' });
+    const mit = await offsets('−1,00 Mit');
+    await lens(page, false);
+    const ohne = await offsets('−1,00 Ohne');
+    await lens(page, true);
+    for (const id of ['L', 'R']) {
+      for (const k of ['left', 'right']) {
+        expect(Math.abs(mit[id][k] ?? 0), `${id} ${k} −1,00 Mit ≥ 2 px`).toBeGreaterThanOrEqual(2);
+        expect(Math.abs(ohne[id][k] ?? 99), `${id} ${k} −1,00 Ohne ≤ 1 px`).toBeLessThanOrEqual(1);
+      }
+    }
+    if (SCRATCH) await page.locator('#view-stage').screenshot({ path: `${SCRATCH}/04-09-412-ticks-m100.png` });
+    // (d) −1,00: the weak note is hidden.
+    await expect(page.locator('#view-ref-size')).not.toContainText('Bei so schwachen Gläsern');
+    // (c) 0,00 / −1,00 × 180: left/right ≥ 2 px, the bottom ticks (top/bottom edges) within ± 1 px.
+    await redraw({ sph: '0,00', cyl: '-1,00', axis: '180' });
+    const cyl = await offsets('0,00 / −1,00 × 180 Mit');
+    for (const id of ['L', 'R']) {
+      for (const k of ['left', 'right']) expect(Math.abs(cyl[id][k] ?? 0), `${id} ${k} × 180 ≥ 2 px`).toBeGreaterThanOrEqual(2);
+      for (const k of ['bottomL', 'bottomR']) expect(Math.abs(cyl[id][k] ?? 99), `${id} ${k} × 180 ≤ 1 px`).toBeLessThanOrEqual(1);
+    }
+    if (SCRATCH) await page.locator('#view-stage').screenshot({ path: `${SCRATCH}/04-09-412-ticks-cyl180.png` });
+    // (d) −0,75 both eyes: the weak note is shown.
+    await redraw({ sph: '-0,75' });
+    await expect(page.locator('#view-ref-size')).toContainText('Bei so schwachen Gläsern ist der Unterschied im Bild kaum zu sehen.');
+  });
+});
+
+test.describe('item 25 one panel (320×640)', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+  test.skip(({ isMobile }) => isMobile, 'the desktop project at 320 × 640');
+
+  test('item 25 320 px: 0,00 / −1,00 × 90 moves the bottom ticks ≥ 2 px, the left/right ticks stay within ± 1 px', async ({ page }) => {
+    test.setTimeout(180_000);
+    await settledView(page);
+    await setRx(page, { sph: '0,00', cyl: '-1,00', axis: '90' });
+    await refOn(page);
+    const { panels } = await refState(page);
+    expect(panels.length).toBe(1);
+    const p = panels[0];
+    const o = outermost(await drawnTicks(page, p.id));
+    const d = {};
+    for (const [k, tk] of Object.entries(o)) d[k] = tk ? await tickOffset(page, p, tk) : null;
+    const line = `${p.id} ${p.w} × ${p.h} at ${p.pxPerTan.toFixed(2)}: ${JSON.stringify(d)}`;
+    console.log('item 25 320', line);
+    test.info().annotations.push({ type: 'item 25 320', description: line });
+    for (const k of ['bottomL', 'bottomR']) expect(Math.abs(d[k] ?? 0), `${k} ≥ 2 px`).toBeGreaterThanOrEqual(2);
+    for (const k of ['left', 'right']) expect(Math.abs(d[k] ?? 99), `${k} ≤ 1 px`).toBeLessThanOrEqual(1);
+    if (SCRATCH) await page.locator('#view-stage').screenshot({ path: `${SCRATCH}/04-09-320-ticks-cyl90.png` });
   });
 });

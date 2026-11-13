@@ -141,7 +141,7 @@ export function createScene(canvas, stage) {
     passes++;
     pass();
   };
-  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any, ms: number) => void, hide?: import('three').Object3D[] }} */
+  /** @type {null | { canvas: HTMLCanvasElement, source: () => any, onCopy: (spec: any, ms: number) => void, hide?: import('three').Object3D[], pass?: () => void }} */
   let thumb = null;
   let thumbWanted = false;
   const thumbStats = { copies: 0, passesPerThumbFrame: 0 };
@@ -182,7 +182,11 @@ export function createScene(canvas, stage) {
     try {
       try {
         for (const o of hide) o.visible = false;
-        runPass();
+        // 04-09: the thumbnail may have its own pass (the glasses while the main pass is the Durchblick).
+        if (thumb.pass) {
+          passes++;
+          thumb.pass();
+        } else runPass();
       } finally {
         hide.forEach((o, i) => (o.visible = wasVisible[i]));
       }
