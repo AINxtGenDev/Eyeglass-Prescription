@@ -428,6 +428,7 @@ function mount({ slot }) {
     if (mode === 'ref') {
       // 04-08: no 3D labels over the Durchblick; its own eye pills are laid out by refAfterRender.
       for (const el of labels.pool) if (!el.hidden) el.hidden = true;
+      compare3d.hideOverlay(); // 04-11: no 3D "Vorher (A)" / "Nachher (B)" captions over the A/B Durchblick
       refAfterRender();
       return;
     }

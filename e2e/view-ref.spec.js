@@ -1644,6 +1644,10 @@ test.describe('A/B separate traces (1280×800)', () => {
     const [pA, pB] = st.panels;
     expect([pA.id, pB.id]).toEqual(['A', 'B']);
     expect(pA.eye).toBe(st.compare.eye);
+    // The comparison started in Glas: its 3D captions and divider must not stay over the Durchblick.
+    await expect(page.locator('#view-labels .view-label--caption:visible')).toHaveCount(0);
+    await expect(page.locator('#view-stage .view-divider:visible')).toHaveCount(0);
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Vorher (A)', 'Nachher (B)']);
     expect(pA.pxPerTan).toBe(pB.pxPerTan);
     const geom = await canvasGeom(page);
     const R = REF_GRID_TIERS[st.tier].cellPx + 2;
