@@ -13,6 +13,7 @@
 //   served responses are asserted to come from the service worker (fromServiceWorker()), so a
 //   cache miss fails the test instead of reaching a server.
 import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { settled, settledCompare, settledView } from './helpers.js';
@@ -587,6 +588,77 @@ test.describe('switch server only', () => {
     await settled(page);
     await expect(page.locator('#rx-od-cyl')).toHaveValue('abc');
     await expect(page.locator('#app-update-body')).toHaveText(doneText('update.done'));
+  });
+
+  // ---- 04-12 (UI-SPEC "Accessibility Contract (additions)", item 27): the banner states ----
+  // Only here: they need a waiting worker from the switch server (skipped live and with the kill
+  // switch on, by this describe). Same tag set and sizes as e2e/a11y.spec.js.
+  const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+  const SIZES = [
+    { width: 320, height: 640 },
+    { width: 1280, height: 800 },
+  ];
+  /** axe zero violations and no horizontal scroll at both sizes, the banner still shown with `text`. */
+  async function bannerAxe(page, when, text) {
+    for (const vp of SIZES) {
+      const at = `${when} at ${vp.width}×${vp.height}`;
+      await page.setViewportSize(vp);
+      await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+      await expect(page.locator('#app-update'), at).toBeVisible();
+      await expect(page.locator('#app-update-body')).toHaveText(text);
+      await expect(page.getByRole('region', { name: DE['update.region'] })).toBeVisible();
+      // WCAG 2.5.3: each visible banner button is named by its visible text.
+      for (const id of ['app-update-apply', 'app-update-later', 'app-update-close']) {
+        const b = page.locator(`#${id}`);
+        if (await b.isVisible()) await expect(b, `${id} name = visible text`).toHaveAccessibleName((await b.innerText()).trim());
+      }
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      const list = violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+      expect(list, `axe violations ${at}`).toEqual([]);
+      await page.evaluate(() => {
+        document.body.style.hyphens = 'manual';
+      });
+      const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+      expect(scroll, `scrollWidth <= clientWidth ${at}`).toBeLessThanOrEqual(client);
+    }
+  }
+
+  test('item 27: axe and 320 px reflow, update banner shown', async ({ page, request, baseURL }) => {
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await bannerAxe(page, 'banner shown', DE['update.body']);
+  });
+
+  test('item 27: axe and 320 px reflow, update confirmation', async ({ page, request, baseURL }) => {
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await page.locator('#app-update-apply').click();
+    await expect(page.locator('#app-version')).toHaveText(B_VERSION, { timeout: 60_000 });
+    await settled(page);
+    await expect(page.locator('#app-update-close')).toBeVisible();
+    await bannerAxe(page, 'update confirmation', doneText('update.done'));
+  });
+
+  test('item 27: axe and 320 px reflow, update failure', async ({ page, request, baseURL }) => {
+    await page.addInitScript(() => {
+      const post = ServiceWorker.prototype.postMessage;
+      ServiceWorker.prototype.postMessage = function (msg, ...rest) {
+        if (msg && msg.type === 'SKIP_WAITING') return undefined;
+        return post.call(this, msg, ...rest);
+      };
+    });
+    await openOnA(page);
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    const apply = page.locator('#app-update-apply');
+    await apply.click();
+    await expect(apply).toBeEnabled({ timeout: 15_000 });
+    await bannerAxe(page, 'update failure', DE['update.failed']);
   });
 
   // lens-critic M1: the kill switch rehearsed both ways. The switch server's build A runs with the
