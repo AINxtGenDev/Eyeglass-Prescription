@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 
 describe('t() (L10N-02)', () => {
   test('returns the German title', () => {
-    expect(t('app.title')).toBe('Brillenglas-Rechner – Dicke und Gewicht');
+    expect(t('app.title')).toBe('Brillenglas-Simulator – Dicke und Gewicht');
   });
 
   test('unknown key throws an Error naming the key', () => {

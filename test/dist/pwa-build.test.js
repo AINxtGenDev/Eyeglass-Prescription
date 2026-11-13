@@ -35,7 +35,7 @@ describe('web app manifest (D-25)', () => {
   test('fields, scope and start_url', () => {
     requireDist();
     const m = JSON.parse(read('manifest.webmanifest'));
-    expect(m.name).toBe('Brillenglas-Rechner – Dicke und Gewicht');
+    expect(m.name).toBe('Brillenglas-Simulator – Dicke und Gewicht');
     expect(m.short_name).toBe('Brillenglas');
     expect(m.lang).toBe('de-AT');
     expect(m.scope).toBe(BASE);

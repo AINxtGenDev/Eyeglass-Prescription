@@ -63,7 +63,7 @@ export default defineConfig({
       // would need an inline/extra script and break the CSP (D-23)
       injectRegister: false,
       manifest: {
-        name: 'Brillenglas-Rechner – Dicke und Gewicht',
+        name: 'Brillenglas-Simulator – Dicke und Gewicht',
         short_name: 'Brillenglas',
         lang: 'de-AT',
         display: 'standalone',

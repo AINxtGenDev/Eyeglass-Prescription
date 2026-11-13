@@ -2,7 +2,7 @@
 // Thickness is always "Mittendicke"/"Randdicke" (see PITFALLS de-AT). Numbers are never
 // inside these strings; the UI formats them and passes them as {params}.
 export default Object.freeze({
-  'app.title': 'Brillenglas-Rechner – Dicke und Gewicht',
+  'app.title': 'Brillenglas-Simulator – Dicke und Gewicht',
 
   'parse.PARSE_EMPTY': 'Bitte einen Wert eingeben.',
   'parse.PARSE_NOT_A_NUMBER':
@@ -556,7 +556,7 @@ export default Object.freeze({
     'Prüfen Sie die Eingaben. Wenn sie stimmen, kann Ihnen Ihr Optiker sagen, welche Gläser möglich sind.',
   'diag.INVALID_SPEC.title': 'Berechnung nicht möglich',
   'diag.INVALID_SPEC.explain':
-    'Die Eingaben ergeben keine vollständige Angabe für die Berechnung. Das ist eine interne Prüfung dieses Rechners.',
+    'Die Eingaben ergeben keine vollständige Angabe für die Berechnung. Das ist eine interne Prüfung dieses Simulators.',
   'diag.INVALID_SPEC.suggest': 'Prüfen Sie alle Felder und laden Sie die Seite bei Bedarf neu.',
   'diag.OC_OUTSIDE_OUTLINE.title': 'Optischer Mittelpunkt außerhalb des Glases',
   'diag.OC_OUTSIDE_OUTLINE.explain':
