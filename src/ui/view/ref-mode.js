@@ -374,7 +374,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     for (const it of d.items) {
       if (refraction.setWarp(it.panel, it)) {
         drawn.add(it.panel);
-        rimByPanel[it.panel] = { rimInField: it.rimInField, pastRimInField: it.pastRimInField };
+        rimByPanel[it.panel] = { rimInField: it.rimInField, pastRimInField: it.pastRimInField, noViewInField: it.noViewInField };
       }
     }
     if (drawn.size < d.items.length) {
@@ -469,7 +469,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     /** Test handle data (no Rx values). */
     info: () => ({
       lens,
-      panels: layout.panels.map(({ id, eye, pxPerTan, squarePx, x, y, w, h }) => ({ id, eye, pxPerTan, squarePx, x, y, w, h, pastRim: Boolean(rimByPanel[id]?.pastRimInField) })),
+      panels: layout.panels.map(({ id, eye, pxPerTan, squarePx, x, y, w, h }) => ({ id, eye, pxPerTan, squarePx, x, y, w, h, rim: Boolean(rimByPanel[id]?.rimInField), pastRim: Boolean(rimByPanel[id]?.pastRimInField), noView: Boolean(rimByPanel[id]?.noViewInField) })),
       tier: TIER,
       drawnGen,
       jobs,

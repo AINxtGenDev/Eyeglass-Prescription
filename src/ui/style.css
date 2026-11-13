@@ -2261,6 +2261,19 @@ html.view-fs-open body {
   max-width: calc(100% - 16px);
 }
 
+/* 04-09 (UI-SPEC "Reference ticks"): over the canvas, under the pills (first child of #view-labels)
+   and under the badge (z-index in Durchblick). Lines carry presentation attributes only. */
+#view-ref-ticks {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+#view-stage.view-stage--ref .view-badge {
+  z-index: 1;
+}
+
 /* 04-09 (UI-SPEC States "One eye blocked"): centred on the panel fill, wraps to two lines if needed. */
 .view-label.ref-pill--blocked {
   max-width: calc(50% - 32px);

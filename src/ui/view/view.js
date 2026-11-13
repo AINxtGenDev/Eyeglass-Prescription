@@ -1608,7 +1608,8 @@ function mount({ slot }) {
       /** 03-13 test-only: the visible projected labels (kind, callout key, text, viewport rect) and calloutsFit. */
       labelsInfo: () => ({
         labels: [...labelsEl.children]
-          .filter((el) => !(/** @type {HTMLElement} */ (el).hidden))
+          // 04-09: svg#view-ref-ticks (Durchblick) is no label
+          .filter((el) => el instanceof HTMLElement && !el.hidden)
           .map((el) => {
             const c = el.classList;
             const r = el.getBoundingClientRect();
