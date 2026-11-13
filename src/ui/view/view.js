@@ -122,6 +122,8 @@ import {
 import { enableBarThumb, disableBarThumb } from '../summary-bar.js';
 import { createCompare3d } from './compare3d.js';
 import { thickest } from '../../state/compare.js';
+import { createRefraction } from './refraction.js';
+import { createRefMode, writeRefTech } from './ref-mode.js';
 
 const SLOTS = /** @type {const} */ (['OD', 'OS']);
 /** Stale-geometry badge delay (UI-SPEC States: "not yet done for > 100 ms"). */
@@ -231,9 +233,24 @@ export function mountView(o) {
  */
 function mount({ slot }) {
   const viewEl = /** @type {HTMLElement} */ (slot.querySelector('#view'));
-  const setPending = (v) => {
+  // 04-08: #view[data-pending] carries the mesh lane ('load' | 'mesh' | '') and, in Durchblick,
+  // the warp lane: 'warp' until the current warp is drawn wins over the mesh state.
+  let pendingMesh = viewEl.dataset.pending ?? '';
+  let pendingWarp = false;
+  const writePending = () => {
+    const v = pendingWarp ? 'warp' : pendingMesh;
     if (viewEl.dataset.pending !== v) viewEl.dataset.pending = v;
   };
+  const setPending = (v) => {
+    pendingMesh = v;
+    writePending();
+  };
+  const setWarpPending = (/** @type {boolean} */ on) => {
+    pendingWarp = on;
+    writePending();
+  };
+  // 04-08: Technische Angaben names the Durchblick eye point and its sources (engine constants).
+  writeRefTech();
   const badge = /** @type {HTMLElement} */ (slot.querySelector('.view-badge'));
   const setBadge = (key) => {
     const text = key ? t(key) : '';
@@ -317,9 +334,13 @@ function mount({ slot }) {
   }
   const heat = createHeat(view.scene);
   const lenses = createLensSlots(view.scene, [...SLOTS, 'A'], heat.material);
-  /** 03-12: 'glass' | 'heat' (not persisted; Glas is the default). */
+  /** 03-12: 'glass' | 'heat'; 04-08: | 'ref' (Durchblick). Not persisted; Glas is the default. */
   let mode = 'glass';
-  const modeBadge = () => (mode === 'heat' ? 'view.badge.heat' : 'view.badge.glass');
+  const modeBadge = () => (mode === 'heat' ? 'view.badge.heat' : mode === 'ref' ? 'view.badge.ref' : 'view.badge.glass');
+  /** 04-08: the mesh lane writes the badge only outside the Durchblick (ref-mode owns it there). */
+  const setMeshBadge = (key) => {
+    if (mode !== 'ref') setBadge(key);
+  };
   const frame = createFrame(view.scene, { OD: lenses.group('OD'), OS: lenses.group('OS') });
   const chart = createChart(view.scene, view.renderer, TIER_SETTINGS[view.tier()].chart);
   const shadow = createShadow(view.scene);
@@ -358,6 +379,7 @@ function mount({ slot }) {
     } else {
       chart.reupload();
       shadow.reupload();
+      refraction?.reupload(); // 04-08: redrawn from the last warp
       setText('view-status', '');
       showUnavailable(null);
       requestThumb();
@@ -391,6 +413,12 @@ function mount({ slot }) {
   /** Last frame seen on any eye: a blocked eye (no input spec) has none of its own. */
   let knownFrame = null;
   view.afterRender(() => {
+    if (mode === 'ref') {
+      // 04-08: no 3D labels over the Durchblick; its own eye pills are laid out by refAfterRender.
+      for (const el of labels.pool) if (!el.hidden) el.hidden = true;
+      refAfterRender();
+      return;
+    }
     const size = { width: labelsEl.clientWidth, height: labelsEl.clientHeight };
     const cs = compare3d.state();
     const caps = compare3d.layoutCaptions([badgeBox, fsBox].filter(Boolean));
@@ -550,8 +578,9 @@ function mount({ slot }) {
         // input builds again, and its attach clears the message (paintMesh).
         clearBadgeTimer();
         setPending('');
-        if (attachedOnce) setBadge(modeBadge());
-        if (!contextLost) {
+        if (attachedOnce) setMeshBadge(modeBadge());
+        // 04-08: the Durchblick does not show the 3D mesh, so its stage keeps its own status.
+        if (!contextLost && mode !== 'ref') {
           meshFailed = true;
           $('view-status').classList.add('view-failed');
           setText('view-status', t('view.loadFailed'));
@@ -628,13 +657,13 @@ function mount({ slot }) {
     paintHeat();
     retryLeft = true;
     clearBadgeTimer();
-    if (!contextLost) setText('view-status', '');
+    if (!contextLost && mode !== 'ref') setText('view-status', '');
     if (meshFailed && !contextLost) {
       meshFailed = false;
       $('view-status').classList.remove('view-failed');
       showUnavailable(null);
     }
-    setBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
+    setMeshBadge(last?.current === false ? 'view.badge.updating' : modeBadge());
     setPending('');
     // Carried by the render below (2 passes, scene.js). B-WR-03: a reply is attached only when it is
     // current, so no newer mesh job is in flight here; while one is, thumbSpec() says 'not now'.
@@ -753,7 +782,7 @@ function mount({ slot }) {
     if (key === protrusionKey) return;
     protrusionKey = key;
     const shown = rows.filter(([, v]) => v !== null);
-    $('view-protrusion').hidden = shown.length === 0;
+    $('view-protrusion').hidden = shown.length === 0 || mode === 'ref'; // 04-08: hidden in Durchblick
     if (shown.length === 0) return;
     const display = { rimDepthMm: rim, rimAssumed: disp.rimAssumed !== false };
     const p = cmp
@@ -784,6 +813,12 @@ function mount({ slot }) {
   let ariaTimer = null;
   function writeAria() {
     ariaTimer = null;
+    if (mode === 'ref') {
+      // 04-08 (D-05): the Durchblick name from the same engine size strings (ref-mode.js refAria).
+      const label = refAriaLabel();
+      if (label && canvasEl.getAttribute('aria-label') !== label) canvasEl.setAttribute('aria-label', label);
+      return;
+    }
     if (cmp) {
       // 03-14: thickest(m) of the compared eye per configuration, the card rule (fmtMm).
       const th = (r) => (r?.ok ? fmtMm(thickest(r.metrics).value) : '–');
@@ -840,8 +875,13 @@ function mount({ slot }) {
     },
   });
   if (controls.pointer) setText('view-hint', t('view.hint.pointer'));
+  /** 04-08 (D-10): the fullscreen button's enter label names the Durchblick there (title = name). */
+  const applyFsLabel = () => {
+    if (!fsOn) fsButton.setAttribute('title', t(mode === 'ref' ? 'view.fullscreen.enter.ref' : 'view.fullscreen.enter'));
+  };
   createFullscreen({ stage: $('view-stage'), button: fsButton, onChange: (on) => {
     fsOn = on;
+    applyFsLabel();
     controls.setFullscreen(on);
     updateAvoid();
   } });
@@ -860,6 +900,8 @@ function mount({ slot }) {
    */
   function thumbSpec() {
     if (thumbGuard.tripped) return null;
+    // 04-08: the pass draws the Durchblick, not the glasses (the M4 thumbnail rule is 04-09/04-10).
+    if (mode === 'ref') return null;
     if (!narrowMq.matches || barEl.hidden || barEl.classList.contains('thumb-off') || contextLost || !attachedOnce || controls.busy()) return null;
     if (outstanding !== null) return null;
     const ctx = cameraCtx();
@@ -937,9 +979,16 @@ function mount({ slot }) {
   for (const r of modeRadios) {
     r.after(icon('check'));
     r.addEventListener('change', () => {
-      if (r.checked) setMode(/** @type {'glass' | 'heat'} */ (r.value));
+      if (r.checked) setMode(/** @type {'glass' | 'heat' | 'ref'} */ (r.value));
     });
   }
+  // 04-08 (D-09): three options stack one per row below a 400 px #view (Expert shows Dickenkarte).
+  const modeEl = $('view-mode');
+  const expertEl = /** @type {HTMLInputElement} */ ($('expert'));
+  const syncStack = () => modeEl.classList.toggle('segmented--stack', expertEl.checked && viewEl.clientWidth < 400);
+  expertEl.addEventListener('change', syncStack);
+  new ResizeObserver(syncStack).observe(viewEl);
+  syncStack();
   // Expert off while Dickenkarte is on → Glas (UI-SPEC Heatmap: Simple never shows the map).
   $('expert').addEventListener('change', (e) => {
     if (!(/** @type {HTMLInputElement} */ (e.target).checked) && mode === 'heat') {
@@ -1119,11 +1168,13 @@ function mount({ slot }) {
     scheduleAria();
   }
 
-  /** @param {'glass' | 'heat'} next */
+  /** @param {'glass' | 'heat' | 'ref'} next */
   function setMode(next) {
     if (next === mode) return;
+    const from = mode;
+    if (from === 'ref') leaveRef();
     mode = next;
-    lenses.setMode(next);
+    lenses.setMode(next === 'heat' ? 'heat' : 'glass');
     requestThumb();
     const isHeat = next === 'heat';
     if (!isHeat) {
@@ -1135,19 +1186,95 @@ function mount({ slot }) {
       $('view-heat-table').hidden = true;
       $('view-heat-nochord').hidden = true;
     }
-    if (badge.textContent !== t('view.badge.updating')) setBadge(modeBadge());
+    if (next === 'ref') {
+      enterRef();
+      return;
+    }
+    applyFsLabel();
+    if (from === 'ref') setBadge(outstanding !== null ? 'view.badge.updating' : modeBadge());
+    else if (badge.textContent !== t('view.badge.updating')) setBadge(modeBadge());
     updateLabels(drawnLenses());
     if (isHeat) {
       paintHeat();
       controls.goTo('heat', heatState?.eye ?? cmp?.eye ?? 'OD');
-    } else {
+    } else if (from !== 'ref') {
       // B-WR-04: leaving Dickenkarte (Glas, or Expert off) returns to the default pose with the
       // default fit, as 'Vergleich beenden' does; the one-lens heat close-up is not kept.
+      // 04-08: leaving the Durchblick restores the saved pose instead (leaveRef).
       controls.goTo('default', 'OD');
     }
     view.requestRender();
     scheduleAria();
   }
+
+  // ---- 04-08 (REF-01, D-10): entering and leaving the Durchblick ----
+  /** Saved on entry: the camera preset ('free' keeps the untouched camera), its eye, '3D drehen', the hint text. */
+  let refSaved = null;
+  function enterRef() {
+    refSaved = { ...controls.suspend(), hint: $('view-hint').textContent ?? '' };
+    $('view-tools').hidden = true;
+    stageEl.removeAttribute('tabindex');
+    stageEl.removeAttribute('aria-describedby');
+    stageEl.classList.add('view-stage--ref');
+    setText('view-title', t('view.title.ref'));
+    stageEl.setAttribute('aria-label', t('view.stage.label.ref'));
+    applyFsLabel();
+    $('view-protrusion').hidden = true;
+    sideNote.hidden = true;
+    $('view-heat').hidden = true;
+    $('view-ref').hidden = false;
+    setText('view-hint', t('view.hint.ref'));
+    clearBadgeTimer();
+    updateLabels(drawnLenses());
+    enterRefPass();
+    view.requestRender();
+    scheduleAria();
+  }
+  function leaveRef() {
+    leaveRefPass();
+    const saved = refSaved;
+    refSaved = null;
+    controls.resume(saved);
+    // Instant cut back to the saved preset; a freely turned camera was never moved (input suspended).
+    if (saved.preset !== 'free') controls.goTo(saved.preset, saved.eye, { cut: true });
+    $('view-tools').hidden = false;
+    stageEl.setAttribute('tabindex', '0');
+    stageEl.setAttribute('aria-describedby', 'view-keys');
+    stageEl.classList.remove('view-stage--ref');
+    setText('view-title', t('view.title'));
+    stageEl.setAttribute('aria-label', t('view.stage.label'));
+    $('view-heat').hidden = false;
+    $('view-ref').hidden = true;
+    if (!saved.rotate) setText('view-hint', saved.hint); // resume() wrote the touchOn hint otherwise
+    sideNote.hidden = controls.viewName() !== 'side';
+    protrusionKey = null;
+    paintProtrusion();
+  }
+  // The Durchblick pass (refraction.js, created on the first entry: its chart texture costs nothing
+  // for users who never open it) and its lane (ref-mode.js). One renderer, one WebGL context.
+  let refraction = null;
+  const getRefraction = () => (refraction ??= createRefraction({ renderer: view.renderer, labelsEl }));
+  const refMode = createRefMode({
+    getRefraction,
+    canvasEl,
+    setBadge,
+    setWarpPending,
+    scheduleAria: () => scheduleAria(),
+    requestRender: () => view.requestRender(),
+  });
+  function enterRefPass() {
+    refMode.enter(last);
+    view.setPass(() => getRefraction().renderPass());
+  }
+  function leaveRefPass() {
+    refMode.leave();
+    view.setPass(compare3d.renderPass);
+  }
+  function refAfterRender() {
+    refraction?.layoutPills();
+  }
+  const refAriaLabel = () => refMode.ariaLabel();
+  const refInfo = () => ({ mode, ...refMode.info() });
 
   view.beforeRender(() => {
     const p = view.camera.position;
@@ -1157,6 +1284,7 @@ function mount({ slot }) {
     frame.setFade(nearTempleFade(dir));
   });
   view.onResize(() => {
+    if (mode === 'ref') refMode.resize();
     syncCompare(true); // the split depends on the stage width
     if (attachedOnce) refresh();
     updateAvoid(true);
@@ -1223,7 +1351,7 @@ function mount({ slot }) {
       ? t('view.empty')
       : cmp
         ? t('view.caption.compare', { eye: t(cmp.eye === 'OS' ? 'view.aria.eye.os' : 'view.aria.eye.od') })
-        : t(mode === 'heat' ? 'view.caption.heat' : 'view.caption.glass');
+        : t(mode === 'heat' ? 'view.caption.heat' : mode === 'ref' ? 'view.caption.ref' : 'view.caption.glass');
     setText('view-caption', caption);
     const key = JSON.stringify(parts);
     if (key !== labelKey) {
@@ -1283,6 +1411,8 @@ function mount({ slot }) {
   function update(inputs) {
     last = inputs;
     if (attachedOnce) scheduleAria();
+    // 04-08 (D-13): the size block with this result paint, then the warp job (latest wins).
+    if (mode === 'ref') refMode.update(inputs);
     /** slot → { item (without buffers), meta (with key) } */
     const want = {};
     for (const eye of SLOTS) {
@@ -1383,7 +1513,7 @@ function mount({ slot }) {
       if (attachedOnce) refresh();
       if (attachedOnce) requestThumb();
       view.requestRender();
-      if (attachedOnce) setBadge(inputs.current ? modeBadge() : 'view.badge.updating');
+      if (attachedOnce) setMeshBadge(inputs.current ? modeBadge() : 'view.badge.updating');
       if (attachedOnce) paintHeat();
       clearBadgeTimer();
       setPending('');
@@ -1404,7 +1534,7 @@ function mount({ slot }) {
     if (attachedOnce && badgeTimer === null) {
       badgeTimer = setTimeout(() => {
         badgeTimer = null;
-        if (viewEl.dataset.pending === 'mesh') setBadge('view.badge.updating');
+        if (pendingMesh === 'mesh') setMeshBadge('view.badge.updating');
       }, BADGE_AFTER_MS);
     }
   }
@@ -1418,8 +1548,10 @@ function mount({ slot }) {
       allocs: () => ({ page: lenses.allocCount() + frame.allocCount() + frameA.allocCount(), worker: workerReallocs }),
       meshMode: () => client.mode(),
       viewName: () => controls.viewName(),
-      /** 03-12: 'glass' | 'heat', and the engine scale / levels / heat eye of the painted map (null in Glas). */
+      /** 03-12: 'glass' | 'heat' (04-08: | 'ref'), and the engine scale / levels / heat eye of the painted map (null in Glas). */
       mode: () => mode,
+      /** 04-08 test-only: the Durchblick state (no Rx values): mode, Bild toggle, panels, grid tier, drawn warp generation. */
+      ref: () => refInfo(),
       heatScale: () =>
         heatState?.scale
           ? { ...heatState.scale, ...heatState.levels, values: [...heatState.levels.values], eye: heatState.eye, uniforms: heat.uniforms() }

@@ -32,20 +32,46 @@ const BAND_MM = 24;
 const CAP_MM = 12;
 const PITCH_MM = 20;
 const BAND_Z_MM = 0.5;
-const LETTERS = ['E', 'F', 'P', 'T', 'O', 'Z', 'L', 'P', 'E', 'D'];
-const INK = '#1a1a1a';
-const PAPER = '#ffffff';
+// 04-08 (D-08): exported so the Durchblick chart (refraction.js) is drawn by the same code.
+export const LETTERS = Object.freeze(['E', 'F', 'P', 'T', 'O', 'Z', 'L', 'P', 'E', 'D']);
+export const INK = '#1a1a1a';
+export const PAPER = '#ffffff';
 /** Shadow canvas size and peak opacity; the gap below the boxing box bottom (mm). */
 const SHADOW_CANVAS = [256, 128];
 const SHADOW_PEAK = 0.25;
 const SHADOW_GAP_MM = 25;
 
-const canvasOf = (w, h) => {
+export const canvasOf = (w, h) => {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   return { canvas, g: /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d')) };
 };
+
+/**
+ * The letter band into a 2D context: a paper rectangle with the LETTERS row in ink, weight 600,
+ * centred vertically with the given cap height, one letter per pitch from the rect's left edge.
+ * Shared by the phase-3 chart (drawBand) and the Durchblick chart (04-08, D-08).
+ * @param {CanvasRenderingContext2D} g
+ * @param {{ x: number, y: number, w: number, h: number }} rect canvas px
+ * @param {number} capPx cap height in canvas px
+ * @param {number} pitchPx letter pitch in canvas px
+ * @param {number} [count] number of letters (default: as many whole pitches as fit)
+ */
+export function drawLetterBand(g, rect, capPx, pitchPx, count = Math.floor(rect.w / pitchPx)) {
+  g.fillStyle = PAPER;
+  g.fillRect(rect.x, rect.y, rect.w, rect.h);
+  g.fillStyle = INK;
+  g.textAlign = 'center';
+  g.textBaseline = 'alphabetic';
+  // Font size for the cap height: measure the cap height of 'E' at a reference size.
+  g.font = '600 100px system-ui, sans-serif';
+  const m = g.measureText('E');
+  const capPer100 = m.actualBoundingBoxAscent > 0 ? m.actualBoundingBoxAscent : 70;
+  g.font = `600 ${Math.round((capPx * 100) / capPer100)}px system-ui, sans-serif`;
+  const baseline = rect.y + rect.h / 2 + capPx / 2;
+  for (let i = 0; i < count; i++) g.fillText(LETTERS[i % LETTERS.length], rect.x + (i + 0.5) * pitchPx, baseline);
+}
 
 /** One 20 mm checker period (2 × 2 squares) at k px per mm; ink top-left and bottom-right. */
 function drawTile(k) {
@@ -64,20 +90,7 @@ function drawBand(k) {
   const w = Math.round(BAND_W_MM * k);
   const h = Math.round(BAND_MM * k);
   const { canvas, g } = canvasOf(w, h);
-  g.fillStyle = PAPER;
-  g.fillRect(0, 0, w, h);
-  g.fillStyle = INK;
-  g.textAlign = 'center';
-  g.textBaseline = 'alphabetic';
-  // Font size for a 12 mm cap height: measure the cap height of 'E' at a reference size.
-  g.font = '600 100px system-ui, sans-serif';
-  const m = g.measureText('E');
-  const capPer100 = m.actualBoundingBoxAscent > 0 ? m.actualBoundingBoxAscent : 70;
-  const capPx = CAP_MM * k;
-  g.font = `600 ${Math.round((capPx * 100) / capPer100)}px system-ui, sans-serif`;
-  const baseline = h / 2 + capPx / 2;
-  const count = Math.floor(BAND_W_MM / PITCH_MM);
-  for (let i = 0; i < count; i++) g.fillText(LETTERS[i % LETTERS.length], (i + 0.5) * PITCH_MM * k, baseline);
+  drawLetterBand(g, { x: 0, y: 0, w, h }, CAP_MM * k, PITCH_MM * k, Math.floor(BAND_W_MM / PITCH_MM));
   return canvas;
 }
 

@@ -392,10 +392,11 @@
           <div id="view-slot" hidden>
             <section id="view" aria-labelledby="view-title" data-pending="load">
               <h2 id="view-title" class="visually-hidden" data-i18n="view.title"></h2>
-              <fieldset id="view-mode" class="segmented" data-expert hidden>
-                <legend><span class="expert-tag" data-i18n="expert.tag"></span> <span data-i18n="view.mode.legend"></span></legend>
+              <fieldset id="view-mode" class="segmented">
+                <legend data-i18n="view.mode.legend"></legend>
                 <label><input type="radio" name="view-mode" value="glass" checked disabled><span data-i18n="view.mode.glass"></span></label>
-                <label><input type="radio" name="view-mode" value="heat" disabled><span data-i18n="view.mode.heat"></span></label>
+                <label data-expert hidden><input type="radio" name="view-mode" value="heat" disabled><span data-i18n="view.mode.heat"></span></label>
+                <label><input type="radio" name="view-mode" value="ref" disabled><span data-i18n="view.mode.ref"></span></label>
               </fieldset>
               <div id="view-stage" tabindex="0" role="group" data-i18n-aria-label="view.stage.label" aria-describedby="view-keys">
                 <canvas id="view-canvas" role="img" data-i18n-aria-label="view.title"></canvas>
@@ -441,6 +442,16 @@
                   <tbody></tbody>
                 </table>
                 <p id="view-heat-nochord" hidden></p>
+              </div>
+              <div id="view-ref" hidden>
+                <fieldset id="view-ref-lens" class="segmented">
+                  <legend data-i18n="view.refLens.legend"></legend>
+                  <label><input type="radio" name="view-ref-lens" value="on" checked><span data-i18n="view.refLens.on"></span></label>
+                  <label><input type="radio" name="view-ref-lens" value="off"><span data-i18n="view.refLens.off"></span></label>
+                </fieldset>
+                <p id="view-ref-side"></p>
+                <div id="view-ref-size"></div>
+                <p id="view-ref-scope" class="small"></p>
               </div>
             </section>
           </div>
@@ -764,6 +775,10 @@
           <p id="tech-view-exact" data-i18n="tech.view.exact"></p>
           <p id="tech-view-remesh"></p>
           <p id="tech-view-unavailable" hidden></p>
+          <p id="tech-ref-eye"></p>
+          <p id="tech-ref-formula" data-i18n="tech.ref.formula"></p>
+          <p id="tech-ref-formula-source" data-i18n="tech.ref.formulaSource"></p>
+          <p id="tech-ref-rounding" data-i18n="tech.ref.rounding"></p>
           <p id="tech-offline"></p>
           <p id="ua"></p>
         </details>

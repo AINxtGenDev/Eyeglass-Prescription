@@ -185,6 +185,107 @@ export async function holdMeshWorker(page) {
   };
 }
 
+/**
+ * Warp worker bundle (04-05, 04-08): a third worker, warp.worker-<hash>.js, created by the
+ * Durchblick on its first entry (ref-mode.js).
+ */
+export const WARP_WORKER_URL = /\/assets\/warp\.worker[^/]*\.js$/;
+
+/**
+ * Serve the real warp worker with a test-controlled hold on its 'warp' replies (04-08, the
+ * holdMeshWorker pattern): while held, replies are queued inside the worker; release() posts them
+ * in order (with their transfer lists). READY is never held. `startHeld` holds from the worker's
+ * first line, so even the first job of a first entry waits. Hold no longer than WARP_WATCHDOG_MS
+ * (10 s), or the warp client falls back to the main thread. Call before the first Durchblick entry
+ * (the worker is created lazily then, so registering after page.goto is in time).
+ * @param {import('@playwright/test').Page} page
+ * @param {{ startHeld?: boolean }} [opts]
+ */
+export async function holdWarpWorker(page, { startHeld = false } = {}) {
+  const patch =
+    `{const post = self.postMessage.bind(self); const q = []; self.__hold = ${startHeld ? 'true' : 'false'};` +
+    'self.__release = () => { self.__hold = false; while (q.length) post(...q.shift()); };' +
+    "self.postMessage = (m, ...rest) => { if (self.__hold && m && m.type === 'warp') q.push([m, ...rest]); else post(m, ...rest); };}\n";
+  await page.route(WARP_WORKER_URL, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({ status: 200, contentType: 'text/javascript', body: patch + body });
+  });
+  const find = () => page.workers().find((x) => WARP_WORKER_URL.test(new URL(x.url()).pathname));
+  // The worker is created lazily on the first Durchblick entry and may still be loading.
+  const worker = async () => {
+    await expect.poll(() => Boolean(find()), { message: 'holdWarpWorker: warp worker not found', timeout: SETTLE_MS }).toBe(true);
+    return /** @type {import('@playwright/test').Worker} */ (find());
+  };
+  return {
+    hold: async () =>
+      (await worker()).evaluate(() => {
+        self.__hold = true;
+      }),
+    release: async () => (await worker()).evaluate(() => self.__release()),
+  };
+}
+
+/**
+ * settledView(), then wait until the Durchblick is on and its current warp is drawn (04-08):
+ * the test handle reports mode 'ref' with a drawn warp generation, #view[data-pending] = '', then
+ * one more frame.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function settledRef(page, { timeout = SETTLE_VIEW_MS } = {}) {
+  await settledView(page, { timeout });
+  await page.waitForFunction(
+    () => {
+      const r = window.__eyeglassView?.ref();
+      return r?.mode === 'ref' && r.drawnGen > 0 && document.getElementById('view')?.dataset.pending === '';
+    },
+    null,
+    { timeout },
+  );
+  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))));
+}
+
+/**
+ * Durchblick test geometry (round-2 NEW-3): two side × side px windows inset 8 px from the LOWER
+ * corners of the centred inscribed square (side min(w, h)) of a panel, in stage CSS px (y down).
+ * @param {{ x: number, y: number, w: number, h: number }} panel
+ * @param {number} [side] window side (M3 (a) may enlarge it to 60, round-3 NEW-11)
+ */
+export function inscribedLowerWindows(panel, side = 40) {
+  const s = Math.min(panel.w, panel.h);
+  const x0 = panel.x + (panel.w - s) / 2;
+  const y0 = panel.y + (panel.h - s) / 2;
+  const y = y0 + s - 8 - side;
+  return { LL: { x: x0 + 8, y, w: side, h: side }, LR: { x: x0 + s - 8 - side, y, w: side, h: side } };
+}
+
+const REF_BADGE_OFF = 'Durchblick · ohne Glas';
+const REF_BADGE_ON = 'Durchblick · berechnet';
+
+/**
+ * Round-4 NEW-11b: the number of the GIVEN screen points (stage CSS px, the clean lattice points
+ * the Node oracle marked) whose RGB differs by more than 8 in any channel between "Mit Glas" and
+ * "Ohne Glas". Reads exactly these points through the test handle's pixels(points) (one render +
+ * readPixels per state); never builds a lattice of its own, so screen and oracle count the same
+ * point set. Starts and ends in "Mit Glas".
+ * @param {import('@playwright/test').Page} page
+ * @param {Array<[number, number]>} points
+ */
+export async function changedPixels(page, points) {
+  const read = () => page.evaluate((p) => window.__eyeglassView.pixels(p), points);
+  const badge = page.locator('.view-badge');
+  await expect(badge).toHaveText(REF_BADGE_ON);
+  const mit = await read();
+  await page.locator('#view-ref-lens label', { hasText: 'Ohne Glas' }).click();
+  await expect(badge).toHaveText(REF_BADGE_OFF);
+  const ohne = await read();
+  await page.locator('#view-ref-lens label', { hasText: 'Mit Glas' }).click();
+  await expect(badge).toHaveText(REF_BADGE_ON);
+  let n = 0;
+  for (let i = 0; i < points.length; i++) if ([0, 1, 2].some((c) => Math.abs(mit[i][c] - ohne[i][c]) > 8)) n++;
+  return n;
+}
+
 /** Text without soft hyphens (U+00AD, RESEARCH Pitfall 6) and with NBSP / narrow NBSP as spaces. */
 export function plain(s) {
   return (s ?? '').replace(/\u00AD/g, '').replace(/[\u00A0\u202F]/g, ' ');
