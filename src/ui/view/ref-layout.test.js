@@ -105,6 +105,33 @@ describe('REF-01 panel layout (D-06, UI-SPEC "Layout of the picture")', () => {
     ]);
   });
 
+  test('compare at ≥ 360 px: A and B the same size, so the same scale (D-11a)', () => {
+    const { panels, split } = panelLayout({ stageW: 1216, stageH: 684, compare: true, shownEye: 'OD' });
+    expect(split).toBe(true);
+    const [a, b] = panels;
+    expect([a.id, b.id]).toEqual(['A', 'B']);
+    expect(a.x).toBe(0);
+    expect(b.x).toBeGreaterThan(a.x + a.w);
+    expect(b.x + b.w).toBe(1216);
+    expect(a.w).toBe(b.w);
+    expect(a.pxPerTan).toBe(b.pxPerTan);
+    expect(a.squarePx).toBe(b.squarePx);
+  });
+
+  test('compare below 360 px: one panel for the variant #cmp-show shows (Nachher by default)', () => {
+    const at = (shown) => panelLayout({ stageW: 288, stageH: 216, compare: true, shownEye: 'OS', shown });
+    expect(at(undefined).panels.map((p) => [p.id, p.eye, p.w])).toEqual([['B', 'OS', 288]]);
+    expect(at('B').panels.map((p) => p.id)).toEqual(['B']);
+    expect(at('A').panels.map((p) => [p.id, p.eye, p.x, p.w])).toEqual([['A', 'OS', 0, 288]]);
+    expect(at('A').split).toBe(false);
+    expect(at('A').panels[0].pxPerTan).toBe(at('B').panels[0].pxPerTan);
+  });
+
+  test('compare at ≥ 360 px ignores shown (both panels)', () => {
+    const { panels } = panelLayout({ stageW: 400, stageH: 300, compare: true, shownEye: 'OD', shown: 'A' });
+    expect(panels.map((p) => p.id)).toEqual(['A', 'B']);
+  });
+
   test('empty stage → no panel', () => expect(panelLayout({ stageW: 0, stageH: 0 }).panels).toEqual([]));
 });
 

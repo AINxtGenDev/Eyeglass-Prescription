@@ -39,6 +39,15 @@
 //   also cuts rays in rim cases, lens-critic M2); never back up; at grob only stillSlow. A step shows
 //   #view-ref-degraded, writes its text once into #view-ref-live and the badge reads
 //   view.badge.refDegraded. The percentages are engine values and never change.
+// 04-11 (D-11a, UI-SPEC "A/B comparison (D-11a)", items 26 and NEW-7): while inputs.compare is set
+// the Durchblick shows the compared eye only (camera-math compareEye: the larger thickest point
+// across A and B, ties → OD) as panels 'A' (left) and 'B' (right) on a stage ≥ 360 px, the same
+// scale; below 360 px one panel for the variant #cmp-show shows. Panel A is traced from
+// configuration A's own surfaces and frame (inputs.compare.A[eye], specA[eye].frame), B from the
+// current result; the Rx is shared. While A is computing (compare.A null) panel A keeps its last
+// drawn picture, or shows the first-picture status as its centred pill when it has none, and the
+// size block omits A's line (the phase-2 A-pending rule). The size block lists A then B with
+// view.ref.abNote; #view-ref-eye is hidden. Starting, ending and #cmp-show re-run the layout.
 import { createWarpClient } from '../../state/warp-client.js';
 // Static, not import(): warp.js is in this chunk already (ref-layout.js), so the sync fallback adds
 // only the small handler, and no extra chunk (a dynamic one made Rolldown split the shared engine
@@ -55,6 +64,9 @@ import { refAria } from './text.js';
 import { refBlockFor, writeRefSize } from './ref-size.js';
 import { initGuard, nextGuard } from '../../state/guard.js';
 import { pickTier, refStartTier, refStepDown } from './tiers.js';
+import { compareEye } from './camera-math.js';
+import { thickest } from '../../state/compare.js';
+import { refSizeBlock } from './text.js';
 
 /** UI-SPEC States "Stale": the badge changes when the new picture is not drawn 100 ms after the result paint. */
 const BADGE_AFTER_MS = 100;
@@ -89,6 +101,36 @@ export function writeRefTech() {
 
 /** A computable eye: a computed lens and a frame (the warp needs both). */
 const computable = (inputs, eye) => Boolean(inputs?.eyes?.[eye]?.result?.ok && inputs.eyes[eye].frame);
+
+/**
+ * 04-11: the comparison as the Durchblick needs it, or null outside one. eye = the compared eye
+ * (the 3D rule, view.js update); A = configuration A's result of that eye (null while computing).
+ * @param {any} inputs
+ * @returns {{ eye: 'OD' | 'OS', pending: boolean, A: any, frameA: any, showA: boolean } | null}
+ */
+function compareOf(inputs) {
+  const c = inputs?.compare;
+  if (!c) return null;
+  const th = (r) => (r?.ok ? thickest(r.metrics).value : null);
+  const eye = compareEye({
+    A: c.A ? { OD: th(c.A.OD), OS: th(c.A.OS) } : null,
+    B: { OD: th(inputs.eyes?.OD?.result), OS: th(inputs.eyes?.OS?.result) },
+  });
+  return { eye, pending: !c.A, A: c.A?.[eye] ?? null, frameA: c.specA?.[eye]?.frame ?? null, showA: c.showA === true };
+}
+
+/**
+ * The warp source of a panel: { surfaces, frame } when it can be traced, 'pending' (A computing)
+ * or null (not computable: the "nicht berechnet" fill).
+ * @param {any} inputs @param {ReturnType<typeof compareOf>} cmp @param {{ id: string, eye: 'OD'|'OS' }} p
+ */
+function sourceOf(inputs, cmp, p) {
+  if (cmp && p.id === 'A') {
+    if (cmp.pending) return 'pending';
+    return cmp.A?.ok && cmp.frameA ? { surfaces: cmp.A.surfaces, frame: cmp.frameA } : null;
+  }
+  return computable(inputs, p.eye) ? { surfaces: inputs.eyes[p.eye].result.surfaces, frame: inputs.eyes[p.eye].frame } : null;
+}
 
 /**
  * @param {{ getRefraction: () => ReturnType<typeof import('./refraction.js').createRefraction>,
@@ -126,6 +168,11 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   let shownEye = 'OD';
   /** @type {boolean | null} */
   let wasSplit = null;
+  /** 04-11: the comparison of the last inputs (compareOf) and the layout signature it was measured for. */
+  /** @type {ReturnType<typeof compareOf>} */
+  let cmp = null;
+  let cmpSig = '';
+  const sigOf = (c) => (c ? `${c.eye}:${c.showA ? 'A' : 'B'}` : '');
   /** 04-09 (M4): #view-stage intersects the viewport (assumed until the observer's first report). */
   let onScreen = true;
   /** Warp jobs posted since mount (test handle), and whether the last one is a warm-up sample (04-10). */
@@ -164,10 +211,17 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   const samples = [];
   /** The stage content box of the current layout (a step re-allocates the grids at this size). */
   let stageSize = { W: 0, H: 0 };
-  // UI-SPEC test hook (E8, M4): start one step down with the note shown, for axe and screenshots.
-  // The flag string exists only in non-production builds (test/dist/hooks.test.js).
+  /** Test-only (?refguardoff, read once like ?thumbguardoff): the guard measures but never trips. */
+  let guardOff = false;
+  // UI-SPEC test hooks (E8, M4). The flag strings exist only in non-production builds
+  // (test/dist/hooks.test.js):
+  // - refdegraded: start one step down with the note shown, for axe and screenshots;
+  // - refguardoff (04-11): counted samples still run through nextGuard, but its run is reset instead
+  //   of stepping, so ordinary Durchblick e2e tests cannot step down on a slow CI runner (the
+  //   guard and step-down tests load the page without it).
   if (import.meta.env.MODE !== 'production') {
     const FORCE_DEGRADED_FLAG = 'refdegraded';
+    const GUARD_OFF_FLAG = 'refguardoff';
     if (location.search.includes(FORCE_DEGRADED_FLAG)) {
       tier = refStepDown(tier);
       gridTier = tier;
@@ -175,6 +229,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       tierPath.push(tier);
       degraded = true;
     }
+    guardOff = location.search.includes(GUARD_OFF_FLAG);
   }
   const interrupt = () => {
     lastInterruptAt = performance.now();
@@ -248,14 +303,18 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   function measure() {
     const r = canvasEl.getBoundingClientRect();
     const split = r.width >= REF_SPLIT_MIN_PX;
-    if (!split && wasSplit !== false) {
+    if (!split && wasSplit !== false && !cmp) {
       // The default-eye rule, once on each switch to one panel (UI-SPEC Interaction Contract).
       shownEye = defaultRefEye(mags());
       setPicker(shownEye);
     }
     wasSplit = split;
-    pickerEl.hidden = split;
-    const next = panelLayout({ stageW: r.width, stageH: r.height, shownEye });
+    // 04-11 (D-11a): no picker in a comparison (the compared eye is fixed; #cmp-show picks A or B).
+    pickerEl.hidden = split || cmp !== null;
+    cmpSig = sigOf(cmp);
+    const next = cmp
+      ? panelLayout({ stageW: r.width, stageH: r.height, compare: true, shownEye: cmp.eye, shown: cmp.showA ? 'A' : 'B' })
+      : panelLayout({ stageW: r.width, stageH: r.height, shownEye });
     const key = JSON.stringify(next);
     if (key === layoutKey) return false;
     layoutKey = key;
@@ -297,13 +356,13 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   function items(inputs) {
     const out = [];
     for (const p of layout.panels) {
-      if (!computable(inputs, p.eye)) continue;
-      const e = inputs.eyes[p.eye];
-      const { shape, A, B } = e.frame;
+      const src = sourceOf(inputs, cmp, p);
+      if (src === null || src === 'pending') continue;
+      const { shape, A, B } = src.frame;
       out.push({
         panel: p.id,
         eye: p.eye,
-        surfaces: e.result.surfaces,
+        surfaces: src.surfaces,
         frame: { shape, A, B },
         hMm: EYE_POINT_MM,
         layout: { wPx: p.w, hPx: p.h, pxPerTan: p.pxPerTan },
@@ -327,7 +386,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
 
   /** Size block, scope and side sentence; the block is engine text (textContent only, T-04-34). */
   function renderText() {
-    const b = refBlockFor(lastInputs?.eyes, { picture: true, ...rimFlags() });
+    const b = cmp ? compareBlock() : refBlockFor(lastInputs?.eyes, { picture: true, ...rimFlags() });
     const key = JSON.stringify(b);
     if (key === blockKey) return;
     blockKey = key;
@@ -336,10 +395,33 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     scheduleAria();
   }
 
+  /**
+   * 04-11: the A/B size block for the compared eye: 'Vorher (A)' then 'Nachher (B)', abNote always;
+   * A's line is left out while A computes; an eye not computed in a variant reads "nicht berechnet".
+   */
+  function compareBlock() {
+    const c = /** @type {NonNullable<typeof cmp>} */ (cmp);
+    const entry = (who, r) => {
+      const mag = r?.ok ? r.magnification : null;
+      return { who, mag, cyl: mag ? mag.meridians.length - 1 : 0 };
+    };
+    const entries = [];
+    if (!c.pending) entries.push(entry('a', c.A));
+    entries.push(entry('b', lastInputs?.eyes?.[c.eye]?.result));
+    return entries.some((e) => e.mag) ? refSizeBlock(entries, { picture: true, compare: true, ...rimFlags() }) : null;
+  }
+
   function writeStatic() {
     setText('view-ref-scope', t('view.ref.scope', { h: fmtMm(EYE_POINT_MM) }));
     const shown = layout.panels[0]?.eye ?? 'OD';
-    setText('view-ref-side', layout.split ? t('view.ref.side.two') : t('view.ref.side.one', { side: t(`view.viewName.${shown.toLowerCase()}`) }));
+    const side = t(`view.viewName.${shown.toLowerCase()}`);
+    // 04-11: view.ref.side.compare names "links Vorher (A), rechts Nachher (B)", so it is used for
+    // the two A/B panels; the single A/B panel below 360 px keeps the one-panel sentence (its pill
+    // and #cmp-show name the variant).
+    setText(
+      'view-ref-side',
+      cmp && layout.split ? t('view.ref.side.compare', { side }) : layout.split ? t('view.ref.side.two') : t('view.ref.side.one', { side }),
+    );
   }
 
   /** The Fehler-tier box in the stage (03-06 pattern): view.ref.failed + "Erneut versuchen". */
@@ -381,9 +463,14 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
 
   /** The blocked-eye pills of the panels whose eye is not computable (none when no eye is). */
   function markBlocked() {
-    const anyEye = layout.panels.some((p) => computable(lastInputs, p.eye)) || ['OD', 'OS'].some((e) => computable(lastInputs, e));
+    const anyEye = layout.panels.some((p) => sourceOf(lastInputs, cmp, p) !== null) || ['OD', 'OS'].some((e) => computable(lastInputs, e));
     const refraction = getRefraction();
-    for (const p of layout.panels) refraction.setBlocked(p.id, anyEye && !computable(lastInputs, p.eye));
+    for (const p of layout.panels) {
+      const src = sourceOf(lastInputs, cmp, p);
+      // 04-11: configuration A computing: its last picture stays; without one, the first-picture status.
+      if (src === 'pending') refraction.setBlocked(p.id, anyEye && !refraction.hasPicture(p.id), t('view.ref.loading'));
+      else refraction.setBlocked(p.id, anyEye && src === null);
+    }
   }
 
   /**
@@ -421,8 +508,10 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     const t0 = lastInputs?.inputTs;
     // One sample per input: a later job for the same input (a second eye painted, a compare result)
     // has no new t0. A job without a new input is clocked from its post, for Technische Angaben only.
+    // 04-11: every posted job consumes its input's t0 (not only 'input' jobs), so configuration A
+    // arriving after an entry, relayout or comparison start is never counted from an old t0.
     const fresh = reason === 'input' && typeof t0 === 'number' && lastInputs.current === true && t0 !== lastInputT0;
-    if (fresh) lastInputT0 = t0;
+    if (typeof t0 === 'number') lastInputT0 = t0;
     const counted = fresh && warm;
     job = { gen, t0: fresh ? t0 : performance.now(), counted };
     lastJobExcluded = !counted;
@@ -471,6 +560,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       refraction.setLayout(layout, stageSize, REF_GRID_TIERS[gridTier].cellPx);
     }
     const drawn = new Set();
+    const prevRim = rimByPanel;
     rimByPanel = {};
     for (const it of d.items) {
       if (refraction.setWarp(it.panel, it)) {
@@ -483,7 +573,15 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       showFailed();
       return;
     }
-    for (const p of layout.panels) if (!drawn.has(p.id)) refraction.clearPanel(p.id);
+    for (const p of layout.panels) {
+      if (drawn.has(p.id)) continue;
+      // 04-11: a panel whose configuration A is computing keeps its last picture (and rim flags).
+      if (sourceOf(lastInputs, cmp, p) === 'pending' && refraction.hasPicture(p.id)) {
+        if (prevRim[p.id]) rimByPanel[p.id] = prevRim[p.id];
+        continue;
+      }
+      refraction.clearPanel(p.id);
+    }
     markBlocked();
     refraction.setLens(lens);
     hasPicture = drawn.size > 0;
@@ -522,7 +620,9 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       samples.push(ms);
       if (samples.length > SAMPLE_LOG) samples.shift();
       const was = guard.tier;
-      guard = nextGuard(guard, ms, { budgetMs: REF_BUDGET_MS, need: REF_SLOW_RUN, last: 'grob', down: refStepDown });
+      const next = nextGuard(guard, ms, { budgetMs: REF_BUDGET_MS, need: REF_SLOW_RUN, last: 'grob', down: refStepDown });
+      // ?refguardoff: the guard measures but never trips (the run is reset instead).
+      guard = guardOff ? { ...guard, run: 0 } : next;
       if (guard.tier !== was) stepTo(guard.tier);
     }
     writeGridTech();
@@ -575,7 +675,11 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
 
   /** A new layout (resize, picker, two ↔ one panel): a new grid, so a new trace (fullscreen is 04-12). */
   function relayout() {
-    if (!on || !measure()) return;
+    if (!on) return false;
+    if (!measure()) {
+      writeStatic();
+      return false;
+    }
     writeStatic();
     clearFailed();
     setText('view-status', t('view.ref.loading'));
@@ -584,6 +688,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     sentKey = null;
     renderText();
     post('relayout');
+    return true;
   }
 
   return {
@@ -591,6 +696,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     enter(inputs) {
       on = true;
       lastInputs = inputs;
+      cmp = compareOf(inputs);
       layoutKey = '';
       sentKey = null;
       hasPicture = false;
@@ -609,11 +715,14 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     /** Every view update while on: the size block now, then the warp job (after the result paint). */
     update(inputs) {
       lastInputs = inputs;
+      cmp = compareOf(inputs);
       if (!on) return;
+      // 04-11: comparison start / end, a new compared eye or #cmp-show: a new panel layout.
+      if (sigOf(cmp) !== cmpSig && relayout()) return;
       renderText();
       post('input');
     },
-    resize: relayout,
+    resize: () => void relayout(),
     /** Leaving: cancel the lane (latest wins; nothing more is drawn) and drop the picture. */
     leave() {
       on = false;
@@ -654,16 +763,19 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     ariaLabel() {
       if (!block) return null;
       const eye = /** @type {'od'|'os'} */ ((layout.panels[0]?.eye ?? 'OD').toLowerCase());
-      return refAria({ lens, layout: layout.split ? 'two' : 'one', eye, entries: block.entries });
+      const kind = cmp && layout.split ? 'compare' : layout.split ? 'two' : 'one';
+      return refAria({ lens, layout: kind, eye, entries: block.entries });
     },
     /** Test handle data (no Rx values). */
     info: () => ({
       lens,
       panels: layout.panels.map(({ id, eye, pxPerTan, squarePx, x, y, w, h }) => ({ id, eye, pxPerTan, squarePx, x, y, w, h, rim: Boolean(rimByPanel[id]?.rimInField), pastRim: Boolean(rimByPanel[id]?.pastRimInField), noView: Boolean(rimByPanel[id]?.noViewInField) })),
+      compare: cmp ? { eye: cmp.eye, pending: cmp.pending, showA: cmp.showA } : null,
       tier,
       startTier,
       degraded,
       guard: { ...guard },
+      guardOff,
       samples: [...samples],
       lastSampleMs,
       sampleN,

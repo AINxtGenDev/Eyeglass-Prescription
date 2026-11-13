@@ -25,6 +25,9 @@
 //   square CHART_SQUARE_TAN with a square corner at (0, 0) (ref-layout.js checkerInk), the letter
 //   band from +1 to +3 squares (backdrop.js drawLetterBand, the phase-3 drawing code).
 // - Eye pills: projected HTML in #view-labels, bottom-centre of each panel, 8 px above its bottom.
+//   04-11 (D-11a): one pill per panel id, so the A/B panels (both the compared eye) read
+//   "Vorher (A)" / "Nachher (B)"; the centred status pill of a panel carries its own text (the
+//   "nicht berechnet" pill, or the first-picture status while configuration A computes).
 import {
   BufferAttribute,
   BufferGeometry,
@@ -60,6 +63,8 @@ const BACKGROUND_HEX = '#f3f4f6';
 /** Eye pill gap above the panel bottom (CSS px, UI-SPEC). */
 const PILL_GAP_PX = 8;
 const PILL_KEY = { OD: 'view.ref.pill.od', OS: 'view.ref.pill.os' };
+/** The pill label of a panel: its variant in A/B (04-11), else its eye. */
+const pillKeyOf = (p) => (p.id === 'A' ? 'view.ref.who.a' : p.id === 'B' ? 'view.ref.who.b' : PILL_KEY[p.eye]);
 /** Tick strokes (UI-SPEC colour table). N4: the white under-stroke is 6 px, not 4: at device pixel ratio 1 the 1 px halo of a 4 px stroke was hard to see on the black squares (04-09 DPR check). */
 const TICK_UNDER = Object.freeze({ color: '#ffffff', width: 6 });
 const TICK_CORE = Object.freeze({ color: '#1a1a1a', width: 2 });
@@ -147,31 +152,34 @@ export function createRefraction({ renderer, labelsEl }) {
   /** 'on' | 'off' */
   let lens = 'on';
 
-  const pill = (eye) => {
+  // The pills per panel id ('L', 'R', 'A', 'B'), created on first use.
+  /** @type {Record<string, HTMLElement>} */
+  const pills = {};
+  const pillOf = (p) => {
+    if (pills[p.id]) return pills[p.id];
     const el = document.createElement('span');
     el.className = 'view-label ref-pill';
-    el.textContent = t(PILL_KEY[eye]);
+    el.classList.toggle('ref-pill--one', !split);
+    el.textContent = t(pillKeyOf(p));
     el.hidden = true;
     labelsEl.append(el);
-    return el;
+    return (pills[p.id] = el);
   };
-  const pills = { OD: pill('OD'), OS: pill('OS') };
   // 04-09 (UI-SPEC States "One eye blocked"): the centred pill on the fill of a blocked eye's panel,
   // created on first use (no hidden extra nodes for users who never block an eye).
   /** @type {Record<string, HTMLElement>} */
   const blockedPills = {};
-  const blockedPill = (eye) => {
-    if (blockedPills[eye]) return blockedPills[eye];
+  const blockedPill = (id) => {
+    if (blockedPills[id]) return blockedPills[id];
     const el = document.createElement('span');
     el.className = 'view-label ref-pill ref-pill--blocked';
     el.classList.toggle('ref-pill--one', !split);
-    el.textContent = t('view.ref.pill.blocked', { who: t(PILL_KEY[eye]) });
     el.hidden = true;
     labelsEl.append(el);
-    return (blockedPills[eye] = el);
+    return (blockedPills[id] = el);
   };
-  /** @type {Set<string>} panel ids drawn as the blocked fill */
-  const blocked = new Set();
+  /** @type {Map<string, string>} panel id → the text of its centred pill (drawn as the plain fill) */
+  const blocked = new Map();
   /** 04-09: "hier kein Durchblick" pills, pooled. */
   /** @type {HTMLElement[]} */
   const noViewPills = [];
@@ -533,22 +541,28 @@ export function createRefraction({ renderer, labelsEl }) {
       s.group.visible = false;
       s.zones = [];
       s.ticks.g.setAttribute('display', 'none');
-      pills[s.p.eye].hidden = true;
+      if (pills[id]) pills[id].hidden = true;
       showDivider();
     },
     clear() {
       for (const id of panels.keys()) this.clearPanel(id);
       blocked.clear();
     },
-    /** 04-09: a panel whose eye is not computed: the plain fill with the centred "nicht berechnet" pill. */
-    setBlocked(id, on) {
+    /**
+     * 04-09: a panel whose eye is not computed: the plain fill with the centred "nicht berechnet"
+     * pill. 04-11: `text` = that pill's text (default: the panel's own "nicht berechnet").
+     * @param {string} id @param {boolean} on @param {string} [text]
+     */
+    setBlocked(id, on, text) {
       const s = panels.get(id);
       if (!s) return;
       if (on) {
         this.clearPanel(id);
-        blocked.add(id);
+        blocked.set(id, text ?? t('view.ref.pill.blocked', { who: t(pillKeyOf(s.p)) }));
       } else blocked.delete(id);
     },
+    /** 04-11: the panel shows a drawn picture (kept while configuration A recomputes). */
+    hasPicture: (id) => Boolean(panels.get(id)?.group.visible),
     /** Bild toggle (D-02): 'off' = identity mapping on the same scale, same class mask. */
     setLens(next) {
       lens = next;
@@ -564,7 +578,7 @@ export function createRefraction({ renderer, labelsEl }) {
     /** After a render: the eye pills of the drawn panels, bottom-centre (CSSOM transform, no style attribute). */
     layoutPills() {
       for (const s of panels.values()) {
-        const el = pills[s.p.eye];
+        const el = pillOf(s.p);
         const show = s.group.visible;
         if (el.hidden === show) el.hidden = !show;
         if (!show) continue;
@@ -574,10 +588,11 @@ export function createRefraction({ renderer, labelsEl }) {
         if (el.style.transform !== tf) el.style.transform = tf;
       }
       const shownBlocked = new Set();
-      for (const id of blocked) {
+      for (const [id, text] of blocked) {
         const s = panels.get(id);
         if (!s) continue;
-        const el = blockedPill(s.p.eye);
+        const el = blockedPill(id);
+        if (el.textContent !== text) el.textContent = text;
         shownBlocked.add(el);
         if (el.hidden) el.hidden = false;
         const x = s.p.x + (s.p.w - el.offsetWidth) / 2;

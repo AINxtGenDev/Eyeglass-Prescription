@@ -17,6 +17,7 @@ import {
   settled,
   settledView,
   settledRef,
+  settledCompare,
   guardPage,
   noThreeWarnings,
   plain,
@@ -33,7 +34,11 @@ test.beforeEach(({ page }) => {
   threeWarnings = noThreeWarnings(page);
 });
 test.use({ reducedMotion: 'reduce' });
-const guard = guardPage(test, { view: true });
+// 04-11: every test loads the page with ?refguardoff (the Durchblick guard measures but never
+// trips), so a slow CI runner cannot step an ordinary test down to "vereinfacht"; the 04-10
+// degradation tests keep the real guard.
+const REAL_GUARD = 'REF-02 degradation (04-10)';
+const guard = guardPage(test, { view: true, search: (info) => (info.titlePath.includes(REAL_GUARD) ? '' : '?refguardoff') });
 test.afterEach(() => {
   expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
 });
@@ -335,6 +340,14 @@ test('item 7: entering hides the tools, drops the tab stop, sets the Durchblick 
   await expect(fs).toHaveAccessibleName('3D-Ansicht im Vollbild');
   await expect(page.locator('#view-ref')).toBeHidden();
   await expect(page.locator('#view-caption')).toContainText('Visueller Eindruck');
+});
+
+test('04-11: ordinary Durchblick tests load with ?refguardoff (guard measures, never trips)', async ({ page }) => {
+  await settledView(page);
+  await refOn(page);
+  const st = await refState(page);
+  expect(st.guardOff).toBe(true);
+  expect(st.tier).toBe(st.startTier);
 });
 
 test('item 8: never an unwarped Mit Glas: first entry shows the status and no chart pixel until the warp', async ({ page }) => {
@@ -878,7 +891,7 @@ test.describe('stage visibility (M4) at 412×915', () => {
   test('item 13: off-screen: no warp job, the re-mesh and bar thumbnail run; back on screen: exactly one job', async ({ page }) => {
     test.setTimeout(120_000);
     await settledView(page);
-    await page.goto('./?thumbguardoff');
+    await page.goto('./?thumbguardoff&refguardoff');
     await settledView(page);
     await page.locator('#view-stage').scrollIntoViewIfNeeded();
     await refOn(page);
@@ -912,7 +925,7 @@ test('item 14: leaving Durchblick with a deferred re-mesh shows "3D wird aktuali
   test.skip(isMobile, 'needs the stage on screen while typing: desktop layout');
   await settledView(page);
   const gate = await holdMeshWorker(page);
-  await page.goto('./');
+  await page.goto('./?refguardoff');
   await settledView(page);
   await page.locator('#view-stage').scrollIntoViewIfNeeded();
   await refOn(page);
@@ -1340,7 +1353,7 @@ async function guardRun(page, warp, { values = ['-4,25', '-4,50'], afterValues =
   return { before, after, start, stepped, sizeBefore };
 }
 
-test.describe('REF-02 degradation (04-10)', () => {
+test.describe(REAL_GUARD, () => {
   test('forced degraded (?refdegraded): note, live text once, badge "Durchblick · vereinfacht", tech grid at the lower tier', async ({ page }) => {
     test.setTimeout(180_000);
     await settledView(page);
@@ -1383,6 +1396,7 @@ test.describe('REF-02 degradation (04-10)', () => {
     expect(st.startTier).toBe(isMobile ? 'mittel' : 'fein');
     expect(st.tier).toBe(st.startTier);
     expect(st.degraded).toBe(false);
+    expect(st.guardOff, '04-10 tests keep the real guard (no ?refguardoff)').toBe(false);
     expect(st.lastJobExcluded, 'the entry job is a warm-up sample').toBe(true);
     await expect(page.locator('#view-ref-degraded')).toBeHidden();
     await expect(page.locator('#view-ref-live')).toHaveText('');
@@ -1465,5 +1479,225 @@ test.describe('REF-02 degradation (04-10)', () => {
       `Node ${JSON.stringify(node)}; browser mittel ${JSON.stringify(run.before.replies.map(({ eye, rays, rimInField }) => ({ eye, rays, rimInField })))} → grob ${JSON.stringify(run.after.replies.map(({ eye, rays, rimInField }) => ({ eye, rays, rimInField })))}`;
     console.log('04-10 rim', line);
     test.info().annotations.push({ type: '04-10 rim', description: line });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// 04-11 (D-11a, items 26 and NEW-7): the A/B comparison in the Durchblick.
+
+const AB_NOTE = 'Material und Fassung ändern den Durchblick meist nur wenig; der größere Unterschied liegt bei Dicke und Gewicht.';
+const AB_SIDE = 'Sie schauen selbst durch Ihr rechtes Glas: links Vorher (A), rechts Nachher (B), gleicher Maßstab.';
+const cmpShow = (page, v) => page.locator(`#cmp-show input[name=cmp-show][value=${v}]`);
+
+/**
+ * The comparison is drawn in the Durchblick: configuration A computed and every shown panel drawn
+ * by the current job (the stage on screen first: no warp job is posted off screen, M4).
+ */
+async function abReady(page, ids) {
+  await settledCompare(page);
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await page.waitForFunction(
+    (want) => {
+      const r = window.__eyeglassView.ref();
+      if (!r.compare || r.compare.pending) return false;
+      const panels = r.panels.map((p) => p.id).join();
+      const drawn = r.replies.map((x) => x.panel).join();
+      return panels === want && drawn === want;
+    },
+    ids.join(),
+    { timeout: 60_000 },
+  );
+  await settledRef(page);
+}
+
+test('item 26: comparison in Durchblick: compared eye only, A | B, A then B lines, abNote; "Vergleich beenden" restores the two-eye form', async ({ page }) => {
+  test.setTimeout(240_000);
+  await settledView(page);
+  await setRx(page, { sph: '-4,00' }, { sph: '-4,00' });
+  await refOn(page);
+  const size = page.locator('#view-ref-size');
+  await expect(size).not.toContainText(AB_NOTE);
+  const twoEye = (await refState(page)).panels.map((p) => p.id);
+  await page.locator('#cmp-start').click();
+  await settledCompare(page);
+  await page.locator('input[name=material][value=idx174]').check();
+  const split = twoEye.length === 2;
+  await abReady(page, split ? ['A', 'B'] : ['B']);
+  let st = await refState(page);
+  // −4,00 both eyes: the thickest points tie, so the right eye (phase-3 rule).
+  expect(st.compare.eye).toBe('OD');
+  expect(st.panels.every((p) => p.eye === 'OD'), 'the compared eye only').toBe(true);
+  await expect(size.locator('.ref-line')).toHaveText([`Vorher (A): Bild etwa 6${N}% kleiner`, `Nachher (B): Bild etwa 6${N}% kleiner`]);
+  await expect(size.locator('.ref-note').last()).toHaveText(AB_NOTE);
+  await expect(page.locator('#view-ref-eye')).toBeHidden();
+  if (split) {
+    const [a, b] = st.panels;
+    expect(a.x, 'A left').toBeLessThan(b.x);
+    expect(a.pxPerTan, 'same scale').toBe(b.pxPerTan);
+    expect([a.w, a.h]).toEqual([b.w, b.h]);
+    const stage = await page.locator('#view-stage').boundingBox();
+    const pillA = await page.locator('#view-labels .ref-pill', { hasText: /^Vorher \(A\)$/ }).boundingBox();
+    const pillB = await page.locator('#view-labels .ref-pill', { hasText: /^Nachher \(B\)$/ }).boundingBox();
+    expect(pillA.x + pillA.width, 'Vorher (A) pill in the left half').toBeLessThan(stage.x + stage.width / 2);
+    expect(pillB.x, 'Nachher (B) pill in the right half').toBeGreaterThan(stage.x + stage.width / 2);
+    await expect(page.locator('#view-labels .ref-pill:not(.ref-pill--blocked):visible')).toHaveCount(2);
+    await expect(page.locator('#view-ref-side')).toHaveText(AB_SIDE);
+    await expect.poll(async () => plain(await page.locator('#view-canvas').getAttribute('aria-label')), { timeout: 5000 }).toContain(
+      'Rechtes Glas, links Vorher (A), rechts Nachher (B). Vorher (A): Bild etwa 6 % kleiner. Nachher (B): Bild etwa 6 % kleiner.',
+    );
+  } else {
+    // One panel (stage below 360 px): it follows #cmp-show, Nachher (B) first.
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Nachher (B)']);
+    await cmpShow(page, 'a').check();
+    await abReady(page, ['A']);
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Vorher (A)']);
+    await expect(page.locator('#view-ref-eye')).toBeHidden();
+    await cmpShow(page, 'b').check();
+    await abReady(page, ['B']);
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Nachher (B)']);
+  }
+  await page.locator('#cmp-end').click();
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await page.waitForFunction(
+    (want) => {
+      const r = window.__eyeglassView.ref();
+      return r.compare === null && r.panels.map((p) => p.id).join() === want && r.replies.map((x) => x.panel).join() === want;
+    },
+    twoEye.join(),
+    { timeout: 60_000 },
+  );
+  await settledRef(page);
+  st = await refState(page);
+  expect(st.panels.map((p) => p.id)).toEqual(twoEye);
+  await expect(size).not.toContainText(AB_NOTE);
+  await expect(size).not.toContainText('Vorher (A)');
+  await expect(size.locator('.ref-line').first()).toHaveText(`Rechtes Glas: Bild etwa 6${N}% kleiner`);
+  if (split) await expect(page.locator('#view-ref-side')).not.toHaveText(AB_SIDE);
+});
+
+test.describe('item 26 at 320×640 (one panel following #cmp-show)', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+  test.skip(({ isMobile }) => isMobile, 'the mobile project runs the one-panel branch of item 26');
+
+  test('item 26 320 px: one panel, Nachher (B) ↔ Vorher (A) with #cmp-show, no picker, abNote', async ({ page }) => {
+    test.setTimeout(240_000);
+    await settledView(page);
+    await setRx(page, { sph: '-4,00' }, { sph: '-4,00' });
+    await refOn(page);
+    await page.locator('#cmp-start').click();
+    await settledCompare(page);
+    await page.locator('input[name=material][value=idx174]').check();
+    await abReady(page, ['B']);
+    const one = (await refState(page)).panels;
+    expect(one).toHaveLength(1);
+    await expect(page.locator('#view-ref-eye')).toBeHidden();
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Nachher (B)']);
+    await expect(page.locator('#view-ref-size .ref-note').last()).toHaveText(AB_NOTE);
+    await cmpShow(page, 'a').check();
+    await abReady(page, ['A']);
+    const a = (await refState(page)).panels;
+    expect(a.map((p) => [p.id, p.eye, p.w, p.h, p.pxPerTan])).toEqual([['A', 'OD', one[0].w, one[0].h, one[0].pxPerTan]]);
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Vorher (A)']);
+    await page.locator('#cmp-end').click();
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__eyeglassView.ref().compare === null);
+    await settledRef(page);
+    await expect(page.locator('#view-ref-eye')).toBeVisible();
+    await expect(page.locator('#view-ref-size')).not.toContainText(AB_NOTE);
+  });
+});
+
+// Round-2 NEW-7 / round-3 MINOR E / round-4 MINOR NEW-14: A and B are separate traces, A left.
+// AB_FRAME_A = the item-12 box itself (rechteckig A 40 / B 28 / DBL 14, CR-39) with PD 40. Chosen
+// in Node (scratch 04-11-abframe.mjs) at the 1280 × 800 panel the handle reports (270 × 338,75 at
+// 293,37 px/tan, fein): 10 lattice points (4 px) are class 2/4 for A and class 1 for B, each
+// ≥ cellPx + 2 px from a class boundary, so no shape lever (rund 571, panto 331) was needed. PD is
+// part of the shared Rx (pipeline.js buildCompareJobs: A = the current spec with A's frame and
+// material), so B = the default frame 52 × 38 / 18 also runs at PD 40; Node gives it no class-2/4
+// lattice point. At PD 32 (the default) no shape gives a single point, so PD 32 is not usable.
+const AB_FRAME_A = Object.freeze({ shape: 'rechteckig', A: 40, B: 28, DBL: 14, PD: 40 });
+const AB_MIN_POINTS = 8;
+const AB_LATTICE_PX = 4;
+
+test.describe('A/B separate traces (1280×800)', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  test.skip(({ isMobile }) => isMobile, 'one panel on the mobile project');
+
+  test('A/B panels are separate traces, A left (NEW-7)', async ({ page }) => {
+    test.setTimeout(300_000);
+    // The app accepts AB_FRAME_A: no Außerhalb-des-Modells message, PD in range, a known shape.
+    expect(validateFrame({ A: AB_FRAME_A.A, B: AB_FRAME_A.B, DBL: AB_FRAME_A.DBL })).toEqual({ A: null, B: null, DBL: null });
+    expect(AB_FRAME_A.PD).toBeGreaterThanOrEqual(RX_RANGES.pd[0]);
+    expect(AB_FRAME_A.PD).toBeLessThanOrEqual(RX_RANGES.pd[1]);
+    expect(Object.hasOwn(SHAPES, AB_FRAME_A.shape)).toBe(true);
+    const frameA = { shape: AB_FRAME_A.shape, A: AB_FRAME_A.A, B: AB_FRAME_A.B, DBL: AB_FRAME_A.DBL };
+    await settledView(page);
+    await setFrame(page, frameA);
+    await setRx(page, { sph: '-4,00' }, { sph: '-4,00' }, String(AB_FRAME_A.PD));
+    await page.locator('#cmp-start').click();
+    await settledCompare(page);
+    await setFrame(page, DEFAULT_FRAME);
+    await settled(page);
+    await refOn(page);
+    await abReady(page, ['A', 'B']);
+    const st = await refState(page);
+    const [pA, pB] = st.panels;
+    expect([pA.id, pB.id]).toEqual(['A', 'B']);
+    expect(pA.eye).toBe(st.compare.eye);
+    // The comparison started in Glas: its 3D captions and divider must not stay over the Durchblick.
+    await expect(page.locator('#view-labels .view-label--caption:visible')).toHaveCount(0);
+    await expect(page.locator('#view-stage .view-divider:visible')).toHaveCount(0);
+    await expect(page.locator('#view-labels .ref-pill:visible')).toHaveText(['Vorher (A)', 'Nachher (B)']);
+    expect(pA.pxPerTan).toBe(pB.pxPerTan);
+    const geom = await canvasGeom(page);
+    const R = REF_GRID_TIERS[st.tier].cellPx + 2;
+    const rx = { sph: -4, cyl: 0, axisDeg: 0 };
+    const ctxA = lensOf(pA.eye, rx, { frame: frameA, pd: AB_FRAME_A.PD });
+    const ctxB = lensOf(pB.eye, rx, { frame: DEFAULT_FRAME, pd: AB_FRAME_A.PD });
+    const group = (c) => (c === REF_CLASS.LENS ? 'lens' : c === REF_CLASS.EDGE_BAND || c === REF_CLASS.RIM_FACE ? 'rim' : 'other');
+    const at = (ctx, p, x, y) => group(classifyDirection(ctx, ...eyeTan(p, pixelCentre(geom, [x, y]))).cls);
+    const stable = (ctx, p, x, y, g) => {
+      for (let d = -R; d <= R; d++) {
+        if (y + d > p.y && y + d < p.y + p.h && at(ctx, p, x, y + d) !== g) return false;
+        if (x + d > p.x && x + d < p.x + p.w && at(ctx, p, x + d, y) !== g) return false;
+      }
+      return true;
+    };
+    // Node, at the panel the page reports: the qualifying points (panel offsets) and B's rim-free lattice.
+    const offsets = [];
+    for (let lx = AB_LATTICE_PX / 2; lx < pA.w; lx += AB_LATTICE_PX) for (let ly = AB_LATTICE_PX / 2; ly < pA.h; ly += AB_LATTICE_PX) offsets.push([lx, ly]);
+    const good = offsets.filter(
+      ([lx, ly]) =>
+        at(ctxA, pA, pA.x + lx, pA.y + ly) === 'rim' &&
+        at(ctxB, pB, pB.x + lx, pB.y + ly) === 'lens' &&
+        stable(ctxA, pA, pA.x + lx, pA.y + ly, 'rim') &&
+        stable(ctxB, pB, pB.x + lx, pB.y + ly, 'lens'),
+    );
+    const bRimNode = offsets.filter(([lx, ly]) => at(ctxB, pB, pB.x + lx, pB.y + ly) === 'rim').length;
+    const panelLine = `panel ${pA.w} × ${pA.h} at ${pA.pxPerTan.toFixed(2)} px/tan (${st.tier}); qualifying points ${good.length}; B rim lattice points (Node) ${bRimNode}`;
+    console.log('NEW-7', panelLine);
+    test.info().annotations.push({ type: 'NEW-7 Node', description: panelLine });
+    expect(good.length, `≥ ${AB_MIN_POINTS} class-2/4-for-A, class-1-for-B points at this panel size`).toBeGreaterThanOrEqual(AB_MIN_POINTS);
+    expect(bRimNode, 'B has no class-2/4 lattice point in its panel (precondition)').toBe(0);
+    // The replies agree: the rim is in A's field only.
+    const rim = Object.fromEntries(st.replies.map((r) => [r.panel, r.rimInField]));
+    expect(rim).toEqual({ A: true, B: false });
+    // On screen: the qualifying points are rim colour in the LEFT panel, never in the RIGHT one.
+    const left = await pixels(page, good.map(([lx, ly]) => [pA.x + lx, pA.y + ly]));
+    const right = await pixels(page, good.map(([lx, ly]) => [pB.x + lx, pB.y + ly]));
+    const leftRim = left.filter((px) => near(px, RIM)).length;
+    const rightRim = right.filter((px) => near(px, RIM)).length;
+    // The whole-panel 4 px lattices.
+    const latL = await pixels(page, offsets.map(([lx, ly]) => [pA.x + lx, pA.y + ly]));
+    const latR = await pixels(page, offsets.map(([lx, ly]) => [pB.x + lx, pB.y + ly]));
+    const latLRim = latL.filter((px) => near(px, RIM)).length;
+    const latRRim = latR.filter((px) => near(px, RIM)).length;
+    const line = `qualifying points rim colour: left ${leftRim} / ${good.length}, right ${rightRim} / ${good.length}; 4 px lattice (${offsets.length} points per panel) rim pixels: left ${latLRim}, right ${latRRim}`;
+    console.log('NEW-7', line);
+    test.info().annotations.push({ type: 'NEW-7 screen', description: line });
+    expect(leftRim, 'rim colour in the LEFT (A) panel at the qualifying points').toBeGreaterThanOrEqual(1);
+    expect(rightRim, 'no rim colour in the RIGHT (B) panel at the same points').toBe(0);
+    expect(latLRim, 'rim pixels in the left lattice').toBeGreaterThan(0);
+    expect(latRRim, 'rim pixels in the right lattice').toBe(0);
   });
 });

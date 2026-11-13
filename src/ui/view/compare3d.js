@@ -257,9 +257,16 @@ export function createCompare3d({ renderer, scene, camera, lenses, frame, frameA
     return boxes.map(({ x, y, w, h }) => ({ x, y, w, h }));
   }
 
+  /** 04-11: the Durchblick draws its own A/B pills and divider; the 3D captions and divider stay hidden. */
+  function hideOverlay() {
+    for (const half of HALVES) if (!captions[half].hidden) captions[half].hidden = true;
+    if (!divider.hidden) divider.hidden = true;
+  }
+
   const pv = new Vector3();
   return {
     renderPass,
+    hideOverlay,
     withHalf,
     halfBox,
     layoutCaptions,

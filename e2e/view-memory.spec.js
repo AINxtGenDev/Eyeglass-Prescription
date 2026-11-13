@@ -34,10 +34,24 @@
 //   DFG LUT DataTexture of the physical materials (WebGLRenderer.js line 2756, getDFGLUT())     1
 //                                                                                          T = 6
 import { test, expect } from '@playwright/test';
-import { settledView, settledXsec, guardPage, noThreeWarnings } from './helpers.js';
-/* global window */
+import { settledView, settledXsec, settledRef, guardPage, noThreeWarnings } from './helpers.js';
+/* global window, document, HTMLCanvasElement, requestAnimationFrame */
 
 const EXPECTED = { geometries: 21, textures: 6 };
+
+// 04-11 (D-14, D-27, item 16): the Durchblick pass (refraction.js) is created on the first entry
+// and kept for the session (its chart texture is costly to rebuild, 04-08); its panel grids are
+// re-allocated on a layout change only (setLayout disposes the old ones). Counted as above, only
+// meshes drawn at least once, so after a warm-up whose last Durchblick layout is two drawn panels:
+//   per drawn panel: the grid chart mesh + its rim and noView meshes + the leaf mesh  4 × 2 = 8
+//   the 2 px divider (PlaneGeometry, visible with two panels)                              = 1
+//                                                                              G_ref = G + 9 = 30
+//   chart CanvasTexture (refraction.js drawChart)                              T_ref = T + 1 = 7
+// Not counted: grids allocated for a layout that was left before its first draw (never rendered),
+// blocked / empty panels (group hidden). The leaf geometry that grows past its capacity is
+// disposed before its replacement is drawn (net 0).
+const EXPECTED_REF = { geometries: EXPECTED.geometries + 4 * 2 + 1, textures: EXPECTED.textures + 1 };
+const LEAK_TITLE = 'Durchblick mode switches do not leak (D-14, item 16)';
 
 let threeWarnings;
 test.beforeEach(({ page }) => {
@@ -45,7 +59,22 @@ test.beforeEach(({ page }) => {
 });
 // Reduced motion: preset changes are cuts, so each change settles in one or two renders.
 test.use({ reducedMotion: 'reduce' });
-guardPage(test, { view: true });
+// 04-11: count the WebGL contexts the page ever creates (registered before guardPage navigates).
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const contexts = [];
+    window.__glContexts = contexts;
+    const get = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+      const ctx = get.call(this, type, ...rest);
+      if (ctx && /webgl/.test(String(type)) && !contexts.includes(ctx)) contexts.push(ctx);
+      return ctx;
+    };
+  });
+});
+// The leak test runs with ?refguardoff: a guard step re-allocates the grids too (balanced), but the
+// fixed sequence should not depend on the runner's speed.
+guardPage(test, { view: true, search: (info) => (info.title === LEAK_TITLE ? '?refguardoff' : '') });
 
 const snap = (page) =>
   page.evaluate(() => {
@@ -141,5 +170,142 @@ test('D-27 no GPU memory, program or buffer growth over 50+ changes', async ({ p
   testInfo.annotations.push({ type: 'after changes', description: JSON.stringify({ changes, end }) });
   expect(changes).toBeGreaterThanOrEqual(50);
   expect(end).toEqual(base);
+  expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
+});
+
+test(LEAK_TITLE, async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one run is enough (desktop project; it resizes the window)');
+  test.setTimeout(600_000);
+  const WIDE = { width: 1280, height: 800 };
+  const NARROW = { width: 340, height: 800 }; // stage below 360 px: one panel
+  await page.setViewportSize(WIDE);
+  let changes = 0;
+  const log = [];
+  const idle = async () => {
+    await settledXsec(page);
+    await settledView(page);
+  };
+  const viewMode = () => page.evaluate(() => window.__eyeglassView.mode());
+  /** In Durchblick: the stage on screen and the current job drawn (a job is posted on screen only, M4). */
+  const refIdle = async () => {
+    await idle();
+    await page.locator('#view-stage').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__eyeglassView.ref().onScreen);
+    await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, 0)))));
+    await settledRef(page);
+  };
+  const settle = async () => ((await viewMode()) === 'ref' ? refIdle() : idle());
+  const step = async (name, act) => {
+    await act();
+    await settle();
+    changes++;
+    log.push(name);
+  };
+  const mode = (name) =>
+    step(`mode ${name}`, async () => {
+      const want = { Glas: 'glass', Dickenkarte: 'heat', Durchblick: 'ref' }[name];
+      await page.locator('#view-mode label').filter({ has: page.locator(`input[value=${want}]`) }).click();
+      await page.waitForFunction((w) => window.__eyeglassView.mode() === w, want);
+    });
+  const lensToggle = (name) =>
+    step(`lens ${name}`, async () => {
+      await page.locator('#view-ref-lens label', { hasText: name }).click();
+      await page.waitForFunction((on) => window.__eyeglassView.ref().lens === on, name === 'Mit Glas' ? 'on' : 'off');
+    });
+  let sphI = 0;
+  const SPH = ['-1,00', '-2,50', '-4,00', '+1,50', '-3,25', '-0,75', '+2,00', '-5,00'];
+  const rx = () =>
+    step('rx', async () => {
+      const eye = sphI % 2 ? 'os' : 'od';
+      await page.locator(`#rx-${eye}-sph`).fill(SPH[sphI++ % SPH.length]);
+    });
+  const resize = (vp) =>
+    step(`resize ${vp.width}`, async () => {
+      await page.setViewportSize(vp);
+      const n = vp.width === WIDE.width ? 2 : 1;
+      await page.waitForFunction((k) => window.__eyeglassView.mode() !== 'ref' || window.__eyeglassView.ref().panels.length === k, n);
+    });
+  const cmpStart = () =>
+    step('compare start', async () => {
+      await page.locator('#cmp-start').click();
+      await page.waitForFunction(() => window.__eyeglassView.compareInfo().active);
+    });
+  const cmpEnd = () =>
+    step('compare end', async () => {
+      await page.locator('#cmp-end').click();
+      await page.waitForFunction(() => !window.__eyeglassView.compareInfo().active);
+    });
+  const material = (m) => step(`material ${m}`, () => page.locator(`input[name=material][value=${m}]`).check());
+  const cmpShow = (v) => step(`cmp-show ${v}`, () => page.locator(`#cmp-show input[name=cmp-show][value=${v}]`).check());
+
+  await settledView(page);
+  await page.locator('#expert').check();
+  await idle();
+
+  // ---- Warm-up (documented): the 03-15 warm-up (Dickenkarte, a 3D comparison) and one pass through
+  // every Durchblick state (enter, Ohne/Mit Glas, one panel, A/B), ending in Glas after two drawn
+  // panels at 1280 × 800. ----
+  await mode('Dickenkarte');
+  await mode('Glas');
+  await cmpStart();
+  await page.waitForFunction(() => window.__eyeglassView.compareInfo().aReady);
+  await cmpEnd();
+  await mode('Durchblick');
+  await lensToggle('Ohne Glas');
+  await lensToggle('Mit Glas');
+  await resize(NARROW);
+  await resize(WIDE);
+  await cmpStart();
+  await cmpEnd();
+  await mode('Glas');
+  changes = 0;
+  log.length = 0;
+  const base = await snap(page);
+  testInfo.annotations.push({ type: 'snapshot after warm-up', description: JSON.stringify(base) });
+  expect({ geometries: base.geometries, textures: base.textures }, 'derived EXPECTED_REF').toEqual(EXPECTED_REF);
+
+  // ---- 50+ changes in a fixed sequence ----
+  for (let i = 0; i < 3; i++) {
+    await mode('Durchblick');
+    await rx();
+    await lensToggle('Ohne Glas');
+    await rx();
+    await lensToggle('Mit Glas');
+    await mode('Dickenkarte');
+    await rx();
+    await mode('Glas');
+    await rx();
+  }
+  await mode('Durchblick');
+  for (let i = 0; i < 2; i++) {
+    await resize(NARROW);
+    await rx();
+    await resize(WIDE);
+    await rx();
+  }
+  for (let i = 0; i < 2; i++) {
+    await cmpStart();
+    await material(i ? 'idx160' : 'idx174');
+    await rx();
+    await resize(NARROW);
+    await cmpShow('a');
+    await cmpShow('b');
+    await resize(WIDE);
+    await cmpEnd();
+    await material('cr39');
+  }
+  await mode('Dickenkarte');
+  await mode('Durchblick');
+  await mode('Glas');
+
+  const end = await snap(page);
+  const contexts = await page.evaluate(() => window.__glContexts.length);
+  testInfo.annotations.push({ type: 'after changes', description: JSON.stringify({ changes, end, contexts, log }) });
+  console.log('item 16', JSON.stringify({ changes, base, end, contexts }));
+  expect(changes).toBeGreaterThanOrEqual(50);
+  expect({ geometries: end.geometries, textures: end.textures }).toEqual({ geometries: base.geometries, textures: base.textures });
+  expect(end.programs, 'no material recompiles').toBe(base.programs);
+  expect(contexts, 'exactly one WebGL context').toBe(1);
+  expect(await page.evaluate(() => document.querySelectorAll('canvas#view-canvas').length)).toBe(1);
   expect(threeWarnings(), 'Three.js / WebGL console warnings').toEqual([]);
 });

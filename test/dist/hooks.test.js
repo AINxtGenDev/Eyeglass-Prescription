@@ -11,7 +11,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const DIST = path.join(root, 'dist');
 const DIST_E2E = path.join(root, 'dist-e2e');
 // 04-10: 'refdegraded', the forced-degraded Durchblick hook (src/ui/view/ref-mode.js).
-const HOOK_STRINGS = ['__eyeglassView', 'refdegraded'];
+// 04-11: 'refguardoff', the Durchblick guard-off flag for the ordinary e2e tests (same gate).
+const HOOK_STRINGS = ['__eyeglassView', 'refdegraded', 'refguardoff'];
 
 function requireBuilds() {
   for (const d of [DIST, DIST_E2E]) {

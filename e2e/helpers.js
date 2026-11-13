@@ -311,16 +311,18 @@ export async function without3d(page) {
  * starts on the app page ('./'). 03-05: without the 3D view unless `view: true` (without3d).
  * 03-06: the returned allowFailed(re) exempts failed requests whose URL matches re, for the
  * current test only (a test that aborts a request on purpose).
+ * 04-11: `search` (a string, or a function of the TestInfo returning one) is appended to './',
+ * e.g. '?refguardoff' for the ordinary Durchblick tests; '' (default) loads the plain page.
  * @param {typeof import('@playwright/test').test} test
- * @param {{ view?: boolean }} [opts]
+ * @param {{ view?: boolean, search?: string | ((info: import('@playwright/test').TestInfo) => string) }} [opts]
  * @returns {{ allowFailed: (re: RegExp) => void }}
  */
-export function guardPage(test, { view = false } = {}) {
+export function guardPage(test, { view = false, search = '' } = {}) {
   /** @type {{ bad: string[], failed: string[], foreign: string[], csp: string[] }} */
   let seen;
   /** @type {RegExp[]} */
   let allowed = [];
-  test.beforeEach(async ({ page, baseURL }) => {
+  test.beforeEach(async ({ page, baseURL }, testInfo) => {
     const origin = new URL(baseURL).origin;
     seen = { bad: [], failed: [], foreign: [], csp: [] };
     allowed = [];
@@ -336,8 +338,10 @@ export function guardPage(test, { view = false } = {}) {
       if (m.text().includes('Content Security Policy')) seen.csp.push(m.text());
     });
     if (!view) await without3d(page);
-    await page.goto('./');
-    expect(page.url()).toMatch(/\/Eyeglass-Prescription\/$/);
+    const query = typeof search === 'function' ? search(testInfo) : search;
+    await page.goto('./' + query);
+    expect(new URL(page.url()).pathname).toMatch(/\/Eyeglass-Prescription\/$/);
+    expect(new URL(page.url()).search).toBe(query);
   });
   test.afterEach(() => {
     expect(seen.bad, 'responses with status >= 400').toEqual([]);

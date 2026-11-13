@@ -34,19 +34,21 @@ const TAN_FIELD = Math.tan(FIELD_HALF_ANGLE_DEG * RAD);
 export const pxPerTanFor = (w, h) => Math.max(w, h) / (2 * TAN_FIELD);
 
 /**
- * @param {{ stageW: number, stageH: number, compare?: boolean, shownEye?: 'OD'|'OS' }} o stage content box (CSS px);
- *   compare = the A/B layout (04-11: 'A' left, 'B' right, both the shown eye); shownEye = the eye of a single panel
+ * @param {{ stageW: number, stageH: number, compare?: boolean, shownEye?: 'OD'|'OS', shown?: 'A'|'B' }} o stage
+ *   content box (CSS px); compare = the A/B layout (04-11, D-11a: 'A' left, 'B' right, both the
+ *   compared eye, the same width so the same pxPerTan); shownEye = the eye of a single panel or of
+ *   the A/B panels; shown = the variant of the single A/B panel below REF_SPLIT_MIN_PX (#cmp-show)
  * @returns {{ panels: Array<{ id: string, eye: 'OD'|'OS', x: number, y: number, w: number, h: number,
  *   pxPerTan: number, squarePx: number }>, split: boolean }}
  */
-export function panelLayout({ stageW, stageH, compare = false, shownEye = 'OD' }) {
+export function panelLayout({ stageW, stageH, compare = false, shownEye = 'OD', shown = 'B' }) {
   if (!(stageW > 0 && stageH > 0)) return { panels: [], split: false };
   const split = stageW >= REF_SPLIT_MIN_PX;
   const panel = (id, eye, x, w) => {
     const pxPerTan = pxPerTanFor(w, stageH);
     return { id, eye, x, y: 0, w, h: stageH, pxPerTan, squarePx: CHART_SQUARE_TAN * pxPerTan };
   };
-  if (!split) return { panels: [panel(compare ? 'B' : shownEye === 'OS' ? 'L' : 'R', shownEye, 0, stageW)], split };
+  if (!split) return { panels: [panel(compare ? (shown === 'A' ? 'A' : 'B') : shownEye === 'OS' ? 'L' : 'R', shownEye, 0, stageW)], split };
   const w = Math.floor((stageW - REF_DIVIDER_PX) / 2);
   const right = stageW - w;
   const panels = compare
