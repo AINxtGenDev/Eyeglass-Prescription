@@ -78,8 +78,7 @@ function makeEnvironment(renderer) {
 }
 
 /**
- * @param {HTMLCanvasElement} canvas
- * @param {HTMLElement} stage observed for size changes
+ * @param {HTMLCanvasElement} canvas observed for size changes (it fills the stage's picture area)
  * @returns {null | {
  *   renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera,
  *   requestRender: () => void, render: () => void, afterRender: (fn: () => void) => void,
@@ -91,7 +90,7 @@ function makeEnvironment(renderer) {
  *   project: (x: number, y: number, z: number) => [number, number],
  * }}
  */
-export function createScene(canvas, stage) {
+export function createScene(canvas) {
   let renderer;
   try {
     if (location.search.includes('nowebgl')) throw new Error('Error creating WebGL context.');
@@ -239,8 +238,10 @@ export function createScene(canvas, stage) {
   let sizeFrame = null;
   function resize() {
     sizeFrame = null;
-    const w = stage.clientWidth;
-    const h = stage.clientHeight;
+    // 04-12 (F-02): the canvas box, not the stage: in fullscreen the stage is a two-row grid and the
+    // canvas fills only the picture row (elsewhere the canvas fills the stage, so both are equal).
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
@@ -250,7 +251,7 @@ export function createScene(canvas, stage) {
   }
   new ResizeObserver(() => {
     if (sizeFrame === null) sizeFrame = requestAnimationFrame(resize);
-  }).observe(stage);
+  }).observe(canvas);
   resize();
 
   /** @param {'lost' | 'gone' | 'restored'} state */

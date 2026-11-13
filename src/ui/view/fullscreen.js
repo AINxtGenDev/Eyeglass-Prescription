@@ -3,14 +3,19 @@
 // The Fullscreen API is used where the browser offers it for elements. Where it does not (iPhone
 // Safari only supports it for <video>) or refuses, the stage is pinned over the page with CSS
 // (.view-stage--fs). The canvas follows either way through the scene's ResizeObserver.
+// 04-12 (F-02): while fullscreen is on, the current mode's info blocks (blocks()) are MOVED into
+// `info` (#view-fs-info, the stage's second grid row) and moved back on exit; never cloned, so IDs,
+// labels and aria stay unique (view-place.js is the precedent). They are inside the stage, so the
+// inert handling below leaves them operable; Tab goes fullscreen button → info-panel controls.
 import { t } from '../../i18n/t.js';
 import { icon } from '../icons.js';
 
 /**
- * @param {{ stage: HTMLElement, button: HTMLButtonElement, onChange: (on: boolean) => void }} o
- * @returns {{ isOn: () => boolean }}
+ * @param {{ stage: HTMLElement, button: HTMLButtonElement, info: HTMLElement, blocks: () => HTMLElement[],
+ *   onChange: (on: boolean) => void }} o
+ * @returns {{ isOn: () => boolean, refresh: () => void }}
  */
-export function createFullscreen({ stage, button, onChange }) {
+export function createFullscreen({ stage, button, info, blocks, onChange }) {
   const api = document.fullscreenEnabled === true && typeof stage.requestFullscreen === 'function';
   /** 'off' | 'api' | 'css' */
   let state = 'off';
@@ -54,14 +59,54 @@ export function createFullscreen({ stage, button, onChange }) {
       }
     }
   };
+  /** @type {{ el: HTMLElement, parent: Node, next: Node | null }[]} */
+  let moved = [];
+  // A moved node loses focus when it leaves the document for its new place: keep it on the control.
+  const keepFocus = (fn) => {
+    const a = document.activeElement;
+    fn();
+    if (a instanceof HTMLElement && a !== document.activeElement && a.isConnected) a.focus({ preventScroll: true });
+  };
+  // The panel scrolls when its text is taller than 40 % of the screen. Text after the last control
+  // (the size block) is then out of keyboard reach, and axe's scrollable-region-focusable fails a
+  // panel with no control at all (Dickenkarte at a large font): while it overflows, the panel itself
+  // is a Tab stop, so the arrow keys scroll it.
+  const syncScroll = () => {
+    const scrolls = !info.hidden && info.scrollHeight > info.clientHeight + 1;
+    if (scrolls !== info.hasAttribute('tabindex')) {
+      if (scrolls) info.setAttribute('tabindex', '0');
+      else info.removeAttribute('tabindex');
+    }
+  };
+  const sizes = new ResizeObserver(syncScroll);
+  const moveIn = () => {
+    const list = blocks();
+    moved = list.map((el) => ({ el, parent: /** @type {Node} */ (el.parentNode), next: el.nextSibling }));
+    for (const el of list) info.append(el);
+    info.hidden = list.length === 0;
+    for (const el of [info, ...list]) sizes.observe(el);
+    syncScroll();
+  };
+  // Reverse order: each node goes back before its remembered next sibling, which is already home
+  // again if it was moved too (or is still in place).
+  const moveOut = () => {
+    for (const { el, parent, next } of moved.reverse()) parent.insertBefore(el, next && next.parentNode === parent ? next : null);
+    moved = [];
+    info.hidden = true;
+    sizes.disconnect();
+    syncScroll();
+  };
   const set = (next) => {
     if (next === state) return;
     const wasOn = state !== 'off';
     const wasCss = state === 'css';
     state = next;
+    // In before the page behind goes inert, out after it is live again (focus can follow the node).
+    if (!wasOn && next !== 'off') keepFocus(moveIn);
     stage.classList.toggle('view-stage--fs', state === 'css');
     document.documentElement.classList.toggle('view-fs-open', state === 'css');
     setInert(state === 'css');
+    if (wasOn && next === 'off') keepFocus(moveOut);
     if (wasCss && state === 'off' && (document.activeElement === document.body || stage.contains(document.activeElement))) {
       button.focus({ preventScroll: true });
     }
@@ -90,5 +135,15 @@ export function createFullscreen({ stage, button, onChange }) {
 
   paint();
   button.hidden = false;
-  return { isOn: () => state !== 'off' };
+  return {
+    isOn: () => state !== 'off',
+    /** A mode change while fullscreen: the old mode's blocks go home, the new mode's blocks come in. */
+    refresh: () => {
+      if (state === 'off') return;
+      keepFocus(() => {
+        moveOut();
+        moveIn();
+      });
+    },
+  };
 }

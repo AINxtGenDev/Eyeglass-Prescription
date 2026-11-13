@@ -552,3 +552,83 @@ test('B-WR-04 leaving Dickenkarte returns to the default view', async ({ page })
   await frames(page);
   expect(near(await cam(), simple), 'Expert off: at the default pose').toBe(true);
 });
+
+// ---- 04-12 (F-06, phase-3 review m4): the fullscreen button's low corner, asserted ----
+// The button yields the top-right corner to the Dickenkarte callouts only when they fit with it at
+// the bottom and not at the top (labels.js commitHeatLabels). Since dev-1.7 (both lenses framed)
+// no natural layout here needs that: about 2 000 probed layouts (widths 300–1600 px, root font
+// 100–175 %, label letter-spacing, zoom and pan, heat eye OD and OS, A/B) never set it with the
+// 44 px button in this browser's font. The state is therefore made by geometry: the button is
+// stretched (CSSOM, CSP-safe) to 40 % of the picture height, so at the top it covers the left
+// lens's temporal callout and at the bottom it does not. labels.js commitHeatLabels is not unit
+// tested in Node: it works on module state built from DOM spans (initHeatLabels) and Three.js
+// projections; the pure layout under it (label-layout.js layoutLabels) has its own unit tests.
+test.describe('700×800 low corner', () => {
+  test.use({ viewport: { width: 700, height: 800 } });
+
+  test('m4: the fullscreen button moves to the low corner (.view-fs--low) when the callouts need the top-right, and back', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    // The thicker left lens (−4,00) is the heat eye: its callouts sit on the right half of the stage.
+    await page.locator('#rx-os-sph').fill('-4,00');
+    await page.locator('#rx-os-sph').blur();
+    await settledXsec(page);
+    await expertOn(page);
+    await heatOn(page);
+    expect((await ev(page, () => window.__eyeglassView.heatScale())).eye).toBe('OS');
+    const state = () =>
+      ev(page, () => {
+        const b = document.getElementById('view-fullscreen').getBoundingClientRect();
+        const a = document.getElementById('view-labels').getBoundingClientRect();
+        return {
+          low: document.getElementById('view-fullscreen').classList.contains('view-fs--low'),
+          fit: window.__eyeglassView.labelsInfo().calloutsFit,
+          right: a.right - b.right,
+          top: b.top - a.top,
+          bottom: a.bottom - b.bottom,
+          areaH: a.height,
+        };
+      });
+    // The stage's avoid boxes are re-measured on a size change: a 1 px resize and back.
+    const remeasure = async () => {
+      await page.setViewportSize({ width: 701, height: 800 });
+      await frames(page);
+      await page.setViewportSize({ width: 700, height: 800 });
+      await frames(page);
+    };
+    const setButtonHeight = (frac) =>
+      ev(
+        page,
+        (f) => {
+          const b = document.getElementById('view-fullscreen');
+          b.style.height = f ? `${Math.round(document.getElementById('view-labels').clientHeight * f)}px` : '';
+        },
+        frac,
+      );
+    let s = await state();
+    expect(s.low, 'default: top-right').toBe(false);
+    expect(s.fit, 'default: the callouts fit').toBe(true);
+    expect(s.top).toBeLessThanOrEqual(12);
+
+    await setButtonHeight(0.4);
+    await remeasure();
+    await expect.poll(async () => (await state()).low, { timeout: 30_000 }).toBe(true);
+    s = await state();
+    expect(s.fit, 'the callouts fit with the button at the bottom').toBe(true);
+    expect(s.right, 'right edge').toBeLessThanOrEqual(12);
+    expect(s.right).toBeGreaterThanOrEqual(0);
+    expect(s.bottom, 'in the lower corner').toBeLessThanOrEqual(12);
+    expect(s.bottom).toBeGreaterThanOrEqual(0);
+    expect(s.top, 'not at the top').toBeGreaterThan(s.areaH / 2);
+    await page.screenshot({ path: test.info().outputPath('04-12-m4-low-700x800.png') });
+
+    // The layout no longer needs the corner: back to the top-right.
+    await setButtonHeight(0);
+    await remeasure();
+    await expect.poll(async () => (await state()).low, { timeout: 30_000 }).toBe(false);
+    s = await state();
+    expect(s.fit).toBe(true);
+    expect(s.top, 'back at the top').toBeLessThanOrEqual(12);
+    expect(s.right).toBeLessThanOrEqual(12);
+  });
+});
