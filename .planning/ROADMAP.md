@@ -317,8 +317,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Engine: non-throwing reverse trace from the eye, spectacle magnification (eye point = vertex distance + 3,0 mm), per-direction size text
-- [ ] 04-02-PLAN.md — Gated debug hook, e2e build mode, dist test project, hook-free live subset, build-parity and env-gate tests, CI split
+- [x] 04-01-PLAN.md — Engine: non-throwing reverse trace from the eye, spectacle magnification (eye point = vertex distance + 3,0 mm), per-direction size text
+- [x] 04-02-PLAN.md — Gated debug hook, e2e build mode, dist test project, hook-free live subset, build-parity and env-gate tests, CI split
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 0/15 | Planned | - |
+| 4. Refraction View & Offline | 2/15 | In Progress|  |
