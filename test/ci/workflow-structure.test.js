@@ -70,8 +70,11 @@ describe('deploy.yml structure', () => {
       /run: npm run lint$/m,
       /run: npm run test:coverage$/m,
       /run: npm run build$/m,
+      /run: npm run build:e2e$/m,
       /run: npx playwright install --with-deps chromium$/m,
       /run: npm run test:e2e$/m,
+      /run: npm run test:e2e:live$/m,
+      /run: npm run test:dist$/m,
       /uses: actions\/upload-pages-artifact@/m,
     ];
     const positions = order.map((re) => build.search(re));
@@ -79,6 +82,12 @@ describe('deploy.yml structure', () => {
     for (let i = 1; i < positions.length; i++) {
       expect(positions[i], `${order[i]} after ${order[i - 1]}`).toBeGreaterThan(positions[i - 1]);
     }
+  });
+
+  test('verify-live runs the hook-free live subset, not the full suite', () => {
+    const live = job('verify-live') ?? '';
+    expect(live).toMatch(/run: npm run test:e2e:live$/m);
+    expect(live).not.toMatch(/run: npm run test:e2e$/m);
   });
 
   test('no gate can be bypassed', () => {
