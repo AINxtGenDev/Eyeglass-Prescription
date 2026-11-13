@@ -23,6 +23,22 @@
 // - Stage visibility (M4): an IntersectionObserver on #view-stage (threshold 0). Off-screen no warp
 //   job is posted (T-04-38); off → on posts one job for the latest input (marked as excluded from
 //   the 04-10 degradation guard). view.js defers its re-mesh while the stage is on screen.
+// 04-10 (REF-02, D-15, D-16; UI-SPEC "Degradation"):
+// - Grid tier: refStartTier(pickTier(...)) from the same device inputs as the quality tier
+//   (scene.js), so 'fein' on the hoch class and 'mittel' on phones. Grid tiers never pass through
+//   the quality-tier stepDown (tiers.js, PATTERNS bite 10).
+// - The clock: sample = t1 − t0, t0 = the input event timestamp of the request whose results the job
+//   traces (pipeline.js viewInputs().inputTs, the ENG-09 (c) t0), t1 = performance.now() in the first
+//   requestAnimationFrame after the render that drew the job (afterRender). Counted: only completed
+//   and drawn jobs for a new input (inputs current, a t0 not counted before). Excluded: superseded or
+//   cancelled jobs (only the current generation is ever drawn), the first drawn job after entering
+//   and after the stage comes back on screen, jobs without a new input (resize, picker, retry,
+//   step-down; Mit/Ohne and context restore do not trace), and any sample whose span [t0, t1]
+//   contains a visibilitychange, a pageshow with persisted or a resume event.
+// - nextGuard (04-05) with 200 ms and two in a row → one grid tier down (cell AND leaf size, so it
+//   also cuts rays in rim cases, lens-critic M2); never back up; at grob only stillSlow. A step shows
+//   #view-ref-degraded, writes its text once into #view-ref-live and the badge reads
+//   view.badge.refDegraded. The percentages are engine values and never change.
 import { createWarpClient } from '../../state/warp-client.js';
 // Static, not import(): warp.js is in this chunk already (ref-layout.js), so the sync fallback adds
 // only the small handler, and no extra chunk (a dynamic one made Rolldown split the shared engine
@@ -31,17 +47,31 @@ import { createWarpHandler } from '../../state/warp-protocol.js';
 import { t } from '../../i18n/t.js';
 import { $, setText } from '../dom.js';
 import { icon } from '../icons.js';
-import { fmtMm, fmtAxis } from '../../i18n/format.js';
+import { fmtMm, fmtAxis, fmtMs } from '../../i18n/format.js';
 import { EYE_POINT_MM, HSA_ASSUMED_MM, ENTRANCE_PUPIL_MM } from '../../engine/magnification.js';
 import { FIELD_HALF_ANGLE_DEG, REF_GRID_TIERS } from '../../engine/warp.js';
 import { panelLayout, defaultRefEye, REF_SPLIT_MIN_PX } from './ref-layout.js';
 import { refAria } from './text.js';
 import { refBlockFor, writeRefSize } from './ref-size.js';
+import { initGuard, nextGuard } from '../../state/guard.js';
+import { pickTier, refStartTier, refStepDown } from './tiers.js';
 
 /** UI-SPEC States "Stale": the badge changes when the new picture is not drawn 100 ms after the result paint. */
 const BADGE_AFTER_MS = 100;
-/** Grid tier of this plan (04-10 adds the device rule and the step-down). */
-const TIER = 'fein';
+/** UI-SPEC "Degradation": the input → Durchblick budget (INP "good", web.dev/articles/inp) and the run. */
+const REF_BUDGET_MS = 200;
+const REF_SLOW_RUN = 2;
+/** Counted samples kept for the test handle. */
+const SAMPLE_LOG = 20;
+
+/** The grid start tier from the device class (the same primary-pointer inputs as scene.js pickTier). */
+const deviceStartTier = () =>
+  refStartTier(
+    pickTier({
+      coarse: window.matchMedia('(pointer: coarse)').matches,
+      minScreen: Math.min(window.screen.width, window.screen.height),
+    }),
+  );
 
 /** Technische Angaben: eye point, its sources and the field (written once at mount, engine constants). */
 export function writeRefTech() {
@@ -102,6 +132,58 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   let jobs = 0;
   let lastJobExcluded = false;
   let failed = false;
+  // 04-10: grid tier, guard and clock.
+  const startTier = deviceStartTier();
+  let tier = startTier;
+  /** The tier the allocated panel grids are sized for (a step re-allocates when its reply is drawn). */
+  let gridTier = tier;
+  let guard = initGuard(tier);
+  /** Grid tiers of the session, start first (one entry per step). */
+  const tierPath = [tier];
+  let degraded = false;
+  let announced = false;
+  /** A drawn job since entering / since the stage came back on screen (the warm-up exclusion). */
+  let warm = false;
+  /** The posted job: { gen, t0, counted }. */
+  let job = null;
+  /** The drawn job waiting for its t1. */
+  let clockRec = null;
+  /** The input t0 of the last counted-candidate job (one sample per input). */
+  let lastInputT0 = null;
+  /** performance.now() of the last visibilitychange / pageshow persisted / resume. */
+  let lastInterruptAt = -Infinity;
+  let lastSampleMs = null;
+  /** Samples taken (counted or not), for the test handle. */
+  let sampleN = 0;
+  let lastSampleCounted = false;
+  let lastComputeMs = null;
+  /** The last drawn reply per panel (test handle; rays and rim flags, no Rx). */
+  let lastReplies = [];
+  /** The last drawn jobs (test handle: the job before and after a step for the same input). */
+  const replyLog = [];
+  const samples = [];
+  /** The stage content box of the current layout (a step re-allocates the grids at this size). */
+  let stageSize = { W: 0, H: 0 };
+  // UI-SPEC test hook (E8, M4): start one step down with the note shown, for axe and screenshots.
+  // The flag string exists only in non-production builds (test/dist/hooks.test.js).
+  if (import.meta.env.MODE !== 'production') {
+    const FORCE_DEGRADED_FLAG = 'refdegraded';
+    if (location.search.includes(FORCE_DEGRADED_FLAG)) {
+      tier = refStepDown(tier);
+      gridTier = tier;
+      guard = initGuard(tier);
+      tierPath.push(tier);
+      degraded = true;
+    }
+  }
+  const interrupt = () => {
+    lastInterruptAt = performance.now();
+  };
+  document.addEventListener('visibilitychange', interrupt);
+  document.addEventListener('resume', interrupt);
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) interrupt();
+  });
 
   const lensRadios = /** @type {HTMLInputElement[]} */ ([...document.querySelectorAll('#view-ref-lens input[name=view-ref-lens]')]);
   for (const r of lensRadios) {
@@ -135,12 +217,15 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       if (now === onScreen) return;
       onScreen = now;
       onVisibility?.(now);
-      if (on && now) post({ excluded: true });
+      if (on && now) {
+        warm = false;
+        post('onscreen');
+      }
     },
     { threshold: 0 },
   ).observe(stageEl);
 
-  const badgeKey = () => (lens === 'off' ? 'view.badge.refOff' : 'view.badge.ref');
+  const badgeKey = () => (lens === 'off' ? 'view.badge.refOff' : degraded ? 'view.badge.refDegraded' : 'view.badge.ref');
   const clearBadgeTimer = () => {
     if (badgeTimer !== null) clearTimeout(badgeTimer);
     badgeTimer = null;
@@ -175,7 +260,9 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     if (key === layoutKey) return false;
     layoutKey = key;
     layout = next;
-    getRefraction().setLayout(layout, { W: r.width, H: r.height }, REF_GRID_TIERS[TIER].cellPx);
+    stageSize = { W: r.width, H: r.height };
+    gridTier = tier;
+    getRefraction().setLayout(layout, stageSize, REF_GRID_TIERS[tier].cellPx);
     hasPicture = false;
     rimByPanel = {};
     return true;
@@ -220,7 +307,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
         frame: { shape, A, B },
         hMm: EYE_POINT_MM,
         layout: { wPx: p.w, hPx: p.h, pxPerTan: p.pxPerTan },
-        tier: TIER,
+        tier,
       });
     }
     return out;
@@ -274,7 +361,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       /** @type {HTMLElement | null} */ (document.querySelector('#view-mode input[value=ref]'))?.focus();
       clearFailed();
       sentKey = null;
-      post();
+      post('retry');
     });
     status.classList.add('view-failed');
     status.replaceChildren(msg, retry);
@@ -302,9 +389,10 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
   /**
    * Post the job for the latest inputs when it differs from the last one posted; nothing while the
    * stage is off screen (M4).
-   * @param {{ excluded?: boolean }} [o] excluded: the off → on job (04-10 guard warm-up sample)
+   * @param {'input' | 'enter' | 'onscreen' | 'relayout' | 'retry' | 'step'} reason only 'input' jobs
+   *   can be counted guard samples (UI-SPEC "Degradation")
    */
-  function post({ excluded = false } = {}) {
+  function post(reason) {
     if (!onScreen) return;
     const list = items(lastInputs);
     const key = JSON.stringify([layoutKey, list]);
@@ -328,9 +416,16 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       return;
     }
     ensureClient();
-    /** @type {ReturnType<typeof createWarpClient>} */ (client).requestWarp(list);
+    const { gen } = /** @type {ReturnType<typeof createWarpClient>} */ (client).requestWarp(list);
     jobs++;
-    lastJobExcluded = excluded;
+    const t0 = lastInputs?.inputTs;
+    // One sample per input: a later job for the same input (a second eye painted, a compare result)
+    // has no new t0. A job without a new input is clocked from its post, for Technische Angaben only.
+    const fresh = reason === 'input' && typeof t0 === 'number' && lastInputs.current === true && t0 !== lastInputT0;
+    if (fresh) lastInputT0 = t0;
+    const counted = fresh && warm;
+    job = { gen, t0: fresh ? t0 : performance.now(), counted };
+    lastJobExcluded = !counted;
     setWarpPending(true);
     if (!hasPicture) {
       setText('view-status', t('view.ref.loading'));
@@ -369,6 +464,12 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       showFailed();
       return;
     }
+    if (d.items.length > 0 && d.items[0].tier !== gridTier && Object.hasOwn(REF_GRID_TIERS, d.items[0].tier)) {
+      // A step-down reply: the grids are re-allocated at the new cell size only now, so the old
+      // picture stayed until this one (stale badge meanwhile).
+      gridTier = d.items[0].tier;
+      refraction.setLayout(layout, stageSize, REF_GRID_TIERS[gridTier].cellPx);
+    }
     const drawn = new Set();
     rimByPanel = {};
     for (const it of d.items) {
@@ -394,8 +495,82 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     setBadge(hasPicture ? badgeKey() : null);
     setWarpPending(false);
     renderText();
+    // 04-10: the clock waits for the render that draws this job (afterRender, then the next frame).
+    if (job && job.gen === d.gen) {
+      clockRec = { ...job, counted: job.counted && warm };
+      job = null;
+    }
+    warm = true;
+    lastComputeMs = typeof d.computeMs === 'number' ? d.computeMs : null;
+    lastReplies = d.items.map((it) => ({ panel: it.panel, eye: it.eye, tier: it.tier, rays: it.rays, nx: it.nx, ny: it.ny, rimInField: it.rimInField }));
+    replyLog.push({ gen: d.gen, replies: lastReplies });
+    if (replyLog.length > SAMPLE_LOG) replyLog.shift();
+    writeGridTech();
+    writeTimeTech();
     requestRender();
     scheduleAria();
+  }
+
+  /** One sample (UI-SPEC clock); only counted samples reach the guard. */
+  function sample(rec, t1) {
+    const ms = t1 - rec.t0;
+    lastSampleMs = ms;
+    sampleN++;
+    const interrupted = lastInterruptAt >= rec.t0 || document.visibilityState !== 'visible';
+    lastSampleCounted = rec.counted && !interrupted;
+    if (lastSampleCounted) {
+      samples.push(ms);
+      if (samples.length > SAMPLE_LOG) samples.shift();
+      const was = guard.tier;
+      guard = nextGuard(guard, ms, { budgetMs: REF_BUDGET_MS, need: REF_SLOW_RUN, last: 'grob', down: refStepDown });
+      if (guard.tier !== was) stepTo(guard.tier);
+    }
+    writeGridTech();
+    writeTimeTech();
+  }
+
+  /** An automatic step (never up): the note, the live text once, the badge; re-trace the current input. */
+  function stepTo(next) {
+    tier = next;
+    tierPath.push(next);
+    degraded = true;
+    showDegraded();
+    sentKey = null;
+    post('step');
+  }
+
+  function showDegraded() {
+    if (!degraded || !on) return;
+    const note = $('view-ref-degraded');
+    if (note.hidden) {
+      note.replaceChildren(icon('info'), document.createTextNode(t('view.ref.degraded')));
+      note.hidden = false;
+    }
+    if (!announced) {
+      // Announced once per session (UI-SPEC Accessibility "Live regions"), after the note is visible.
+      announced = true;
+      $('view-ref-live').textContent = t('view.ref.degraded');
+    }
+  }
+
+  /** Technische Angaben: the grid line (tier path, points of the shown panel, step suffix). */
+  function writeGridTech() {
+    const r = lastReplies[0];
+    if (!r) return;
+    const suffix = degraded ? t('tech.ref.degraded') + (guard.stillSlow ? t('tech.ref.stillSlow') : '') : '';
+    setText(
+      'tech-ref-grid',
+      t('tech.ref.grid', {
+        tier: tierPath.map((x) => t(`tech.ref.tier.${x}`)).join(' → '),
+        nx: r.nx + 1,
+        ny: r.ny + 1,
+        degraded: suffix,
+      }),
+    );
+  }
+  function writeTimeTech() {
+    if (lastSampleMs !== null) setText('tech-ref-time', t('tech.ref.time', { ms: fmtMs(lastSampleMs) }));
+    if (lastComputeMs !== null) setText('tech-ref-compute', t('tech.ref.compute', { ms: fmtMs(lastComputeMs) }));
   }
 
   /** A new layout (resize, picker, two ↔ one panel): a new grid, so a new trace (fullscreen is 04-12). */
@@ -408,7 +583,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     setRadiosEnabled(false);
     sentKey = null;
     renderText();
-    post();
+    post('relayout');
   }
 
   return {
@@ -427,14 +602,16 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       setText('view-status', t('view.ref.loading'));
       setBadge(null);
       setRadiosEnabled(false);
-      post();
+      warm = false;
+      showDegraded();
+      post('enter');
     },
     /** Every view update while on: the size block now, then the warp job (after the result paint). */
     update(inputs) {
       lastInputs = inputs;
       if (!on) return;
       renderText();
-      post();
+      post('input');
     },
     resize: relayout,
     /** Leaving: cancel the lane (latest wins; nothing more is drawn) and drop the picture. */
@@ -443,6 +620,8 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       client?.cancel();
       sentKey = null;
       stash = null;
+      job = null;
+      clockRec = null;
       hasPicture = false;
       stale = false;
       rimByPanel = {};
@@ -452,6 +631,17 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       getRefraction().clear();
       getRefraction().hidePills();
       setText('view-status', '');
+    },
+    /** view.js afterRender in Durchblick: t1 is taken in the next frame after the drawing render. */
+    afterRender() {
+      const rec = clockRec;
+      if (!rec || rec.armed) return;
+      rec.armed = true;
+      requestAnimationFrame(() => {
+        if (clockRec !== rec) return;
+        clockRec = null;
+        sample(rec, performance.now());
+      });
     },
     isOn: () => on,
     onScreen: () => onScreen,
@@ -470,7 +660,17 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     info: () => ({
       lens,
       panels: layout.panels.map(({ id, eye, pxPerTan, squarePx, x, y, w, h }) => ({ id, eye, pxPerTan, squarePx, x, y, w, h, rim: Boolean(rimByPanel[id]?.rimInField), pastRim: Boolean(rimByPanel[id]?.pastRimInField), noView: Boolean(rimByPanel[id]?.noViewInField) })),
-      tier: TIER,
+      tier,
+      startTier,
+      degraded,
+      guard: { ...guard },
+      samples: [...samples],
+      lastSampleMs,
+      sampleN,
+      lastSampleCounted,
+      computeMs: lastComputeMs,
+      replies: lastReplies.map((r) => ({ ...r })),
+      replyLog: replyLog.map((j) => ({ gen: j.gen, replies: j.replies.map((r) => ({ ...r })) })),
       drawnGen,
       jobs,
       lastJobExcluded,

@@ -1309,6 +1309,7 @@ function mount({ slot }) {
   }
   function refAfterRender() {
     refraction?.layoutPills();
+    refMode.afterRender(); // 04-10: the guard clock's t1
   }
   const refAriaLabel = () => refMode.ariaLabel();
   const refInfo = () => ({ mode, ...refMode.info(), meshSent, meshDeferred });

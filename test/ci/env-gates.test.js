@@ -14,6 +14,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const ALLOW_ENV = Object.freeze({
   'src/i18n/t.js': ['import.meta.env?.PROD'],
   'src/ui/view/view.js': ["import.meta.env.MODE !== 'production'"],
+  'src/ui/view/ref-mode.js': ["import.meta.env.MODE !== 'production'"],
 });
 
 /** @param {string} dir absolute @returns {string[]} repo-relative posix paths */
