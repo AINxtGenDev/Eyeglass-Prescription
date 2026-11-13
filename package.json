@@ -18,7 +18,8 @@
     "test:e2e": "playwright test",
     "test:e2e:live": "E2E_LIVE=1 playwright test",
     "test:dist": "vitest run --project dist",
-    "test:perf": "PERF=1 playwright test --project=perf"
+    "test:perf": "PERF=1 playwright test --project=perf",
+    "test:pwa:live": "playwright test --project=pwa --grep @live"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

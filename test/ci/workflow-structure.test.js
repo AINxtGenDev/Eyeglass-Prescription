@@ -90,6 +90,19 @@ describe('deploy.yml structure', () => {
     expect(live).not.toMatch(/run: npm run test:e2e$/m);
   });
 
+  test('verify-live runs the @live pwa tests against the live URL after the live subset (M4)', () => {
+    const live = job('verify-live') ?? '';
+    const e2e = live.search(/run: npm run test:e2e:live$/m);
+    const pwa = live.search(/run: npm run test:pwa:live$/m);
+    expect(e2e).toBeGreaterThanOrEqual(0);
+    expect(pwa, 'test:pwa:live after test:e2e:live').toBeGreaterThan(e2e);
+    // The step's own env block (up to the next step) sets PWA_BASE_URL to the same live URL.
+    const step = live.slice(pwa).split(/\n {6}- /)[0];
+    const baseUrl = live.match(/^ {10}BASE_URL: (\S+)$/m)?.[1];
+    expect(baseUrl).toBeTruthy();
+    expect(step).toMatch(new RegExp(`^ {10}PWA_BASE_URL: ${baseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
+  });
+
   test('no gate can be bypassed', () => {
     expect(text).not.toBe('');
     for (const banned of ['continue-on-error', 'always()', 'failure()', 'cancelled()', '|| true']) {
