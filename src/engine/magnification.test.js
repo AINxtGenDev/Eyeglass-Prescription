@@ -94,7 +94,7 @@ describe('REF-01 spectacle magnification (D-04, D-05, D-12)', () => {
     const m = spectacleMagnification({ n: 1.5, ctMm: 1.8, D1: 0.5, sph: -4, cyl: 0, axisDeg: 0 });
     expect(m.hMm).toBe(15);
     expect(m.shape).toBeCloseTo(1 / (1 - (0.0018 / 1.5) * 0.5), 15);
-    expect(m.meridians).toEqual([{ deg: null, wearerDeg: null, F: -4, sm: m.shape / (1 + 0.015 * 4) }]);
+    expect(m.meridians).toEqual([{ deg: null, wearerDeg: null, F: -4, power: 1 / (1 + 0.015 * 4), sm: m.shape * (1 / (1 + 0.015 * 4)) }]);
     const m12 = spectacleMagnification({ n: 1.5, ctMm: 1.8, D1: 0.5, sph: -4, cyl: 0, axisDeg: 0 }, 12);
     expect(m12.hMm).toBe(12);
     expect(m12.meridians[0].sm).toBeCloseTo(m12.shape / (1 + 0.012 * 4), 15);
