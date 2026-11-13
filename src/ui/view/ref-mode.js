@@ -247,8 +247,18 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
       if (r.checked) setLens(/** @type {'on' | 'off'} */ (r.value));
     });
   }
+  // 04-12 (F-02): a new layout (fullscreen on/off, a resize) disables the toggle until its first
+  // picture, and disabling the focused radio drops keyboard focus to <body>. Focus comes back to the
+  // checked radio when the toggle is enabled again, unless the user has moved it meanwhile.
+  let refocusLens = false;
   const setRadiosEnabled = (en) => {
+    if (!en && lensRadios.some((r) => r === document.activeElement)) refocusLens = true;
     for (const r of lensRadios) r.disabled = !en;
+    if (en && refocusLens) {
+      refocusLens = false;
+      const a = document.activeElement;
+      if (a === null || a === document.body) lensRadios.find((r) => r.checked)?.focus({ preventScroll: true });
+    }
   };
   // 04-09: "Durchblick für" (one-panel mode only). The picker changes the picture, not the scale.
   const pickerEl = $('view-ref-eye');
@@ -726,6 +736,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     /** Leaving: cancel the lane (latest wins; nothing more is drawn) and drop the picture. */
     leave() {
       on = false;
+      refocusLens = false;
       client?.cancel();
       sentKey = null;
       stash = null;

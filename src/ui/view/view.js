@@ -285,11 +285,14 @@ function mount({ slot }) {
     let corner = null;
     fsBox = null;
     if (fsButton.offsetWidth > 0) {
+      // 04-12 (F-02): the picture area (#view-labels, row 1 of the fullscreen grid), not the whole
+      // stage: in fullscreen the info panel below it is no place for the button.
+      const area = $('view-labels');
       const w = fsButton.offsetWidth;
       const h = fsButton.offsetHeight;
-      const inset = stageEl.clientWidth - fsButton.offsetLeft - w;
+      const inset = area.clientWidth - fsButton.offsetLeft - w;
       fsBox = { x: fsButton.offsetLeft, y: inset, w, h };
-      corner = { top: fsBox, low: { x: fsButton.offsetLeft, y: stageEl.clientHeight - inset - h, w, h } };
+      corner = { top: fsBox, low: { x: fsButton.offsetLeft, y: area.clientHeight - inset - h, w, h } };
     }
     // In fullscreen the hint (outside the stage) is covered: its box would only cost callouts.
     if (!fsOn && stageEl.matches(':focus-visible') && keysState !== 'hidden') {
@@ -309,7 +312,7 @@ function mount({ slot }) {
     if (mode === 'heat') requestSettle(inRender);
   }
 
-  const view = createScene(/** @type {HTMLCanvasElement} */ ($('view-canvas')), $('view-stage'));
+  const view = createScene(/** @type {HTMLCanvasElement} */ ($('view-canvas')));
   if (view === null) {
     // D-17: the note replaces the view; numbers, comparison and cross-section are unaffected.
     showNoWebgl();
@@ -895,12 +898,26 @@ function mount({ slot }) {
   const applyFsLabel = () => {
     if (!fsOn) fsButton.setAttribute('title', t(mode === 'ref' ? 'view.fullscreen.enter.ref' : 'view.fullscreen.enter'));
   };
-  createFullscreen({ stage: $('view-stage'), button: fsButton, onChange: (on) => {
-    fsOn = on;
-    applyFsLabel();
-    controls.setFullscreen(on);
-    updateAvoid();
-  } });
+  // 04-12 (F-02, UI-SPEC "Fullscreen"): the blocks each mode moves into #view-fs-info while fullscreen
+  // is on, in DOM order. Hidden ones move too (the picker and the degraded note can appear while
+  // fullscreen is on); they stay hidden in the panel. Glas has none, so the panel stays hidden.
+  const FS_BLOCKS = {
+    glass: [],
+    heat: ['view-legend', 'view-callout-note'],
+    ref: ['view-hint', 'view-ref-lens', 'view-ref-eye', 'view-ref-size', 'view-ref-scope', 'view-ref-degraded'],
+  };
+  const fullscreen = createFullscreen({
+    stage: $('view-stage'),
+    button: fsButton,
+    info: $('view-fs-info'),
+    blocks: () => FS_BLOCKS[mode].map((id) => $(id)),
+    onChange: (on) => {
+      fsOn = on;
+      applyFsLabel();
+      controls.setFullscreen(on);
+      updateAvoid();
+    },
+  });
 
   /**
    * 03-15 (lens-critic MINOR 11): the thumbnail pose, or null for 'not now'. Front direction,
@@ -1195,6 +1212,7 @@ function mount({ slot }) {
     const from = mode;
     if (from === 'ref') leaveRef();
     mode = next;
+    fullscreen.refresh(); // 04-12 (F-02): the info panel follows the mode while fullscreen is on
     lenses.setMode(next === 'heat' ? 'heat' : 'glass');
     requestThumb();
     const isHeat = next === 'heat';

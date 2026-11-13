@@ -4,10 +4,13 @@
 // 320 px with hyphenation off, the D-39 keyboard path, and the UX-01 toggletips.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { settled, settledCompare, settledXsec, settledView, guardPage } from './helpers.js';
+import { settled, settledCompare, settledXsec, settledView, settledRef, guardPage } from './helpers.js';
+import DE from '../src/i18n/de-AT.js';
 /* global document, window, getComputedStyle, requestAnimationFrame -- page.evaluate bodies run in the browser */
 
-guardPage(test, { view: true });
+// 04-12: the Durchblick states expect "Durchblick · berechnet"; the guard measures but never steps
+// down (?refguardoff, 04-11). No test in this file exercises the guard.
+guardPage(test, { view: true, search: '?refguardoff' });
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const VIEWPORTS = [
@@ -33,6 +36,36 @@ async function expectNoHorizontalScroll(page, when) {
     client: document.documentElement.clientWidth,
   }));
   expect(scroll, `scrollWidth <= clientWidth ${when}`).toBeLessThanOrEqual(client);
+}
+
+/**
+ * 04-12, root font 150 % at 320 px: no element of the 3D view (#view-slot, incl. the fullscreen
+ * info panel) reaches past the viewport (the stage's own 2 px border overhang into the page padding,
+ * width 100 % + border below 900 px, is phase-3 geometry the pixel tests rely on). The page as
+ * a whole is not asserted at 150 %: the phase-2 result cards overflow by about 1 px there (the
+ * 28 px × 1,5 nowrap card numbers in two columns, also in Glas and without WebGL; deferred-items.md,
+ * 04-12). The page numbers are recorded as an annotation.
+ */
+async function expectViewReflows(page, when) {
+  await page.evaluate(() => {
+    document.body.style.hyphens = 'manual';
+    document.body.style.webkitHyphens = 'manual';
+  });
+  const r = await page.evaluate(() => {
+    const cw = document.documentElement.clientWidth;
+    const slot = document.getElementById('view-slot');
+    // #view-labels content is clipped by the stage (overflow: hidden) and aria-hidden.
+    const past = [...slot.querySelectorAll('*')]
+      .filter((el) => !el.closest('#view-labels'))
+      .filter((el) => {
+        const b = el.getBoundingClientRect();
+        return b.width > 0 && (b.right > cw + 0.5 || b.left < -0.5);
+      })
+      .map((el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}`);
+    return { past, pageScroll: document.documentElement.scrollWidth, pageClient: cw };
+  });
+  test.info().annotations.push({ type: `page width ${when}`, description: `scrollWidth ${r.pageScroll}, clientWidth ${r.pageClient}` });
+  expect(r.past, `3D-view elements past the 320 px viewport ${when}`).toEqual([]);
 }
 
 async function expertOn(page) {
@@ -108,6 +141,204 @@ const expectMode = async (page, m) => expect(await view(page, () => window.__eye
 
 /** Released by the loading state's teardown; one test at a time per worker process. */
 let releaseViewChunk = () => {};
+
+// ---- 04-12 (UI-SPEC "Accessibility Contract (additions)", item 27): the Durchblick states ----
+async function refOn(page) {
+  await page.locator('#view-mode label', { hasText: 'Durchblick' }).click();
+  await settledRef(page);
+}
+/** The Durchblick drawn for the current input with the stage on screen (no job is posted off screen, M4). */
+async function refRedrawn(page) {
+  await page.locator('#view-stage').scrollIntoViewIfNeeded();
+  await settledRef(page);
+}
+async function setRx(page, od, os = od) {
+  const clear = page.locator('#example-clear');
+  if (await clear.isVisible()) await clear.click();
+  for (const [eye, rx] of [
+    ['od', od],
+    ['os', os],
+  ]) {
+    await page.locator(`#rx-${eye}-pd`).fill('32');
+    await page.locator(`#rx-${eye}-sph`).fill(rx.sph);
+    await page.locator(`#rx-${eye}-cyl`).fill(rx.cyl ?? '');
+    await page.locator(`#rx-${eye}-axis`).fill(rx.axis ?? '');
+  }
+  await settled(page);
+}
+const refState = (page) => view(page, () => window.__eyeglassView.ref());
+const badgeIs = (page, text) => expect(page.locator('.view-badge')).toHaveText(text);
+const CYL = { sph: '-2,00', cyl: '-2,00', axis: '30' };
+const WEAK = { sph: '-0,75' };
+
+const REF_STATES = {
+  '3D Simple/Durchblick Mit Glas': {
+    setup: async (page) => {
+      await settledView(page);
+      await refOn(page);
+    },
+    check: async (page) => {
+      await expectMode(page, 'ref');
+      expect((await refState(page)).lens).toBe('on');
+      await badgeIs(page, DE['view.badge.ref']);
+    },
+  },
+  '3D Simple/Durchblick Ohne Glas': {
+    setup: async (page) => {
+      await settledView(page);
+      await refOn(page);
+      await page.locator('#view-ref-lens label', { hasText: DE['view.refLens.off'] }).click();
+    },
+    check: async (page) => {
+      expect((await refState(page)).lens).toBe('off');
+      await badgeIs(page, DE['view.badge.refOff']);
+    },
+  },
+  // UI-SPEC "Three options on a narrow container": below a 400 px #view one segment per row.
+  '3D Expert/Durchblick, drei Optionen (gestapelt unter 400 px)': {
+    setup: async (page) => {
+      await expertView(page);
+      await refOn(page);
+    },
+    check: async (page) => {
+      await expectMode(page, 'ref');
+      const st = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('#view-mode label')]
+          .filter((l) => l.getClientRects().length > 0)
+          .map((l) => {
+            const r = l.getBoundingClientRect();
+            return { x: r.x, y: r.y, w: r.width, h: r.height };
+          });
+        return { narrow: document.getElementById('view').clientWidth < 400, stack: document.getElementById('view-mode').classList.contains('segmented--stack'), rows };
+      });
+      expect(st.rows, 'three visible options').toHaveLength(3);
+      expect(st.stack, `.segmented--stack iff #view < 400 px (narrow: ${st.narrow})`).toBe(st.narrow);
+      if (st.stack) {
+        for (let i = 1; i < 3; i++) {
+          expect(st.rows[i].y, `segment ${i} on its own row`).toBeGreaterThanOrEqual(st.rows[i - 1].y + st.rows[i - 1].h - 1);
+          expect(Math.abs(st.rows[i].x - st.rows[0].x), `segment ${i} aligned`).toBeLessThan(1);
+        }
+        for (const r of st.rows) expect(r.h, 'segment height').toBeGreaterThanOrEqual(44);
+      }
+      test.info().annotations.push({ type: 'stacked', description: `${st.stack} at ${await page.evaluate(() => `${window.innerWidth}×${window.innerHeight}`)}` });
+    },
+  },
+  // One panel below a 360 px stage: the "Durchblick für" picker, set to the left lens.
+  '3D Durchblick ein Feld mit Auswahl (Linkes Glas)': {
+    setup: async (page) => {
+      await settledView(page);
+      await refOn(page);
+    },
+    check: async (page) => {
+      const panels = (await refState(page)).panels;
+      if (panels.length === 1) {
+        await expect(page.locator('#view-ref-eye')).toBeVisible();
+        await page.locator('#view-ref-eye label', { hasText: DE['view.refEye.os'] }).click();
+        await expect(page.locator('input[name=view-ref-eye][value=OS]')).toBeChecked();
+        await page.waitForFunction(() => window.__eyeglassView.ref().panels.map((p) => p.eye).join() === 'OS');
+        await refRedrawn(page);
+      } else {
+        await expect(page.locator('#view-ref-eye')).toBeHidden();
+      }
+      test.info().annotations.push({ type: 'panels', description: `${panels.length} at ${await page.evaluate(() => `${window.innerWidth}×${window.innerHeight}`)}` });
+    },
+  },
+  '3D Durchblick im Vergleich (abNote)': {
+    setup: async (page) => {
+      await settledView(page);
+      await refOn(page);
+      await comparisonOn(page);
+      await refRedrawn(page);
+    },
+    check: async (page) => {
+      expect((await refState(page)).compare, 'comparison in the Durchblick').not.toBeNull();
+      await expect(page.locator('#view-ref-size')).toContainText(DE['view.ref.abNote']);
+    },
+  },
+  '3D Durchblick Zylinder schräg (ul.ref-dirs)': {
+    setup: async (page) => {
+      await settledView(page);
+      await setRx(page, CYL);
+      await refOn(page);
+    },
+    check: async (page) => {
+      await expect(page.locator('#view-ref-size ul.ref-dirs').first()).toBeVisible();
+      expect(await page.locator('#view-ref-size ul.ref-dirs > li').count()).toBeGreaterThanOrEqual(2);
+    },
+  },
+  '3D Durchblick schwaches Glas (Hinweis)': {
+    setup: async (page) => {
+      await settledView(page);
+      await setRx(page, WEAK);
+      await refOn(page);
+    },
+    check: (page) => expect(page.locator('#view-ref-size')).toContainText(DE['view.ref.weakNote']),
+  },
+  '3D Durchblick ein Glas nicht berechnet': {
+    setup: async (page) => {
+      await settledView(page);
+      await page.locator('#rx-os-cyl').fill('-1,00');
+      await page.locator('#rx-os-axis').fill('');
+      await page.locator('#rx-os-axis').blur();
+      await settled(page);
+      await refOn(page);
+    },
+    check: (page) => expect(page.locator('#view-ref-size')).toContainText(DE['view.ref.blocked'].replace('{who}', DE['view.refEye.os'])),
+  },
+  '3D Durchblick vereinfacht (?refdegraded)': {
+    setup: async (page) => {
+      await settledView(page); // the first page's workers finish loading before the navigation
+      await page.goto('./?refdegraded&refguardoff');
+      await settledView(page);
+      await refOn(page);
+    },
+    check: async (page) => {
+      await expect(page.locator('#view-ref-degraded')).toBeVisible();
+      await badgeIs(page, DE['view.badge.refDegraded']);
+    },
+  },
+  // F-02 with the Fullscreen API (headless Chromium allows it). A window in element fullscreen
+  // cannot be resized, so each pass enters in check and leaves in after.
+  '3D Durchblick Vollbild mit Infofeld': {
+    setup: async (page) => {
+      await settledView(page);
+      await refOn(page);
+    },
+    check: async (page) => {
+      await page.locator('#view-fullscreen').click();
+      await page.waitForFunction(() => document.fullscreenElement?.id === 'view-stage');
+      await expect(page.locator('#view-fs-info')).toBeVisible();
+      await expect(page.locator('#view-fs-info #view-ref-lens')).toBeVisible();
+      await page.waitForFunction(() => {
+        const c = /** @type {HTMLCanvasElement} */ (document.getElementById('view-canvas'));
+        return Math.abs(c.width / c.height - c.clientWidth / c.clientHeight) < 0.01;
+      });
+      await settledRef(page);
+    },
+    after: async (page) => {
+      await page.locator('#view-fullscreen').click();
+      await page.waitForFunction(() => document.fullscreenElement === null);
+      await expect(page.locator('#view-fs-info')).toBeHidden();
+    },
+  },
+  // 04-09 (UI-SPEC States, T-04-39): without WebGL the engine size block stays, here with a cylinder.
+  '3D ohne WebGL: Größenblock (?nowebgl, Zylinder)': {
+    setup: async (page) => {
+      await settledView(page);
+      await page.goto('./?nowebgl');
+      await settledView(page);
+      await setRx(page, CYL);
+      await settledView(page);
+    },
+    check: async (page) => {
+      await expect(page.locator('#view-stage')).toContainText('WebGL 2 fehlt');
+      await expect(page.locator('#view-ref-size')).toBeVisible();
+      await expect(page.locator('#view-ref-size')).toContainText(DE['view.ref.size.title']);
+      await expect(page.locator('#view-ref-size ul.ref-dirs').first()).toBeVisible();
+    },
+  },
+};
+for (const st of Object.values(REF_STATES)) st.font150 = true;
 
 const VIEW_STATES = {
   '3D Simple/Glas': {
@@ -209,23 +440,37 @@ const VIEW_STATES = {
 const ALL_STATES = {
   ...Object.fromEntries(Object.entries(STATES).map(([name, setup]) => [name, { setup }])),
   ...VIEW_STATES,
+  ...REF_STATES,
 };
+// 04-12: the Durchblick states run once more at 320 × 640 with the root font at 150 % (UI-SPEC
+// "Three options on a narrow container", the 320 px reflow rule).
+const FONT150 = { width: 320, height: 640, font: '150%' };
 
 for (const [name, st] of Object.entries(ALL_STATES)) {
   test(`axe WCAG 2.2 AA zero violations and no overflow at 320 px: ${name}`, async ({ page }) => {
-    if (name.startsWith('3D ')) test.setTimeout(120_000); // SwiftShader renders on the CPU
+    if (name.startsWith('3D ')) test.setTimeout(st.font150 ? 240_000 : 120_000); // SwiftShader renders on the CPU
     // F-03 (03 deferred-items): this state hits the 30 s default under 4 parallel workers, on the
     // baseline build 0776c4a too (axe over every open tip and <details> at both viewports).
     if (name.startsWith('everything open')) test.setTimeout(90_000);
     await settled(page);
     await st.setup(page);
-    for (const vp of VIEWPORTS) {
-      await page.setViewportSize(vp);
+    for (const vp of st.font150 ? [...VIEWPORTS, FONT150] : VIEWPORTS) {
+      const at = `${vp.width}×${vp.height}${vp.font ? ` root font ${vp.font}` : ''}`;
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      if (st.font150) {
+        await page.evaluate((f) => {
+          document.documentElement.style.fontSize = f;
+        }, vp.font ?? '');
+      }
       await frame(page);
       await (st.wait ?? (name.startsWith('3D ') ? viewSettled : settledXsec))(page);
+      // 04-12: a Durchblick re-laid out by the resize posts its job only with the stage on screen (M4).
+      if (st.font150 && (await view(page, () => window.__eyeglassView?.mode())) === 'ref') await refRedrawn(page);
       if (st.check) await st.check(page, vp);
-      await expectAxeClean(page, `${name} at ${vp.width}×${vp.height}`);
-      await expectNoHorizontalScroll(page, `${name} at ${vp.width}×${vp.height}`);
+      await expectAxeClean(page, `${name} at ${at}`);
+      if (vp.font) await expectViewReflows(page, `${name} at ${at}`);
+      else await expectNoHorizontalScroll(page, `${name} at ${at}`);
+      if (st.after) await st.after(page, vp);
     }
     if (st.teardown) await st.teardown(page);
   });
