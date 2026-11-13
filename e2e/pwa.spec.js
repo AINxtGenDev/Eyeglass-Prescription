@@ -364,6 +364,28 @@ test.describe('switch server only', () => {
     await expect(page.locator('#app-update')).toBeHidden();
   });
 
+  // UI-SPEC "Update banner" layout at the smallest width: both buttons on one row, ≥ 44 px high,
+  // no horizontal overflow, above the summary bar.
+  test('banner layout at 320 × 640', async ({ page, request, baseURL }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await openOnA(page);
+    await page.locator('#expert').focus();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await switchTo(request, baseURL, '/__switch/b');
+    await checkForUpdate(page);
+    await bannerShown(page);
+    await expect(page.locator('#summary-bar')).toBeVisible();
+    const box = async (sel) => page.locator(sel).boundingBox();
+    const [banner, bar, apply, later] = await Promise.all(['#app-update', '#summary-bar', '#app-update-apply', '#app-update-later'].map(box));
+    expect(banner.y + banner.height, 'banner bottom above the bar top').toBeLessThanOrEqual(bar.y);
+    expect(banner.x).toBeGreaterThanOrEqual(8 - 0.5);
+    expect(banner.x + banner.width).toBeLessThanOrEqual(320 - 8 + 0.5);
+    expect(Math.abs(apply.y - later.y), 'both buttons on one row').toBeLessThan(1);
+    expect(Math.min(apply.height, later.height)).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath('04-14-banner-320x640.png') });
+  });
+
   // N8: nothing is asserted about page D's banner; only the outcomes.
   test('item 20: four pages, "Aktualisieren" in A reloads all with their own inputs', async ({ context, request, baseURL }) => {
     const pageD = await context.newPage();
