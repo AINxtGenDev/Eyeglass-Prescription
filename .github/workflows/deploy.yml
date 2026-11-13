@@ -96,3 +96,8 @@ jobs:
       - run: npm run test:e2e:live
         env:
           BASE_URL: https://ainxtgendev.github.io/Eyeglass-Prescription/
+      # M4: the deployed service worker (offline after one visit, scope and manifest, CSP with the
+      # worker active), the @live tests of e2e/pwa.spec.js against the live host.
+      - run: npm run test:pwa:live
+        env:
+          PWA_BASE_URL: https://ainxtgendev.github.io/Eyeglass-Prescription/
