@@ -322,9 +322,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-03-PLAN.md — Warp grid in the engine (aperture classes, quadtree, tiers), P0 feasibility sweep and stage measurements, CI ray-count gate
-- [ ] 04-04-PLAN.md — Offline packaging: pinned vite-plugin-pwa, manifest and icons, kill-switch flag with documented blast radius, build-shape tests
-- [ ] 04-15-PLAN.md — CI flaky-test report and the two known flaky tests (F-01, F-03)
+- [x] 04-03-PLAN.md — Warp grid in the engine (aperture classes, quadtree, tiers), P0 feasibility sweep and stage measurements, CI ray-count gate
+- [x] 04-04-PLAN.md — Offline packaging: pinned vite-plugin-pwa, manifest and icons, kill-switch flag with documented blast radius, build-shape tests
+- [x] 04-15-PLAN.md — CI flaky-test report and the two known flaky tests (F-01, F-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 2/15 | In Progress|  |
+| 4. Refraction View & Offline | 5/15 | In Progress|  |
