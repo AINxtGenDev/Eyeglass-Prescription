@@ -9,4 +9,6 @@ export const LIVE_SPECS = Object.freeze([
   'compare.spec.js',
   'expert.spec.js',
   'xsec.spec.js',
+  // 04-08 (lens-critic M4): the hook-free Durchblick smoke, the one live spec that loads the 3D chunk.
+  'ref-live.spec.js',
 ]);

@@ -32,6 +32,7 @@ const CSP =
 
 const READY = DE['tech.offline.ready'];
 const VIEW_CHUNK_RE = /\/assets\/view-[^/]*\.js$/;
+const WARP_WORKER_RE = /\/assets\/warp\.worker[^/]*\.js$/;
 const VIEW_LOAD_FAILED = DE['view.loadFailed'];
 
 /** Wait until #tech-offline reads the ready line and a service worker controls the page. */
@@ -85,6 +86,14 @@ test('offline after one visit (item 17) @live', async ({ page, context }) => {
   const view = viewResponses(seen);
   expect(view.length, 'the 3D chunk was requested after the offline reload').toBeGreaterThan(0);
   for (const r of view) expect(r.fromServiceWorker(), r.url()).toBe(true);
+
+  // 04-08 (item 17): the Durchblick works offline too; its warp worker comes from the precache.
+  await page.locator('#view-mode label', { hasText: 'Durchblick' }).click();
+  await expect(page.locator('#view')).toHaveAttribute('data-pending', '', { timeout: 60_000 });
+  await expect(page.locator('#view-stage .view-badge')).toHaveText(DE['view.badge.ref'], { timeout: 60_000 });
+  const warp = seen.filter((r) => WARP_WORKER_RE.test(new URL(r.url()).pathname));
+  expect(warp.length, 'the warp worker was requested offline').toBeGreaterThan(0);
+  for (const r of warp) expect(r.fromServiceWorker(), r.url()).toBe(true);
 });
 
 test('scope and manifest (D-18) @live', async ({ page }) => {
