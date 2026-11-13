@@ -6,6 +6,8 @@ export default [
     ignores: [
       'dist/**',
       'dist-e2e/**',
+      'dist-b/**',
+      'dist-kill/**',
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
