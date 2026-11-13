@@ -96,5 +96,8 @@
 - Privacy: 04-14 wrote a sibling site's custom domain (a personal name) into a code comment; removed from the files (fee39c5), but two local commits (cf93dd8, 387d7b1) still contain it in history. **Decide at the push checkpoint** whether to rewrite those local commits before pushing.
 - Wave-7 gate: lint, 2138 unit tests, builds, test:dist 21/1 skipped, full e2e 650 passed + the one fixed failure, pwa 17/17, live 323. MCP at 412 and 320 px: new name shown, A | B Durchblick with "Vorher (A)" / "Nachher (B)", no doubled 3D captions, console clean.
 
+- Wave 8 merged 2026-11-13: 04-12 (fullscreen info panel: in fullscreen the tip, Bild toggle and sizes, or the Dickenkarte legend, sit below the picture and never cover it; axe 0 violations in all new Durchblick and update-banner states). Gate on `main`: lint, 2138 unit tests, builds, test:dist 21/1 skipped, affected e2e 201 passed / 17 skipped, pwa 20/1 skipped, kill-switch gate rehearsed by 04-12. MCP at 412 px: canvas 412×550, panel 550–916, no sideways scroll; MCP screenshots hang while real fullscreen is on, so the pictures are Playwright's (320 and 1280 px, checked).
+- Open from wave 8 (for 04-13 / lens-critic): page is 1 px too wide at 320 px with 150 % text (result cards' number column, phase-2 typography); fullscreen Dickenkarte note says "alle Werte stehen in der Tabelle" but the table stays hidden; the m4 low-corner state is only reachable with a forced layout in this font; `view-memory` buffer pool 11 vs 10 once under load.
+
 ### Next step (resume here after /clear)
-- Wave 8: 04-12 (fullscreen info panel, axe matrix). Then wave 9, 04-13: dev-1.8, full gate, lens-critic result review, **push only after user approval** (and the history decision above), live check and real-phone check.
+- Wave 9, 04-13: dev-1.8, full gate, lens-critic result review, **push only after user approval** (and the history decision above), live check and real-phone check.
