@@ -87,5 +87,8 @@
 - −1,00 lens shifts the edge 2,99 px on the 400 px desktop column, just under the 3,0 px threshold.
 - Coverage-run timeouts in `diagnostics.test.js` under heavy load (pass on an idle machine); watch the first CI run.
 
+- Wave 6 (04-10) merged 2026-11-13: Durchblick grid starts at "fein" on desktops and "mittel" on phones; after two slow pictures in a row (> 200 ms) it steps down one tier and says so ("Durchblick · vereinfacht"), percentages never change. Measured: desktop step fein → mittel cuts rays 5336 → 3080; a rim case 25304 → 6856 rays and ~150 → 35 ms worker time. Gate: lint, 2134 unit tests, builds, test:dist 19/1 skipped, e2e 226 passed + 1 one-off timeout (layout "breakpoint change keeps the view", passed 6/6 on rerun under load), pwa 5/5, live 323. MCP at 412 px with 6× CPU throttling: start tier mittel, 109 ms per picture, no step needed, console clean.
+- CI risk found by 04-10: the step-down guard is active in the e2e build, so slow runners could step ordinary tests down; 04-11 adds a test-only `?refguardoff` (absent from production) to close it.
+
 ### Next step (resume here after /clear)
-- Wave 6 (04-10, automatic grid step-down on slow devices) running. Then 04-11 + 04-14 (parallel), 04-12, then 04-13: dev-1.8, full gate, lens-critic result review, **push only after user approval**, live check and real-phone check.
+- Wave 7 running in parallel: 04-11 (Durchblick in comparison mode, memory-leak test, `?refguardoff`) and 04-14 (update banner "Neue Version verfügbar" keeping typed inputs, read-only sibling-site check, kill-switch rehearsal). Both e2e runs share a flock on the scratchpad `e2e.lock` (fixed ports 4173–4175). Then 04-12, then 04-13: dev-1.8, full gate, lens-critic result review, **push only after user approval**, live check and real-phone check.
