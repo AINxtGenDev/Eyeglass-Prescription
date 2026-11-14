@@ -123,7 +123,7 @@ import { enableBarThumb, disableBarThumb, holdBarThumb } from '../summary-bar.js
 import { createCompare3d } from './compare3d.js';
 import { thickest } from '../../state/compare.js';
 import { createRefraction } from './refraction.js';
-import { createRefMode, writeRefTech } from './ref-mode.js';
+import { createRefMode, writeRefTech, deviceStartTier } from './ref-mode.js';
 import { showRefNoPicture, hideRefNoPicture } from './ref-size.js';
 import { initGuard, nextGuard } from '../../state/guard.js';
 
@@ -1292,7 +1292,7 @@ function mount({ slot }) {
   // The Durchblick pass (refraction.js, created on the first entry: its chart texture costs nothing
   // for users who never open it) and its lane (ref-mode.js). One renderer, one WebGL context.
   let refraction = null;
-  const getRefraction = () => (refraction ??= createRefraction({ renderer: view.renderer, labelsEl }));
+  const getRefraction = () => (refraction ??= createRefraction({ renderer: view.renderer, labelsEl, startTier: deviceStartTier() }));
   const refMode = createRefMode({
     getRefraction,
     canvasEl,
@@ -1331,7 +1331,7 @@ function mount({ slot }) {
     refMode.afterRender(); // 04-10: the guard clock's t1
   }
   const refAriaLabel = () => refMode.ariaLabel();
-  const refInfo = () => ({ mode, ...refMode.info(), meshSent, meshDeferred });
+  const refInfo = () => ({ mode, ...refMode.info(), meshSent, meshDeferred, chart: refraction?.chartInfo() ?? null });
 
   view.beforeRender(() => {
     const p = view.camera.position;

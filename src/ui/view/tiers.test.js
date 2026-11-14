@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TIER_SETTINGS, pickTier, stepDown, dispersionFor, REF_TIER_ORDER, refStartTier, refStepDown } from './tiers.js';
+import { TIER_SETTINGS, pickTier, stepDown, dispersionFor, REF_TIER_ORDER, refStartTier, refStepDown, refChartPx } from './tiers.js';
 import { REF_GRID_TIERS } from '../../engine/warp.js';
 
 describe('D-12 quality tiers (03-08)', () => {
@@ -53,6 +53,16 @@ describe('D-15 Durchblick grid tiers (04-10)', () => {
     expect(refStartTier('sparsam')).toBe('mittel');
     expect(refStartTier(pickTier({ coarse: true, minScreen: 360 }))).toBe('mittel');
     expect(refStartTier(pickTier({ coarse: false, minScreen: 1080 }))).toBe('fein');
+  });
+
+  it('refChartPx (04-16, MAJOR 2): 2048 on the phone start tier, 4096 on fein, capped by the device', () => {
+    expect(refChartPx('fein', 16384)).toBe(4096);
+    expect(refChartPx('fein', 4096)).toBe(4096);
+    expect(refChartPx('fein', 2048)).toBe(2048);
+    expect(refChartPx('mittel', 16384)).toBe(2048);
+    expect(refChartPx('mittel', 1024)).toBe(1024);
+    expect(refChartPx(refStartTier(pickTier({ coarse: true, minScreen: 360 })), 16384)).toBe(2048);
+    expect(refChartPx(refStartTier(pickTier({ coarse: false, minScreen: 1080 })), 16384)).toBe(4096);
   });
 
   it('refStepDown goes one grid tier at a time and stays at grob', () => {

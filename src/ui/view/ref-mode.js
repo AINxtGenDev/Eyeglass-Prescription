@@ -77,7 +77,7 @@ const REF_SLOW_RUN = 2;
 const SAMPLE_LOG = 20;
 
 /** The grid start tier from the device class (the same primary-pointer inputs as scene.js pickTier). */
-const deviceStartTier = () =>
+export const deviceStartTier = () =>
   refStartTier(
     pickTier({
       coarse: window.matchMedia('(pointer: coarse)').matches,

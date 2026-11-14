@@ -45,14 +45,13 @@ import { t } from '../../i18n/t.js';
 import { REF_CLASS } from '../../engine/warp.js';
 import { CHART_SQUARE_TAN, CHART_BAND_SQUARES, REF_DIVIDER_PX, gridTriangles, tickPositions, tickVisible, TICK_LEN_PX } from './ref-layout.js';
 import { INK, PAPER, canvasOf, drawLetterBand } from './backdrop.js';
+import { refChartPx } from './tiers.js';
 
 /**
  * Chart texture extent in object tan: max class-1 |objTan| in the 39,2° disc over P0 G1 and G2 was
  * 1,5526, rounded up to 0,1 (04-P0-RESULTS.md, "Chart texture extent (input for 04-08)").
  */
 export const CHART_EXTENT_TAN = 1.6;
-/** Chart texture side (px), capped by the device limit (04-08 plan). */
-const TEX_MAX_PX = 4096;
 /** Letter pitch in squares: the phase-3 ratio 20 mm pitch / 12 mm cap height. */
 const PITCH_SQUARES = 20 / 12;
 /** UI-SPEC "Durchblick picture colours". */
@@ -126,14 +125,20 @@ function drawChart(size) {
 }
 
 /**
- * @param {{ renderer: import('three').WebGLRenderer, labelsEl: HTMLElement }} o
+ * @param {{ renderer: import('three').WebGLRenderer, labelsEl: HTMLElement, startTier: 'fein' | 'mittel' | 'grob' }} o
+ *   startTier: the device's Durchblick grid start tier (ref-mode.js deviceStartTier); it sets the
+ *   chart texture side (tiers.js refChartPx, 04-16).
  */
-export function createRefraction({ renderer, labelsEl }) {
+export function createRefraction({ renderer, labelsEl, startTier }) {
   const scene = new Scene();
   scene.background = new Color(BACKGROUND_HEX);
   const camera = new OrthographicCamera(0, 1, 1, 0, -1, 1);
 
-  const size = Math.min(TEX_MAX_PX, renderer.capabilities.maxTextureSize);
+  const size = refChartPx(startTier, renderer.capabilities.maxTextureSize);
+  // 04-16: the source canvas is kept on purpose. three.js r187 holds the only CPU copy in
+  // texture.image, and after webglcontextrestored it re-uploads every texture from that image
+  // (WebGLTextures.setTexture2D warns "no image data found" and draws nothing when it is null);
+  // reupload() below relies on the same image.
   const chartTex = new CanvasTexture(drawChart(size));
   chartTex.colorSpace = SRGBColorSpace;
   chartTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -618,6 +623,8 @@ export function createRefraction({ renderer, labelsEl }) {
       blocked.clear();
       ticksSvg.setAttribute('display', 'none');
     },
+    /** Test handle (04-16): the chart canvas size and the device limit. */
+    chartInfo: () => ({ w: chartTex.image.width, h: chartTex.image.height, maxTextureSize: renderer.capabilities.maxTextureSize }),
     /** Context restore (Pitfall 7): re-upload the chart canvas and the grid buffers. */
     reupload() {
       chartTex.needsUpdate = true;

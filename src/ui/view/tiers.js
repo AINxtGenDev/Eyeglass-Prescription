@@ -71,6 +71,17 @@ export function refStartTier(qualityTier) {
 }
 
 /**
+ * 04-16 (lens-critic MAJOR 2): the Durchblick chart texture side (px) for the grid start tier, capped
+ * by the device limit. The phone start tier (mittel) gets 2048² (16 MB canvas, about 22 MB GPU with
+ * mipmaps) instead of 4096² (64 MB, about 89 MB); fein (the hoch device class) keeps 4096².
+ * @param {'fein' | 'mittel' | 'grob'} startTier
+ * @param {number} maxTextureSize renderer.capabilities.maxTextureSize
+ */
+export function refChartPx(startTier, maxTextureSize) {
+  return Math.min(startTier === 'fein' ? 4096 : 2048, maxTextureSize);
+}
+
+/**
  * One grid tier down (fein → mittel → grob); grob stays grob.
  * @param {'fein' | 'mittel' | 'grob'} tier
  */

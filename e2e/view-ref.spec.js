@@ -852,6 +852,17 @@ test('3D chunk failed: the size block is still shown with the no-picture scope',
   await expect(size.locator('.ref-line').first()).toHaveText(`Rechtes Glas: Bild etwa 6${N}% kleiner`);
 });
 
+test('MAJOR 2 (04-16): chart texture 2048² on the phone start tier, 4096² (device-capped) on desktop', async ({ page, isMobile }, testInfo) => {
+  await settledView(page);
+  await refOn(page);
+  const st = await refState(page);
+  const { w, h, maxTextureSize } = st.chart ?? {};
+  const want = Math.min(isMobile ? 2048 : 4096, maxTextureSize);
+  expect(st.startTier).toBe(isMobile ? 'mittel' : 'fein');
+  expect({ w, h }, 'the uploaded chart canvas').toEqual({ w: want, h: want });
+  testInfo.annotations.push({ type: 'chart texture', description: `${w}×${h} (maxTextureSize ${maxTextureSize})` });
+});
+
 test('webglcontextlost in Durchblick: redrawn from the last warp on restore', async ({ page }) => {
   await settledView(page);
   await refOn(page);
