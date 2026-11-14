@@ -638,7 +638,7 @@ Rules **[BP]**:
 
 | Key | Copy |
 |-----|------|
-| `view.aria.ref` | Durchblick {lens}: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. {layout} {lines} |
+| `view.aria.ref` | Durchblick {lens}: so verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen, mittlerer Teil des Blickfelds. {layout} {lines} |
 | `view.aria.ref.lens.on` / `.off` | mit Glas · ohne Glas, zum Vergleich |
 | `view.aria.ref.layout.two` | Linkes Glas links, rechtes Glas rechts. |
 | `view.aria.ref.layout.one` | Nur das {rechte/linke} Glas. |
@@ -646,7 +646,7 @@ Rules **[BP]**:
 
 `{lines}` = the size entries joined with ". " (`view.ref.line` or the joined `view.ref.lineCyl`, same strings, including the plain-language direction words, no recomputation).
 
-Example (OD −4,00, OS +4,00, CR-39): "Durchblick mit Glas: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Linkes Glas links, rechtes Glas rechts. Rechtes Glas: Bild etwa 6 % kleiner. Linkes Glas: Bild etwa 8 % größer."
+Example (OD −4,00, OS +4,00, CR-39): "Durchblick mit Glas: so verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen, mittlerer Teil des Blickfelds. Linkes Glas links, rechtes Glas rechts. Rechtes Glas: Bild etwa 6 % kleiner. Linkes Glas: Bild etwa 8 % größer."
 
 ### Update banner (D-20, D-21)
 

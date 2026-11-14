@@ -767,7 +767,7 @@ export default Object.freeze({
     'Die gewölbte Vorderseite und die Dicke des Glases vergrößern das Bild ein wenig. Wo Ihr Glas nur schwach oder gar nicht verkleinert, kann das überwiegen: Dann wirkt das Bild dort leicht vergrößert, auch bei einem Minuswert oder 0,00.',
   'view.ref.abNote': 'Material und Fassung ändern den Durchblick meist nur wenig; der größere Unterschied liegt bei Dicke und Gewicht.',
   // 04-01 (UI-SPEC "Canvas accessible name in Durchblick"): {lines} = the size entries (joined form).
-  'view.aria.ref': 'Durchblick {lens}: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. {layout} {lines}',
+  'view.aria.ref': 'Durchblick {lens}: so verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen, mittlerer Teil des Blickfelds. {layout} {lines}',
   'view.aria.ref.lens.on': 'mit Glas',
   'view.aria.ref.lens.off': 'ohne Glas, zum Vergleich',
   'view.aria.ref.layout.two': 'Linkes Glas links, rechtes Glas rechts.',

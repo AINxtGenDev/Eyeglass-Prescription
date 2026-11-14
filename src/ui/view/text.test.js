@@ -332,20 +332,20 @@ describe('REF-01 size block (D-05, E4)', () => {
   test('refAria: UI-SPEC example (OD −4,00, OS +4,00, mit Glas, two panels)', () => {
     const { entries } = refSizeBlock([entry('od', { sph: -4 }), entry('os', { sph: 4 })], PIC);
     expect(refAria({ lens: 'on', layout: 'two', eye: 'od', entries })).toBe(
-      'Durchblick mit Glas: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Linkes Glas links, rechtes Glas rechts. Rechtes Glas: Bild etwa 6 % kleiner. Linkes Glas: Bild etwa 8 % größer.',
+      'Durchblick mit Glas: so verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen, mittlerer Teil des Blickfelds. Linkes Glas links, rechtes Glas rechts. Rechtes Glas: Bild etwa 6 % kleiner. Linkes Glas: Bild etwa 8 % größer.',
     );
   });
 
   test('refAria: one panel, comparison, ohne Glas, and the joined cylinder form', () => {
     const cylEntries = refSizeBlock([entry('os', { sph: -2, cyl: -2, axisDeg: 30 })]).entries;
     expect(refAria({ lens: 'off', layout: 'one', eye: 'os', entries: cylEntries })).toBe(
-      'Durchblick ohne Glas, zum Vergleich: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Nur das linke Glas. ' +
+      'Durchblick ohne Glas, zum Vergleich: so verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen, mittlerer Teil des Blickfelds. Nur das linke Glas. ' +
         cylEntries[0].joined +
         '.',
     );
     const ab = refSizeBlock([entry('a', { sph: -4 }), entry('b', { sph: -4, materialId: 'idx167' })], { compare: true }).entries;
     expect(refAria({ lens: 'on', layout: 'compare', eye: 'od', entries: ab })).toBe(
-      `Durchblick mit Glas: so sehen Sie mit dieser Brille geradeaus in die Ferne, mittlerer Teil des Blickfelds. Rechtes Glas, links Vorher (A), rechts Nachher (B). ${ab[0].joined}. ${ab[1].joined}.`,
+      `Durchblick mit Glas: so verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen, mittlerer Teil des Blickfelds. Rechtes Glas, links Vorher (A), rechts Nachher (B). ${ab[0].joined}. ${ab[1].joined}.`,
     );
   });
 });
