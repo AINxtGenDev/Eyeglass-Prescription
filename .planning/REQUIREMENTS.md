@@ -97,12 +97,12 @@
 
 ### Refraction Impression (REF)
 
-- [ ] **REF-01**: An "Durchblick" view shows the eye chart/checkerboard as seen through the lens, computed by tracing rays through the engine's actual front and back surfaces, showing minification for minus and magnification for plus lenses, including cylinder effects.
-- [ ] **REF-02**: The refraction view runs acceptably on a mid-range phone or degrades gracefully (lower resolution) with a note.
+- [x] **REF-01**: An "Durchblick" view shows the eye chart/checkerboard as seen through the lens, computed by tracing rays through the engine's actual front and back surfaces, showing minification for minus and magnification for plus lenses, including cylinder effects.
+- [x] **REF-02**: The refraction view runs acceptably on a mid-range phone or degrades gracefully (lower resolution) with a note.
 
 ### Offline (OFF)
 
-- [ ] **OFF-01**: After the first visit the site works offline; a new version is offered with an "Aktualisieren" prompt instead of switching mid-session; the service worker is scoped to `/Eyeglass-Prescription/`.
+- [x] **OFF-01**: After the first visit the site works offline; a new version is offered with an "Aktualisieren" prompt instead of switching mid-session; the service worker is scoped to `/Eyeglass-Prescription/`.
 
 ## v2 Requirements
 
@@ -199,9 +199,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIZ-04 | Phase 3 | Complete |
 | VIZ-05 | Phase 3 | Complete |
 | VIZ-06 | Phase 3 | Complete |
-| REF-01 | Phase 4 | Pending |
-| REF-02 | Phase 4 | Pending |
-| OFF-01 | Phase 4 | Pending |
+| REF-01 | Phase 4 | Complete (live dev-1.8, 2026-11-14) |
+| REF-02 | Phase 4 | Complete (user phone check 2026-11-14, Pixel 7 Pro: "it works perfect"; no ms trace recorded) |
+| OFF-01 | Phase 4 | Complete (live dev-1.8, 2026-11-14; update prompt tested on the local switch server, live prompt needs a second deploy) |
 
 **Coverage:**
 

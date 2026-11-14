@@ -342,3 +342,14 @@ Before this docs commit: `git log --oneline origin/main..main | wc -l` = 110 (or
   - With the network emulated offline: reload served dev-1.8, an edit to −6,00 recomputed (about 9 % / 8 % smaller), and Durchblick was drawn.
 - Real-device checks (F-05, items i–vi): pending the user's phone; until then "unverified (no device)".
 - Local cleanup: the backup branch of the pre-rewrite history was deleted after the live check, the old objects were pruned, and `git log --all -G<domain>` finds 0 commits.
+
+## Real-device checks (F-05, 2026-11-14)
+- Device: Google Pixel 7 Pro, Android 17 (build CP3A.261005.002.A1), Chrome 157.0.8103.78 (from the user's chrome://version screenshot).
+- User's report, verbatim: "it works perfect on my Pixel Pro 7 Android 17".
+- (i) Durchblick over Sph edits: pass, user-reported; no remote-debugging trace, so the ≤ 200 ms target is not measured, and whether "vereinfacht" appeared was not reported.
+- (ii) ENG-09 (c) ≤ 100 ms with the worker and Durchblick: not measured (no trace); covered by the user's report only.
+- (iii) VIZ-06 trace owed from phase 3: not measured.
+- (iv) offline in airplane mode: not separately reported by the user; verified on the live site with chrome-devtools network emulation (see Task 3).
+- (v) keyboard/screen-reader path: unverified (no device test); the banner is not testable without a second deploy.
+- (vi) device, OS and browser: recorded above.
+- REQUIREMENTS: REF-01, REF-02 and OFF-01 are marked Complete. REF-02 rests on the user's explicit phone report (plan rule: "or the user explicitly accepted it").
