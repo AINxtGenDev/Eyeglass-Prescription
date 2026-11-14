@@ -228,6 +228,10 @@ test('item 2: plano both eyes: Mit = Ohne Glas, 0,1 % lines, weak and shape note
         };
         x = fix(x, p.x + p.w / 2);
         y = fix(y, p.y + p.h / 2);
+        // Letter-band glyph edges do not follow the square grid and depend on the font: in CI
+        // (DejaVu) a 0,1 % shift moved an anti-aliased glyph edge by 10 levels. Skipped as in
+        // items 12 and 25 (inLetterBand).
+        if (inLetterBand(eyeTan(p, [x, y])[1])) continue;
         pts.push([x, y]);
       }
     }
