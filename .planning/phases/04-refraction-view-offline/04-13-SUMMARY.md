@@ -327,3 +327,18 @@ Before this docs commit: `git log --oneline origin/main..main | wc -l` = 110 (or
 - History: "Rewrite before push (Recommended)": replace the sibling's custom domain in the local commits origin/main..main (cf93dd8, 387d7b1) before pushing, keep a backup branch, preserve merges, then run the full gate again.
 - D-02: "Keep as accepted (Recommended)".
 - Rollback path stated before asking: the last good deploy is run 43172785402 (47bb4e2). A git revert does not remove an installed worker; the real rollbacks are a fixed build via "Aktualisieren", or the kill switch, which needs its own approval.
+
+## Task 3 — push and live verification (2026-11-14)
+- Push 1: 47bb4e2..3732224 (fast-forward, after the history rewrite). CI run 43582107410: build **failure** (view-ref item 2 sampled a letter-band point; with the CI font DejaVu an anti-aliased glyph edge read 153 vs 163, limit 8; view-controls D-29 flaky), so deploy and verify-live were skipped and the live site stayed on dev-1.7.
+- Fix 2bd3e72: item 2 skips letter-band lattice points, as items 12 and 25 already do (63 of 81 points remain); 4/4 locally on desktop and mobile. The user approved the re-push.
+- Push 2: 3732224..55842a0. CI run 43590974743: build **success**, deploy **success**, verify-live **success**.
+- Independent live checks:
+  - The live HTML carries `content="55842a0"` (grep count 1) and dev-1.8.
+  - The live manifest has scope and start_url `/Eyeglass-Prescription/` and the name "Brillenglas-Simulator – Dicke und Gewicht"; sw.js returns 200.
+  - `BASE_URL=<live> npm run test:e2e:live`: 323 passed, 1 skipped. `PWA_BASE_URL=<live> npm run test:pwa:live`: 3 passed, 1 skipped (the kill-only test).
+- chrome-devtools MCP on the live site at 412×915:
+  - The worker is active, controls the page, and has scope `/Eyeglass-Prescription/`; the offline line reads "Offline verfügbar …".
+  - Durchblick shows two panels with the "Durchblick · berechnet" badge, the new caption, the Bild toggle and the size block (−4,00: about 5 % / 4 % smaller). No sideways scroll; the console has no errors or warnings.
+  - With the network emulated offline: reload served dev-1.8, an edit to −6,00 recomputed (about 9 % / 8 % smaller), and Durchblick was drawn.
+- Real-device checks (F-05, items i–vi): pending the user's phone; until then "unverified (no device)".
+- Local cleanup: the backup branch of the pre-rewrite history was deleted after the live check, the old objects were pruned, and `git log --all -G<domain>` finds 0 commits.
