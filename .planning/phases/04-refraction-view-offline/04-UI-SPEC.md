@@ -552,7 +552,7 @@ All strings are de-AT, live in `src/i18n/de-AT.js` and use the "Sie" form. New n
 | `view.badge.refDegraded` | Durchblick · vereinfacht |
 | `view.badge.refUpdating` | Durchblick wird berechnet … |
 | `view.ref.loading` (stage status) | Durchblick wird berechnet … |
-| `view.caption.ref` | So sehen Sie mit dieser Brille geradeaus in die Ferne – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds. |
+| `view.caption.ref` | So verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds. (04-16, lens-critic m3: was „So sehen Sie mit dieser Brille …“, an overclaim because the picture is always sharp) |
 | `view.ref.scope` (D-03, B1, MINOR 4) | Der Durchblick zeigt Größe und Verzerrung, nicht die Schärfe. Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille {h} hinter dem Glas (angenommener Wert). |
 | `view.ref.scope.noPicture` (no WebGL) | Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille {h} hinter dem Glas (angenommener Wert). |
 | `view.hint.ref` (MA-1.1) | Tipp: Schalten Sie zwischen „Mit Glas“ und „Ohne Glas“ um und achten Sie auf die Kästchen am Bildrand: Dort verschieben sie sich am stärksten. Die kurzen Striche am Rand zeigen, wo die Kästchenkanten ohne Glas liegen. |

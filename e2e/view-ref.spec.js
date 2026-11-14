@@ -322,7 +322,7 @@ test('item 7: entering hides the tools, drops the tab stop, sets the Durchblick 
   await expect(page.locator('#view-protrusion')).toBeHidden();
   await expect(page.locator('#view-side-note')).toBeHidden();
   await expect(page.locator('#view-caption')).toHaveText(
-    'So sehen Sie mit dieser Brille geradeaus in die Ferne – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds.',
+    'So verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds.',
   );
   await expect(page.locator('#view-hint')).toContainText('Schalten Sie zwischen „Mit Glas“ und „Ohne Glas“ um');
   await expect(page.locator('#view-mode input[value=ref]')).toBeFocused();

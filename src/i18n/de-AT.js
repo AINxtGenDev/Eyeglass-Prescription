@@ -787,8 +787,9 @@ export default Object.freeze({
   'view.badge.refDegraded': 'Durchblick · vereinfacht',
   'view.badge.refUpdating': 'Durchblick wird berechnet …',
   'view.ref.loading': 'Durchblick wird berechnet …',
+  // 04-16 (lens-critic m3): the picture is always sharp, so the caption names size and shape only.
   'view.caption.ref':
-    'So sehen Sie mit dieser Brille geradeaus in die Ferne – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds.',
+    'So verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds.',
   // {h} = fmtMm(EYE_POINT_MM); always "angenommener Wert", because h contains the assumed 12 mm HSA (MINOR 4).
   'view.ref.scope':
     'Der Durchblick zeigt Größe und Verzerrung, nicht die Schärfe. Berechnet für ein ruhendes Auge, das geradeaus durch die Glasmitte schaut, mit der Pupille {h} hinter dem Glas (angenommener Wert).',

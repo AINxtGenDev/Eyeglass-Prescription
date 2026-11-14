@@ -536,3 +536,15 @@ describe('bevel wording follows BEVEL_RULES[BEVEL_RULE] (A-IN-03)', () => {
     }
   });
 });
+
+describe('view.caption.ref (04-16, lens-critic m3)', () => {
+  const CAPTION =
+    'So verändert diese Brille Größe und Form dessen, was Sie geradeaus in der Ferne sehen – berechnet durch die Vorder- und Rückfläche Ihrer Gläser. Gezeigt ist der mittlere Teil des Blickfelds.';
+  test('names size and shape, never "so sehen Sie" (the picture is always sharp)', () => {
+    expect(dict['view.caption.ref']).toBe(CAPTION);
+    expect(dict['view.caption.ref']).not.toMatch(/so sehen Sie/i);
+  });
+  test('agrees with view.ref.scope (size and distortion, not sharpness)', () => {
+    expect(dict['view.ref.scope']).toContain('Größe und Verzerrung, nicht die Schärfe');
+  });
+});
