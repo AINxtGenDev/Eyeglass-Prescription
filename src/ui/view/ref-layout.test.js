@@ -6,6 +6,8 @@ import {
   CHART_SQUARE_TAN,
   REF_SPLIT_MIN_PX,
   REF_DIVIDER_PX,
+  RIM_NOTE_MIN_PX,
+  rimBandPx,
   panelLayout,
   pxPerTanFor,
   gridTriangles,
@@ -287,5 +289,38 @@ describe('REF-01 reference ticks (04-09)', () => {
     expect(tickVisible(w, p20, { edge: 'right', x: 20, y: 16 })).toBe(true);
     expect(tickVisible(w, p20, { edge: 'left', x: 0, y: 17 })).toBe(true);
     expect(tickVisible(null, p20, { edge: 'top', x: 17, y: 0 })).toBe(true);
+  });
+});
+
+describe('rimBandPx (04-16, lens-critic m1: the rim note only where the rim is visible)', () => {
+  test('the threshold is 12 CSS px', () => expect(RIM_NOTE_MIN_PX).toBe(12));
+  test('no rim: 0', () => expect(rimBandPx([], 100, 80)).toBe(0));
+  test('a vertical band of W px measures W or W + 1', () => {
+    for (const W of [5, 6, 11, 12, 13, 30]) {
+      const v = rimBandPx([40, 0, W, 80], 100, 80);
+      expect(v, `W ${W}`).toBeGreaterThanOrEqual(W);
+      expect(v, `W ${W}`).toBeLessThanOrEqual(W + 1);
+    }
+  });
+  test('the 1164 case: a 5–6 px band at the panel edge is below the threshold, a 31 px band above', () => {
+    expect(rimBandPx([192, 0, 6, 248], 198, 248)).toBeLessThan(RIM_NOTE_MIN_PX);
+    expect(rimBandPx([257, 0, 31, 216], 288, 216)).toBeGreaterThanOrEqual(RIM_NOTE_MIN_PX);
+  });
+  test('a band cut by the panel edge is measured as drawn (5 px inside)', () => {
+    expect(rimBandPx([95, 0, 40, 80], 100, 80)).toBeLessThan(RIM_NOTE_MIN_PX);
+  });
+  test('many small rects (cells and leaves) of one band add up', () => {
+    const r = [];
+    for (let y = 0; y < 80; y += 8) for (let x = 40; x < 60; x += 2) r.push(x, y, 2, 8);
+    const v = rimBandPx(r, 100, 80);
+    expect(v).toBeGreaterThanOrEqual(20);
+    expect(v).toBeLessThanOrEqual(21);
+  });
+  test('a 45° band of 14 px (Euclidean) measures 14 within 10 %', () => {
+    const r = [];
+    const half = 7 * Math.SQRT2; // horizontal half-width of a 14 px band at 45°
+    for (let y = 0; y < 100; y++) r.push(y + 50 - half, y, 2 * half, 1);
+    const v = rimBandPx(r, 200, 100);
+    expect(Math.abs(v - 14) / 14).toBeLessThanOrEqual(0.1);
   });
 });

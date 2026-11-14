@@ -208,3 +208,49 @@ export function tickVisible(warp, panel, tick) {
   const c = classAt(warp, px, py);
   return c !== REF_CLASS.EDGE_BAND && c !== REF_CLASS.RIM_FACE;
 }
+
+/** 04-16 (lens-critic m1): the rim note needs a drawn rim band at least this wide (CSS px). */
+export const RIM_NOTE_MIN_PX = 12;
+
+/**
+ * 04-16 (m1): width (CSS px) of the widest drawn rim band in one panel. The rim rectangles (grid
+ * cells and quadtree leaves of class 2 / 4, panel px) are rasterised at 1 px by pixel centre, then
+ * a 3-4 chamfer distance transform gives each rim pixel its distance to the nearest non-rim pixel;
+ * outside the panel counts as non-rim, so a band cut by the panel edge is measured as drawn.
+ * Returns 2 · the largest distance: W or W + 1 for an axis-parallel band of W px, within about
+ * 8 % for other directions (chamfer 3-4 vs Euclidean).
+ * @param {ArrayLike<number>} rects [x, y, w, h, …] in panel px
+ * @param {number} w panel width @param {number} h panel height
+ */
+export function rimBandPx(rects, w, h) {
+  const W = Math.ceil(w);
+  const H = Math.ceil(h);
+  if (rects.length === 0 || W <= 0 || H <= 0) return 0;
+  const BIG = 0xffff;
+  const d = new Uint16Array(W * H);
+  for (let r = 0; r + 3 < rects.length; r += 4) {
+    const i0 = Math.max(0, Math.ceil(rects[r] - 0.5));
+    const i1 = Math.min(W, Math.ceil(rects[r] + rects[r + 2] - 0.5));
+    const j0 = Math.max(0, Math.ceil(rects[r + 1] - 0.5));
+    const j1 = Math.min(H, Math.ceil(rects[r + 1] + rects[r + 3] - 0.5));
+    for (let j = j0; j < j1; j++) d.fill(BIG, j * W + i0, j * W + i1);
+  }
+  const at = (i, j) => (i < 0 || j < 0 || i >= W || j >= H ? 0 : d[j * W + i]);
+  for (let j = 0; j < H; j++) {
+    for (let i = 0; i < W; i++) {
+      const k = j * W + i;
+      if (d[k] === 0) continue;
+      d[k] = Math.min(d[k], at(i - 1, j) + 3, at(i, j - 1) + 3, at(i - 1, j - 1) + 4, at(i + 1, j - 1) + 4);
+    }
+  }
+  let max = 0;
+  for (let j = H - 1; j >= 0; j--) {
+    for (let i = W - 1; i >= 0; i--) {
+      const k = j * W + i;
+      if (d[k] === 0) continue;
+      d[k] = Math.min(d[k], at(i + 1, j) + 3, at(i, j + 1) + 3, at(i + 1, j + 1) + 4, at(i - 1, j + 1) + 4);
+      if (d[k] > max) max = d[k];
+    }
+  }
+  return (2 * max) / 3;
+}

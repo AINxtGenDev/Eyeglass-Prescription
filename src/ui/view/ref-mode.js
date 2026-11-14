@@ -59,7 +59,7 @@ import { icon } from '../icons.js';
 import { fmtMm, fmtAxis, fmtMs } from '../../i18n/format.js';
 import { EYE_POINT_MM, HSA_ASSUMED_MM, ENTRANCE_PUPIL_MM } from '../../engine/magnification.js';
 import { FIELD_HALF_ANGLE_DEG, REF_GRID_TIERS } from '../../engine/warp.js';
-import { panelLayout, defaultRefEye, REF_SPLIT_MIN_PX } from './ref-layout.js';
+import { panelLayout, defaultRefEye, REF_SPLIT_MIN_PX, RIM_NOTE_MIN_PX } from './ref-layout.js';
 import { refAria } from './text.js';
 import { refBlockFor, writeRefSize } from './ref-size.js';
 import { initGuard, nextGuard } from '../../state/guard.js';
@@ -382,13 +382,17 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     return out;
   }
 
-  /** Rim flags of the shown, drawn panels (N3, lens-critic MINOR 8). */
+  /**
+   * Rim flags of the shown, drawn panels (N3, lens-critic MINOR 8). 04-16 (m1): the rim counts for
+   * the notes only where its drawn band is at least RIM_NOTE_MIN_PX wide; a thinner band beside the
+   * black squares is not findable from "der dunkle Streifen".
+   */
   const rimFlags = () => {
     const f = { rimInField: false, pastRimInField: false };
     for (const p of layout.panels) {
       const r = rimByPanel[p.id];
       if (!r) continue;
-      f.rimInField ||= r.rimInField;
+      f.rimInField ||= r.rimInField && r.rimBandPx >= RIM_NOTE_MIN_PX;
       f.pastRimInField ||= r.pastRimInField;
     }
     return f;
@@ -575,7 +579,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     for (const it of d.items) {
       if (refraction.setWarp(it.panel, it)) {
         drawn.add(it.panel);
-        rimByPanel[it.panel] = { rimInField: it.rimInField, pastRimInField: it.pastRimInField, noViewInField: it.noViewInField };
+        rimByPanel[it.panel] = { rimInField: it.rimInField, pastRimInField: it.pastRimInField, noViewInField: it.noViewInField, rimBandPx: refraction.rimBandPx(it.panel) };
       }
     }
     if (drawn.size < d.items.length) {
@@ -780,7 +784,7 @@ export function createRefMode({ getRefraction, canvasEl, stageEl, setBadge, setW
     /** Test handle data (no Rx values). */
     info: () => ({
       lens,
-      panels: layout.panels.map(({ id, eye, pxPerTan, squarePx, x, y, w, h }) => ({ id, eye, pxPerTan, squarePx, x, y, w, h, rim: Boolean(rimByPanel[id]?.rimInField), pastRim: Boolean(rimByPanel[id]?.pastRimInField), noView: Boolean(rimByPanel[id]?.noViewInField) })),
+      panels: layout.panels.map(({ id, eye, pxPerTan, squarePx, x, y, w, h }) => ({ id, eye, pxPerTan, squarePx, x, y, w, h, rim: Boolean(rimByPanel[id]?.rimInField), rimBandPx: rimByPanel[id]?.rimBandPx ?? 0, pastRim: Boolean(rimByPanel[id]?.pastRimInField), noView: Boolean(rimByPanel[id]?.noViewInField) })),
       compare: cmp ? { eye: cmp.eye, pending: cmp.pending, showA: cmp.showA } : null,
       tier,
       startTier,

@@ -43,7 +43,7 @@ import {
 } from 'three';
 import { t } from '../../i18n/t.js';
 import { REF_CLASS } from '../../engine/warp.js';
-import { CHART_SQUARE_TAN, CHART_BAND_SQUARES, REF_DIVIDER_PX, gridTriangles, tickPositions, tickVisible, TICK_LEN_PX } from './ref-layout.js';
+import { CHART_SQUARE_TAN, CHART_BAND_SQUARES, REF_DIVIDER_PX, gridTriangles, tickPositions, tickVisible, TICK_LEN_PX, rimBandPx } from './ref-layout.js';
 import { INK, PAPER, canvasOf, drawLetterBand } from './backdrop.js';
 import { refChartPx } from './tiers.js';
 
@@ -389,6 +389,33 @@ export function createRefraction({ renderer, labelsEl, startTier }) {
     writeLeafUv(s);
   }
 
+  /**
+   * 04-16 (m1): the widest drawn rim band (CSS px) of one reply, from the rim cells and rim leaves
+   * exactly as setWarp / writeLeaves draw them; 0 without a rim in the field (no raster then).
+   */
+  function drawnRimBand(s, item) {
+    if (!item.rimInField) return 0;
+    const { nx, ny, stride, p } = s;
+    const cls = item.cls;
+    const isRim = (c) => c === REF_CLASS.EDGE_BAND || c === REF_CLASS.RIM_FACE;
+    const rects = [];
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const k = j * stride + i;
+        const c0 = cls[k];
+        if (!isRim(c0) || cls[k + 1] !== c0 || cls[k + stride] !== c0 || cls[k + stride + 1] !== c0) continue;
+        rects.push(i * item.cellX, j * item.cellY, item.cellX, item.cellY);
+      }
+    }
+    const lv = item.leaves;
+    const aspect = item.cellY / item.cellX;
+    for (let l = 0; l < item.leafCount; l++) {
+      const o = 6 * l;
+      if (isRim(lv[o + 3])) rects.push(lv[o], lv[o + 1], lv[o + 2], lv[o + 2] * aspect);
+    }
+    return rimBandPx(rects, p.w, p.h);
+  }
+
   /** Class-3 zones (4-connected grid points) of at least NO_VIEW_PILL_MIN: their centres (stage px, y down). */
   function noViewZones(s, item) {
     const { nx, ny, stride, p } = s;
@@ -532,6 +559,7 @@ export function createRefraction({ renderer, labelsEl, startTier }) {
       writeUv(s);
       writeLeaves(s, item);
       s.zones = noViewZones(s, item);
+      s.rimBandPx = drawnRimBand(s, item);
       showTicks(s, item);
       blocked.delete(id);
       s.group.visible = true;
@@ -566,6 +594,8 @@ export function createRefraction({ renderer, labelsEl, startTier }) {
         blocked.set(id, text ?? t('view.ref.pill.blocked', { who: t(pillKeyOf(s.p)) }));
       } else blocked.delete(id);
     },
+    /** 04-16 (m1): the widest drawn rim band of a panel's last drawn warp (CSS px, 0 without a rim). */
+    rimBandPx: (id) => panels.get(id)?.rimBandPx ?? 0,
     /** 04-11: the panel shows a drawn picture (kept while configuration A recomputes). */
     hasPicture: (id) => Boolean(panels.get(id)?.group.visible),
     /** Bild toggle (D-02): 'off' = identity mapping on the same scale, same class mask. */

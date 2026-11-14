@@ -1154,13 +1154,37 @@ test.describe('item 12 rim in the field (320×640, one panel)', () => {
         }
         // N3 / MINOR 8: the rim note with a rim in the shown panel; the past-rim note iff class 5 is on screen.
         expect(p.rim).toBe(true);
+        expect(p.rimBandPx, '04-16 (m1): the drawn band is wide enough for the note').toBeGreaterThanOrEqual(12);
         await expect(size).toContainText(RIM_NOTE);
         if (p.pastRim) await expect(size).toContainText(RIM_PAST_NOTE);
         else await expect(size).not.toContainText(RIM_PAST_NOTE);
-        test.info().annotations.push({ type: 'item 12 notes', description: `${eye} ${rxText}: rim ${p.rim}, pastRim ${p.pastRim}` });
+        test.info().annotations.push({ type: 'item 12 notes', description: `${eye} ${rxText}: rim ${p.rim}, band ${p.rimBandPx?.toFixed(1)} px, pastRim ${p.pastRim}` });
       }
       await pickEye(page, 'OD');
     }
+  });
+});
+
+test.describe('04-16 m1: rim note only for a visible rim band (1164×593, two panels)', () => {
+  test.use({ viewport: { width: 1164, height: 593 } });
+  test.skip(({ isMobile }) => isMobile, 'the tablet landscape case of the 04-13 review');
+
+  test('m1: a 5–6 px rim band in the field shows no rim note; the engine still reports the rim', async ({ page }) => {
+    test.setTimeout(120_000);
+    await settledView(page);
+    await setFrame(page, ITEM12_FRAME);
+    await setRx(page, { sph: '-4,00' }, { sph: '-4,00' }, String(ITEM12_PD));
+    await refOn(page);
+    const st = await refState(page);
+    expect(st.panels.length).toBe(2);
+    const rimPanels = st.panels.filter((p) => p.rim);
+    expect(rimPanels.length, 'engine rimInField in a shown panel (the premise)').toBeGreaterThan(0);
+    for (const p of rimPanels) expect(p.rimBandPx, `${p.id} drawn band`).toBeLessThan(12);
+    test.info().annotations.push({ type: 'm1 band', description: st.panels.map((p) => `${p.id} rim ${p.rim} band ${p.rimBandPx?.toFixed(1)} px`).join('; ') });
+    const size = page.locator('#view-ref-size');
+    await expect(size).toBeVisible();
+    await expect(size).not.toContainText(RIM_NOTE);
+    await expect(size).not.toContainText(RIM_PAST_NOTE);
   });
 });
 

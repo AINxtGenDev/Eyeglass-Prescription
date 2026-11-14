@@ -161,6 +161,7 @@ const pctValue = (pct) => (pct.includes(',') ? Number(pct.slice(0, -2).replace('
  *   cyl: number }>} entries in display order (OD then OS, A then B); mag null = blocked / not computed
  * @param {{ picture?: boolean, compare?: boolean, rimInField?: boolean, pastRimInField?: boolean }} [opts]
  *   picture = the Durchblick picture is shown; rimInField / pastRimInField from the warp of the shown panels
+ *   (04-16, m1: ref-mode passes rimInField only where the drawn rim band is ≥ RIM_NOTE_MIN_PX wide)
  * @returns {{ title: string, entries: Array<{ who: string, blocked: boolean, kind: 'line'|'cyl', head: string,
  *   dirs: string[], joined: string }>, notes: string[] }}
  */
