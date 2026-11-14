@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Verified Engine & Live Pipeline** - Pure-JS optics engine with tiered validation, gated GitHub Actions deploy to Pages, minimal live German result page (completed 2026-11-07)
 - [x] **Phase 2: Lay-First German Input, Results & Comparison** - Paper-shaped Rx entry, frame and material choice, plain-German results, mm/g comparison, Expert view with 2D cross-section, accessibility
 - [x] **Phase 3: 3D Lenses & Frame** - Procedural lens meshes and parametric frame from engine data, camera presets, glass impression, thickness heatmap, smooth re-meshing on phones (completed 2026-11-11)
-- [ ] **Phase 4: Refraction View & Offline** - Ray-traced "Durchblick" view through the real lens surfaces, graceful mobile degradation, offline service worker with update prompt
+- [x] **Phase 4: Refraction View & Offline** - Ray-traced "Durchblick" view through the real lens surfaces, graceful mobile degradation, offline service worker with update prompt (completed 2026-11-14)
 
 ## Phase Details
 
@@ -355,7 +355,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 04-13-PLAN.md — dev-1.8, full gate, ENG-09 re-measured, lens-critic result input, push approval with rollback, live checks, real-phone check (F-05)
+- [x] 04-13-PLAN.md — dev-1.8, full gate, ENG-09 re-measured, lens-critic result input, push approval with rollback, live checks, real-phone check (F-05)
 
 ## Progress
 
@@ -367,4 +367,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Verified Engine & Live Pipeline | 15/15 | Complete    | 2026-11-07 |
 | 2. Lay-First German Input, Results & Comparison | 22/22 | Complete | 2026-11-08 |
 | 3. 3D Lenses & Frame | 17/17 | Complete    | 2026-11-11 |
-| 4. Refraction View & Offline | 14/15 | In Progress|  |
+| 4. Refraction View & Offline | 16/15 | Complete    | 2026-11-14 |

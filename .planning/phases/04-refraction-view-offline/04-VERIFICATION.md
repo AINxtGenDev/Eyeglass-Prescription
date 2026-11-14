@@ -1,7 +1,7 @@
 ---
 phase: 04-refraction-view-offline
 verified: 2026-11-13T23:32:43Z
-status: human_needed
+status: passed
 score: 2/4 roadmap success criteria fully verified in code (SC1, SC3 code side); SC2 and SC4 need a human or a pending gate result; 0 failed
 overrides_applied: 1
 overrides:
@@ -134,3 +134,12 @@ No must-have is FAILED. The Durchblick is a real CPU ray-traced warp grid on the
 
 _Verified: 2026-11-13T23:32:43Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Human verification results (2026-11-14, orchestrator)
+1. **Real-phone check (SC2 / REF-02): passed, user-reported.** Pixel 7 Pro, Android 17, Chrome 157.0.8103.78: "it works perfect". No ms trace was recorded.
+2. **Live offline check: passed.** Live dev-1.8 (55842a0): `test:pwa:live` 3 passed against the live URL. MCP at 412 px: the worker's scope is `/Eyeglass-Prescription/`; with the network emulated offline, the reload still loads and Durchblick still works.
+3. **Live update prompt: deferred.** It needs a second deploy and is checked at the next release. It is covered locally by the pwa switch-server items 19–24.
+4. **SC1 visual on a real GPU: passed, user-reported** on the same phone.
+5. **SC4 lens-critic: PASS WITH FINDINGS.** The user chose "quick fixes, then push" (MAJOR 2, m1, m2 and m3 were fixed in 04-16; MAJOR 1 was accepted); the remaining minors are accepted as open (deferred-items.md).
+6. **Push approval: given.** Deployed via CI run 43590974743 (build, deploy and verify-live all success).
+Status set to passed. Open: item 3 at the next deploy.
