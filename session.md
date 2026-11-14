@@ -48,6 +48,10 @@
 
 - 2026-11-14 user decision at the 04-13 checkpoint: **quick fixes, then push** (MAJOR 2 texture 2048 on phones, m1 rim note, m2 fullscreen note, m3 caption; MAJOR 1 accepted, the phone check decides); **rewrite the local history** to remove the sibling domain before the push; D-02 stays accepted.
 
+- 2026-11-14 pre-push fixes (04-16): chart texture 2048² on phones / 4096² desktop (the source canvas cannot be released: three.js re-uploads it after a context loss), fullscreen Dickenkarte note points out of the fullscreen, rim note only when the drawn rim band is ≥ 12 px, caption and screen-reader text reworded ("So verändert diese Brille Größe und Form …").
+- 2026-11-14 history rewrite done as decided: the sibling's custom domain is removed from every unpushed commit (filter-branch on origin/main..main; 122 commits, 14 merges kept, final tree byte-identical). Local backup branch `backup/pre-rewrite-2026-11-14` (never push it; delete after the live check). The SHAs cf93dd8/387d7b1 named above no longer exist.
+- Pre-push gate at 679726c: lint, 2148 unit tests (99,6 % lines), builds, test:dist 21/1, **full e2e 689 passed / 0 failed**, live subset 323, pwa 20/1 skipped, SW_SELF_DESTROY false, dev-1.8.
+
 ### Next step (resume here after /clear)
 - State: phases 1–3 complete, phase 4 not started. Pushed 2026-11-12, check the footer for the live version: dev-1.6 (results column sticky from 480 px viewport height instead of 600 px, because the user's tablet in landscape, about 1164 × 593, got a long blank area below the inputs; result card labels centred) and dev-1.7 (Dickenkarte frames both lenses, user request: the two eyes often differ).
 - dev-1.7 consequence, tell the user if asked: the picker 'Zahlen am Glas für' no longer moves the camera; on stages narrower than about 500 px (phone, 400 px results column, the user's tablet) the on-lens numbers do not fit next to two lenses, so the table-only note shows and the table lists both eyes. This amends lens-critic MAJOR 4 / D-21 by user decision (03-UI-SPEC.md, dev-1.7 amendment); no lens-critic run was done for it.
