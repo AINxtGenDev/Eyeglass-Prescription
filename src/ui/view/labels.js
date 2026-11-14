@@ -370,7 +370,9 @@ export function layoutHeatLabels(camera, size, eyes) {
 export function settleNote() {
   if (!heat) return;
   const active = heat.sets.A.active || heat.sets.B.active;
-  const text = active && !heat.calloutsFit ? t('view.callout.tableOnly') : '';
+  // 04-16 (m2): moved into the fullscreen info panel (F-02), the note says the table is outside it.
+  const key = heat.note.closest('#view-fs-info') ? 'view.callout.tableOnly.fs' : 'view.callout.tableOnly';
+  const text = active && !heat.calloutsFit ? t(key) : '';
   if (heat.note.textContent !== text) heat.note.textContent = text;
 }
 

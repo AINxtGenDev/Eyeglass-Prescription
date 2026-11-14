@@ -216,6 +216,28 @@ test('item 15: Dickenkarte fullscreen moves the legend and the callout note into
   await exitRestores(page, before);
 });
 
+// 04-16 (lens-critic m2): the table stays under the view, behind the fullscreen stage, so in
+// fullscreen the table-only note says where it is and how to get there.
+const TABLE_ONLY = 'Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle.';
+const TABLE_ONLY_FS = 'Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle unter der Ansicht. Beenden Sie dazu das Vollbild.';
+test.describe('Dickenkarte fullscreen at 320×640 (04-16 m2)', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  test('m2: the table-only note in fullscreen points out of the fullscreen; after exit the normal wording', async ({ page }) => {
+    test.setTimeout(180_000);
+    await settledView(page);
+    await heatOn(page);
+    const before = await domOrder(page);
+    await enterWithPanel(page, HEAT_BLOCKS);
+    await expect.poll(() => page.evaluate(() => window.__eyeglassView.labelsInfo().calloutsFit), { timeout: 20_000 }).toBe(false);
+    await expect(page.locator('#view-fs-info #view-callout-note')).toHaveText(TABLE_ONLY_FS);
+    await expect(page.locator('#view-fs-info #view-callout-note')).toBeVisible();
+    await exitRestores(page, before);
+    const fit = await page.evaluate(() => window.__eyeglassView.labelsInfo().calloutsFit);
+    await expect(page.locator('#view-callout-note')).toHaveText(fit ? '' : TABLE_ONLY);
+  });
+});
+
 test.describe('without the element Fullscreen API', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {

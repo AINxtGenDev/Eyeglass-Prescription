@@ -855,6 +855,8 @@ export default Object.freeze({
   'view.callout.thickestSuffix': '{mm} · dickste',
   // lens-critic MAJOR 4: shown when not every callout fits (then none is shown).
   'view.callout.tableOnly': 'Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle.',
+  // 04-16 (lens-critic m2): in fullscreen the table stays under the view, behind the stage.
+  'view.callout.tableOnly.fs': 'Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle unter der Ansicht. Beenden Sie dazu das Vollbild.',
   'view.legend.title': 'Dicke in mm',
   'view.legend.thin': 'dünner',
   'view.legend.thick': 'dicker',

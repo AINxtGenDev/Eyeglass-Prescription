@@ -376,6 +376,7 @@ Problem (03 m2): in fullscreen only the stage is visible, so the Dickenkarte leg
 - **Layout:** in fullscreen the stage is a two-row grid, `1fr auto`. The canvas and `#view-labels` fill row 1. `#view-fs-info` is row 2: `--bg` fill, 1 px `--line` top border, 8 px / 16 px padding, `max-height: 40%` with its own vertical scroll. **The info panel never covers the picture**; the picture area shrinks instead, and the scene's ResizeObserver re-fits (the Durchblick scale and the ticks are recomputed from the new panel size, not stretched).
 - `fullscreen.js` keeps the WCAG 2.4.11 inert handling. Because the moved blocks are inside the stage, they stay operable. Tab order inside the fullscreen stage: fullscreen button → info-panel controls.
 - Glas mode in fullscreen: `#view-fs-info` stays `hidden` (nothing to move).
+- 04-16 (lens-critic m2): `#view-heat-table` is not moved, so while `#view-callout-note` is inside `#view-fs-info` it uses `view.callout.tableOnly.fs` „Für die Zahlen am Glas ist die Ansicht zu klein – alle Werte stehen in der Tabelle unter der Ansicht. Beenden Sie dazu das Vollbild.“ instead of `view.callout.tableOnly`.
 
 ---
 

@@ -916,6 +916,7 @@ function mount({ slot }) {
       applyFsLabel();
       controls.setFullscreen(on);
       updateAvoid();
+      settleNote(); // 04-16 (m2): the table-only note names the way out of fullscreen
     },
   });
 
