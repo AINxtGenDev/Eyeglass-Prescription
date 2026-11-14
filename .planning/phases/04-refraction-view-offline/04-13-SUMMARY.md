@@ -321,3 +321,9 @@ Before this docs commit: `git log --oneline origin/main..main | wc -l` = 110 (or
 ## Self-Check: PASSED
 
 - version.js contains dev-1.8 (grep 1); commit d07e16d exists; 04-VALIDATION.md updated; SUMMARY written. Nothing pushed.
+
+## Task 2 decision (2026-11-14, user, verbatim selections)
+- Push: "Quick fixes, then push (Recommended)": a small fix round first (MAJOR 2: 2048 chart texture on phone tiers and release the canvas; m2 fullscreen note text; m1 rim note only when the rim is visible; m3 clearer caption), re-run the gate, then push. MAJOR 1 (bench budgets) is accepted; the phone check decides.
+- History: "Rewrite before push (Recommended)": replace the sibling's custom domain in the local commits origin/main..main (cf93dd8, 387d7b1) before pushing, keep a backup branch, preserve merges, then run the full gate again.
+- D-02: "Keep as accepted (Recommended)".
+- Rollback path stated before asking: the last good deploy is run 43172785402 (47bb4e2). A git revert does not remove an installed worker; the real rollbacks are a fixed build via "Aktualisieren", or the kill switch, which needs its own approval.
